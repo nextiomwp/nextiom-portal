@@ -1,0 +1,5 @@
+## Pages
+- [- Nextiom](/login): Sign in to your Nextiom account
+- [Admin Portal - Nextiom](/adminlogin): No description available
+- [Customer Dashboard](/customerdashboard): No description available
+- [Register - Nextiom](/register): Create your Nextiom account
