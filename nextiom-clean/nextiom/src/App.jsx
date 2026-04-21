@@ -23,7 +23,7 @@ function App() {
       <Router>
         <div className="min-h-screen bg-slate-50">
           <Helmet>
-              <title>Nextiom - Digital Services Platform</title>
+              <title>Nextiom Portal</title>
               <meta name="description" content="Nextiom Customer & Product Management System" />
           </Helmet>
 
