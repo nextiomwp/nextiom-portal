@@ -17,7 +17,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Domain is required unless it's a "One Time User" or "Manual Updates" where it might not be relevant,
     // but the prompt asked for "license locked to one domain" for specific types.
     // We'll enforce it generally for consistency or allow empty if not applicable.
@@ -53,7 +53,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
         <DialogHeader>
           <DialogTitle>Assign Product & Generate License</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -62,7 +62,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
                 id="customer"
                 value={formData.customerId}
                 onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               >
                 <option value="">Select Customer</option>
@@ -80,7 +80,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
                 id="product"
                 value={formData.productId}
                 onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               >
                 <option value="">Select Product</option>
@@ -100,7 +100,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
                 value={formData.activatedDomain}
                 onChange={(e) => setFormData({ ...formData, activatedDomain: e.target.value })}
                 placeholder="example.com"
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
               />
               <p className="text-xs text-slate-500 mt-1">Required for domain-locked licenses</p>
             </div>
@@ -112,7 +112,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
                 type="date"
                 value={formData.activationDate}
                 onChange={(e) => setFormData({ ...formData, activationDate: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               />
             </div>
@@ -123,7 +123,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
                 id="membershipType"
                 value={formData.membershipType}
                 onChange={(e) => setFormData({ ...formData, membershipType: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               >
                 <optgroup label="Lifetime Memberships">
@@ -142,7 +142,7 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-slate-700">
+          <div className="bg-slate-100 dark:bg-black/20 border border-slate-200 dark:border-[#333] rounded-xl p-4 text-sm text-slate-700 dark:text-[#a0a0a0]">
             <p className="font-semibold mb-2">License & Update Rules:</p>
             <ul className="space-y-1 text-xs">
               <li>• <strong>Lifetime:</strong> Never expires. Manual or Auto updates.</li>
@@ -153,10 +153,10 @@ function AssignProductDialog({ open, onOpenChange, customers, products, onSucces
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button type="submit" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+            <Button type="submit" className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
               Generate License
             </Button>
           </div>

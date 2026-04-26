@@ -39,7 +39,7 @@ function ProductList({ products, onUpdate }) {
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-200">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -48,7 +48,7 @@ function ProductList({ products, onUpdate }) {
             placeholder="Search products..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#e87b35] focus:border-transparent transition-all"
           />
         </div>
       </div>
@@ -63,7 +63,7 @@ function ProductList({ products, onUpdate }) {
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
               whileHover={{ y: -4 }}
-              className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-all"
+              className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -91,7 +91,7 @@ function ProductList({ products, onUpdate }) {
 
               <h3 className="text-lg font-semibold text-slate-800 mb-2">{product.name}</h3>
               <p className="text-sm text-slate-600 mb-3">{product.type}</p>
-              
+
               {product.description && (
                 <p className="text-sm text-slate-500 line-clamp-3">{product.description}</p>
               )}

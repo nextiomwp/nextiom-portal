@@ -54,6 +54,16 @@ function Dashboard({ onLogout }) {
 
   useEffect(() => { loadData(); }, []);
 
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dashboard-dark');
+      document.documentElement.style.colorScheme = 'dark';
+    } else {
+      document.documentElement.classList.remove('dashboard-dark');
+      document.documentElement.style.colorScheme = 'light';
+    }
+  }, [isDark]);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -142,7 +152,7 @@ function Dashboard({ onLogout }) {
             <button onClick={() => setIsDark(!isDark)} style={{ background: c.card, border: `1px solid ${c.border}`, color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer' }}>
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <div style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <div onClick={() => setActive('notifications')} style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
               <Bell size={16} style={{ color: c.subText }} />
             </div>
             <div style={{ background: c.brand, width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>A</div>

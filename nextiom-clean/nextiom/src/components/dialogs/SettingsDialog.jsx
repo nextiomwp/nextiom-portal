@@ -44,9 +44,9 @@ function SettingsDialog({ open, onOpenChange, onUpdate }) {
             Configure automated email notifications and system preferences.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSave} className="space-y-6 mt-4">
-          
+
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
             <div className="space-y-0.5">
               <Label htmlFor="reminders" className="text-base font-medium">Email Reminders</Label>
@@ -72,7 +72,7 @@ function SettingsDialog({ open, onOpenChange, onUpdate }) {
                 max="60"
                 value={settings.reminderDaysBefore}
                 onChange={(e) => setSettings({ ...settings, reminderDaysBefore: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all text-sm"
                 disabled={!settings.emailRemindersEnabled}
               />
               <p className="text-xs text-slate-500">
@@ -90,7 +90,7 @@ function SettingsDialog({ open, onOpenChange, onUpdate }) {
                 type="email"
                 value={settings.adminEmail}
                 onChange={(e) => setSettings({ ...settings, adminEmail: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all text-sm"
                 placeholder="admin@example.com"
                 required
               />
@@ -101,10 +101,10 @@ function SettingsDialog({ open, onOpenChange, onUpdate }) {
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button type="submit" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+            <Button type="submit" className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
               <Save className="w-4 h-4 mr-2" />
               Save Changes
             </Button>
