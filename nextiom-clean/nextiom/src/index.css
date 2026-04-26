@@ -12,3 +12,21 @@
       'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   }
 }
+
+/* Dashboard Dark Mode Overrides */
+.dashboard-dark .bg-white { background-color: #2a2a2a !important; color: #ffffff !important; }
+.dashboard-dark .text-slate-800, .dashboard-dark .text-slate-900, .dashboard-dark .text-slate-700 { color: #ffffff !important; }
+.dashboard-dark .text-slate-600, .dashboard-dark .text-slate-500 { color: #a0a0a0 !important; }
+.dashboard-dark .text-slate-400 { color: #888888 !important; }
+.dashboard-dark .bg-slate-50, .dashboard-dark .bg-slate-100 { background-color: #333333 !important; color: #ffffff !important; }
+.dashboard-dark .border-slate-200, .dashboard-dark .border-slate-300 { border-color: #333333 !important; }
+.dashboard-dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #333333 !important; }
+.dashboard-dark .hover\:bg-slate-50:hover, .dashboard-dark .hover\:bg-slate-100:hover, .dashboard-dark .hover\:bg-slate-200:hover { background-color: #3a3a3a !important; }
+.dashboard-dark input, .dashboard-dark select, .dashboard-dark textarea { background-color: #1c1c1c !important; color: #fff !important; border-color: #333 !important; }
+.dashboard-dark .shadow-sm { box-shadow: none !important; }
+.dashboard-dark .bg-green-100 { background-color: #1a2f1c !important; color: #639922 !important; }
+.dashboard-dark .text-green-800 { color: #639922 !important; }
+.dashboard-dark .bg-yellow-100 { background-color: #382512 !important; color: #ba7517 !important; }
+.dashboard-dark .text-yellow-800 { color: #ba7517 !important; }
+.dashboard-dark .bg-red-100 { background-color: #3a1515 !important; color: #d64d4d !important; }
+.dashboard-dark .text-red-800 { color: #d64d4d !important; }
