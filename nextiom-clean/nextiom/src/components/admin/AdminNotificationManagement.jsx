@@ -49,15 +49,15 @@ function AdminNotificationManagement() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <div className="space-y-6">
-        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
+        <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
           <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Send className="w-5 h-5 text-blue-600" /> Send Notification
+            <Send className="w-5 h-5 text-[#e87b35]" /> Send Notification
           </h2>
           <form onSubmit={handleSend} className="space-y-4">
             <div>
               <Label>Recipient</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border rounded-md"
+                className="w-full mt-1.5 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]"
                 value={formData.recipientId}
                 onChange={e => setFormData({ ...formData, recipientId: e.target.value })}
               >
@@ -71,7 +71,7 @@ function AdminNotificationManagement() {
             <div>
               <Label>Type</Label>
               <select
-                className="w-full mt-1 px-3 py-2 border rounded-md"
+                className="w-full mt-1.5 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]"
                 value={formData.type}
                 onChange={e => setFormData({ ...formData, type: e.target.value })}
               >
@@ -84,7 +84,7 @@ function AdminNotificationManagement() {
             <div>
               <Label>Title</Label>
               <input
-                className="w-full mt-1 px-3 py-2 border rounded-md"
+                className="w-full mt-1.5 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]"
                 value={formData.title}
                 onChange={e => setFormData({ ...formData, title: e.target.value })}
                 placeholder="e.g. System Maintenance"
@@ -95,7 +95,7 @@ function AdminNotificationManagement() {
             <div>
               <Label>Message</Label>
               <textarea
-                className="w-full mt-1 px-3 py-2 border rounded-md h-32"
+                className="w-full mt-1.5 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35] h-32 resize-none"
                 value={formData.message}
                 onChange={e => setFormData({ ...formData, message: e.target.value })}
                 placeholder="Type your message here..."
@@ -103,18 +103,18 @@ function AdminNotificationManagement() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">Send Notification</Button>
+            <Button type="submit" className="w-full bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl py-6 text-md font-medium transition-all">Send Notification</Button>
           </form>
         </div>
       </div>
 
       <div>
-        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm h-full">
+        <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200 h-full">
           <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
             <Bell className="w-5 h-5 text-slate-500" /> Templates & Recent
           </h2>
           <div className="space-y-4">
-            <div className="p-4 bg-slate-50 rounded border border-slate-100 cursor-pointer hover:bg-slate-100"
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100"
               onClick={() => setFormData({
                 ...formData,
                 title: 'Important Security Update',
@@ -124,7 +124,7 @@ function AdminNotificationManagement() {
               <h4 className="font-semibold text-sm">Template: Security Update</h4>
               <p className="text-xs text-slate-500">Click to use this template</p>
             </div>
-            <div className="p-4 bg-slate-50 rounded border border-slate-100 cursor-pointer hover:bg-slate-100"
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100"
               onClick={() => setFormData({
                 ...formData,
                 title: 'Maintenance Schedule',

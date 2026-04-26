@@ -89,7 +89,7 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200">
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       {/* Search & Filter */}
       <div className="p-6 border-b border-slate-200">
         <div className="flex flex-col md:flex-row gap-4">
@@ -100,13 +100,13 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
               placeholder="Search by name, email or company..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#e87b35] focus:border-transparent transition-all"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => handleStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#e87b35] focus:border-transparent transition-all"
           >
             <option value="all">All Status</option>
             <option value={LICENSE_STATUS.ACTIVE}>Active</option>
@@ -145,13 +145,12 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         <h3 className="text-lg font-semibold text-slate-800">{customer.name}</h3>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          status === LICENSE_STATUS.ACTIVE ? 'bg-green-100 text-green-800' :
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status === LICENSE_STATUS.ACTIVE ? 'bg-green-100 text-green-800' :
                           status === 'Expiring Soon' ? 'bg-yellow-100 text-yellow-800' :
-                          status === LICENSE_STATUS.EXPIRED ? 'bg-red-100 text-red-800' :
-                          status === LICENSE_STATUS.DISABLED ? 'bg-slate-800 text-white' :
-                          'bg-slate-100 text-slate-600'
-                        }`}>
+                            status === LICENSE_STATUS.EXPIRED ? 'bg-red-100 text-red-800' :
+                              status === LICENSE_STATUS.DISABLED ? 'bg-slate-800 text-white' :
+                                'bg-slate-100 text-slate-600'
+                          }`}>
                           {status}
                         </span>
                       </div>
@@ -201,7 +200,7 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
                       >
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-semibold text-slate-700">Assigned Products & Licenses</h4>
-                          <Button size="sm" onClick={onAssignProduct} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                          <Button size="sm" onClick={onAssignProduct} className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
                             <Plus className="w-4 h-4 mr-1" /> Assign Product
                           </Button>
                         </div>
@@ -229,12 +228,11 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                        licenseStatus.status === LICENSE_STATUS.ACTIVE ? 'bg-green-100 text-green-800' :
+                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${licenseStatus.status === LICENSE_STATUS.ACTIVE ? 'bg-green-100 text-green-800' :
                                         licenseStatus.status === 'Expiring Soon' ? 'bg-yellow-100 text-yellow-800' :
-                                        licenseStatus.status === LICENSE_STATUS.DISABLED ? 'bg-slate-800 text-white' :
-                                        'bg-red-100 text-red-800'
-                                      }`}>
+                                          licenseStatus.status === LICENSE_STATUS.DISABLED ? 'bg-slate-800 text-white' :
+                                            'bg-red-100 text-red-800'
+                                        }`}>
                                         {licenseStatus.status}
                                       </span>
                                       <Button size="sm" variant="outline" onClick={() => setManagingLicense({ license, product })} className="h-8 text-xs">
@@ -362,8 +360,8 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete(deletingCustomerId)}>Delete</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleDelete(deletingCustomerId)} className="bg-red-600 hover:bg-red-700 text-white rounded-xl border-0 shadow-md">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

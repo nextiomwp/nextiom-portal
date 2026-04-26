@@ -32,7 +32,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.email || !formData.phone || !formData.country) {
       toast({
         title: "Error",
@@ -76,7 +76,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
         <DialogHeader>
           <DialogTitle>Edit Customer</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -86,7 +86,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               />
             </div>
@@ -98,7 +98,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               />
             </div>
@@ -110,7 +110,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               />
             </div>
@@ -122,7 +122,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                 required
               />
             </div>
@@ -134,7 +134,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="text"
                 value={formData.company}
                 onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
               />
             </div>
           </div>
@@ -142,7 +142,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label>Domains</Label>
-              <Button type="button" size="sm" onClick={addDomain} variant="outline">
+              <Button type="button" size="sm" onClick={addDomain} variant="outline" className="rounded-xl">
                 <Plus className="w-4 h-4 mr-1" />
                 Add Domain
               </Button>
@@ -155,7 +155,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                     value={domain}
                     onChange={(e) => updateDomain(index, e.target.value)}
                     placeholder="example.com"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
                   />
                   {formData.domains.length > 1 && (
                     <Button
@@ -174,10 +174,10 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button type="submit" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+            <Button type="submit" className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
               Update Customer
             </Button>
           </div>

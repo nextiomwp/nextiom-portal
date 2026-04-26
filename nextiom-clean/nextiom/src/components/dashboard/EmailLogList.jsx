@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 function EmailLogList({ logs }) {
   if (!logs || logs.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center text-slate-500">
+      <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-12 text-center text-slate-500">
         <div className="flex justify-center mb-4">
           <div className="p-4 bg-slate-50 rounded-full">
             <Mail className="w-8 h-8 text-slate-400" />
@@ -19,7 +19,7 @@ function EmailLogList({ logs }) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       <div className="p-6 border-b border-slate-200 bg-slate-50/50">
         <h2 className="text-lg font-semibold text-slate-800">Email Reminder Logs</h2>
         <p className="text-sm text-slate-500">History of automated reminders sent to customers.</p>
@@ -38,7 +38,7 @@ function EmailLogList({ logs }) {
           <tbody className="divide-y divide-slate-100">
             <AnimatePresence>
               {logs.map((log, index) => (
-                <motion.tr 
+                <motion.tr
                   key={log.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
