@@ -6,13 +6,13 @@ import { useToast } from '@/components/ui/use-toast';
 
 function AdminDomainDetailsView({ domain, customer, onBack }) {
   const [status, setStatus] = useState(domain.status);
-  const [expiryDate, setExpiryDate] = useState(domain.expiryDate ? domain.expiryDate.split('T')[0] : '');
+   const [expiryDate, setExpiryDate] = useState(domain.expiry_date ? domain.expiry_date.split('T')[0] : '');
   const { toast } = useToast();
 
-  const handleSave = () => {
-    updateDomain(domain.id, {
+   const handleSave = async () => {
+      await updateDomain(domain.id, {
         status,
-        expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null
+            expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null
     });
     addDomainActivityLog(domain.id, 'Admin Update', `Status changed to ${status}`);
     toast({ title: "Domain Updated", description: "Changes saved successfully." });

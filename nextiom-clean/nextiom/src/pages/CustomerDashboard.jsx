@@ -270,9 +270,13 @@ function CustomerDashboard({ onLogout }) {
             {customerProfile?.id && (
               <NotificationBell userId={customerProfile.id} onViewAll={() => setActiveTab('notifications')} />
             )}
-            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-600 text-sm">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-600 text-sm hover:bg-slate-200 transition-colors"
+              title="Account Details"
+            >
               {customerProfile?.name ? customerProfile.name.charAt(0).toUpperCase() : 'U'}
-            </div>
+            </button>
           </div>
         </div>
 

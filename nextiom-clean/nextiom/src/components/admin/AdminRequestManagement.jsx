@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getDomainRequests, updateDomainRequest, REQUEST_STATUS, getCustomers } from '@/lib/storage';
+import { getDomainRequests, updateDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
 function AdminRequestManagement() {
@@ -20,13 +20,37 @@ function AdminRequestManagement() {
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
-    await updateDomainRequest(id, { status: newStatus });
+    const req = requests.find(r => r.id === id);
+    await updateDomainRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString() });
+    if (req?.customer_id) {
+      const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() ||
+        String(newStatus).toLowerCase() === 'approved';
+      await addNotification({
+        customer_id: req.customer_id,
+        type: isApproved ? 'update' : 'expiration',
+        title: isApproved
+          ? `Domain Request Approved — ${req.domain_name}`
+          : `Domain Request Rejected — ${req.domain_name}`,
+        message: isApproved
+          ? `Your domain request for ${req.domain_name} has been approved.`
+          : `Your domain request for ${req.domain_name} has been declined.`
+      }).catch(() => {});
+    }
     toast({ title: "Request Updated", description: `Request marked as ${newStatus}` });
     loadData();
   };
 
-  const getCustomerName = (id) => {
-    return customers.find(c => c.id === id)?.name || 'Unknown';
+  const getCustomerName = (req) => {
+    return req.customers?.name || customers.find(c => c.id === req.customer_id)?.name || 'Unknown';
+  };
+
+  const isPending = (status) => String(status || '').toLowerCase() === 'pending';
+  const isCompleted = (status) => String(status || '').toLowerCase() === 'completed';
+
+  const formatStatus = (status) => {
+    if (!status) return 'Unknown';
+    const normalized = String(status).toLowerCase();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   };
 
   return (
@@ -46,18 +70,18 @@ function AdminRequestManagement() {
             {requests.map(req => (
               <tr key={req.id} className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="py-3 px-4 font-medium text-slate-800">{req.type || 'New Registration'}</td>
-                <td className="py-3 px-4 text-sm text-slate-600">{req.name || '-'}</td>
-                <td className="py-3 px-4 text-sm text-slate-600">{getCustomerName(req.customer_id)}</td>
+                <td className="py-3 px-4 text-sm text-slate-600">{req.domain_name || '-'}</td>
+                <td className="py-3 px-4 text-sm text-slate-600">{getCustomerName(req)}</td>
                 <td className="py-3 px-4">
-                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${req.status === REQUEST_STATUS.COMPLETED ? 'bg-green-100 text-green-700' :
-                      req.status === REQUEST_STATUS.PENDING ? 'bg-yellow-100 text-yellow-700' :
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${isCompleted(req.status) ? 'bg-green-100 text-green-700' :
+                      isPending(req.status) ? 'bg-yellow-100 text-yellow-700' :
                         'bg-slate-100 text-slate-600'
                     }`}>
-                    {req.status}
+                    {formatStatus(req.status)}
                   </span>
                 </td>
                 <td className="py-3 px-4 text-right flex justify-end gap-2">
-                  {req.status === REQUEST_STATUS.PENDING && (
+                  {isPending(req.status) && (
                     <>
                       <Button size="sm" variant="outline" className="text-green-600 hover:bg-green-50" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}>
                         <CheckCircle className="w-4 h-4" />

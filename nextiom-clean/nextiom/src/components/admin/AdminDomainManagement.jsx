@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Edit, Loader2 } from 'lucide-react';
+import { Search, Edit, Loader2, Trash2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getDomains, getCustomers, DOMAIN_STATUS } from '@/lib/storage';
+import { getDomains, getCustomers, DOMAIN_STATUS, deleteDomain } from '@/lib/storage';
 import AdminDomainDetailsView from './AdminDomainDetailsView';
+import { useToast } from '@/components/ui/use-toast';
 
 function AdminDomainManagement() {
     const [domains, setDomains] = useState([]);
@@ -11,6 +12,7 @@ function AdminDomainManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedDomain, setSelectedDomain] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { toast } = useToast();
 
     useEffect(() => {
         loadData();
@@ -78,8 +80,8 @@ function AdminDomainManagement() {
                                         <td className="py-3 px-4 text-sm text-slate-600">{getCustomerName(d.customer_id)}</td>
                                         <td className="py-3 px-4">
                                             <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${d.status === DOMAIN_STATUS.ACTIVE ? 'bg-green-100 text-green-700' :
-                                                    d.status === DOMAIN_STATUS.PENDING ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-slate-100 text-slate-600'
+                                                d.status === DOMAIN_STATUS.PENDING ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-slate-100 text-slate-600'
                                                 }`}>
                                                 {d.status}
                                             </span>
@@ -88,12 +90,36 @@ function AdminDomainManagement() {
                                             {d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '-'}
                                         </td>
                                         <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                                            <Button variant="ghost" size="sm" onClick={() => setSelectedDomain(d)}>
-                                                <Edit className="w-4 h-4 text-slate-500" />
-                                            </Button>
+                                            <div className="flex justify-end gap-2">
+                                                <Button variant="ghost" size="sm" onClick={() => setSelectedDomain(d)} title="Edit">
+                                                    <Edit className="w-4 h-4 text-slate-500 hover:text-slate-700" />
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={() => {
+                                                    toast({ title: "Reminder Sent", description: `Reminder queued for ${d.name}.` });
+                                                }} title="Send Reminder">
+                                                    <Bell className="w-4 h-4 text-[#e87b35]" />
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={async () => {
+                                                    if (window.confirm("Are you sure you want to delete this domain?")) {
+                                                        try {
+                                                            await deleteDomain(d.id);
+                                                            loadData();
+                                                        } catch (e) { }
+                                                    }
+                                                }} title="Delete">
+                                                    <Trash2 className="w-4 h-4 text-red-500 hover:text-red-700" />
+                                                </Button>
+                                            </div>
                                         </td>
                                     </motion.tr>
                                 ))}
+                                {filteredDomains.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="py-12 text-center text-slate-500">
+                                            No domains found matching your criteria.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>

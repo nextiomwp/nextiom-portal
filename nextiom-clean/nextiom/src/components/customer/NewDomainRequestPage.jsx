@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Globe, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { resolveCustomerId } from '@/lib/storage';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -15,8 +16,6 @@ function NewDomainRequestPage({ onSuccess, user }) {
   const { toast } = useToast();
   const { user: authUser } = useAuth();
 
-  const customerId = user?.id || authUser?.id;
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!domainName) {
@@ -25,23 +24,52 @@ function NewDomainRequestPage({ onSuccess, user }) {
     }
     setLoading(true);
     try {
-      await supabase.from('domain_requests').insert([{
+      const customerId = await resolveCustomerId({
+        customerId: user?.id,
+        userId: authUser?.id,
+        email: authUser?.email
+      });
+
+      if (!customerId) {
+        throw new Error('Customer profile not found');
+      }
+
+      const today = new Date();
+      const expiryDate = new Date(today);
+      expiryDate.setFullYear(today.getFullYear() + parseInt(period));
+
+      const { data: domainRequest, error: domainError } = await supabase.from('domain_requests').insert([{
         customer_id: customerId,
         domain_name: `${domainName}${extension}`,
-        period: `${period} Year(s)`,
-        notes,
         status: 'pending',
+        registration_period: parseInt(period),
+        expiry_date: expiryDate.toISOString(),
+        auto_renew: false,
+        notes: notes || null,
         created_at: new Date().toISOString()
-      }]);
+      }]).select().single();
 
-      await supabase.from('notifications').insert([{
+      if (domainError) {
+        console.error('Domain request insert error:', domainError);
+        throw new Error(domainError?.message || 'Failed to create domain request');
+      }
+
+      if (!domainRequest) {
+        throw new Error('No data returned from domain request insert');
+      }
+
+      const { error: notifError } = await supabase.from('notifications').insert([{
         type: 'domain_request',
         title: 'New Domain Request',
-        message: `Domain registration requested: ${domainName}${extension} (${period} Year)`,
+        message: `Domain registration requested: ${domainName}${extension} (${period} Year${period !== '1' ? 's' : ''})${notes ? ` - Notes: ${notes}` : ''}`,
         customer_id: customerId,
         is_read: false,
         created_at: new Date().toISOString()
       }]);
+
+      if (notifError) {
+        console.warn('Notification insert warning (non-fatal):', notifError);
+      }
 
       setSubmitted(true);
       toast({ title: "Request Submitted!", description: "Admin has been notified." });

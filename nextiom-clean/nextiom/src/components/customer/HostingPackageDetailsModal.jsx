@@ -17,11 +17,39 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
   const { toast } = useToast();
   const [requests, setRequests] = React.useState([]);
   const [logs, setLogs] = React.useState([]);
+  const [autoRenew, setAutoRenew] = React.useState(false);
+
+  React.useEffect(() => {
+    setAutoRenew(!!(pkg?.auto_renew ?? pkg?.autoRenew ?? false));
+  }, [pkg]);
+
+  const parseRequestField = (raw, label) => {
+    if (!raw) return null;
+    const regex = new RegExp(`${label}:\\s*([^|;\\n]+)`, 'i');
+    const match = raw.match(regex);
+    return match?.[1]?.trim() || null;
+  };
+
+  const requestMeta = React.useMemo(() => {
+    const raw = pkg?.package_type || pkg?.package_name || pkg?.packageName || pkg?.notes || '';
+    return {
+      plan: raw.split('|')[0]?.trim() || raw || 'Hosting Request',
+      billing_period: parseRequestField(raw, 'Billing') || pkg?.billing_period || pkg?.billingPeriod || '-',
+      domain: pkg?.domain || pkg?.domain_name || parseRequestField(raw, 'Domain') || 'No domain available',
+      notes: pkg?.notes || parseRequestField(raw, 'Notes') || 'No notes provided'
+    };
+  }, [pkg]);
 
   React.useEffect(() => {
     if (pkg) {
         getHostingRequests().then(reqs => {
-            setRequests(reqs.filter(r => r.packageId === pkg.id));
+            const filtered = (reqs || []).filter(r => {
+              if (r.package_id && pkg.id) return r.package_id === pkg.id;
+              const requestPackage = r.package_name || r.package_type || r.packageName;
+              const packageLabel = pkg.package_name || pkg.package_type || pkg.packageName;
+              return r.customer_id === pkg.customer_id && requestPackage === packageLabel;
+            });
+            setRequests(filtered);
         });
         setLogs(getHostingActivityLog(pkg.id));
     }
@@ -29,9 +57,17 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
 
   if (!pkg) return null;
 
-  const handleAutoRenewToggle = (checked) => {
-    updateHostingPackage(pkg.id, { autoRenew: checked });
-    toast({ title: "Updated", description: `Auto-renew has been turned ${checked ? 'on' : 'off'}.` });
+  const handleAutoRenewToggle = async (checked) => {
+    setAutoRenew(checked);
+    if (!pkg?.isRequest) {
+      try {
+        await updateHostingPackage(pkg.id, { auto_renew: checked });
+        toast({ title: "Updated", description: `Auto-renew has been turned ${checked ? 'on' : 'off'}.` });
+      } catch {
+        setAutoRenew(!checked);
+        toast({ title: "Error", description: "Could not update auto-renew.", variant: "destructive" });
+      }
+    }
   };
 
   const getStatusColor = (status) => {
@@ -63,8 +99,8 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
                     <Server className="w-6 h-6 text-blue-600" />
                  </div>
                  <div>
-                    <DialogTitle className="text-xl font-bold">{pkg.packageName}</DialogTitle>
-                    <DialogDescription>{pkg.domain}</DialogDescription>
+                      <DialogTitle className="text-xl font-bold">{requestMeta.plan || pkg.package_name || pkg.package_type || pkg.packageName || pkg.type || 'Hosting Request'}</DialogTitle>
+                    <DialogDescription>{requestMeta.domain}</DialogDescription>
                  </div>
             </div>
             <Badge className={getStatusColor(pkg.status)}>{pkg.status}</Badge>
@@ -76,20 +112,26 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
                 <p className="text-xs text-slate-500 font-medium uppercase mb-1">Plan Details</p>
-                <p className="font-semibold text-slate-800">{pkg.plan} Plan</p>
+                 <p className="font-semibold text-slate-800">{requestMeta.plan} Plan</p>
                 <p className="text-xs text-slate-500">{pkg.type}</p>
              </div>
              <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
                 <p className="text-xs text-slate-500 font-medium uppercase mb-1">Billing</p>
-                <p className="font-semibold text-slate-800">{pkg.billingPeriod}</p>
-                <p className="text-xs text-slate-500">Next Invoice: {pkg.expiryDate ? new Date(pkg.expiryDate).toLocaleDateString() : 'N/A'}</p>
+                 <p className="font-semibold text-slate-800">{requestMeta.billing_period}</p>
+                 <p className="text-xs text-slate-500">Next Invoice: {(pkg.expiry_date || pkg.expiryDate) ? new Date(pkg.expiry_date || pkg.expiryDate).toLocaleDateString() : 'N/A'}</p>
              </div>
              <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 flex flex-col justify-between">
                 <div className="flex justify-between items-center mb-1">
                     <p className="text-xs text-slate-500 font-medium uppercase">Auto Renew</p>
-                    <Switch checked={pkg.autoRenew} onCheckedChange={handleAutoRenewToggle} />
+                    <Switch
+                      checked={autoRenew}
+                      onCheckedChange={handleAutoRenewToggle}
+                      disabled={!!pkg?.isRequest}
+                    />
                 </div>
-                <p className="text-xs text-slate-500">Automatically renews on expiry</p>
+                <p className="text-xs text-slate-500">
+                  {pkg?.isRequest ? 'Available after package is activated' : 'Automatically renews on expiry'}
+                </p>
              </div>
           </div>
 
@@ -120,6 +162,11 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
             </div>
           </div>
 
+          <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+            <p className="text-xs text-slate-500 font-medium uppercase mb-1">Customer Notes</p>
+            <p className="text-sm text-slate-700">{requestMeta.notes}</p>
+          </div>
+
           {/* Request History */}
           <div>
             <h3 className="text-sm font-bold text-slate-800 mb-3">Recent Requests</h3>
@@ -129,7 +176,7 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
                         <div key={req.id} className="p-3 flex items-center justify-between hover:bg-slate-50">
                             <div>
                                 <p className="text-sm font-medium text-slate-800">{req.type}</p>
-                                <p className="text-xs text-slate-500">{new Date(req.submittedAt).toLocaleDateString()}</p>
+                                <p className="text-xs text-slate-500">{req.created_at ? new Date(req.created_at).toLocaleDateString() : '-'}</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 {getRequestStatusIcon(req.status)}

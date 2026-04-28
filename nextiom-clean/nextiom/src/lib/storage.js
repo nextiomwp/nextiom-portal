@@ -94,7 +94,7 @@ export const getCustomers = async () => {
     .from('customers')
     .select('*')
     .order('created_at', { ascending: false });
-  
+
   if (error) handleSupabaseError(error, 'getCustomers');
   return data || [];
 };
@@ -119,6 +119,25 @@ export const getCustomerByEmail = async (email) => {
 
   if (error) handleSupabaseError(error, 'getCustomerByEmail');
   return data;
+};
+
+export const resolveCustomerId = async ({ customerId, userId, email } = {}) => {
+  if (customerId) {
+    const byId = await getCustomerById(customerId).catch(() => null);
+    if (byId?.id) return byId.id;
+  }
+
+  if (userId) {
+    const byUser = await getUserProfile(userId).catch(() => null);
+    if (byUser?.id) return byUser.id;
+  }
+
+  if (email) {
+    const byEmail = await getCustomerByEmail(email).catch(() => null);
+    if (byEmail?.id) return byEmail.id;
+  }
+
+  return customerId || null;
 };
 
 export const addCustomer = async (customerData) => {
@@ -254,6 +273,17 @@ export const getCustomerDomains = async (customerId) => {
   return data || [];
 };
 
+export const getCustomerDomainRequests = async (customerId) => {
+  const { data, error } = await supabase
+    .from('domain_requests')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+
+  if (error) handleSupabaseError(error, 'getCustomerDomainRequests');
+  return data || [];
+};
+
 export const addDomain = async (domainData) => {
   const { data, error } = await supabase
     .from('domains')
@@ -343,6 +373,17 @@ export const getCustomerHostingPackages = async (customerId) => {
   return data || [];
 };
 
+export const getCustomerHostingRequests = async (customerId) => {
+  const { data, error } = await supabase
+    .from('hosting_requests')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+
+  if (error) handleSupabaseError(error, 'getCustomerHostingRequests');
+  return data || [];
+};
+
 export const addHostingPackage = async (hostingData) => {
   const { data, error } = await supabase
     .from('hosting_packages')
@@ -392,15 +433,19 @@ export const deleteHosting = async (id) => {
 
 export const getCustomerServices = async (customerId) => {
   try {
-    const [domains, hosting, licenses] = await Promise.all([
+    const [domains, hosting, licenses, domainReqs, hostingReqs] = await Promise.all([
       getCustomerDomains(customerId),
       getCustomerHostingPackages(customerId),
-      getLicenses(customerId)
+      getLicenses(customerId),
+      getCustomerDomainRequests(customerId),
+      getCustomerHostingRequests(customerId)
     ]);
 
     return [
       ...domains.map(d => ({ ...d, type: 'domain', name: d.name || 'Domain' })),
+      ...domainReqs.map(r => ({ ...r, type: 'domain request', name: r.domain_name || 'Domain', isRequest: true })),
       ...hosting.map(h => ({ ...h, type: 'hosting', name: h.package_name || 'Hosting' })),
+      ...hostingReqs.map(r => ({ ...r, type: 'hosting request', name: r.package_type?.split('|')[0]?.trim() || r.package_name || 'Hosting', isRequest: true })),
       ...licenses.map(l => ({ ...l, type: 'license', name: 'Software License' }))
     ];
   } catch (error) {
@@ -411,14 +456,14 @@ export const getCustomerServices = async (customerId) => {
 
 export const getLicenses = async (customerId) => {
   let query = supabase.from('licenses').select('*, products(name)');
-  
+
   if (customerId) {
     query = query.eq('customer_id', customerId);
   }
 
   const { data, error } = await query;
   if (error) handleSupabaseError(error, 'getLicenses');
-  
+
   return (data || []).map(l => ({
     ...l,
     name: l.products?.name || 'Unknown Product'
@@ -526,7 +571,7 @@ export const getStorageStats = async () => {
   const { count: customers } = await supabase.from('customers').select('*', { count: 'exact', head: true });
   const { count: domains } = await supabase.from('domains').select('*', { count: 'exact', head: true });
   const { count: hosting } = await supabase.from('hosting_packages').select('*', { count: 'exact', head: true });
-  
+
   return {
     totalCustomers: customers || 0,
     totalDomains: domains || 0,
@@ -542,7 +587,7 @@ export const getEmailLogs = async () => {
     .select('*')
     .order('sent_at', { ascending: false })
     .limit(50);
-    
+
   if (error) {
     console.warn("Could not fetch email logs", error);
     return [];
@@ -583,6 +628,59 @@ export const getHostingActivityLog = (packageId) => {
   return [];
 };
 
+// --- Hosting Plans (Admin Templates) ---
+
+export const getHostingPlans = async () => {
+  const { data, error } = await supabase
+    .from('hosting_plans')
+    .select('*')
+    .order('hosting_type', { ascending: true })
+    .order('plan_name', { ascending: true });
+  if (error) handleSupabaseError(error, 'getHostingPlans');
+  return data || [];
+};
+
+export const getActiveHostingPlans = async () => {
+  const { data, error } = await supabase
+    .from('hosting_plans')
+    .select('*')
+    .eq('is_active', true)
+    .order('hosting_type', { ascending: true })
+    .order('plan_name', { ascending: true });
+  if (error) handleSupabaseError(error, 'getActiveHostingPlans');
+  return data || [];
+};
+
+export const addHostingPlan = async (planData) => {
+  const { data, error } = await supabase
+    .from('hosting_plans')
+    .insert([planData])
+    .select()
+    .single();
+  if (error) handleSupabaseError(error, 'addHostingPlan');
+  return data;
+};
+
+export const updateHostingPlan = async (id, updates) => {
+  const { data, error } = await supabase
+    .from('hosting_plans')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) handleSupabaseError(error, 'updateHostingPlan');
+  return data;
+};
+
+export const deleteHostingPlan = async (id) => {
+  const { error } = await supabase
+    .from('hosting_plans')
+    .delete()
+    .eq('id', id);
+  if (error) handleSupabaseError(error, 'deleteHostingPlan');
+  return true;
+};
+
 // --- Requests (Real Supabase) ---
 
 export const addDomainRequest = async (requestData) => {
@@ -591,21 +689,23 @@ export const addDomainRequest = async (requestData) => {
     .insert([{
       customer_id: requestData.customerId,
       domain_name: requestData.details?.domain,
-      period: requestData.details?.period,
-      notes: requestData.details?.notes,
       status: 'pending',
       created_at: new Date().toISOString()
     }])
     .select()
     .single();
 
-  if (error) console.error('addDomainRequest error:', error);
+  if (error) {
+    handleSupabaseError(error, 'addDomainRequest');
+  }
 
-  // Notify admin
+  // Notify admin - include period and notes in message
+  const period = requestData.details?.period || '1';
+  const notes = requestData.details?.notes ? ` - Notes: ${requestData.details.notes}` : '';
   await supabase.from('notifications').insert([{
     type: 'domain_request',
     title: 'New Domain Request',
-    message: `Domain registration requested: ${requestData.details?.domain}`,
+    message: `Domain registration requested: ${requestData.details?.domain} (${period} Year${period !== '1' ? 's' : ''})${notes}`,
     customer_id: requestData.customerId,
     is_read: false,
     created_at: new Date().toISOString()
@@ -615,25 +715,28 @@ export const addDomainRequest = async (requestData) => {
 };
 
 export const addHostingRequest = async (requestData) => {
+  const packageLabel = requestData.details?.package || 'Hosting Request';
+  const requestSummary = `${packageLabel} | Billing: ${requestData.details?.billing || 'N/A'} | Domain: ${requestData.details?.domain || 'N/A'} | Notes: ${requestData.details?.notes || 'None'}`;
   const { data, error } = await supabase
     .from('hosting_requests')
     .insert([{
       customer_id: requestData.customerId,
-      package_name: requestData.details?.package,
-      notes: requestData.details?.notes,
+      package_type: requestSummary,
       status: 'pending',
       created_at: new Date().toISOString()
     }])
     .select()
     .single();
 
-  if (error) console.error('addHostingRequest error:', error);
+  if (error) {
+    handleSupabaseError(error, 'addHostingRequest');
+  }
 
   // Notify admin
   await supabase.from('notifications').insert([{
     type: 'hosting_request',
     title: 'New Hosting Request',
-    message: `Hosting package requested: ${requestData.details?.package}`,
+    message: `Hosting package requested: ${packageLabel}`,
     customer_id: requestData.customerId,
     is_read: false,
     created_at: new Date().toISOString()
@@ -647,13 +750,33 @@ export const assignProductToCustomer = async (data) => {
   return true;
 };
 
+export const deleteDomainRequest = async (id) => {
+  const { error } = await supabase
+    .from('domain_requests')
+    .delete()
+    .eq('id', id);
+
+  if (error) handleSupabaseError(error, 'deleteDomainRequest');
+  return true;
+};
+
+export const deleteHostingRequest = async (id) => {
+  const { error } = await supabase
+    .from('hosting_requests')
+    .delete()
+    .eq('id', id);
+
+  if (error) handleSupabaseError(error, 'deleteHostingRequest');
+  return true;
+};
+
 export const updateLicense = async (id, updates) => {
   console.log('License updated:', id, updates);
   return true;
 };
 
 export const generateLicenseKey = () => {
-  return 'XXXX-XXXX-XXXX-XXXX'.replace(/X/g, () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.random()*36|0]);
+  return 'XXXX-XXXX-XXXX-XXXX'.replace(/X/g, () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.random() * 36 | 0]);
 };
 
 export const getSettings = () => {

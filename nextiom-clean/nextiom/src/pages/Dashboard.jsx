@@ -12,7 +12,6 @@ import AddCustomerDialog from '@/components/dialogs/AddCustomerDialog';
 import AddProductDialog from '@/components/dialogs/AddProductDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
 import SettingsDialog from '@/components/dialogs/SettingsDialog';
-import CustomerList from '@/components/dashboard/CustomerList';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages } from '@/lib/storage';
@@ -37,6 +36,8 @@ function Dashboard({ onLogout }) {
   const [emailLogs, setEmailLogs] = useState([]);
   const [stats, setStats] = useState({ totalCustomers: 0, totalDomains: 0, activeMemberships: 0, expiringSoon: 0, expired: 0 });
   const [requests, setRequests] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [hostingPlans, setHostingPlans] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -45,6 +46,7 @@ function Dashboard({ onLogout }) {
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isAssignProductOpen, setIsAssignProductOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { toast } = useToast();
   const { signOut } = useAuth();
 
@@ -72,8 +74,28 @@ function Dashboard({ onLogout }) {
       ]);
       setCustomers(cus || []); setProducts(prd || []); setLicenses(lic || []);
       setStats(sts || {}); setEmailLogs(lgs || []);
-      const allReq = [...(domReq || []).map(r => ({ ...r, reqType: r.details?.domain ? 'Domain registration' : 'Domain request', n: r.customers?.name || 'Unknown' })), ...(hostReq || []).map(r => ({ ...r, reqType: r.details?.package ? 'Hosting new' : 'Hosting request', n: r.customers?.name || 'Unknown' }))].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setRequests(allReq); setHostingPlans(hostPkg || []);
+      const domainReqRows = (domReq || []).map(r => ({
+        ...r,
+        source: 'domain',
+        reqType: 'Domain request',
+        n: r.customers?.name || 'Unknown',
+        detailsLabel: r.domain_name || '-'
+      }));
+      const hostingReqRows = (hostReq || []).map(r => ({
+        ...r,
+        source: 'hosting',
+        reqType: 'Hosting request',
+        n: r.customers?.name || 'Unknown',
+        detailsLabel: r.package_name || '-'
+      }));
+
+      const allReq = [...domainReqRows, ...hostingReqRows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const pendingReqRows = allReq.filter(r => String(r.status || '').toLowerCase() === 'pending');
+
+      setRequests(allReq);
+      setPendingRequests(pendingReqRows);
+      setPendingRequestsCount(pendingReqRows.length);
+      setHostingPlans(hostPkg || []);
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
     } finally {
@@ -94,8 +116,8 @@ function Dashboard({ onLogout }) {
   const renderContent = () => {
     if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div>;
     switch (active) {
-      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} onNavigate={setActive} c={c} isDark={isDark} />;
-      case 'customers': return <CustomerList customers={customers} licenses={licenses} products={products} onUpdate={loadData} onAssignProduct={() => setIsAssignProductOpen(true)} />;
+      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} c={c} isDark={isDark} />;
+      case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} />;
       case 'domains': return <AdminDomainManagement />;
       case 'hosting': return <AdminHostingManagement />;
       case 'hostingRequests': return <AdminHostingRequestManagement />;
@@ -152,8 +174,23 @@ function Dashboard({ onLogout }) {
             <button onClick={() => setIsDark(!isDark)} style={{ background: c.card, border: `1px solid ${c.border}`, color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer' }}>
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <div onClick={() => setActive('notifications')} style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <Bell size={16} style={{ color: c.subText }} />
+            <div style={{ position: 'relative' }}>
+              <div onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <Bell size={16} style={{ color: c.subText }} />
+                {pendingRequestsCount > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, background: c.brand, borderRadius: 8, fontSize: 10, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{pendingRequestsCount}</div>}
+              </div>
+              {isNotificationsOpen && (
+                <div style={{ position: 'absolute', top: 44, right: 0, width: 320, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 50, maxHeight: 400, overflowY: 'auto' }}>
+                  <div style={{ padding: '16px', borderBottom: `1px solid ${c.border}`, fontWeight: 600 }}>Pending Requests</div>
+                  {pendingRequests.slice(0, 10).map((r, i) => (
+                    <div key={i} style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }} onClick={() => { setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{r.n} - {r.reqType}</div>
+                      <div style={{ fontSize: 12, color: c.subText }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                    </div>
+                  ))}
+                  {pendingRequests.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No pending requests</div>}
+                </div>
+              )}
             </div>
             <div style={{ background: c.brand, width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>A</div>
             <button onClick={() => setIsAddCustomerOpen(true)} style={{ background: c.sidebar, color: c.text, border: `1px solid ${c.border}`, padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -189,12 +226,12 @@ function NavItem({ item, active, setActive, open, c }) {
   );
 }
 
-function OverviewContent({ stats, customers, requests, hostingPlans, onNavigate, c, isDark }) {
+function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, c, isDark }) {
   const statCards = [
-    { label: 'Total customers', value: stats.totalCustomers || 0, icon: <Users size={18} color={c.brand} />, sub: '+12 this month', subColor: '#639922', bg: isDark ? '#3d2518' : '#fff5ee' },
+    { label: 'Total customers', value: customers.length || 0, icon: <Users size={18} color={c.brand} />, sub: '+12 this month', subColor: '#639922', bg: isDark ? '#3d2518' : '#fff5ee' },
     { label: 'Active domains', value: stats.totalDomains || 0, icon: <CheckCircle size={18} color="#378ADD" />, sub: `${stats.expiringSoon || 0} expiring soon`, subColor: '#378ADD', bg: isDark ? '#1a2736' : '#e6f1fb' },
-    { label: 'Hosting packages', value: stats.activeMemberships || 0, icon: <Server size={18} color="#639922" />, sub: 'All active', subColor: '#639922', bg: isDark ? '#1e2e1e' : '#eaf3de' },
-    { label: 'Pending requests', value: stats.expired || 0, icon: <Star size={18} color="#BA7517" />, sub: 'Needs review', subColor: '#BA7517', bg: isDark ? '#382512' : '#faeeda' },
+    { label: 'Hosting packages', value: hostingPlans.length || 0, icon: <Server size={18} color="#639922" />, sub: 'All active', subColor: '#639922', bg: isDark ? '#1e2e1e' : '#eaf3de' },
+    { label: 'Pending requests', value: pendingRequestsCount || 0, icon: <Star size={18} color="#BA7517" />, sub: 'Needs review', subColor: '#BA7517', bg: isDark ? '#382512' : '#faeeda' },
   ];
 
   return (

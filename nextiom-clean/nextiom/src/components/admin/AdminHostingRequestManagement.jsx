@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Clock, FileText, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { getHostingRequests, updateHostingRequest, REQUEST_STATUS, getCustomers, getHostingPackages } from '@/lib/storage';
+import { getHostingRequests, updateHostingRequest, REQUEST_STATUS, getCustomers, getHostingPackages, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 
@@ -33,18 +33,33 @@ function AdminHostingRequestManagement() {
     };
 
     const handleAction = async (status) => {
-        if (status === REQUEST_STATUS.REJECTED && !rejectReason) {
+        if (status === REQUEST_STATUS.REJECTED && !rejectReason.trim()) {
             toast({ title: "Reason Required", description: "Please provide a reason for rejection.", variant: "destructive" });
             return;
         }
         setLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 600));
 
         await updateHostingRequest(selectedRequest.id, {
-            status,
-            adminReply: status === REQUEST_STATUS.REJECTED ? rejectReason : adminReply,
-            updatedAt: new Date().toISOString()
+            status: String(status).toLowerCase(),
+            admin_reply: status === REQUEST_STATUS.REJECTED ? rejectReason : adminReply,
+            updated_at: new Date().toISOString()
         });
+
+        if (selectedRequest.customer_id) {
+            const isApproved = String(status).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase() ||
+                String(status).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase();
+            const planName = selectedRequest.package_type?.split('|')[0]?.trim() || 'Hosting';
+            await addNotification({
+                customer_id: selectedRequest.customer_id,
+                type: isApproved ? 'update' : 'expiration',
+                title: isApproved
+                    ? `Hosting Request Approved — ${planName}`
+                    : `Hosting Request Rejected — ${planName}`,
+                message: isApproved
+                    ? `Your hosting request for ${planName} has been approved.`
+                    : `Your hosting request was declined. Reason: ${rejectReason || 'No reason provided.'}`
+            }).catch(() => {});
+        }
 
         toast({ title: "Request Updated", description: `Request has been marked as ${status}.` });
         setLoading(false);
@@ -55,9 +70,18 @@ function AdminHostingRequestManagement() {
     };
 
     const getCustomerName = (id) => customers.find(c => c.id === id)?.name || 'Unknown';
-    const getPackageName = (id) => packages.find(p => p.id === id)?.package_name || 'New Order';
 
-    const filteredRequests = requests.filter(r => statusFilter === 'All' || r.status === statusFilter);
+    const isPending = (status) => String(status || '').toLowerCase() === 'pending';
+    const formatStatus = (status) => {
+        if (!status) return 'Unknown';
+        const normalized = String(status).toLowerCase();
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+    };
+
+    const filteredRequests = requests.filter(r => {
+        if (statusFilter === 'All') return true;
+        return String(r.status || '').toLowerCase() === String(statusFilter || '').toLowerCase();
+    });
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -92,11 +116,11 @@ function AdminHostingRequestManagement() {
                             <tr key={req.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setSelectedRequest(req)}>
                                 <td className="py-4 px-6">
                                     <span className="font-semibold text-slate-800 block">New Request</span>
-                                    <span className="text-xs text-slate-500 truncate max-w-[200px] block">Hosting Order</span>
+                                    <span className="text-xs text-slate-500 truncate max-w-[200px] block">{req.domain || req.notes || 'Hosting Order'}</span>
                                 </td>
                                 <td className="py-4 px-6">
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-slate-700">{getCustomerName(req.customer_id)}</span>
+                                        <span className="font-medium text-slate-700">{req.customers?.name || getCustomerName(req.customer_id)}</span>
                                         <span className="text-xs text-slate-500">{req.package_name}</span>
                                     </div>
                                 </td>
@@ -104,15 +128,15 @@ function AdminHostingRequestManagement() {
                                     {req.created_at ? format(new Date(req.created_at), 'MMM dd, HH:mm') : '-'}
                                 </td>
                                 <td className="py-4 px-6">
-                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${req.status === REQUEST_STATUS.PENDING ? 'bg-yellow-100 text-yellow-700' :
-                                            req.status === REQUEST_STATUS.COMPLETED ? 'bg-green-100 text-green-700' :
-                                                req.status === REQUEST_STATUS.APPROVED ? 'bg-blue-100 text-blue-700' :
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold uppercase ${String(req.status || '').toLowerCase() === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                            String(req.status || '').toLowerCase() === 'completed' ? 'bg-green-100 text-green-700' :
+                                                String(req.status || '').toLowerCase() === 'approved' ? 'bg-blue-100 text-blue-700' :
                                                     'bg-red-100 text-red-700'
                                         }`}>
-                                        {req.status === REQUEST_STATUS.PENDING ? <Clock className="w-3 h-3" /> :
-                                            req.status === REQUEST_STATUS.REJECTED ? <XCircle className="w-3 h-3" /> :
+                                        {String(req.status || '').toLowerCase() === 'pending' ? <Clock className="w-3 h-3" /> :
+                                            String(req.status || '').toLowerCase() === 'rejected' ? <XCircle className="w-3 h-3" /> :
                                                 <CheckCircle className="w-3 h-3" />}
-                                        {req.status}
+                                        {formatStatus(req.status)}
                                     </span>
                                 </td>
                                 <td className="py-4 px-6 text-right">
@@ -156,7 +180,7 @@ function AdminHostingRequestManagement() {
                                 </div>
                             </div>
 
-                            {selectedRequest.status === REQUEST_STATUS.PENDING && (
+                            {isPending(selectedRequest.status) && (
                                 <div className="space-y-3 pt-2 border-t border-slate-100">
                                     <p className="font-medium text-slate-800">Admin Action</p>
                                     <textarea

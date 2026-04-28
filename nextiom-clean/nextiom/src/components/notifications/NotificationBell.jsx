@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCircle, X, Mail, AlertCircle, ShoppingBag, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { getNotifications, markAsRead } from '@/lib/storage';
+import { getNotifications, markAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 
 function NotificationBell({ userId, onViewAll }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -12,25 +12,71 @@ function NotificationBell({ userId, onViewAll }) {
 
   const loadNotifications = async () => {
     try {
-      const all = await getNotifications(userId);
-      
-      if (!Array.isArray(all)) {
-        console.warn('Notifications data is not an array:', all);
-        setRecentNotifications([]);
-        setUnreadCount(0);
-        return;
-      }
+      const [all, domainReqs, hostingReqs] = await Promise.all([
+        getNotifications(userId),
+        getCustomerDomainRequests(userId).catch(() => []),
+        getCustomerHostingRequests(userId).catch(() => [])
+      ]);
 
-      // Sort by created_at (handling potential snake_case from DB)
-      const sorted = all.sort((a, b) => {
-        const dateA = new Date(a.created_at || a.createdAt || 0);
-        const dateB = new Date(b.created_at || b.createdAt || 0);
+      const dbNotifications = Array.isArray(all) ? all : [];
+
+      // Build virtual notifications from approved/rejected requests
+      const existingTitles = new Set(dbNotifications.map(n => n.title));
+      const virtualNotifs = [];
+
+      (domainReqs || []).forEach(r => {
+        const st = String(r.status || '').toLowerCase();
+        if (st === 'approved' || st === 'completed' || st === 'rejected') {
+          const title = st === 'rejected'
+            ? `Domain Request Rejected — ${r.domain_name}`
+            : `Domain Request Approved — ${r.domain_name}`;
+          if (!existingTitles.has(title)) {
+            virtualNotifs.push({
+              id: `virt-domain-${r.id}`,
+              title,
+              message: st === 'rejected'
+                ? `Your domain request for ${r.domain_name} has been declined.`
+                : `Your domain request for ${r.domain_name} has been approved.`,
+              type: st === 'rejected' ? 'expiration' : 'update',
+              read_status: false,
+              created_at: r.updated_at || r.created_at,
+              virtual: true
+            });
+          }
+        }
+      });
+
+      (hostingReqs || []).forEach(r => {
+        const st = String(r.status || '').toLowerCase();
+        if (st === 'approved' || st === 'completed' || st === 'rejected') {
+          const planName = r.package_type?.split('|')[0]?.trim() || 'Hosting';
+          const title = st === 'rejected'
+            ? `Hosting Request Rejected — ${planName}`
+            : `Hosting Request Approved — ${planName}`;
+          if (!existingTitles.has(title)) {
+            virtualNotifs.push({
+              id: `virt-hosting-${r.id}`,
+              title,
+              message: st === 'rejected'
+                ? `Your hosting request for ${planName} has been declined.`
+                : `Your hosting request for ${planName} has been approved.`,
+              type: st === 'rejected' ? 'expiration' : 'update',
+              read_status: false,
+              created_at: r.updated_at || r.created_at,
+              virtual: true
+            });
+          }
+        }
+      });
+
+      const combined = [...dbNotifications, ...virtualNotifs].sort((a, b) => {
+        const dateA = new Date(a.created_at || 0);
+        const dateB = new Date(b.created_at || 0);
         return dateB - dateA;
       });
-      
-      // Filter unread (handling potential snake_case from DB)
-      setUnreadCount(sorted.filter(n => !(n.read_status || n.readStatus)).length);
-      setRecentNotifications(sorted.slice(0, 5));
+
+      setUnreadCount(combined.filter(n => !n.read_status).length);
+      setRecentNotifications(combined.slice(0, 5));
     } catch (error) {
       console.error('Failed to load notifications:', error);
     }
@@ -52,14 +98,21 @@ function NotificationBell({ userId, onViewAll }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
 
-  const handleMarkAsRead = async (e, id) => {
+  const handleMarkAsRead = async (e, notification) => {
     e.stopPropagation();
-    await markAsRead(id);
+    if (notification.virtual) {
+      setRecentNotifications(prev =>
+        prev.map(n => n.id === notification.id ? { ...n, read_status: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      return;
+    }
+    await markAsRead(notification.id);
     loadNotifications();
   };
 
   const getIcon = (type) => {
-    switch(type) {
+    switch (type) {
       case 'expiration': return <AlertCircle className="w-4 h-4 text-orange-600" />;
       case 'new_product': return <ShoppingBag className="w-4 h-4 text-green-600" />;
       case 'update': return <Info className="w-4 h-4 text-blue-600" />;
@@ -68,7 +121,7 @@ function NotificationBell({ userId, onViewAll }) {
   };
 
   const getBgColor = (type) => {
-    switch(type) {
+    switch (type) {
       case 'expiration': return 'bg-orange-50';
       case 'new_product': return 'bg-green-50';
       case 'update': return 'bg-blue-50';
@@ -78,7 +131,7 @@ function NotificationBell({ userId, onViewAll }) {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className={`relative p-2 rounded-full transition-colors focus:outline-none ${isOpen ? 'bg-slate-100 text-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
       >
@@ -108,12 +161,12 @@ function NotificationBell({ userId, onViewAll }) {
               {recentNotifications.length > 0 ? (
                 <div className="divide-y divide-slate-50">
                   {recentNotifications.map((notification) => {
-                    const isRead = notification.read_status || notification.readStatus;
-                    const dateStr = notification.created_at || notification.createdAt;
-                    
+                    const isRead = notification.read_status;
+                    const dateStr = notification.created_at;
+
                     return (
-                      <div 
-                        key={notification.id} 
+                      <div
+                        key={notification.id}
                         className={`px-4 py-3 hover:bg-slate-50 transition-colors relative group ${!isRead ? 'bg-blue-50/20' : ''}`}
                       >
                         <div className="flex gap-3">
@@ -133,15 +186,15 @@ function NotificationBell({ userId, onViewAll }) {
                               {notification.message}
                             </p>
                           </div>
-                           {!isRead && (
-                              <button 
-                               onClick={(e) => handleMarkAsRead(e, notification.id)}
-                               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-blue-500 opacity-0 group-hover:opacity-100 hover:bg-blue-50 rounded transition-all"
-                               title="Mark as read"
-                             >
-                               <CheckCircle className="w-3.5 h-3.5" />
-                             </button>
-                           )}
+                          {!isRead && (
+                            <button
+                              onClick={(e) => handleMarkAsRead(e, notification)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-blue-500 opacity-0 group-hover:opacity-100 hover:bg-blue-50 rounded transition-all"
+                              title="Mark as read"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -155,9 +208,9 @@ function NotificationBell({ userId, onViewAll }) {
             </div>
 
             <div className="p-2 border-t border-slate-100 bg-slate-50/30">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setIsOpen(false);
                   onViewAll();
