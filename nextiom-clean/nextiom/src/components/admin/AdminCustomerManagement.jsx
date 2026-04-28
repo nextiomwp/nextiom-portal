@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Edit, Trash2, Plus, Eye, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { getCustomers, deleteCustomer, getNotifications } from '@/lib/storage';
+import { getCustomers, deleteCustomer } from '@/lib/storage';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -84,7 +82,7 @@ function AdminCustomerManagement({ products, onSuccess }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-sm text-left">
           <thead className="bg-slate-50 text-slate-700 font-medium border-b border-slate-200">
             <tr>
@@ -102,19 +100,21 @@ function AdminCustomerManagement({ products, onSuccess }) {
                 <td className="px-6 py-3 text-slate-600">{customer.email}</td>
                 <td className="px-6 py-3 text-slate-600">{customer.company || '-'}</td>
                 <td className="px-6 py-3 text-slate-600">{new Date(customer.created_at).toLocaleDateString()}</td>
-                <td className="px-6 py-3 text-right flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedCustomer(customer)}>
-                    <Eye className="w-4 h-4 text-blue-500" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setEditingCustomer(customer)}>
-                    <Edit className="w-4 h-4 text-slate-500" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setAssigningCustomer(customer)}>
-                    <Plus className="w-4 h-4 text-green-500" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(customer.id)}>
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </Button>
+                <td className="px-6 py-3 text-right">
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                    <button onClick={() => setSelectedCustomer(customer)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #3b82f6', background: 'transparent', color: '#3b82f6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      <Eye size={13} /> View
+                    </button>
+                    <button onClick={() => setEditingCustomer(customer)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #64748b', background: 'transparent', color: '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      <Edit size={13} /> Edit
+                    </button>
+                    <button onClick={() => setAssigningCustomer(customer)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #16a34a', background: 'transparent', color: '#16a34a', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      <Plus size={13} /> Assign
+                    </button>
+                    <button onClick={() => handleDelete(customer.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

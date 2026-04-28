@@ -22,8 +22,8 @@ function ProductList({ products, onUpdate }) {
   const [deletingProductId, setDeletingProductId] = useState(null);
   const { toast } = useToast();
 
-  const handleDelete = (productId) => {
-    deleteProduct(productId);
+  const handleDelete = async (productId) => {
+    await deleteProduct(productId);
     onUpdate();
     toast({
       title: "Product deleted",

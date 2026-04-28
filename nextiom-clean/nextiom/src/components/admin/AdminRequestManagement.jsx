@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { getDomainRequests, updateDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -80,17 +79,19 @@ function AdminRequestManagement() {
                     {formatStatus(req.status)}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-right flex justify-end gap-2">
-                  {isPending(req.status) && (
-                    <>
-                      <Button size="sm" variant="outline" className="text-green-600 hover:bg-green-50" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}>
-                        <CheckCircle className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="text-red-600 hover:bg-red-50" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}>
-                        <XCircle className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
+                <td className="py-3 px-4 text-right">
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                    {isPending(req.status) && (
+                      <>
+                        <button onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, border: '1px solid #16a34a', background: 'transparent', color: '#16a34a', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          <CheckCircle size={13} /> Approve
+                        </button>
+                        <button onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 8, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                          <XCircle size={13} /> Reject
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -13,9 +13,9 @@ function AddProductDialog({ open, onOpenChange, onSuccess }) {
   });
   const { toast } = useToast();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.name || !formData.type) {
       toast({
         title: "Error",
@@ -25,18 +25,14 @@ function AddProductDialog({ open, onOpenChange, onSuccess }) {
       return;
     }
 
-    addProduct(formData);
+    await addProduct(formData);
     toast({
       title: "Success",
       description: "Product added successfully",
     });
     onSuccess();
     onOpenChange(false);
-    setFormData({
-      name: '',
-      type: '',
-      description: ''
-    });
+    setFormData({ name: '', type: '', description: '' });
   };
 
   return (

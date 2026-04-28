@@ -47,6 +47,7 @@ function Dashboard({ onLogout }) {
   const [isAssignProductOpen, setIsAssignProductOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [markedReadAt, setMarkedReadAt] = useState(() => localStorage.getItem('adminNotifReadAt'));
   const { toast } = useToast();
   const { signOut } = useAuth();
 
@@ -95,13 +96,24 @@ function Dashboard({ onLogout }) {
       setRequests(allReq);
       setPendingRequests(pendingReqRows);
       setPendingRequestsCount(pendingReqRows.length);
-      setHostingPlans(hostPkg || []);
+      setHostingPlans(hostReq || []);
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
+
+  const handleMarkAllRead = () => {
+    const now = new Date().toISOString();
+    localStorage.setItem('adminNotifReadAt', now);
+    setMarkedReadAt(now);
+    setIsNotificationsOpen(false);
+  };
+
+  const unreadCount = markedReadAt
+    ? pendingRequests.filter(r => new Date(r.created_at) > new Date(markedReadAt)).length
+    : pendingRequestsCount;
 
   const handleLogout = async () => {
     await signOut();
@@ -117,6 +129,7 @@ function Dashboard({ onLogout }) {
     if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div>;
     switch (active) {
       case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} c={c} isDark={isDark} />;
+      case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
       case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} />;
       case 'domains': return <AdminDomainManagement />;
       case 'hosting': return <AdminHostingManagement />;
@@ -177,11 +190,14 @@ function Dashboard({ onLogout }) {
             <div style={{ position: 'relative' }}>
               <div onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <Bell size={16} style={{ color: c.subText }} />
-                {pendingRequestsCount > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, background: c.brand, borderRadius: 8, fontSize: 10, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{pendingRequestsCount}</div>}
+                {unreadCount > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, background: c.brand, borderRadius: 8, fontSize: 10, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
               </div>
               {isNotificationsOpen && (
                 <div style={{ position: 'absolute', top: 44, right: 0, width: 320, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 50, maxHeight: 400, overflowY: 'auto' }}>
-                  <div style={{ padding: '16px', borderBottom: `1px solid ${c.border}`, fontWeight: 600 }}>Pending Requests</div>
+                  <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600 }}>Pending Requests</span>
+                    <button onClick={handleMarkAllRead} style={{ fontSize: 12, color: c.brand, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Mark all as read</button>
+                  </div>
                   {pendingRequests.slice(0, 10).map((r, i) => (
                     <div key={i} style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }} onClick={() => { setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
                       <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{r.n} - {r.reqType}</div>
@@ -192,7 +208,12 @@ function Dashboard({ onLogout }) {
                 </div>
               )}
             </div>
-            <div style={{ background: c.brand, width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff' }}>A</div>
+            <div onClick={() => setActive('adminProfile')} style={{ background: c.brand, width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', cursor: 'pointer' }} title="Admin Profile">A</div>
+            {active === 'products' && (
+              <button onClick={() => setIsAddProductOpen(true)} style={{ background: c.brand, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <Plus size={16} /> Product
+              </button>
+            )}
             <button onClick={() => setIsAddCustomerOpen(true)} style={{ background: c.sidebar, color: c.text, border: `1px solid ${c.border}`, padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
               <Plus size={16} /> Add Customer
             </button>
@@ -226,108 +247,183 @@ function NavItem({ item, active, setActive, open, c }) {
   );
 }
 
+const AVATAR_COLORS = ['#e87b35','#e85d5d','#378ADD','#639922','#BA7517','#8b5cf6'];
+const avatarColor = str => AVATAR_COLORS[(str?.charCodeAt(0)||0) % AVATAR_COLORS.length];
+const timeAgo = d => { const days=Math.floor((Date.now()-new Date(d))/86400000); if(days<1)return'Today'; if(days<7)return`${days}d ago`; return`${Math.floor(days/7)}w ago`; };
+
+function MiniSparkline({ value, color }) {
+  const s = value || 3;
+  const pts = Array.from({length:12},(_,i)=>0.15+i/11*0.55+Math.sin(i*1.9+s)*0.12+Math.sin(i*0.8)*0.08);
+  const mn=Math.min(...pts), rng=(Math.max(...pts)-mn)||1;
+  const W=80,H=28;
+  const coords=pts.map((v,i)=>`${(i/11)*W},${H-((v-mn)/rng)*(H-4)+2}`).join(' ');
+  return <svg width={W} height={H} style={{display:'block'}}><polyline points={coords} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+}
+
 function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, c, isDark }) {
+  const approvedDomains = requests.filter(r => r.source === 'domain' && String(r.status||'').toLowerCase() === 'approved').length;
+  const initials = name => (name||'?').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+
   const statCards = [
-    { label: 'Total customers', value: customers.length || 0, icon: <Users size={18} color={c.brand} />, sub: '+12 this month', subColor: '#639922', bg: isDark ? '#3d2518' : '#fff5ee' },
-    { label: 'Active domains', value: stats.totalDomains || 0, icon: <CheckCircle size={18} color="#378ADD" />, sub: `${stats.expiringSoon || 0} expiring soon`, subColor: '#378ADD', bg: isDark ? '#1a2736' : '#e6f1fb' },
-    { label: 'Hosting packages', value: hostingPlans.length || 0, icon: <Server size={18} color="#639922" />, sub: 'All active', subColor: '#639922', bg: isDark ? '#1e2e1e' : '#eaf3de' },
-    { label: 'Pending requests', value: pendingRequestsCount || 0, icon: <Star size={18} color="#BA7517" />, sub: 'Needs review', subColor: '#BA7517', bg: isDark ? '#382512' : '#faeeda' },
+    { label:'Total customers', value:customers.length||0, icon:<Users size={18} color={c.brand}/>, sub:'↑ +12 this month', subColor:'#639922', bg:isDark?'#3d2518':'#fff5ee', sparkColor:c.brand },
+    { label:'Active domains', value:approvedDomains, icon:<CheckCircle size={18} color="#378ADD"/>, sub:`${stats.expiringSoon||0} expiring soon`, subColor:'#378ADD', bg:isDark?'#1a2736':'#e6f1fb', sparkColor:'#378ADD' },
+    { label:'Hosting packages', value:hostingPlans.length||0, icon:<Server size={18} color="#639922"/>, sub:'All active', subColor:'#639922', bg:isDark?'#1e2e1e':'#eaf3de', sparkColor:'#639922' },
+    { label:'Pending requests', value:pendingRequestsCount||0, icon:<Star size={18} color="#BA7517"/>, sub:'Needs review', subColor:'#BA7517', bg:isDark?'#382512':'#faeeda', sparkColor:'#BA7517' },
   ];
 
   return (
     <div>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Good day, Admin</h1>
-        <p style={{ fontSize: 14, color: c.subText }}>Here's what's happening with your portal today.</p>
+      <div style={{marginBottom:32}}>
+        <h1 style={{fontSize:24,fontWeight:700,marginBottom:4}}>Good day, Admin</h1>
+        <p style={{fontSize:14,color:c.subText}}>Here's what's happening with your portal today.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24}}>
         {statCards.map(s => (
-          <div key={s.label} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 8, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              {s.icon}
+          <div key={s.label} style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
+              <div style={{fontSize:13,color:c.subText}}>{s.label}</div>
+              <div style={{width:36,height:36,borderRadius:8,background:s.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.icon}</div>
             </div>
-            <div style={{ fontSize: 13, color: c.subText, marginBottom: 8 }}>{s.label}</div>
-            <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: s.subColor, fontWeight: 500 }}>{s.sub}</div>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
+              <div>
+                <div style={{fontSize:32,fontWeight:700,lineHeight:1.1}}>{s.value}</div>
+                <div style={{fontSize:12,color:s.subColor,fontWeight:500,marginTop:8}}>{s.sub}</div>
+              </div>
+              <MiniSparkline value={s.value} color={s.sparkColor}/>
+            </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
-        <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-            <span style={{ fontSize: 16, fontWeight: 600 }}>Recent customers</span>
-            <button onClick={() => onNavigate('customers')} style={{ color: c.brand, background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>View all</button>
+      <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:16}}>
+        <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,alignItems:'flex-start'}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:600}}>Recent customers</div>
+              <div style={{fontSize:12,color:c.subText,marginTop:2}}>Latest sign-ups &amp; domain activity</div>
+            </div>
+            <button onClick={()=>onNavigate('customers')} style={{color:c.brand,background:'none',border:'none',fontSize:13,cursor:'pointer',fontWeight:500,display:'flex',alignItems:'center',gap:4}}>View all →</button>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <table style={{width:'100%',borderCollapse:'collapse',marginTop:16}}>
             <thead>
-              <tr style={{ color: c.subText, fontSize: 12, borderBottom: `1px solid ${c.border}` }}>
-                <th style={{ paddingBottom: 12, fontWeight: 500 }}>Name</th>
-                <th style={{ paddingBottom: 12, fontWeight: 500 }}>Domain</th>
+              <tr style={{color:c.subText,fontSize:11,letterSpacing:'0.05em'}}>
+                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Customer</th>
+                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Domain</th>
+                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Status</th>
+                <th style={{paddingBottom:12,fontWeight:500,textAlign:'right',textTransform:'uppercase'}}>Joined</th>
               </tr>
             </thead>
             <tbody>
-              {customers.slice(0, 4).map((cu, i) => (
-                <tr key={cu.id || i} style={{ borderBottom: i < 3 ? `1px solid ${c.border}` : 'none' }}>
-                  <td style={{ padding: '12px 0' }}>
-                    <div style={{ fontSize: 14, fontWeight: 500 }}>{cu.name}</div>
-                    <div style={{ fontSize: 12, color: c.subText }}>{cu.email}</div>
-                  </td>
-                  <td style={{ padding: '12px 0', fontSize: 14, fontWeight: 500 }}>{cu.domain || cu.name?.toLowerCase().replace(' ', '') + '.lk'}</td>
-                </tr>
-              ))}
+              {customers.slice(0,4).map((cu,i)=>{
+                const st=String(cu.status||'active').toLowerCase();
+                const isActive=st==='active'||st==='approved';
+                const domain=cu.domain||(cu.name||'').toLowerCase().replace(/\s+/g,'')+'.lk';
+                const col=avatarColor(cu.name);
+                return (
+                  <tr key={cu.id||i} style={{borderTop:`1px solid ${c.border}`}}>
+                    <td style={{padding:'12px 0'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <div style={{width:36,height:36,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(cu.name)}</div>
+                        <div>
+                          <div style={{fontSize:14,fontWeight:500}}>{cu.name}</div>
+                          <div style={{fontSize:11,color:c.subText}}>{cu.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{padding:'12px 0',fontSize:13,fontFamily:'monospace',color:c.subText}}>{domain}</td>
+                    <td style={{padding:'12px 0'}}>
+                      <span style={{background:isActive?'rgba(99,153,34,0.15)':'rgba(186,117,23,0.15)',color:isActive?'#639922':'#BA7517',fontSize:12,fontWeight:500,padding:'3px 10px',borderRadius:20,display:'inline-flex',alignItems:'center',gap:5}}>
+                        <span style={{width:6,height:6,borderRadius:'50%',background:isActive?'#639922':'#BA7517',display:'inline-block'}}/>
+                        {isActive?'Active':'Pending'}
+                      </span>
+                    </td>
+                    <td style={{padding:'12px 0',fontSize:12,color:c.subText,textAlign:'right'}}>{cu.created_at?timeAgo(cu.created_at):'—'}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-              <span style={{ fontSize: 16, fontWeight: 600 }}>New requests</span>
-              <button onClick={() => onNavigate('hostingRequests')} style={{ color: c.brand, background: 'none', border: 'none', fontSize: 13, cursor: 'pointer' }}>View all</button>
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,alignItems:'flex-start'}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:600}}>New requests</div>
+                <div style={{fontSize:12,color:c.subText,marginTop:2}}>Awaiting your review</div>
+              </div>
+              <button onClick={()=>onNavigate('hostingRequests')} style={{color:c.brand,background:'none',border:'none',fontSize:13,cursor:'pointer',fontWeight:500}}>View all →</button>
             </div>
-            {requests.slice(0, 3).map((r, i) => {
-              const bgCols = ['#1e3a5f', '#1e4028', '#4a3f15'];
-              const txtCols = ['#5b9aff', '#639922', '#ba7517'];
-              return (
-                <div key={r.id || i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i < 2 ? 16 : 0 }}>
-                  <div style={{ width: 36, height: 36, background: bgCols[i % 3], borderRadius: '50%', color: txtCols[i % 3], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700 }}>
-                    {(r.n || 'UN').split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase()}
+            <div style={{marginTop:16}}>
+              {requests.slice(0,4).map((r,i)=>{
+                const isHosting=r.source==='hosting';
+                const col=avatarColor(r.n);
+                const date=r.created_at?new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+                return (
+                  <div key={r.id||i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderTop:i===0?'none':`1px solid ${c.border}`}}>
+                    <div style={{width:36,height:36,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(r.n)}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.n}</div>
+                      <div style={{fontSize:11,color:c.subText}}>{r.reqType}</div>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                      <span style={{background:isHosting?'rgba(55,138,221,0.15)':'rgba(99,153,34,0.15)',color:isHosting?'#5b9aff':'#639922',fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:6}}>{isHosting?'Hosting':'Domain'}</span>
+                      <span style={{fontSize:11,color:c.subText,minWidth:40,textAlign:'right'}}>{date}</span>
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{r.n}</div>
-                    <div style={{ fontSize: 12, color: c.subText }}>{r.reqType}</div>
-                  </div>
-                  <div style={{ fontSize: 11, color: c.subText }}>
-                    {new Date(r.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              )
-            })}
-            {requests.length === 0 && <div style={{ fontSize: 13, color: c.subText }}>No new requests</div>}
+                );
+              })}
+              {requests.length===0 && <div style={{fontSize:13,color:c.subText}}>No new requests</div>}
+            </div>
           </div>
 
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 20 }}>Hosting plans</div>
-            {(() => {
-              const counts = { 'Shared Hosting': 0, 'VPS Hosting': 0, 'Cloud Hosting': 0 };
-              hostingPlans.forEach(p => {
-                const t = p.type || (p.package_name && p.package_name.includes('VPS') ? 'VPS Hosting' : p.package_name && p.package_name.includes('Cloud') ? 'Cloud Hosting' : 'Shared Hosting');
-                counts[t] = (counts[t] || 0) + 1;
+          <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
+            <div style={{fontSize:16,fontWeight:600,marginBottom:20}}>Hosting plans</div>
+            {(()=>{
+              const counts={Shared:0,VPS:0,Cloud:0};
+              hostingPlans.forEach(p=>{
+                const t=(p.package_type||p.type||p.package_name||'').toLowerCase();
+                if(t.includes('vps'))counts.VPS++;
+                else if(t.includes('cloud'))counts.Cloud++;
+                else counts.Shared++;
               });
-              const total = hostingPlans.length || 1;
-              return [{ n: 'Shared', v: counts['Shared Hosting'] || 0, bg: c.brand }, { n: 'VPS', v: counts['VPS Hosting'] || 0, bg: '#378ADD' }, { n: 'Cloud', v: counts['Cloud Hosting'] || 0, bg: '#639922' }].map(p => (
-                <div key={p.n} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 48, fontSize: 13, color: c.text }}>{p.n}</div>
-                  <div style={{ flex: 1, height: 6, background: isDark ? '#333' : '#ebebeb', borderRadius: 3 }}>
-                    <div style={{ width: `${Math.round((p.v / total) * 100)}%`, height: '100%', background: p.bg, borderRadius: 3 }} />
+              const total=hostingPlans.length||1;
+              return [['Shared',counts.Shared,c.brand],['VPS',counts.VPS,'#378ADD'],['Cloud',counts.Cloud,'#639922']].map(([n,v,bg])=>(
+                <div key={n} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+                  <div style={{width:48,fontSize:13,color:c.text}}>{n}</div>
+                  <div style={{flex:1,height:6,background:isDark?'#333':'#ebebeb',borderRadius:3}}>
+                    <div style={{width:`${Math.round((v/total)*100)}%`,height:'100%',background:bg,borderRadius:3}}/>
                   </div>
-                  <div style={{ width: 32, fontSize: 12, color: c.subText, textAlign: 'right' }}>{Math.round((p.v / total) * 100)}%</div>
+                  <div style={{width:32,fontSize:12,color:c.subText,textAlign:'right'}}>{Math.round((v/total)*100)}%</div>
                 </div>
               ));
             })()}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminProfileContent({ c, isDark }) {
+  return (
+    <div style={{ maxWidth: 600 }}>
+      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 32, background: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 24, flexShrink: 0 }}>A</div>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: c.text }}>Admin</div>
+            <div style={{ fontSize: 13, color: c.subText }}>Super Administrator</div>
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {[{ label: 'Email', value: 'info@nextiom.com' }, { label: 'Role', value: 'Super Admin' }, { label: 'Portal', value: 'Nextiom Admin' }, { label: 'Status', value: 'Active' }].map(f => (
+            <div key={f.label}>
+              <div style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
+              <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: '9px 12px', color: c.text, fontSize: 14 }}>{f.value}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
