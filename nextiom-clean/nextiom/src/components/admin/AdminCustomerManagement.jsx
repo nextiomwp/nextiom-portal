@@ -7,7 +7,7 @@ import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import CustomerProfileAdminView from './CustomerProfileAdminView';
 
-function AdminCustomerManagement({ products, onSuccess }) {
+function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -16,20 +16,42 @@ function AdminCustomerManagement({ products, onSuccess }) {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
+  const c = isDark
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35' };
+
+  const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
+  const thS = { textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}` };
+  const tdS = { padding: '13px 18px', borderTop: `1px solid ${c.border}`, fontSize: 13.5, color: c.text, verticalAlign: 'middle' };
+  const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
+  const emptyS = { padding: 32, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' };
+
+  const Btn = ({ onClick, color, children, title, filled }) => (
+    <button onClick={onClick} title={title} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px',
+      borderRadius: 8, border: `1.5px solid ${color}`,
+      background: filled ? color : 'transparent',
+      color: filled ? '#fff' : color,
+      fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'opacity 0.15s', whiteSpace: 'nowrap'
+    }}>
+      {children}
+    </button>
+  );
+
+  const SectionHeader = ({ title, accent }) => (
+    <div style={{ padding: '15px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
+      <div style={{ width: 3, height: 18, borderRadius: 2, background: accent || c.brand, flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>{title}</span>
+    </div>
+  );
+
   useEffect(() => {
     loadCustomers();
-
-    // Real-time subscription
     const channel = supabase
       .channel('customers_channel')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => {
-        loadCustomers();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => { loadCustomers(); })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const loadCustomers = async () => {
@@ -37,7 +59,7 @@ function AdminCustomerManagement({ products, onSuccess }) {
       const data = await getCustomers();
       setCustomers(data || []);
     } catch (err) {
-      toast({ title: "Error", description: "Failed to load customers", variant: "destructive" });
+      toast({ title: 'Error', description: 'Failed to load customers', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -47,34 +69,36 @@ function AdminCustomerManagement({ products, onSuccess }) {
     if (confirm('Are you sure you want to delete this customer?')) {
       try {
         await deleteCustomer(id);
-        toast({ title: "Customer Deleted" });
+        toast({ title: 'Customer Deleted' });
         loadCustomers();
       } catch (err) {
-        toast({ title: "Error", description: err.message, variant: "destructive" });
+        toast({ title: 'Error', description: err.message, variant: 'destructive' });
       }
     }
   };
 
-  const filteredCustomers = customers.filter(c =>
-    (c.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (c.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+  const filteredCustomers = customers.filter(cu =>
+    (cu.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (cu.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
-  if (isLoading) {
-    return <div className="flex justify-center p-8"><Loader2 className="animate-spin text-blue-500" /></div>;
-  }
+  if (isLoading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+      <Loader2 className="animate-spin" size={28} style={{ color: c.brand }} />
+    </div>
+  );
 
   if (selectedCustomer) {
-    return <CustomerProfileAdminView customer={selectedCustomer} onBack={() => setSelectedCustomer(null)} />;
+    return <CustomerProfileAdminView customer={selectedCustomer} onBack={() => setSelectedCustomer(null)} isDark={isDark} />;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="relative w-72">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ position: 'relative', width: 280 }}>
+          <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
           <input
-            className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm"
+            style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 9, paddingBottom: 9, border: `1.5px solid ${c.border}`, borderRadius: 10, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
             placeholder="Search customers..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
@@ -82,49 +106,40 @@ function AdminCustomerManagement({ products, onSuccess }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50 text-slate-700 font-medium border-b border-slate-200">
+      <div style={cardS}>
+        <SectionHeader title="Customers" accent={c.brand} />
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
             <tr>
-              <th className="px-6 py-3">Name</th>
-              <th className="px-6 py-3">Email</th>
-              <th className="px-6 py-3">Company</th>
-              <th className="px-6 py-3">Joined</th>
-              <th className="px-6 py-3 text-right">Actions</th>
+              <th style={thS}>Name</th>
+              <th style={thS}>Email</th>
+              <th style={thS}>Company</th>
+              <th style={thS}>Joined</th>
+              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filteredCustomers.map(customer => (
-              <tr key={customer.id} className="hover:bg-slate-50">
-                <td className="px-6 py-3 font-medium text-slate-900">{customer.name}</td>
-                <td className="px-6 py-3 text-slate-600">{customer.email}</td>
-                <td className="px-6 py-3 text-slate-600">{customer.company || '-'}</td>
-                <td className="px-6 py-3 text-slate-600">{new Date(customer.created_at).toLocaleDateString()}</td>
-                <td className="px-6 py-3 text-right">
+          <tbody>
+            {filteredCustomers.map((customer, i) => (
+              <tr key={customer.id}>
+                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600 }}>{customer.name}</span></td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{customer.email}</span></td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{customer.company || '—'}</span></td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{new Date(customer.created_at).toLocaleDateString()}</span></td>
+                <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                    <button onClick={() => setSelectedCustomer(customer)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #3b82f6', background: 'transparent', color: '#3b82f6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      <Eye size={13} /> View
-                    </button>
-                    <button onClick={() => setEditingCustomer(customer)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #64748b', background: 'transparent', color: '#64748b', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      <Edit size={13} /> Edit
-                    </button>
-                    <button onClick={() => setAssigningCustomer(customer)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #16a34a', background: 'transparent', color: '#16a34a', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      <Plus size={13} /> Assign
-                    </button>
-                    <button onClick={() => handleDelete(customer.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid #dc2626', background: 'transparent', color: '#dc2626', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      <Trash2 size={13} /> Delete
-                    </button>
+                    <Btn color="#378ADD" onClick={() => setSelectedCustomer(customer)} title="View profile"><Eye size={12} /> View</Btn>
+                    <Btn color={c.subText} onClick={() => setEditingCustomer(customer)} title="Edit"><Edit size={12} /> Edit</Btn>
+                    <Btn color="#16a34a" onClick={() => setAssigningCustomer(customer)} title="Assign product"><Plus size={12} /> Assign</Btn>
+                    <Btn color="#ef4444" onClick={() => handleDelete(customer.id)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                   </div>
                 </td>
               </tr>
             ))}
+            {filteredCustomers.length === 0 && <tr><td colSpan={5} style={emptyS}>No customers found</td></tr>}
           </tbody>
         </table>
       </div>
 
-
-
-      {/* Edit Dialog */}
       {editingCustomer && (
         <EditCustomerDialog
           open={!!editingCustomer}
@@ -133,8 +148,6 @@ function AdminCustomerManagement({ products, onSuccess }) {
           onSuccess={() => { setEditingCustomer(null); loadCustomers(); onSuccess?.(); }}
         />
       )}
-
-      {/* Assign Product Dialog */}
       {assigningCustomer && (
         <AssignProductDialog
           open={!!assigningCustomer}

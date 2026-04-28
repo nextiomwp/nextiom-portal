@@ -52,19 +52,15 @@ function Dashboard({ onLogout }) {
   const { signOut } = useAuth();
 
   const c = isDark
-    ? { bg: '#1c1c1c', sidebar: '#252525', border: '#333', text: '#fff', subText: '#a0a0a0', card: '#2a2a2a', hover: '#3a3a3a', brand: '#e87b35' }
-    : { bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', card: '#fff', hover: '#f5f5f5', brand: '#e87b35' };
+    ? { bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', card: '#1C1E24', panel2: '#22252C', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
+    : { bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', card: '#fff', panel2: '#f5f5f5', hover: '#f5f5f5', brand: '#e87b35' };
 
   useEffect(() => { loadData(); }, []);
 
   useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dashboard-dark');
-      document.documentElement.style.colorScheme = 'dark';
-    } else {
-      document.documentElement.classList.remove('dashboard-dark');
-      document.documentElement.style.colorScheme = 'light';
-    }
+    document.documentElement.classList.toggle('dashboard-dark', isDark);
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   }, [isDark]);
 
   const loadData = async () => {
@@ -130,11 +126,11 @@ function Dashboard({ onLogout }) {
     switch (active) {
       case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} c={c} isDark={isDark} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
-      case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} />;
-      case 'domains': return <AdminDomainManagement />;
-      case 'hosting': return <AdminHostingManagement />;
-      case 'hostingRequests': return <AdminHostingRequestManagement />;
-      case 'domainsRequests': return <AdminRequestManagement />;
+      case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} isDark={isDark} />;
+      case 'domains': return <AdminDomainManagement isDark={isDark} />;
+      case 'hosting': return <AdminHostingManagement isDark={isDark} />;
+      case 'hostingRequests': return <AdminHostingRequestManagement isDark={isDark} />;
+      case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;
       case 'products': return <ProductList products={products} onUpdate={loadData} />;
       case 'notifications': return <AdminNotificationManagement />;
       case 'logs': return <EmailLogList logs={emailLogs} />;
@@ -309,7 +305,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
             <thead>
               <tr style={{color:c.subText,fontSize:11,letterSpacing:'0.05em'}}>
                 <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Customer</th>
-                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Domain</th>
+                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Phone</th>
                 <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Status</th>
                 <th style={{paddingBottom:12,fontWeight:500,textAlign:'right',textTransform:'uppercase'}}>Joined</th>
               </tr>
@@ -318,7 +314,6 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
               {customers.slice(0,4).map((cu,i)=>{
                 const st=String(cu.status||'active').toLowerCase();
                 const isActive=st==='active'||st==='approved';
-                const domain=cu.domain||(cu.name||'').toLowerCase().replace(/\s+/g,'')+'.lk';
                 const col=avatarColor(cu.name);
                 return (
                   <tr key={cu.id||i} style={{borderTop:`1px solid ${c.border}`}}>
@@ -331,7 +326,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                         </div>
                       </div>
                     </td>
-                    <td style={{padding:'12px 0',fontSize:13,fontFamily:'monospace',color:c.subText}}>{domain}</td>
+                    <td style={{padding:'12px 0',fontSize:13,color:c.subText}}>{cu.phone||'—'}</td>
                     <td style={{padding:'12px 0'}}>
                       <span style={{background:isActive?'rgba(99,153,34,0.15)':'rgba(186,117,23,0.15)',color:isActive?'#639922':'#BA7517',fontSize:12,fontWeight:500,padding:'3px 10px',borderRadius:20,display:'inline-flex',alignItems:'center',gap:5}}>
                         <span style={{width:6,height:6,borderRadius:'50%',background:isActive?'#639922':'#BA7517',display:'inline-block'}}/>
@@ -392,7 +387,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
               return [['Shared',counts.Shared,c.brand],['VPS',counts.VPS,'#378ADD'],['Cloud',counts.Cloud,'#639922']].map(([n,v,bg])=>(
                 <div key={n} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
                   <div style={{width:48,fontSize:13,color:c.text}}>{n}</div>
-                  <div style={{flex:1,height:6,background:isDark?'#333':'#ebebeb',borderRadius:3}}>
+                  <div style={{flex:1,height:6,background:isDark?'rgba(255,255,255,0.04)':'#ebebeb',borderRadius:3}}>
                     <div style={{width:`${Math.round((v/total)*100)}%`,height:'100%',background:bg,borderRadius:3}}/>
                   </div>
                   <div style={{width:32,fontSize:12,color:c.subText,textAlign:'right'}}>{Math.round((v/total)*100)}%</div>

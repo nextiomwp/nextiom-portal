@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Search, Edit, Plus, Server, Loader2, Trash2, X, Check } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { getHostingPlans, addHostingPlan, updateHostingPlan, deleteHostingPlan } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -12,17 +11,9 @@ const TYPE_KEY_MAP = {
   'Dedicated Server': 'DEDICATED',
   'Cloud Hosting': 'CLOUD'
 };
+const EMPTY_FORM = { hosting_type: 'Shared Hosting', hosting_type_key: 'SHARED', plan_name: '', storage: '', bandwidth: '', is_active: true };
 
-const EMPTY_FORM = {
-  hosting_type: 'Shared Hosting',
-  hosting_type_key: 'SHARED',
-  plan_name: '',
-  storage: '',
-  bandwidth: '',
-  is_active: true
-};
-
-function AdminHostingManagement() {
+function AdminHostingManagement({ isDark = true }) {
   const [plans, setPlans] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
@@ -32,6 +23,40 @@ function AdminHostingManagement() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  const c = isDark
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35', input: '#22252C' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35', input: '#fff' };
+
+  const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
+  const thS = { textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}` };
+  const tdS = { padding: '13px 18px', borderTop: `1px solid ${c.border}`, fontSize: 13.5, color: c.text, verticalAlign: 'middle' };
+  const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
+  const emptyS = { padding: 32, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' };
+
+  const Btn = ({ onClick, color, children, title, filled }) => (
+    <button onClick={onClick} title={title} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px',
+      borderRadius: 8, border: `1.5px solid ${color}`,
+      background: filled ? color : 'transparent',
+      color: filled ? '#fff' : color,
+      fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap'
+    }}>
+      {children}
+    </button>
+  );
+
+  const SectionHeader = ({ title, accent }) => (
+    <div style={{ padding: '15px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 3, height: 18, borderRadius: 2, background: accent || c.brand, flexShrink: 0 }} />
+        <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>{title}</span>
+      </div>
+      <button onClick={openAdd} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+        <Plus size={13} /> New Package
+      </button>
+    </div>
+  );
 
   useEffect(() => { loadPlans(); }, []);
 
@@ -45,40 +70,21 @@ function AdminHostingManagement() {
     }
   };
 
-  const openAdd = () => {
-    setEditingPlan(null);
-    setForm(EMPTY_FORM);
-    setShowModal(true);
-  };
-
-  const openEdit = (plan) => {
-    setEditingPlan(plan);
-    setForm({ ...plan });
-    setShowModal(true);
-  };
+  const openAdd = () => { setEditingPlan(null); setForm(EMPTY_FORM); setShowModal(true); };
+  const openEdit = (plan) => { setEditingPlan(plan); setForm({ ...plan }); setShowModal(true); };
 
   const handleSave = async () => {
-    if (!form.plan_name.trim()) {
-      toast({ title: 'Error', description: 'Plan name is required', variant: 'destructive' });
-      return;
-    }
+    if (!form.plan_name.trim()) { toast({ title: 'Error', description: 'Plan name is required', variant: 'destructive' }); return; }
     setSaving(true);
     try {
       const payload = { ...form, hosting_type_key: TYPE_KEY_MAP[form.hosting_type] || 'SHARED' };
-      if (editingPlan) {
-        await updateHostingPlan(editingPlan.id, payload);
-        toast({ title: 'Updated', description: 'Plan updated successfully' });
-      } else {
-        await addHostingPlan(payload);
-        toast({ title: 'Created', description: 'New plan added successfully' });
-      }
+      if (editingPlan) { await updateHostingPlan(editingPlan.id, payload); toast({ title: 'Updated', description: 'Plan updated successfully' }); }
+      else { await addHostingPlan(payload); toast({ title: 'Created', description: 'New plan added successfully' }); }
       setShowModal(false);
       loadPlans();
     } catch (e) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const handleToggle = async (plan) => {
@@ -108,181 +114,146 @@ function AdminHostingManagement() {
     return matchSearch && matchType;
   });
 
-  if (isLoading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>;
+  if (isLoading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+      <Loader2 className="animate-spin" size={28} style={{ color: c.brand }} />
+    </div>
+  );
+
+  const inputStyle = { width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 9, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', boxSizing: 'border-box' };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex gap-2 w-full sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#e87b35] focus:outline-none transition-all bg-white text-slate-800"
-              placeholder="Search plans..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <select
-            className="px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#e87b35]"
-            value={filterType}
-            onChange={e => setFilterType(e.target.value)}
-          >
-            <option value="All">All Types</option>
-            {HOSTING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+    <div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', width: 260 }}>
+          <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+          <input
+            style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 9, paddingBottom: 9, border: `1.5px solid ${c.border}`, borderRadius: 10, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
+            placeholder="Search plans..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
-        <Button onClick={openAdd} className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl font-medium border-0 whitespace-nowrap">
-          <Plus className="w-4 h-4 mr-2" /> New Package
-        </Button>
+        <select
+          style={{ padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 10, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', cursor: 'pointer' }}
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+        >
+          <option value="All">All Types</option>
+          {HOSTING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
       </div>
 
-      <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Hosting Type</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Plan</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Details</th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="text-right py-4 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+      <div style={cardS}>
+        <SectionHeader title="Hosting Packages" accent="#639922" />
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={thS}>Hosting Type</th>
+              <th style={thS}>Plan</th>
+              <th style={thS}>Details</th>
+              <th style={thS}>Status</th>
+              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((plan, i) => (
+              <tr key={plan.id}>
+                <td style={i % 2 === 0 ? tdS : tdAlt}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ padding: 7, background: isDark ? 'rgba(55,138,221,0.15)' : '#eff6ff', borderRadius: 8 }}>
+                      <Server size={14} style={{ color: '#378ADD' }} />
+                    </div>
+                    <span style={{ fontWeight: 500 }}>{plan.hosting_type}</span>
+                  </div>
+                </td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600 }}>{plan.plan_name}</span></td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}>
+                  <span style={{ color: c.subText, fontSize: 13 }}>
+                    {plan.storage && plan.storage}{plan.storage && plan.bandwidth && ' · '}{plan.bandwidth && plan.bandwidth}
+                    {!plan.storage && !plan.bandwidth && '—'}
+                  </span>
+                </td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button
+                      onClick={() => handleToggle(plan)}
+                      style={{ position: 'relative', display: 'inline-flex', height: 22, width: 40, alignItems: 'center', borderRadius: 11, transition: 'background 0.2s', background: plan.is_active ? '#22c55e' : isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      <span style={{ display: 'inline-block', height: 16, width: 16, transform: plan.is_active ? 'translateX(21px)' : 'translateX(3px)', borderRadius: 8, background: '#fff', transition: 'transform 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+                    </button>
+                    <span style={{ fontSize: 12, color: plan.is_active ? '#22c55e' : c.subText, fontWeight: 600 }}>{plan.is_active ? 'Active' : 'Inactive'}</span>
+                  </div>
+                </td>
+                <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <Btn color="#378ADD" onClick={() => openEdit(plan)} title="Edit"><Edit size={12} /> Edit</Btn>
+                    <Btn color="#ef4444" onClick={() => handleDelete(plan)} title="Delete"><Trash2 size={12} /> Delete</Btn>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filtered.length > 0 ? filtered.map(plan => (
-                <motion.tr key={plan.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hover:bg-slate-50 transition-colors">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                        <Server className="w-4 h-4" />
-                      </div>
-                      <span className="font-medium text-slate-800">{plan.hosting_type}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 font-semibold text-slate-700">{plan.plan_name}</td>
-                  <td className="py-4 px-6 text-sm text-slate-500">
-                    {plan.storage && <span>{plan.storage} Storage</span>}
-                    {plan.storage && plan.bandwidth && <span> · </span>}
-                    {plan.bandwidth && <span>{plan.bandwidth} BW</span>}
-                    {!plan.storage && !plan.bandwidth && <span className="text-slate-300">—</span>}
-                  </td>
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleToggle(plan)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${plan.is_active ? 'bg-green-500' : 'bg-slate-300'}`}
-                        title={plan.is_active ? 'Disable plan' : 'Enable plan'}
-                      >
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow ${plan.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
-                      </button>
-                      <span className={`text-xs font-medium ${plan.is_active ? 'text-green-600' : 'text-slate-400'}`}>
-                        {plan.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => openEdit(plan)} title="Edit">
-                        <Edit className="w-4 h-4 text-slate-500 hover:text-slate-700" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(plan)} title="Delete">
-                        <Trash2 className="w-4 h-4 text-red-500 hover:text-red-700" />
-                      </Button>
-                    </div>
-                  </td>
-                </motion.tr>
-              )) : (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
-                    {plans.length === 0
-                      ? 'No hosting plans yet. Click "+ New Package" to add one.'
-                      : 'No plans match your search.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            ))}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} style={emptyS}>{plans.length === 0 ? 'No hosting plans yet. Click "+ New Package" to add one.' : 'No plans match your search.'}</td></tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       <AnimatePresence>
         {showModal && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)' }}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}
           >
             <motion.div
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6"
+              style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 18, boxShadow: '0 8px 40px rgba(0,0,0,0.4)', width: '100%', maxWidth: 440, margin: '0 16px', padding: 24 }}
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
             >
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-800">{editingPlan ? 'Edit Plan' : 'New Hosting Package'}</h2>
-                <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <span style={{ fontSize: 17, fontWeight: 700, color: c.text }}>{editingPlan ? 'Edit Plan' : 'New Hosting Package'}</span>
+                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex' }}><X size={18} /></button>
               </div>
 
-              <div className="space-y-4">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Hosting Type</label>
-                  <select
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e87b35] focus:outline-none"
-                    value={form.hosting_type}
-                    onChange={e => setForm(prev => ({ ...prev, hosting_type: e.target.value, hosting_type_key: TYPE_KEY_MAP[e.target.value] }))}
-                  >
+                  <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Hosting Type</label>
+                  <select style={{ ...inputStyle }} value={form.hosting_type} onChange={e => setForm(prev => ({ ...prev, hosting_type: e.target.value, hosting_type_key: TYPE_KEY_MAP[e.target.value] }))}>
                     {HOSTING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Plan Name</label>
-                  <input
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e87b35] focus:outline-none"
-                    placeholder="e.g. Basic, Standard, Premium, VPS1"
-                    value={form.plan_name}
-                    onChange={e => setForm(prev => ({ ...prev, plan_name: e.target.value }))}
-                  />
+                  <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Plan Name</label>
+                  <input style={inputStyle} placeholder="e.g. Basic, Standard, Premium" value={form.plan_name} onChange={e => setForm(prev => ({ ...prev, plan_name: e.target.value }))} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Storage</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e87b35] focus:outline-none"
-                      placeholder="e.g. 10GB"
-                      value={form.storage}
-                      onChange={e => setForm(prev => ({ ...prev, storage: e.target.value }))}
-                    />
+                    <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Storage</label>
+                    <input style={inputStyle} placeholder="e.g. 10GB" value={form.storage} onChange={e => setForm(prev => ({ ...prev, storage: e.target.value }))} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Bandwidth</label>
-                    <input
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#e87b35] focus:outline-none"
-                      placeholder="e.g. 100GB"
-                      value={form.bandwidth}
-                      onChange={e => setForm(prev => ({ ...prev, bandwidth: e.target.value }))}
-                    />
+                    <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Bandwidth</label>
+                    <input style={inputStyle} placeholder="e.g. 100GB" value={form.bandwidth} onChange={e => setForm(prev => ({ ...prev, bandwidth: e.target.value }))} />
                   </div>
                 </div>
-                <div className="flex items-center gap-3 pt-1">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <button
                     onClick={() => setForm(prev => ({ ...prev, is_active: !prev.is_active }))}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${form.is_active ? 'bg-green-500' : 'bg-slate-300'}`}
+                    style={{ position: 'relative', display: 'inline-flex', height: 22, width: 40, alignItems: 'center', borderRadius: 11, background: form.is_active ? '#22c55e' : isDark ? 'rgba(255,255,255,0.15)' : '#cbd5e1', border: 'none', cursor: 'pointer', flexShrink: 0 }}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow ${form.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
+                    <span style={{ display: 'inline-block', height: 16, width: 16, transform: form.is_active ? 'translateX(21px)' : 'translateX(3px)', borderRadius: 8, background: '#fff', transition: 'transform 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
                   </button>
-                  <span className="text-sm text-slate-700">
-                    {form.is_active ? 'Active – visible to customers' : 'Inactive – hidden from customers'}
-                  </span>
+                  <span style={{ fontSize: 13, color: c.text }}>{form.is_active ? 'Active – visible to customers' : 'Inactive – hidden from customers'}</span>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 mt-6">
-                <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-                <Button onClick={handleSave} disabled={saving} className="bg-[#e87b35] hover:bg-[#d66a24] text-white border-0">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Check className="w-4 h-4 mr-1" />}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+                <button onClick={() => setShowModal(false)} style={{ padding: '8px 18px', borderRadius: 9, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleSave} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 9, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
                   {editingPlan ? 'Save Changes' : 'Add Plan'}
-                </Button>
+                </button>
               </div>
             </motion.div>
           </motion.div>

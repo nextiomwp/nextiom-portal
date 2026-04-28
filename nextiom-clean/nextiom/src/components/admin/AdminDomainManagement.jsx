@@ -1,138 +1,154 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Search, Edit, Loader2, Trash2, Bell } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { getDomains, getCustomers, DOMAIN_STATUS, deleteDomain } from '@/lib/storage';
+import { getDomains, getCustomers, deleteDomain } from '@/lib/storage';
 import AdminDomainDetailsView from './AdminDomainDetailsView';
 import { useToast } from '@/components/ui/use-toast';
 
-function AdminDomainManagement() {
-    const [domains, setDomains] = useState([]);
-    const [customers, setCustomers] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedDomain, setSelectedDomain] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const { toast } = useToast();
+function AdminDomainManagement({ isDark = true }) {
+  const [domains, setDomains] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedDomain, setSelectedDomain] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
-    useEffect(() => {
-        loadData();
-    }, []);
+  const c = isDark
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35' };
 
-    const loadData = async () => {
-        try {
-            const [dData, cData] = await Promise.all([getDomains(), getCustomers()]);
-            setDomains(dData || []);
-            setCustomers(cData || []);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+  const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
+  const thS = { textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}` };
+  const tdS = { padding: '13px 18px', borderTop: `1px solid ${c.border}`, fontSize: 13.5, color: c.text, verticalAlign: 'middle' };
+  const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
+  const emptyS = { padding: 32, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' };
 
-    const getCustomerName = (id) => {
-        const c = customers.find(cus => cus.id === id);
-        return c ? c.name : 'Unknown';
-    };
-
-    const filteredDomains = domains.filter(d =>
-        (d.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    if (isLoading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>;
-
+  const StatusBadge = ({ status }) => {
+    const s = String(status || '').toLowerCase();
+    const col = isDark
+      ? s === 'active' || s === 'approved' ? { bg: '#1a3020', color: '#4ade80', dot: '#4ade80' }
+        : s === 'pending' ? { bg: '#3b2508', color: '#fb923c', dot: '#fb923c' }
+        : { bg: '#3a1515', color: '#f87171', dot: '#f87171' }
+      : s === 'active' || s === 'approved' ? { bg: '#dcfce7', color: '#15803d', dot: '#22c55e' }
+        : s === 'pending' ? { bg: '#fff7ed', color: '#c2410c', dot: '#f97316' }
+        : { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' };
     return (
-        <div className="space-y-6">
-            {!selectedDomain ? (
-                <>
-                    <div className="flex justify-between items-center">
-                        <div className="relative w-72">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#e87b35] focus:outline-none transition-all"
-                                placeholder="Search domains..."
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Domain</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Customer</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Expiry</th>
-                                    <th className="text-right py-3 px-4 text-xs font-semibold text-slate-500 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredDomains.map(d => (
-                                    <motion.tr
-                                        key={d.id}
-                                        layoutId={d.id}
-                                        className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
-                                        onClick={() => setSelectedDomain(d)}
-                                    >
-                                        <td className="py-3 px-4 font-medium text-slate-800">{d.name}</td>
-                                        <td className="py-3 px-4 text-sm text-slate-600">{getCustomerName(d.customer_id)}</td>
-                                        <td className="py-3 px-4">
-                                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${d.status === DOMAIN_STATUS.ACTIVE ? 'bg-green-100 text-green-700' :
-                                                d.status === DOMAIN_STATUS.PENDING ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-slate-100 text-slate-600'
-                                                }`}>
-                                                {d.status}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 px-4 text-sm text-slate-600">
-                                            {d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '-'}
-                                        </td>
-                                        <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="sm" onClick={() => setSelectedDomain(d)} title="Edit">
-                                                    <Edit className="w-4 h-4 text-slate-500 hover:text-slate-700" />
-                                                </Button>
-                                                <Button variant="ghost" size="sm" onClick={() => {
-                                                    toast({ title: "Reminder Sent", description: `Reminder queued for ${d.name}.` });
-                                                }} title="Send Reminder">
-                                                    <Bell className="w-4 h-4 text-[#e87b35]" />
-                                                </Button>
-                                                <Button variant="ghost" size="sm" onClick={async () => {
-                                                    if (window.confirm("Are you sure you want to delete this domain?")) {
-                                                        try {
-                                                            await deleteDomain(d.id);
-                                                            loadData();
-                                                        } catch (e) { }
-                                                    }
-                                                }} title="Delete">
-                                                    <Trash2 className="w-4 h-4 text-red-500 hover:text-red-700" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                                {filteredDomains.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="py-12 text-center text-slate-500">
-                                            No domains found matching your criteria.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
-            ) : (
-                <AdminDomainDetailsView
-                    domain={selectedDomain}
-                    customer={customers.find(c => c.id === selectedDomain.customer_id)}
-                    onBack={() => { setSelectedDomain(null); loadData(); }}
-                />
-            )}
-        </div>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: col.bg, color: col.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: col.dot, flexShrink: 0 }} />
+        {status || '-'}
+      </span>
     );
+  };
+
+  const Btn = ({ onClick, color, children, title, filled }) => (
+    <button onClick={onClick} title={title} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px',
+      borderRadius: 8, border: `1.5px solid ${color}`,
+      background: filled ? color : 'transparent',
+      color: filled ? '#fff' : color,
+      fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'opacity 0.15s', whiteSpace: 'nowrap'
+    }}>
+      {children}
+    </button>
+  );
+
+  const SectionHeader = ({ title, accent }) => (
+    <div style={{ padding: '15px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
+      <div style={{ width: 3, height: 18, borderRadius: 2, background: accent || c.brand, flexShrink: 0 }} />
+      <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>{title}</span>
+    </div>
+  );
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    try {
+      const [dData, cData] = await Promise.all([getDomains(), getCustomers()]);
+      setDomains(dData || []);
+      setCustomers(cData || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getCustomerName = (id) => {
+    const cust = customers.find(cu => cu.id === id);
+    return cust ? cust.name : 'Unknown';
+  };
+
+  const filteredDomains = domains.filter(d =>
+    (d.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (isLoading) return (
+    <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+      <Loader2 className="animate-spin" size={28} style={{ color: c.brand }} />
+    </div>
+  );
+
+  if (selectedDomain) return (
+    <AdminDomainDetailsView
+      domain={selectedDomain}
+      customer={customers.find(cu => cu.id === selectedDomain.customer_id)}
+      onBack={() => { setSelectedDomain(null); loadData(); }}
+    />
+  );
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ position: 'relative', width: 280 }}>
+          <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+          <input
+            style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 9, paddingBottom: 9, border: `1.5px solid ${c.border}`, borderRadius: 10, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
+            placeholder="Search domains..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div style={cardS}>
+        <SectionHeader title="Domains" accent="#378ADD" />
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={thS}>Domain</th>
+              <th style={thS}>Customer</th>
+              <th style={thS}>Status</th>
+              <th style={thS}>Expiry</th>
+              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredDomains.map((d, i) => (
+              <tr key={d.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedDomain(d)}>
+                <td style={i % 2 === 0 ? tdS : tdAlt}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb' }}>{d.name}</span>
+                </td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{getCustomerName(d.customer_id)}</span></td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={d.status} /></td>
+                <td style={i % 2 === 0 ? tdS : tdAlt}>
+                  <span style={{ color: d.expiry_date ? c.text : c.subText }}>
+                    {d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '—'}
+                  </span>
+                </td>
+                <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <Btn color="#378ADD" onClick={() => setSelectedDomain(d)} title="Edit"><Edit size={12} /> Edit</Btn>
+                    <Btn color={c.brand} onClick={() => toast({ title: 'Reminder Sent', description: `Reminder queued for ${d.name}.` })} title="Send Reminder"><Bell size={12} /> Notify</Btn>
+                    <Btn color="#ef4444" onClick={async () => { if (window.confirm('Delete this domain?')) { try { await deleteDomain(d.id); loadData(); } catch (e) {} } }} title="Delete"><Trash2 size={12} /> Delete</Btn>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredDomains.length === 0 && <tr><td colSpan={5} style={emptyS}>No domains found</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 export default AdminDomainManagement;
