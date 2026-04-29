@@ -10,6 +10,7 @@ import { Toaster } from '@/components/ui/toaster';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { AuthProvider } from '@/contexts/SupabaseAuthContext';
 import { initializeDemoData } from '@/lib/storage';
+import InvoicePrintPage from '@/pages/invoices/InvoicePrintPage';
 
 function App() {
   
@@ -32,6 +33,7 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/admin-login" element={<AdminLogin />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/invoices/print" element={<InvoicePrintPage />} />
 
             {/* Protected Routes */}
             <Route 
