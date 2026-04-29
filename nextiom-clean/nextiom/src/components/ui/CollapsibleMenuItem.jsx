@@ -3,62 +3,81 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const CollapsibleMenuItem = ({ 
-  icon: Icon, 
-  label, 
-  isActive, 
-  isExpanded, 
-  onToggle, 
-  onClick, 
+const CollapsibleMenuItem = ({
+  icon: Icon,
+  label,
+  isActive,
+  isExpanded,
+  onToggle,
+  onClick,
   children,
-  hasSubItems
+  hasSubItems,
+  collapsed = false,
+  c = {},
+  isDark = false,
 }) => {
+  const brand = c.brand || '#E87B35';
+  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const subText = c.subText || '#888';
+  const textColor = c.text || '#1a1a1a';
+  const hover = c.hover || '#f5f5f5';
+
+  const isItemActive = !hasSubItems && isActive;
+
   return (
-    <div className="mb-1">
+    <div className="mb-0.5">
       <button
         onClick={hasSubItems ? onToggle : onClick}
+        title={collapsed ? label : undefined}
         className={cn(
-          "w-full flex items-center justify-between px-4 py-2.5 rounded-lg transition-all text-sm font-medium group select-none touch-manipulation",
-          isActive && !hasSubItems 
-            ? "text-blue-700 bg-blue-50" 
-            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
-          hasSubItems && isActive && "text-blue-700 font-semibold" // Active parent style
+          'w-full flex items-center py-2.5 rounded-lg transition-colors text-sm font-medium select-none touch-manipulation',
+          collapsed ? 'justify-center px-2' : 'justify-between px-3'
         )}
+        style={{ backgroundColor: isItemActive ? brandLight : 'transparent' }}
+        onMouseEnter={e => {
+          if (!isActive) e.currentTarget.style.backgroundColor = hover;
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.backgroundColor = isItemActive ? brandLight : 'transparent';
+        }}
         aria-expanded={isExpanded}
       >
-        <div className="flex items-center gap-3">
+        <div className={cn('flex items-center', collapsed ? '' : 'gap-3')}>
           {Icon && (
-            <Icon 
-              className={cn(
-                "w-5 h-5 transition-colors", 
-                isActive ? "text-blue-600" : "text-slate-400 group-hover:text-slate-600"
-              )} 
+            <Icon
+              className="w-5 h-5 flex-shrink-0"
+              style={{ color: isActive ? brand : subText }}
             />
           )}
-          <span>{label}</span>
+          {!collapsed && (
+            <span style={{ color: isActive ? brand : textColor }}>{label}</span>
+          )}
         </div>
-        
-        {hasSubItems && (
+
+        {hasSubItems && !collapsed && (
           <motion.div
             initial={false}
             animate={{ rotate: isExpanded ? 180 : 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
-            <ChevronDown className={cn("w-4 h-4 transition-colors", isActive ? "text-blue-600" : "text-slate-400")} />
+            <ChevronDown className="w-4 h-4" style={{ color: isActive ? brand : subText }} />
           </motion.div>
         )}
       </button>
 
       <AnimatePresence initial={false}>
-        {hasSubItems && isExpanded && (
+        {hasSubItems && isExpanded && !collapsed && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
+            animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="mt-1 ml-4 border-l border-slate-200 pl-2 space-y-1 pb-1">
+            <div
+              className="mt-0.5 ml-4 pl-2 space-y-0.5 pb-1"
+              style={{ borderLeft: `1px solid ${c.border || '#ebebeb'}` }}
+            >
               {children}
             </div>
           </motion.div>

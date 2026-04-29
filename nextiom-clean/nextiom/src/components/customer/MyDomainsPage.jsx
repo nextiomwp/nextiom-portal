@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, Loader2, Globe } from 'lucide-react';
 import { getCustomerDomains, getCustomerDomainRequests, updateDomain, updateDomainRequest, resolveCustomerId } from '@/lib/storage';
 import { Switch } from '@/components/ui/switch';
 import DomainDetailsModal from './DomainDetailsModal';
 import { useToast } from '@/components/ui/use-toast';
 
-function MyDomainsPage({ user }) {
+function statusStyle(status, isDark) {
+  const s = String(status || '').toLowerCase();
+  if (['active', 'approved', 'completed', 'registered', 'connected'].includes(s))
+    return { bg: isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7', color: '#16a34a' };
+  if (s.startsWith('pending'))
+    return { bg: isDark ? 'rgba(234,179,8,0.15)' : '#fef9c3', color: '#ca8a04' };
+  if (['rejected', 'cancelled', 'disabled', 'expired', 'suspended'].includes(s))
+    return { bg: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2', color: '#dc2626' };
+  return { bg: isDark ? 'rgba(100,116,139,0.15)' : '#f1f5f9', color: '#64748b' };
+}
+
+function MyDomainsPage({ user, isDark = false, c = {} }) {
   const [domains, setDomains] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDomain, setSelectedDomain] = useState(null);
@@ -14,19 +24,23 @@ function MyDomainsPage({ user }) {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadDomains();
-  }, [user]);
+  const brand = c.brand || '#E87B35';
+  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const border = c.border || '#ebebeb';
+  const borderStrong = c.borderStrong || '#d0d0d0';
+  const text = c.text || '#1a1a1a';
+  const subText = c.subText || '#888';
+  const panel2 = c.panel2 || '#f5f5f5';
+  const hover = c.hover || '#f5f5f5';
+
+  useEffect(() => { loadDomains(); }, [user]);
 
   const loadDomains = async () => {
     if (!user?.id) return;
     setIsLoading(true);
     try {
       const customerId = await resolveCustomerId({ customerId: user.id, userId: user.id, email: user.email });
-      if (!customerId) {
-        setDomains([]);
-        return;
-      }
+      if (!customerId) { setDomains([]); return; }
 
       const data = await getCustomerDomains(customerId);
       const reqs = await getCustomerDomainRequests(customerId);
@@ -38,15 +52,29 @@ function MyDomainsPage({ user }) {
           id: `req-${r.id}`,
           name: r.domain_name || r.name || 'Unknown Domain',
           status: String(r.status || '').toLowerCase() === 'pending' ? 'Pending Registration' : r.status,
-          isRequest: true
-        }))
+          isRequest: true,
+        })),
       ];
       setDomains(combined);
-    } catch (err) {
+    } catch {
       setDomains([]);
-      toast({ title: "Error", description: "Failed to load domains", variant: "destructive" });
+      toast({ title: 'Error', description: 'Failed to load domains', variant: 'destructive' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAutoRenew = async (id, current) => {
+    try {
+      if (String(id).startsWith('req-')) {
+        await updateDomainRequest(String(id).replace('req-', ''), { auto_renew: !current });
+      } else {
+        await updateDomain(id, { auto_renew: !current });
+      }
+      loadDomains();
+      toast({ title: 'Success', description: 'Auto-renew status updated' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not update status', variant: 'destructive' });
     }
   };
 
@@ -54,84 +82,116 @@ function MyDomainsPage({ user }) {
     (d.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAutoRenew = async (id, current) => {
-    try {
-      if (String(id).startsWith('req-')) {
-        const realId = String(id).replace('req-', '');
-        await updateDomainRequest(realId, { auto_renew: !current });
-      } else {
-        await updateDomain(id, { auto_renew: !current });
-      }
-      loadDomains();
-      toast({ title: "Success", description: "Auto-renew status updated" });
-    } catch (e) {
-      toast({ title: "Error", description: "Could not update status", variant: "destructive" });
-    }
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+        <Loader2 style={{ width: 28, height: 28, color: brand }} className="animate-spin" />
+      </div>
+    );
+  }
+
+  const inputStyle = {
+    width: '100%', paddingLeft: 36, paddingRight: 16, paddingTop: 8, paddingBottom: 8,
+    fontSize: 13, border: `1px solid ${borderStrong}`,
+    borderRadius: 10, background: panel2, color: text, outline: 'none',
+    fontFamily: 'inherit', boxSizing: 'border-box',
   };
 
-  if (isLoading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin text-slate-400" /></div>;
-
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-xl font-bold text-slate-800">My Domains</h1>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Globe style={{ width: 16, height: 16, color: brand }} />
+        </div>
+        <h1 style={{ color: text, fontSize: 18, fontWeight: 700 }}>My Domains</h1>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-        <div className="flex gap-4 mb-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div style={{
+        background: isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)',
+        border: `1px solid ${border}`,
+        borderRadius: 20,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.2)' : '0 2px 16px rgba(0,0,0,0.05)',
+        overflow: 'hidden',
+      }}>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${border}` }}>
+          <div style={{ position: 'relative', maxWidth: 320 }}>
+            <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: subText }} />
             <input
               type="text"
-              placeholder="Search domains..."
+              placeholder="Search domains…"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-300 rounded-md"
+              style={inputStyle}
+              onFocus={e => e.target.style.borderColor = brand}
+              onBlur={e => e.target.style.borderColor = borderStrong}
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="text-left py-3 px-6 text-xs font-semibold text-slate-500 uppercase">Domain</th>
-                <th className="text-left py-3 px-6 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                <th className="text-left py-3 px-6 text-xs font-semibold text-slate-500 uppercase">Expiry</th>
-                <th className="text-left py-3 px-6 text-xs font-semibold text-slate-500 uppercase">Auto Renew</th>
-                <th className="text-right py-3 px-6 text-xs font-semibold text-slate-500 uppercase">Actions</th>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: panel2 }}>
+                {['Domain', 'Status', 'Expiry', 'Auto Renew', 'Actions'].map((h, i) => (
+                  <th key={h} style={{
+                    padding: '10px 20px',
+                    textAlign: i === 4 ? 'right' : 'left',
+                    fontSize: 10, fontWeight: 700, color: subText,
+                    letterSpacing: '0.06em', textTransform: 'uppercase',
+                    borderBottom: `1px solid ${border}`,
+                  }}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {filteredDomains.length > 0 ? filteredDomains.map((domain) => (
-                <tr key={domain.id} className="border-b border-slate-100">
-                  <td className="py-3 px-6 font-medium text-slate-800">{domain.name}</td>
-                  <td className="py-3 px-6">
-                    <span className="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-bold">
-                      {domain.status || 'Unknown'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-6 text-sm text-slate-600">
-                    {domain.expiry_date ? new Date(domain.expiry_date).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td className="py-3 px-6">
-                    <Switch
-                      checked={domain.auto_renew}
-                      onCheckedChange={() => handleAutoRenew(domain.id, domain.auto_renew)}
-                    />
-                  </td>
-                  <td className="py-3 px-6 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { setSelectedDomain(domain); setIsDetailsOpen(true); }}
-                    >
-                      View
-                    </Button>
+              {filteredDomains.length > 0 ? filteredDomains.map(domain => {
+                const { bg, color } = statusStyle(domain.status, isDark);
+                return (
+                  <tr
+                    key={domain.id}
+                    style={{ borderBottom: `1px solid ${border}`, transition: 'background 0.12s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = hover}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 20px', color: text, fontWeight: 600, fontSize: 13 }}>{domain.name}</td>
+                    <td style={{ padding: '12px 20px' }}>
+                      <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
+                        {domain.status || 'Unknown'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
+                      {domain.expiry_date ? new Date(domain.expiry_date).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td style={{ padding: '12px 20px' }}>
+                      <Switch
+                        checked={!!domain.auto_renew}
+                        onCheckedChange={() => handleAutoRenew(domain.id, domain.auto_renew)}
+                      />
+                    </td>
+                    <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => { setSelectedDomain(domain); setIsDetailsOpen(true); }}
+                        style={{
+                          padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: brandLight, color: brand, border: `1px solid ${brand}`,
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = `rgba(232,123,53,0.25)`}
+                        onMouseLeave={e => e.currentTarget.style.background = brandLight}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              }) : (
+                <tr>
+                  <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                    No domains found
                   </td>
                 </tr>
-              )) : (
-                <tr><td colSpan={5} className="text-center py-8 text-slate-500">No domains found</td></tr>
               )}
             </tbody>
           </table>
@@ -142,6 +202,8 @@ function MyDomainsPage({ user }) {
         domain={selectedDomain}
         isOpen={isDetailsOpen}
         onClose={() => setIsDetailsOpen(false)}
+        isDark={isDark}
+        c={c}
       />
     </div>
   );

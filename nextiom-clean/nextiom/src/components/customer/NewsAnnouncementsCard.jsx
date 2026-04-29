@@ -1,56 +1,54 @@
-import React, { useState } from 'react';
-import { Megaphone, ChevronDown, ChevronUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { Megaphone, Sparkles } from 'lucide-react';
 
-function NewsAnnouncementsCard() {
-  const [isOpen, setIsOpen] = useState(false);
+function NewsAnnouncementsCard({ isDark = false, c = {} }) {
+  const border = c.border || '#ebebeb';
+  const text = c.text || '#1a1a1a';
+  const subText = c.subText || '#888';
+  const brand = c.brand || '#E87B35';
+  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const panel2 = c.panel2 || '#f5f5f5';
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-      <div 
-        className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors border-b border-slate-100"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-md">
-            <Megaphone className="text-blue-600 w-4 h-4" />
-          </div>
-          <h3 className="text-slate-800 font-semibold text-sm">News & Announcements</h3>
+    <div style={{
+      background: isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)',
+      border: `1px solid ${border}`,
+      borderRadius: 20,
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+      boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.25)' : '0 2px 16px rgba(0,0,0,0.06)',
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Megaphone style={{ width: 15, height: 15, color: brand }} />
         </div>
-        {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+        <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>News & Announcements</span>
       </div>
-      
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="p-6">
-                <div className="flex gap-1 mb-3">
-                    {[1, 2, 3, 4, 5].map((_, i) => (
-                        <div key={i} className="text-yellow-400">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                                <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z" />
-                            </svg>
-                        </div>
-                    ))}
-                </div>
-                <p className="text-slate-600 text-sm mb-4 leading-relaxed">
-                  Stay informed with the latest updates, system maintenance schedules, and feature releases from Nextiom.
-                </p>
-                <div>
-                  <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
-                    View News
-                  </Button>
-                </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+      {/* Badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: brandLight, alignSelf: 'flex-start' }}>
+        <Sparkles style={{ width: 12, height: 12, color: brand }} />
+        <span style={{ color: brand, fontSize: 11, fontWeight: 600 }}>Latest from Nextiom</span>
+      </div>
+
+      {/* Content */}
+      <p style={{ color: subText, fontSize: 13, lineHeight: 1.65, margin: 0 }}>
+        Stay informed with the latest updates, system maintenance schedules, and feature releases from Nextiom.
+      </p>
+
+      {/* Announcement item */}
+      <div style={{ padding: '12px 14px', borderRadius: 12, background: panel2, border: `1px solid ${border}` }}>
+        <p style={{ color: text, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>🚀 Platform Update v2.1</p>
+        <p style={{ color: subText, fontSize: 11, lineHeight: 1.55, marginBottom: 4 }}>
+          New hosting management features and improved dashboard performance are now live.
+        </p>
+        <p style={{ color: subText, fontSize: 10 }}>Apr 29, 2026</p>
+      </div>
     </div>
   );
 }

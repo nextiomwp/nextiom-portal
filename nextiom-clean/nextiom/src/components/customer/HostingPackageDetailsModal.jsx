@@ -1,27 +1,28 @@
 import React from 'react';
-import { 
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription 
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { 
-  HOSTING_STATUS, REQUEST_STATUS, getHostingRequests, getHostingActivityLog, updateHostingPackage 
-} from '@/lib/storage';
-import { 
-  CheckCircle, Clock, XCircle, HardDrive, Wifi, Mail, Database, Server, RefreshCw
-} from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { X, Server, HardDrive, Wifi, Mail, Database, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { HOSTING_STATUS, REQUEST_STATUS, getHostingRequests, getHostingActivityLog } from '@/lib/storage';
 
-function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
-  const { toast } = useToast();
+function statusBadgeStyle(status, isDark) {
+  const s = String(status || '').toLowerCase();
+  if (['active', 'approved', 'completed'].includes(s))
+    return { bg: isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7', color: '#16a34a' };
+  if (s.startsWith('pending'))
+    return { bg: isDark ? 'rgba(234,179,8,0.15)' : '#fef9c3', color: '#ca8a04' };
+  if (['rejected', 'cancelled', 'suspended', 'expired'].includes(s))
+    return { bg: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2', color: '#dc2626' };
+  return { bg: isDark ? 'rgba(100,116,139,0.15)' : '#f1f5f9', color: '#64748b' };
+}
+
+function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = {} }) {
   const [requests, setRequests] = React.useState([]);
-  const [logs, setLogs] = React.useState([]);
-  const [autoRenew, setAutoRenew] = React.useState(false);
 
-  React.useEffect(() => {
-    setAutoRenew(!!(pkg?.auto_renew ?? pkg?.autoRenew ?? false));
-  }, [pkg]);
+  const border = c.border || '#ebebeb';
+  const text = c.text || '#1a1a1a';
+  const subText = c.subText || '#888';
+  const brand = c.brand || '#E87B35';
+  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const panel2 = c.panel2 || '#f5f5f5';
+  const hover = c.hover || '#f5f5f5';
 
   const parseRequestField = (raw, label) => {
     if (!raw) return null;
@@ -34,168 +35,168 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose }) {
     const raw = pkg?.package_type || pkg?.package_name || pkg?.packageName || pkg?.notes || '';
     return {
       plan: raw.split('|')[0]?.trim() || raw || 'Hosting Request',
-      billing_period: parseRequestField(raw, 'Billing') || pkg?.billing_period || pkg?.billingPeriod || '-',
-      domain: pkg?.domain || pkg?.domain_name || parseRequestField(raw, 'Domain') || 'No domain available',
-      notes: pkg?.notes || parseRequestField(raw, 'Notes') || 'No notes provided'
+      billing_period: parseRequestField(raw, 'Billing') || pkg?.billing_period || '-',
+      domain: pkg?.domain || pkg?.domain_name || parseRequestField(raw, 'Domain') || 'No domain',
+      notes: pkg?.notes || parseRequestField(raw, 'Notes') || 'None',
     };
   }, [pkg]);
 
   React.useEffect(() => {
-    if (pkg) {
-        getHostingRequests().then(reqs => {
-            const filtered = (reqs || []).filter(r => {
-              if (r.package_id && pkg.id) return r.package_id === pkg.id;
-              const requestPackage = r.package_name || r.package_type || r.packageName;
-              const packageLabel = pkg.package_name || pkg.package_type || pkg.packageName;
-              return r.customer_id === pkg.customer_id && requestPackage === packageLabel;
-            });
-            setRequests(filtered);
-        });
-        setLogs(getHostingActivityLog(pkg.id));
-    }
+    if (!pkg) return;
+    getHostingRequests().then(reqs => {
+      const filtered = (reqs || []).filter(r => {
+        if (r.package_id && pkg.id) return r.package_id === pkg.id;
+        const rPkg = r.package_name || r.package_type || r.packageName;
+        const pPkg = pkg.package_name || pkg.package_type || pkg.packageName;
+        return r.customer_id === pkg.customer_id && rPkg === pPkg;
+      });
+      setRequests(filtered);
+    });
   }, [pkg]);
 
-  if (!pkg) return null;
+  if (!isOpen || !pkg) return null;
 
-  const handleAutoRenewToggle = async (checked) => {
-    setAutoRenew(checked);
-    if (!pkg?.isRequest) {
-      try {
-        await updateHostingPackage(pkg.id, { auto_renew: checked });
-        toast({ title: "Updated", description: `Auto-renew has been turned ${checked ? 'on' : 'off'}.` });
-      } catch {
-        setAutoRenew(!checked);
-        toast({ title: "Error", description: "Could not update auto-renew.", variant: "destructive" });
-      }
-    }
+  const { bg: statusBg, color: statusColor } = statusBadgeStyle(pkg.status, isDark);
+
+  const infoPanel = {
+    padding: '12px 14px', borderRadius: 12,
+    background: panel2, border: `1px solid ${border}`,
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case HOSTING_STATUS.ACTIVE: return 'bg-green-100 text-green-700';
-      case HOSTING_STATUS.EXPIRED: return 'bg-red-100 text-red-700';
-      case HOSTING_STATUS.SUSPENDED: return 'bg-orange-100 text-orange-700';
-      case HOSTING_STATUS.PENDING: return 'bg-yellow-100 text-yellow-700';
-      default: return 'bg-slate-100 text-slate-700';
-    }
-  };
-
-  const getRequestStatusIcon = (status) => {
-    switch(status) {
-        case REQUEST_STATUS.COMPLETED: 
-        case REQUEST_STATUS.APPROVED: return <CheckCircle className="w-4 h-4 text-green-600" />;
-        case REQUEST_STATUS.REJECTED: return <XCircle className="w-4 h-4 text-red-600" />;
-        default: return <Clock className="w-4 h-4 text-amber-600" />;
-    }
+  const getReqIcon = (status) => {
+    const s = String(status || '').toLowerCase();
+    if (['completed', 'approved'].includes(s)) return <CheckCircle style={{ width: 14, height: 14, color: '#16a34a' }} />;
+    if (['rejected', 'cancelled'].includes(s)) return <XCircle style={{ width: 14, height: 14, color: '#dc2626' }} />;
+    return <Clock style={{ width: 14, height: 14, color: '#ca8a04' }} />;
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex justify-between items-center pr-4">
-            <div className="flex items-center gap-3">
-                 <div className="p-2 bg-blue-50 rounded-lg">
-                    <Server className="w-6 h-6 text-blue-600" />
-                 </div>
-                 <div>
-                      <DialogTitle className="text-xl font-bold">{requestMeta.plan || pkg.package_name || pkg.package_type || pkg.packageName || pkg.type || 'Hosting Request'}</DialogTitle>
-                    <DialogDescription>{requestMeta.domain}</DialogDescription>
-                 </div>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '16px' }}>
+      <div style={{
+        background: isDark ? '#1C1E24' : '#fff',
+        border: `1px solid ${border}`,
+        borderRadius: 24,
+        width: '100%', maxWidth: 680,
+        maxHeight: '90vh', overflowY: 'auto',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Server style={{ width: 18, height: 18, color: brand }} />
             </div>
-            <Badge className={getStatusColor(pkg.status)}>{pkg.status}</Badge>
-          </div>
-        </DialogHeader>
-
-        <div className="grid gap-6 py-4">
-          {/* Main Info */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
-                <p className="text-xs text-slate-500 font-medium uppercase mb-1">Plan Details</p>
-                 <p className="font-semibold text-slate-800">{requestMeta.plan} Plan</p>
-                <p className="text-xs text-slate-500">{pkg.type}</p>
-             </div>
-             <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
-                <p className="text-xs text-slate-500 font-medium uppercase mb-1">Billing</p>
-                 <p className="font-semibold text-slate-800">{requestMeta.billing_period}</p>
-                 <p className="text-xs text-slate-500">Next Invoice: {(pkg.expiry_date || pkg.expiryDate) ? new Date(pkg.expiry_date || pkg.expiryDate).toLocaleDateString() : 'N/A'}</p>
-             </div>
-             <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 flex flex-col justify-between">
-                <div className="flex justify-between items-center mb-1">
-                    <p className="text-xs text-slate-500 font-medium uppercase">Auto Renew</p>
-                    <Switch
-                      checked={autoRenew}
-                      onCheckedChange={handleAutoRenewToggle}
-                      disabled={!!pkg?.isRequest}
-                    />
-                </div>
-                <p className="text-xs text-slate-500">
-                  {pkg?.isRequest ? 'Available after package is activated' : 'Automatically renews on expiry'}
-                </p>
-             </div>
-          </div>
-
-          {/* Usage Stats */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 mb-3">Resource Usage</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="border border-slate-200 rounded-md p-3 flex flex-col items-center text-center">
-                    <HardDrive className="w-5 h-5 text-slate-400 mb-2" />
-                    <span className="text-lg font-bold text-slate-800">{pkg.usage?.diskUsage || 0} GB</span>
-                    <span className="text-xs text-slate-500">Disk Usage</span>
-                </div>
-                <div className="border border-slate-200 rounded-md p-3 flex flex-col items-center text-center">
-                    <Wifi className="w-5 h-5 text-slate-400 mb-2" />
-                    <span className="text-lg font-bold text-slate-800">{pkg.usage?.bandwidthUsage || 0} GB</span>
-                    <span className="text-xs text-slate-500">Bandwidth</span>
-                </div>
-                <div className="border border-slate-200 rounded-md p-3 flex flex-col items-center text-center">
-                    <Mail className="w-5 h-5 text-slate-400 mb-2" />
-                    <span className="text-lg font-bold text-slate-800">{pkg.usage?.emailAccounts || 0}</span>
-                    <span className="text-xs text-slate-500">Email Accounts</span>
-                </div>
-                <div className="border border-slate-200 rounded-md p-3 flex flex-col items-center text-center">
-                    <Database className="w-5 h-5 text-slate-400 mb-2" />
-                    <span className="text-lg font-bold text-slate-800">{pkg.usage?.databases || 0}</span>
-                    <span className="text-xs text-slate-500">Databases</span>
-                </div>
+            <div>
+              <p style={{ color: text, fontWeight: 700, fontSize: 16, marginBottom: 2 }}>
+                {requestMeta.plan || pkg.package_name || pkg.package_type || 'Hosting Package'}
+              </p>
+              <p style={{ color: subText, fontSize: 12 }}>{requestMeta.domain}</p>
             </div>
           </div>
-
-          <div className="p-4 bg-slate-50 rounded-lg border border-slate-100">
-            <p className="text-xs text-slate-500 font-medium uppercase mb-1">Customer Notes</p>
-            <p className="text-sm text-slate-700">{requestMeta.notes}</p>
-          </div>
-
-          {/* Request History */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-800 mb-3">Recent Requests</h3>
-            {requests.length > 0 ? (
-                <div className="border rounded-md divide-y divide-slate-100">
-                    {requests.slice(0, 5).map(req => (
-                        <div key={req.id} className="p-3 flex items-center justify-between hover:bg-slate-50">
-                            <div>
-                                <p className="text-sm font-medium text-slate-800">{req.type}</p>
-                                <p className="text-xs text-slate-500">{req.created_at ? new Date(req.created_at).toLocaleDateString() : '-'}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {getRequestStatusIcon(req.status)}
-                                <span className="text-xs font-medium text-slate-700 capitalize">{req.status}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <p className="text-sm text-slate-500 italic p-2 border border-dashed rounded-md text-center">No requests found.</p>
-            )}
-          </div>
-          
-          <div className="flex justify-end pt-4">
-             <Button variant="outline" onClick={onClose}>Close</Button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ background: statusBg, color: statusColor, fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 99 }}>
+              {pkg.status}
+            </span>
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: isDark ? 'rgba(255,255,255,0.06)' : '#f5f5f5', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X style={{ width: 16, height: 16, color: subText }} />
+            </button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Plan + Billing */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Plan Details</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.plan}</p>
+              {pkg.type && <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>{pkg.type}</p>}
+            </div>
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Billing</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.billing_period}</p>
+              <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>
+                Next Invoice: {(pkg.expiry_date || pkg.expiryDate) ? new Date(pkg.expiry_date || pkg.expiryDate).toLocaleDateString() : 'N/A'}
+              </p>
+            </div>
+          </div>
+
+          {/* Usage */}
+          <div>
+            <p style={{ color: text, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Resource Usage</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { Icon: HardDrive, label: 'Disk Usage', value: `${pkg.usage?.diskUsage || 0} GB` },
+                { Icon: Wifi, label: 'Bandwidth', value: `${pkg.usage?.bandwidthUsage || 0} GB` },
+                { Icon: Mail, label: 'Email Accounts', value: pkg.usage?.emailAccounts || 0 },
+                { Icon: Database, label: 'Databases', value: pkg.usage?.databases || 0 },
+              ].map(({ Icon, label, value }) => (
+                <div key={label} style={{ ...infoPanel, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '14px 10px' }}>
+                  <Icon style={{ width: 18, height: 18, color: subText, marginBottom: 6 }} />
+                  <p style={{ color: text, fontWeight: 800, fontSize: 16 }}>{value}</p>
+                  <p style={{ color: subText, fontSize: 10, marginTop: 2 }}>{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div style={infoPanel}>
+            <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Customer Notes</p>
+            <p style={{ color: text, fontSize: 13 }}>{requestMeta.notes}</p>
+          </div>
+
+          {/* Recent Requests */}
+          <div>
+            <p style={{ color: text, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Recent Requests</p>
+            {requests.length > 0 ? (
+              <div style={{ border: `1px solid ${border}`, borderRadius: 12, overflow: 'hidden' }}>
+                {requests.slice(0, 5).map((req, i) => (
+                  <div key={req.id} style={{
+                    padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    borderBottom: i < Math.min(requests.length, 5) - 1 ? `1px solid ${border}` : 'none',
+                    transition: 'background 0.12s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = hover}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <div>
+                      <p style={{ color: text, fontSize: 13, fontWeight: 600 }}>{req.type}</p>
+                      <p style={{ color: subText, fontSize: 11 }}>{req.created_at ? new Date(req.created_at).toLocaleDateString() : '—'}</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {getReqIcon(req.status)}
+                      <span style={{ color: subText, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>{req.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: subText, fontSize: 13, fontStyle: 'italic', textAlign: 'center', padding: '16px', border: `1px dashed ${border}`, borderRadius: 12 }}>
+                No requests found.
+              </p>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
+            <button
+              onClick={onClose}
+              style={{
+                padding: '10px 24px', borderRadius: 10, background: 'transparent',
+                border: `1px solid ${border}`, color: subText,
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = brand; e.currentTarget.style.color = brand; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.color = subText; }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
