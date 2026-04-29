@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, CheckCircle, XCircle, User, Package } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { getHostingRequests, updateHostingRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -86,27 +86,32 @@ function AdminHostingRequestManagement({ isDark = true }) {
       return;
     }
     setLoading(true);
-    await updateHostingRequest(selectedRequest.id, {
-      status: String(status).toLowerCase(),
-      admin_reply: status === REQUEST_STATUS.REJECTED ? rejectReason : adminReply,
-      updated_at: new Date().toISOString()
-    });
-    if (selectedRequest.customer_id) {
-      const isApproved = String(status).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase() || String(status).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase();
-      const planName = selectedRequest.package_type?.split('|')[0]?.trim() || 'Hosting';
-      await addNotification({
-        customer_id: selectedRequest.customer_id,
-        type: isApproved ? 'update' : 'expiration',
-        title: isApproved ? `Hosting Request Approved — ${planName}` : `Hosting Request Rejected — ${planName}`,
-        message: isApproved ? `Your hosting request for ${planName} has been approved.` : `Your hosting request was declined. Reason: ${rejectReason || 'No reason provided.'}`
-      }).catch(() => {});
+    try {
+      await updateHostingRequest(selectedRequest.id, {
+        status: String(status).toLowerCase(),
+        admin_reply: status === REQUEST_STATUS.REJECTED ? rejectReason : adminReply,
+        updated_at: new Date().toISOString()
+      });
+      if (selectedRequest.customer_id) {
+        const isApproved = String(status).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase() || String(status).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase();
+        const planName = selectedRequest.package_type?.split('|')[0]?.trim() || 'Hosting';
+        await addNotification({
+          customer_id: selectedRequest.customer_id,
+          type: isApproved ? 'update' : 'expiration',
+          title: isApproved ? `Hosting Request Approved — ${planName}` : `Hosting Request Rejected — ${planName}`,
+          message: isApproved ? `Your hosting request for ${planName} has been approved.` : `Your hosting request was declined. Reason: ${rejectReason || 'No reason provided.'}`
+        }).catch(() => {});
+      }
+      toast({ title: 'Request Updated', description: `Request has been marked as ${status}.` });
+      setSelectedRequest(null);
+      setAdminReply('');
+      setRejectReason('');
+      loadData();
+    } catch (err) {
+      toast({ title: 'Update Failed', description: 'Could not update the request. Please try again.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-    toast({ title: 'Request Updated', description: `Request has been marked as ${status}.` });
-    setLoading(false);
-    setSelectedRequest(null);
-    setAdminReply('');
-    setRejectReason('');
-    loadData();
   };
 
   const getCustomerName = (id) => customers.find(cu => cu.id === id)?.name || 'Unknown';
@@ -165,65 +170,78 @@ function AdminHostingRequestManagement({ isDark = true }) {
         </table>
       </div>
 
-      <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Request Details</DialogTitle>
-          </DialogHeader>
+      <Dialog open={!!selectedRequest} onOpenChange={() => { setSelectedRequest(null); setAdminReply(''); setRejectReason(''); }}>
+        <DialogContent style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, maxWidth: 580, padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 3, height: 20, borderRadius: 2, background: '#8b5cf6', flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Request Details</span>
+            <StatusBadge status={selectedRequest?.status} />
+          </div>
           {selectedRequest && (
-            <div className="space-y-6 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-slate-50 rounded-lg flex items-center gap-2">
-                  <User className="w-4 h-4 text-slate-400 shrink-0" />
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                <div style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <User size={16} color={c.subText} style={{ marginTop: 2, flexShrink: 0 }} />
                   <div>
-                    <p className="text-xs text-slate-500 uppercase font-bold">Customer</p>
-                    <p className="font-semibold text-slate-800">{selectedRequest.customers?.name || getCustomerName(selectedRequest.customer_id)}</p>
-                    <p className="text-xs text-slate-400">{selectedRequest.customers?.email || ''}</p>
+                    <p style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Customer</p>
+                    <p style={{ fontWeight: 600, fontSize: 13, color: c.text }}>{selectedRequest.customers?.name || getCustomerName(selectedRequest.customer_id)}</p>
+                    <p style={{ fontSize: 11, color: c.subText, marginTop: 2 }}>{selectedRequest.customers?.email || ''}</p>
                   </div>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg flex items-center gap-2">
-                  <Package className="w-4 h-4 text-slate-400 shrink-0" />
+                <div style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <Package size={16} color={c.subText} style={{ marginTop: 2, flexShrink: 0 }} />
                   <div>
-                    <p className="text-xs text-slate-500 uppercase font-bold">Status</p>
-                    <p className="font-semibold text-slate-800 capitalize">{selectedRequest.status || '-'}</p>
-                    <p className="text-xs text-slate-400">{selectedRequest.created_at ? format(new Date(selectedRequest.created_at), 'MMM dd, yyyy HH:mm') : '-'}</p>
+                    <p style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Submitted</p>
+                    <p style={{ fontWeight: 600, fontSize: 13, color: c.text, textTransform: 'capitalize' }}>{selectedRequest.status || '-'}</p>
+                    <p style={{ fontSize: 11, color: c.subText, marginTop: 2 }}>{selectedRequest.created_at ? format(new Date(selectedRequest.created_at), 'MMM dd, yyyy HH:mm') : '-'}</p>
                   </div>
                 </div>
               </div>
-              <div className="border border-slate-200 rounded-lg p-4">
-                <h4 className="font-bold text-slate-800 mb-3 border-b pb-2 flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Request Information
-                </h4>
+
+              <div style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${c.border}` }}>
+                  <FileText size={14} color={c.subText} />
+                  <span style={{ fontWeight: 700, fontSize: 13, color: c.text }}>Request Information</span>
+                </div>
                 {(() => {
                   const { plan, billing, domain, notes } = parsePkg(selectedRequest.package_type);
                   return (
-                    <div className="grid grid-cols-2 gap-3">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                       {[['Plan', plan], ['Billing', billing], ['Domain', domain], ['Notes', notes]].map(([label, value]) => (
-                        <div key={label} className="p-3 bg-slate-50 rounded-lg">
-                          <p className="text-xs text-slate-500 uppercase font-bold mb-1">{label}</p>
-                          <p className="font-medium text-slate-800">{value}</p>
+                        <div key={label} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 8, padding: '10px 12px' }}>
+                          <p style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{label}</p>
+                          <p style={{ fontWeight: 500, fontSize: 13, color: c.text }}>{value}</p>
                         </div>
                       ))}
                     </div>
                   );
                 })()}
               </div>
+
               {isPending(selectedRequest.status) && (
-                <div className="space-y-3 pt-2 border-t border-slate-100">
-                  <p className="font-medium text-slate-800">Admin Action</p>
+                <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                  <p style={{ fontWeight: 600, fontSize: 13, color: c.text, marginBottom: 10 }}>Admin Reply / Rejection Reason</p>
                   <textarea
-                    className="w-full p-2 border border-slate-300 rounded-md text-sm"
                     rows={3}
                     placeholder="Reply or rejection reason..."
                     value={rejectReason || adminReply}
                     onChange={e => { setAdminReply(e.target.value); setRejectReason(e.target.value); }}
+                    style={{ width: '100%', padding: '9px 12px', background: c.panel, border: `1px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
                   />
-                  <div className="flex gap-3 justify-end">
-                    <button disabled={loading} onClick={() => handleAction(REQUEST_STATUS.REJECTED)} className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg border border-red-300 text-red-600 bg-transparent font-medium text-sm cursor-pointer hover:bg-red-50">
-                      <XCircle className="w-4 h-4" /> Reject Request
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
+                    <button
+                      disabled={loading}
+                      onClick={() => handleAction(REQUEST_STATUS.REJECTED)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 9, border: '1.5px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'inherit' }}
+                    >
+                      <XCircle size={15} /> Reject Request
                     </button>
-                    <button disabled={loading} onClick={() => handleAction(REQUEST_STATUS.APPROVED)} style={{ background: '#e87b35' }} className="inline-flex items-center gap-1.5 px-6 py-2 rounded-lg border-none text-white font-medium text-sm cursor-pointer">
-                      <CheckCircle className="w-4 h-4" /> Approve
+                    <button
+                      disabled={loading}
+                      onClick={() => handleAction(REQUEST_STATUS.APPROVED)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', borderRadius: 9, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'inherit' }}
+                    >
+                      <CheckCircle size={15} /> {loading ? 'Processing…' : 'Approve'}
                     </button>
                   </div>
                 </div>
