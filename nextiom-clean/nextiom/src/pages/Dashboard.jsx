@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt } from 'lucide-react';
+import InvoicesPage from '@/pages/invoices/InvoicesPage';
+import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
+import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
+import InvoiceSettingsPage from '@/pages/invoices/InvoiceSettingsPage';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import AdminCustomerManagement from '@/components/admin/AdminCustomerManagement';
@@ -14,7 +18,8 @@ import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
 import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages } from '@/lib/storage';
+import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getAdminNotifications } from '@/lib/storage';
 
 const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, section: 'main' },
@@ -26,6 +31,7 @@ const NAV = [
   { id: 'products', label: 'Products', icon: Package, section: 'manage' },
   { id: 'notifications', label: 'Notifications', icon: Bell, section: 'manage' },
   { id: 'logs', label: 'Email Logs', icon: FileText, section: 'manage' },
+  { id: 'invoices', label: 'Invoices', icon: Receipt, section: 'manage' },
 ];
 
 function Dashboard({ onLogout }) {
@@ -48,6 +54,15 @@ function Dashboard({ onLogout }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [markedReadAt, setMarkedReadAt] = useState(() => localStorage.getItem('adminNotifReadAt'));
+  const [invoiceView, setInvoiceView] = useState('list');
+  const [editInvoiceId, setEditInvoiceId] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [adminNotifs, setAdminNotifs] = useState([]);
+
+  useEffect(() => {
+    if (active !== 'invoices') { setInvoiceView('list'); setEditInvoiceId(null); }
+    if (active !== 'customerProfile') setSelectedCustomer(null);
+  }, [active]);
   const { toast } = useToast();
   const { signOut } = useAuth();
 
@@ -66,9 +81,10 @@ function Dashboard({ onLogout }) {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [cus, prd, lic, sts, lgs, domReq, hostReq, hostPkg] = await Promise.all([
-        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getDomainRequests(), getHostingRequests(), getHostingPackages()
+      const [cus, prd, lic, sts, lgs, domReq, hostReq, hostPkg, adminN] = await Promise.all([
+        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications()
       ]);
+      setAdminNotifs(adminN || []);
       setCustomers(cus || []); setProducts(prd || []); setLicenses(lic || []);
       setStats(sts || {}); setEmailLogs(lgs || []);
       const domainReqRows = (domReq || []).map(r => ({
@@ -117,15 +133,19 @@ function Dashboard({ onLogout }) {
       const names = await caches.keys();
       await Promise.all(names.map(n => caches.delete(n)));
     }
+    const notifReadAt = localStorage.getItem('adminNotifReadAt');
     sessionStorage.clear(); localStorage.clear();
+    if (notifReadAt) localStorage.setItem('adminNotifReadAt', notifReadAt);
     window.location.replace('/');
   };
 
   const renderContent = () => {
     if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div>;
     switch (active) {
-      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} c={c} isDark={isDark} />;
+      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} onViewCustomer={cu => { setSelectedCustomer(cu); setActive('customerProfile'); }} c={c} isDark={isDark} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
+      case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => setActive('overview')} isDark={isDark} /> : null;
+      case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={setActive} c={c} isDark={isDark} />;
       case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} isDark={isDark} />;
       case 'domains': return <AdminDomainManagement isDark={isDark} />;
       case 'hosting': return <AdminHostingManagement isDark={isDark} />;
@@ -134,6 +154,13 @@ function Dashboard({ onLogout }) {
       case 'products': return <ProductList products={products} onUpdate={loadData} />;
       case 'notifications': return <AdminNotificationManagement />;
       case 'logs': return <EmailLogList logs={emailLogs} />;
+      case 'invoices': {
+        const goList = () => { setEditInvoiceId(null); setInvoiceView('list'); };
+        if (invoiceView === 'new') return <NewInvoicePage c={c} isDark={isDark} onBack={goList} />;
+        if (invoiceView === 'edit' && editInvoiceId) return <EditInvoicePage c={c} isDark={isDark} invoiceId={editInvoiceId} onBack={goList} />;
+        if (invoiceView === 'settings') return <InvoiceSettingsPage c={c} isDark={isDark} onBack={goList} />;
+        return <InvoicesPage c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
+      }
       default: return null;
     }
   };
@@ -189,18 +216,23 @@ function Dashboard({ onLogout }) {
                 {unreadCount > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, background: c.brand, borderRadius: 8, fontSize: 10, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
               </div>
               {isNotificationsOpen && (
-                <div style={{ position: 'absolute', top: 44, right: 0, width: 320, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 50, maxHeight: 400, overflowY: 'auto' }}>
-                  <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600 }}>Pending Requests</span>
-                    <button onClick={handleMarkAllRead} style={{ fontSize: 12, color: c.brand, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Mark all as read</button>
+                <div style={{ position: 'absolute', top: 44, right: 0, width: 320, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 50, display: 'flex', flexDirection: 'column', maxHeight: 420 }}>
+                  <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
+                    <span style={{ fontWeight: 600, color: c.text }}>Pending Requests</span>
                   </div>
-                  {pendingRequests.slice(0, 10).map((r, i) => (
-                    <div key={i} style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }} onClick={() => { setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{r.n} - {r.reqType}</div>
-                      <div style={{ fontSize: 12, color: c.subText }}>{new Date(r.created_at).toLocaleDateString()}</div>
-                    </div>
-                  ))}
-                  {pendingRequests.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No pending requests</div>}
+                  <div style={{ overflowY: 'auto', flex: 1 }}>
+                    {pendingRequests.slice(0, 10).map((r, i) => (
+                      <div key={i} style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }} onClick={() => { setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{r.n} — {r.reqType}</div>
+                        <div style={{ fontSize: 12, color: c.subText }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                      </div>
+                    ))}
+                    {pendingRequests.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No pending requests</div>}
+                  </div>
+                  <div style={{ padding: '10px 16px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                    <button onClick={handleMarkAllRead} style={{ fontSize: 12, color: c.subText, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Mark all as read</button>
+                    <button onClick={() => { setActive('adminNotifications'); setIsNotificationsOpen(false); }} style={{ fontSize: 12, color: c.brand, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>View All →</button>
+                  </div>
                 </div>
               )}
             </div>
@@ -256,7 +288,7 @@ function MiniSparkline({ value, color }) {
   return <svg width={W} height={H} style={{display:'block'}}><polyline points={coords} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 
-function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, c, isDark }) {
+function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, onViewCustomer, c, isDark }) {
   const approvedDomains = requests.filter(r => r.source === 'domain' && String(r.status||'').toLowerCase() === 'approved').length;
   const initials = name => (name||'?').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
 
@@ -316,7 +348,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                 const isActive=st==='active'||st==='approved';
                 const col=avatarColor(cu.name);
                 return (
-                  <tr key={cu.id||i} style={{borderTop:`1px solid ${c.border}`}}>
+                  <tr key={cu.id||i} style={{borderTop:`1px solid ${c.border}`,cursor:'pointer'}} onClick={()=>onViewCustomer(cu)}>
                     <td style={{padding:'12px 0'}}>
                       <div style={{display:'flex',alignItems:'center',gap:10}}>
                         <div style={{width:36,height:36,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(cu.name)}</div>
@@ -356,7 +388,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                 const col=avatarColor(r.n);
                 const date=r.created_at?new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
                 return (
-                  <div key={r.id||i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderTop:i===0?'none':`1px solid ${c.border}`}}>
+                  <div key={r.id||i} onClick={()=>onNavigate(r.source==='hosting'?'hostingRequests':'domainsRequests')} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderTop:i===0?'none':`1px solid ${c.border}`,cursor:'pointer'}}>
                     <div style={{width:36,height:36,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(r.n)}</div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.n}</div>
@@ -420,6 +452,54 @@ function AdminProfileContent({ c, isDark }) {
             </div>
           ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark }) {
+  const pendingReqs = requests.filter(r => String(r.status||'').toLowerCase() === 'pending');
+  const recentCustomers = [...customers].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,10);
+
+  const allItems = [
+    ...pendingReqs.map(r=>({ type:'request', source:r.source, title:`${r.n} — ${r.reqType}`, sub: r.source==='domain'?'Domain Request':'Hosting Request', date:r.created_at, id:r.id })),
+    ...recentCustomers.map(cu=>({ type:'customer', title:`New Customer: ${cu.name}`, sub:cu.email||'', date:cu.created_at, id:cu.id, customer:cu })),
+    ...notifications.map(n=>({ type:'notification', title:n.title||'Notification', sub:n.message||'', date:n.created_at, id:n.id, nType:n.type })),
+  ].sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  const typeColor = t => t==='request'?'#8b5cf6':t==='customer'?'#639922':'#378ADD';
+  const typeLabel = item => item.type==='request'?(item.source==='domain'?'Domain':'Hosting'):item.type==='customer'?'New User':'Notification';
+
+  return (
+    <div>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
+        <button onClick={()=>onNavigate('overview')} style={{background:'none',border:'none',color:c.subText,cursor:'pointer',padding:'6px 8px',borderRadius:8,display:'flex',alignItems:'center',fontSize:13}}>← Back</button>
+        <div>
+          <h2 style={{fontSize:20,fontWeight:700,margin:0,color:c.text}}>All Notifications</h2>
+          <p style={{fontSize:13,color:c.subText,marginTop:2}}>Pending requests, new customers, and system notifications</p>
+        </div>
+      </div>
+
+      <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:14,overflow:'hidden'}}>
+        <div style={{padding:'14px 20px',borderBottom:`1px solid ${c.border}`,background:isDark?'rgba(255,255,255,0.02)':'rgba(0,0,0,0.02)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:13,fontWeight:600,color:c.text}}>{allItems.length} items</span>
+        </div>
+        {allItems.length===0 && <div style={{padding:32,textAlign:'center',color:c.subText,fontSize:13}}>No notifications</div>}
+        {allItems.map((item,i)=>(
+          <div key={item.id+i} onClick={()=>{ if(item.type==='request') onNavigate(item.source==='domain'?'domainsRequests':'hostingRequests'); else if(item.type==='customer') onNavigate('customers'); }} style={{padding:'14px 20px',borderBottom:`1px solid ${c.border}`,display:'flex',alignItems:'center',gap:14,cursor:item.type!=='notification'?'pointer':'default',transition:'background 0.1s'}} onMouseEnter={e=>e.currentTarget.style.background=c.hover} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+            <div style={{width:38,height:38,borderRadius:'50%',background:typeColor(item.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <Bell size={16} color={typeColor(item.type)} />
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:600,color:c.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
+              <div style={{fontSize:12,color:c.subText,marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.sub}</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
+              <span style={{background:typeColor(item.type)+'22',color:typeColor(item.type),fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:6,textTransform:'uppercase',letterSpacing:0.5}}>{typeLabel(item)}</span>
+              <span style={{fontSize:11,color:c.subText}}>{item.date?new Date(item.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
