@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { getCustomerByEmail, getUserProfile } from '@/lib/storage';
+import { getCustomerByEmail, getUserProfile, addNotification } from '@/lib/storage';
 
 const AuthContext = createContext(undefined);
 
@@ -104,7 +104,16 @@ export const AuthProvider = ({ children }) => {
             created_at: new Date().toISOString()
         }]);
         
-        if (profileError) console.error("Could not create customer profile", profileError);
+        if (profileError) {
+          console.error("Could not create customer profile", profileError);
+        } else {
+          addNotification({
+            customer_id: null,
+            type: 'new_registration',
+            title: `New Customer: ${metadata.full_name || email.split('@')[0]}`,
+            message: `${email} just registered on the portal.`,
+          }).catch(() => {});
+        }
     }
 
     setLoading(false);
