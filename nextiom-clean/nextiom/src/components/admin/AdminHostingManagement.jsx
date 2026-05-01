@@ -219,9 +219,7 @@ function AdminHostingManagement({ isDark = true }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Hosting Type</label>
-                  <select style={{ ...inputStyle }} value={form.hosting_type} onChange={e => setForm(prev => ({ ...prev, hosting_type: e.target.value, hosting_type_key: TYPE_KEY_MAP[e.target.value] }))}>
-                    {HOSTING_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  <input style={inputStyle} placeholder="e.g. Shared Hosting, VPS Hosting..." value={form.hosting_type} onChange={e => setForm(prev => ({ ...prev, hosting_type: e.target.value, hosting_type_key: TYPE_KEY_MAP[e.target.value] || 'SHARED' }))} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Plan Name</label>
