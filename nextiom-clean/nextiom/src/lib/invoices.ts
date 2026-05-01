@@ -107,6 +107,15 @@ export function defaultSettings(): InvoiceSettings {
 
 // ── Settings ─────────────────────────────────────────────────
 
+export async function getPublicInvoiceSettings(): Promise<InvoiceSettings> {
+  const { data } = await supabase
+    .from('invoice_settings')
+    .select('*')
+    .limit(1)
+    .single()
+  return data ?? defaultSettings()
+}
+
 export async function getInvoiceSettings(): Promise<InvoiceSettings> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return defaultSettings()
@@ -164,6 +173,18 @@ export async function getInvoices(): Promise<Invoice[]> {
 
   if (error) throw error
   return data ?? []
+}
+
+export async function getCustomerInvoices(email: string): Promise<Invoice[]> {
+  if (!email) return []
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('*, invoice_items(*)')
+    .eq('client_email', email)
+    .order('invoice_date', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []).map((inv: any) => ({ ...inv, items: inv.invoice_items ?? [] }))
 }
 
 export async function getInvoice(id: string): Promise<Invoice | null> {
