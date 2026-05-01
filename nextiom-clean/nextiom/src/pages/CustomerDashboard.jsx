@@ -20,6 +20,7 @@ import NewDomainRequestPage from '@/components/customer/NewDomainRequestPage';
 import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import NewHostingOrderPage from '@/components/customer/NewHostingOrderPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
+import CustomerInvoicesPage from '@/components/customer/CustomerInvoicesPage';
 import { cn } from '@/lib/utils';
 
 const DARK = {
@@ -294,11 +295,7 @@ function CustomerDashboard() {
       case 'services':
         return <MyServicesPage key="services" user={userProp} {...theme} />;
       case 'invoices':
-        return (
-          <div key="invoices" style={{ background: c.card, color: c.subText, border: `1px solid ${c.border}` }} className="p-8 text-center rounded-xl">
-            Invoices module under maintenance.
-          </div>
-        );
+        return <CustomerInvoicesPage key="invoices" user={userProp} isDark={isDark} c={c} />;
       case 'support_tickets':
         return (
           <div key="support" style={{ background: c.card, color: c.subText, border: `1px solid ${c.border}` }} className="p-8 text-center rounded-xl">

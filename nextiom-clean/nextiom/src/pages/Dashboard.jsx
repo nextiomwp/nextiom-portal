@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import AdminCustomerManagement from '@/components/admin/AdminCustomerManagement';
 import AdminNotificationManagement from '@/components/admin/AdminNotificationManagement';
+import AdminApprovedHostings from '@/components/admin/AdminApprovedHostings';
 import AdminDomainManagement from '@/components/admin/AdminDomainManagement';
 import AdminRequestManagement from '@/components/admin/AdminRequestManagement';
 import AdminHostingManagement from '@/components/admin/AdminHostingManagement';
@@ -25,11 +26,12 @@ const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, section: 'main' },
   { id: 'customers', label: 'Customers', icon: Users, section: 'main' },
   { id: 'domains', label: 'Domains', icon: Globe, section: 'main' },
+  { id: 'approvedHostings', label: 'Approved Hostings', icon: CheckSquare, section: 'main' },
   { id: 'hosting', label: 'Hosting', icon: Server, section: 'main' },
   { id: 'hostingRequests', label: 'Hosting Requests', icon: MessageSquare, section: 'manage' },
   { id: 'domainsRequests', label: 'Domain Requests', icon: ClipboardList, section: 'manage' },
   { id: 'products', label: 'Products', icon: Package, section: 'manage' },
-  { id: 'notifications', label: 'Notifications', icon: Bell, section: 'manage' },
+  { id: 'notifications', label: 'Announcements', icon: Megaphone, section: 'manage' },
   { id: 'logs', label: 'Email Logs', icon: FileText, section: 'manage' },
   { id: 'invoices', label: 'Invoices', icon: Receipt, section: 'manage' },
 ];
@@ -54,6 +56,10 @@ function Dashboard({ onLogout }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [markedReadAt, setMarkedReadAt] = useState(() => localStorage.getItem('adminNotifReadAt'));
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('adminNotifReadIds') || '[]'); } catch { return []; }
+  });
+  const notifRef = useRef(null);
   const [invoiceView, setInvoiceView] = useState('list');
   const [editInvoiceId, setEditInvoiceId] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -117,15 +123,35 @@ function Dashboard({ onLogout }) {
   };
 
   const handleMarkAllRead = () => {
+    const allIds = pendingRequests.map(r => r.id).filter(Boolean);
+    const next = [...new Set([...readNotifIds, ...allIds])];
+    setReadNotifIds(next);
+    localStorage.setItem('adminNotifReadIds', JSON.stringify(next));
     const now = new Date().toISOString();
     localStorage.setItem('adminNotifReadAt', now);
     setMarkedReadAt(now);
     setIsNotificationsOpen(false);
   };
 
-  const unreadCount = markedReadAt
-    ? pendingRequests.filter(r => new Date(r.created_at) > new Date(markedReadAt)).length
-    : pendingRequestsCount;
+  const markNotifRead = (id) => {
+    if (!id || readNotifIds.includes(id)) return;
+    const next = [...readNotifIds, id];
+    setReadNotifIds(next);
+    localStorage.setItem('adminNotifReadIds', JSON.stringify(next));
+  };
+
+  const unreadCount = pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)).length;
+
+  useEffect(() => {
+    if (!isNotificationsOpen) return;
+    const handler = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isNotificationsOpen]);
 
   const handleLogout = async () => {
     await signOut();
@@ -148,11 +174,12 @@ function Dashboard({ onLogout }) {
       case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={setActive} c={c} isDark={isDark} />;
       case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} isDark={isDark} />;
       case 'domains': return <AdminDomainManagement isDark={isDark} />;
+      case 'approvedHostings': return <AdminApprovedHostings isDark={isDark} />;
       case 'hosting': return <AdminHostingManagement isDark={isDark} />;
       case 'hostingRequests': return <AdminHostingRequestManagement isDark={isDark} />;
       case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;
       case 'products': return <ProductList products={products} onUpdate={loadData} />;
-      case 'notifications': return <AdminNotificationManagement />;
+      case 'notifications': return <AdminNotificationManagement isDark={isDark} />;
       case 'logs': return <EmailLogList logs={emailLogs} />;
       case 'invoices': {
         const goList = () => { setEditInvoiceId(null); setInvoiceView('list'); };
@@ -210,23 +237,32 @@ function Dashboard({ onLogout }) {
             <button onClick={() => setIsDark(!isDark)} style={{ background: c.card, border: `1px solid ${c.border}`, color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer' }}>
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
-            <div style={{ position: 'relative' }}>
+            <div ref={notifRef} style={{ position: 'relative' }}>
               <div onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                <Bell size={16} style={{ color: c.subText }} />
+                <Bell size={16} style={{ color: unreadCount > 0 ? c.brand : c.subText }} />
                 {unreadCount > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, background: c.brand, borderRadius: 8, fontSize: 10, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
               </div>
               {isNotificationsOpen && (
                 <div style={{ position: 'absolute', top: 44, right: 0, width: 320, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 50, display: 'flex', flexDirection: 'column', maxHeight: 420 }}>
-                  <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
+                  <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <span style={{ fontWeight: 600, color: c.text }}>Pending Requests</span>
+                    {unreadCount > 0 && <span style={{ fontSize: 11, background: c.brand, color: '#fff', borderRadius: 10, padding: '2px 7px', fontWeight: 700 }}>{unreadCount} new</span>}
                   </div>
                   <div style={{ overflowY: 'auto', flex: 1 }}>
-                    {pendingRequests.slice(0, 10).map((r, i) => (
-                      <div key={i} style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer' }} onClick={() => { setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{r.n} — {r.reqType}</div>
-                        <div style={{ fontSize: 12, color: c.subText }}>{new Date(r.created_at).toLocaleDateString()}</div>
-                      </div>
-                    ))}
+                    {pendingRequests.slice(0, 10).map((r, i) => {
+                      const isUnread = r.id && !readNotifIds.includes(r.id);
+                      return (
+                        <div key={r.id || i}
+                          style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' }}
+                          onClick={() => { markNotifRead(r.id); setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
+                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>{r.n} — {r.reqType}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                        </div>
+                      );
+                    })}
                     {pendingRequests.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No pending requests</div>}
                   </div>
                   <div style={{ padding: '10px 16px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
