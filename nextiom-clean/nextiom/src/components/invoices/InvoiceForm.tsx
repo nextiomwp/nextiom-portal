@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Trash2, Printer, Save, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import {
@@ -7,6 +7,7 @@ import {
   generateInvoiceNo, getInvoiceSettings,
   createInvoice, updateInvoice,
 } from '@/lib/invoices'
+import { getCustomers } from '@/lib/storage'
 
 function newItem(): InvoiceItem {
   return { description: '', qty: 1, unit_price: 0 }
@@ -34,6 +35,38 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [clientAddress, setClientAddress] = useState('')
   const [items, setItems] = useState<InvoiceItem[]>([newItem()])
   const [notes, setNotes] = useState('')
+  const [allCustomers, setAllCustomers] = useState<any[]>([])
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const nameRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    getCustomers().then(data => setAllCustomers(data || []))
+    const handler = (e: MouseEvent) => {
+      if (nameRef.current && !nameRef.current.contains(e.target as Node)) setShowSuggestions(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleNameChange = (value: string) => {
+    setClientName(value)
+    if (value.trim().length < 1) { setSuggestions([]); setShowSuggestions(false); return }
+    const q = value.toLowerCase()
+    const matches = allCustomers.filter(cu => cu.name?.toLowerCase().includes(q) || cu.email?.toLowerCase().includes(q))
+    setSuggestions(matches.slice(0, 6))
+    setShowSuggestions(matches.length > 0)
+  }
+
+  const selectCustomer = (cu: any) => {
+    setClientName(cu.name || '')
+    setClientCompany(cu.company || '')
+    setClientPhone(cu.phone || '')
+    setClientEmail(cu.email || '')
+    setClientAddress([cu.address, cu.country].filter(Boolean).join(', ') || '')
+    setSuggestions([])
+    setShowSuggestions(false)
+  }
 
   useEffect(() => {
     async function init() {
@@ -171,7 +204,23 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
           <div style={card}>
             <p style={secTitle}>Bill to</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div><label style={lbl}>Client name *</label><input style={inp} placeholder="Full name" value={clientName} onChange={e => setClientName(e.target.value)} /></div>
+              <div ref={nameRef} style={{ position: 'relative' }}>
+                <label style={lbl}>Client name *</label>
+                <input style={inp} placeholder="Type name to search customers…" value={clientName} onChange={e => handleNameChange(e.target.value)} autoComplete="off" />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30, background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.18)', marginTop: 2, maxHeight: 220, overflowY: 'auto' }}>
+                    {suggestions.map((cu: any) => (
+                      <div key={cu.id} onMouseDown={() => selectCustomer(cu)}
+                        style={{ padding: '9px 12px', cursor: 'pointer', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 2 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : '#f5f5f5')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{cu.name}</span>
+                        <span style={{ fontSize: 11, color: c.subText }}>{cu.email}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div><label style={lbl}>Company</label><input style={inp} placeholder="Company (optional)" value={clientCompany} onChange={e => setClientCompany(e.target.value)} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
