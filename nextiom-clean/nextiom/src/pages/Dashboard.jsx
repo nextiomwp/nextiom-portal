@@ -388,7 +388,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
               </tr>
             </thead>
             <tbody>
-              {customers.slice(0,4).map((cu,i)=>{
+              {customers.slice(0,8).map((cu,i)=>{
                 const st=String(cu.status||'active').toLowerCase();
                 const isActive=st==='active'||st==='approved';
                 const col=avatarColor(cu.name);
