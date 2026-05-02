@@ -20,7 +20,8 @@ import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getAdminNotifications } from '@/lib/storage';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getAdminNotifications, getUnreadTicketCount } from '@/lib/storage';
+import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 
 const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, section: 'main' },
@@ -32,7 +33,7 @@ const NAV = [
   { id: 'domainsRequests', label: 'Domain Requests', icon: ClipboardList, section: 'manage' },
   { id: 'products', label: 'Products', icon: Package, section: 'manage' },
   { id: 'notifications', label: 'Announcements', icon: Megaphone, section: 'manage' },
-  { id: 'logs', label: 'Email Logs', icon: FileText, section: 'manage' },
+  { id: 'logs', label: 'Tickets', icon: FileText, section: 'manage' },
   { id: 'invoices', label: 'Invoices', icon: Receipt, section: 'manage' },
 ];
 
@@ -64,6 +65,7 @@ function Dashboard({ onLogout }) {
   const [editInvoiceId, setEditInvoiceId] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [adminNotifs, setAdminNotifs] = useState([]);
+  const [unreadTicketCount, setUnreadTicketCount] = useState(0);
 
   useEffect(() => {
     if (active !== 'invoices') { setInvoiceView('list'); setEditInvoiceId(null); }
@@ -91,6 +93,8 @@ function Dashboard({ onLogout }) {
         getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications()
       ]);
       setAdminNotifs(adminN || []);
+      const utc = await getUnreadTicketCount().catch(() => 0);
+      setUnreadTicketCount(utc);
       setCustomers(cus || []); setProducts(prd || []); setLicenses(lic || []);
       setStats(sts || {}); setEmailLogs(lgs || []);
       const domainReqRows = (domReq || []).map(r => ({
@@ -160,8 +164,10 @@ function Dashboard({ onLogout }) {
       await Promise.all(names.map(n => caches.delete(n)));
     }
     const notifReadAt = localStorage.getItem('adminNotifReadAt');
+    const notifReadIds = localStorage.getItem('adminNotifReadIds');
     sessionStorage.clear(); localStorage.clear();
     if (notifReadAt) localStorage.setItem('adminNotifReadAt', notifReadAt);
+    if (notifReadIds) localStorage.setItem('adminNotifReadIds', notifReadIds);
     window.location.replace('/');
   };
 
@@ -180,7 +186,7 @@ function Dashboard({ onLogout }) {
       case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;
       case 'products': return <ProductList products={products} onUpdate={loadData} />;
       case 'notifications': return <AdminNotificationManagement isDark={isDark} />;
-      case 'logs': return <EmailLogList logs={emailLogs} />;
+      case 'logs': return <AdminTicketsPage c={c} isDark={isDark} />;
       case 'invoices': {
         const goList = () => { setEditInvoiceId(null); setInvoiceView('list'); };
         if (invoiceView === 'new') return <NewInvoicePage c={c} isDark={isDark} onBack={goList} />;
@@ -204,7 +210,7 @@ function Dashboard({ onLogout }) {
           {NAV.filter(n => n.section === 'main').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} />)}
           <div style={{ height: 24 }} />
           {sidebarOpen && <div style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1 }}>MANAGE</div>}
-          {NAV.filter(n => n.section === 'manage').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} />)}
+          {NAV.filter(n => n.section === 'manage').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={i.id === 'logs' ? unreadTicketCount : 0} />)}
         </div>
         <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 12, padding: sidebarOpen ? '12px' : '12px 0', background: c.bg, borderRadius: 8 }}>
@@ -296,7 +302,7 @@ function Dashboard({ onLogout }) {
   );
 }
 
-function NavItem({ item, active, setActive, open, c }) {
+function NavItem({ item, active, setActive, open, c, badge = 0 }) {
   const isActive = active === item.id;
   const color = isActive ? c.text : c.subText;
   return (
@@ -305,7 +311,10 @@ function NavItem({ item, active, setActive, open, c }) {
       background: isActive ? c.hover : 'transparent', borderRadius: 8, cursor: 'pointer',
       borderLeft: isActive ? `3px solid ${c.brand}` : '3px solid transparent', marginBottom: 4, transition: 'all 0.1s'
     }}>
-      <item.icon size={18} color={isActive ? c.brand : c.subText} style={{ flexShrink: 0, marginLeft: open ? 0 : -3 }} />
+      <div style={{ position: 'relative', flexShrink: 0, marginLeft: open ? 0 : -3 }}>
+        <item.icon size={18} color={isActive ? c.brand : c.subText} />
+        {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -6, width: 14, height: 14, background: c.brand, borderRadius: '50%', fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{badge > 9 ? '9+' : badge}</span>}
+      </div>
       {open && <span style={{ fontSize: 14, color, fontWeight: isActive ? 600 : 400 }}>{item.label}</span>}
     </button>
   );

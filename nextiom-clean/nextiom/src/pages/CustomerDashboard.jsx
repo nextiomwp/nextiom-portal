@@ -21,6 +21,8 @@ import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import NewHostingOrderPage from '@/components/customer/NewHostingOrderPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import CustomerInvoicesPage from '@/components/customer/CustomerInvoicesPage';
+import CreateTicketPage from '@/components/customer/CreateTicketPage';
+import MyTicketsPage from '@/components/customer/MyTicketsPage';
 import { cn } from '@/lib/utils';
 
 const DARK = {
@@ -61,6 +63,7 @@ const NAV_STRUCTURE = [
   {
     id: 'support', label: 'Support', icon: MessageSquare, type: 'group',
     children: [
+      { id: 'support_create', label: 'Create Ticket' },
       { id: 'support_tickets', label: 'My Tickets' },
     ],
   },
@@ -129,9 +132,17 @@ function CustomerDashboard() {
       await Promise.all(names.map(n => caches.delete(n)));
     }
     sessionStorage.clear();
+    const notifMarkAllAt = localStorage.getItem('cust_notif_mark_all_at');
+    const notifReadVirt = localStorage.getItem('cust_notif_read_virt');
     localStorage.clear();
+    if (notifMarkAllAt) localStorage.setItem('cust_notif_mark_all_at', notifMarkAllAt);
+    if (notifReadVirt) localStorage.setItem('cust_notif_read_virt', notifReadVirt);
     window.location.replace('/');
   };
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
 
   const toggleDark = () => {
     const next = !isDark;
@@ -296,12 +307,10 @@ function CustomerDashboard() {
         return <MyServicesPage key="services" user={userProp} {...theme} />;
       case 'invoices':
         return <CustomerInvoicesPage key="invoices" user={userProp} isDark={isDark} c={c} />;
+      case 'support_create':
+        return <CreateTicketPage key="support_create" user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
       case 'support_tickets':
-        return (
-          <div key="support" style={{ background: c.card, color: c.subText, border: `1px solid ${c.border}` }} className="p-8 text-center rounded-xl">
-            Support ticket system coming soon.
-          </div>
-        );
+        return <MyTicketsPage key="support_tickets" user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
       case 'profile':
         return <ProfilePage key="profile" user={userProp} onUpdate={() => {}} {...theme} />;
       case 'notifications':
