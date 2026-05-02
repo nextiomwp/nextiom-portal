@@ -18,7 +18,7 @@ const DEFAULT_PLANS = [
 function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
   const [allPlans, setAllPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
-  const [hostingTypeKey, setHostingTypeKey] = useState(null);
+  const [hostingType, setHostingType] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [billingPeriod, setBillingPeriod] = useState('Yearly');
   const [domainOption, setDomainOption] = useState('new');
@@ -48,12 +48,12 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
           .order('plan_name');
         const plans = (!error && data && data.length > 0) ? data : DEFAULT_PLANS;
         setAllPlans(plans);
-        const firstKey = plans[0]?.hosting_type_key || null;
-        setHostingTypeKey(firstKey);
-        setSelectedPlan(plans.find(p => p.hosting_type_key === firstKey)?.plan_name || null);
+        const firstType = plans[0]?.hosting_type || null;
+        setHostingType(firstType);
+        setSelectedPlan(plans.find(p => p.hosting_type === firstType)?.plan_name || null);
       } catch {
         setAllPlans(DEFAULT_PLANS);
-        setHostingTypeKey('SHARED');
+        setHostingType('Shared Hosting');
         setSelectedPlan('Basic');
       } finally {
         setLoadingPlans(false);
@@ -61,13 +61,13 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
     })();
   }, []);
 
-  const hostingTypes = [...new Map(allPlans.map(p => [p.hosting_type_key, { key: p.hosting_type_key, label: p.hosting_type }])).values()];
-  const currentPlans = allPlans.filter(p => p.hosting_type_key === hostingTypeKey);
-  const currentTypeLabel = hostingTypes.find(t => t.key === hostingTypeKey)?.label || '';
+  const hostingTypes = [...new Set(allPlans.map(p => p.hosting_type))];
+  const currentPlans = allPlans.filter(p => p.hosting_type === hostingType);
+  const currentTypeLabel = hostingType || '';
 
-  const handleTypeSelect = (key) => {
-    setHostingTypeKey(key);
-    const first = allPlans.find(p => p.hosting_type_key === key);
+  const handleTypeSelect = (type) => {
+    setHostingType(type);
+    const first = allPlans.find(p => p.hosting_type === type);
     setSelectedPlan(first?.plan_name || null);
   };
 
@@ -179,11 +179,11 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
             <p style={{ color: text, fontWeight: 700, fontSize: 14, marginBottom: 14 }}>1. Select Hosting Type</p>
             <div className="grid grid-cols-2 gap-3">
               {hostingTypes.map(type => {
-                const isSelected = hostingTypeKey === type.key;
+                const isSelected = hostingType === type;
                 return (
                   <div
-                    key={type.key}
-                    onClick={() => handleTypeSelect(type.key)}
+                    key={type}
+                    onClick={() => handleTypeSelect(type)}
                     style={{
                       padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
                       border: `2px solid ${isSelected ? brand : borderStrong}`,
@@ -193,7 +193,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
                     onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderColor = brand; }}
                     onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderColor = borderStrong; }}
                   >
-                    <p style={{ color: isSelected ? brand : text, fontWeight: 700, fontSize: 13 }}>{type.label}</p>
+                    <p style={{ color: isSelected ? brand : text, fontWeight: 700, fontSize: 13 }}>{type}</p>
                   </div>
                 );
               })}
