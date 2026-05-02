@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CheckCircle, X, Mail, AlertCircle, ShoppingBag, Info } from 'lucide-react';
+import { Bell, CheckCircle, X, Mail, AlertCircle, ShoppingBag, Info, Receipt } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 
-function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
+function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {} }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState([]);
@@ -147,11 +147,29 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
     await markAllNotificationsAsRead(userId);
   };
 
+  const getNavTarget = (notification) => {
+    const title = (notification.title || '').toLowerCase();
+    const type = (notification.type || '').toLowerCase();
+    if (type === 'announcement') return null;
+    if (type === 'invoice' || title.includes('invoice')) return 'invoices';
+    if (title.includes('domain')) return 'domains_my';
+    if (title.includes('hosting')) return 'hosting_my';
+    if (type === 'ticket' || title.includes('ticket')) return 'support_tickets';
+    return null;
+  };
+
+  const handleNotificationClick = (notification) => {
+    const target = getNavTarget(notification);
+    setIsOpen(false);
+    if (target && onNavigate) onNavigate(target);
+  };
+
   const getIcon = (type) => {
     switch (type) {
       case 'expiration': return <AlertCircle className="w-3.5 h-3.5" style={{ color: brand }} />;
       case 'new_product': return <ShoppingBag className="w-3.5 h-3.5 text-green-500" />;
       case 'update': return <Info className="w-3.5 h-3.5 text-blue-500" />;
+      case 'invoice': return <Receipt className="w-3.5 h-3.5 text-purple-500" />;
       default: return <Mail className="w-3.5 h-3.5" style={{ color: subText }} />;
     }
   };
@@ -162,6 +180,7 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
         case 'expiration': return 'rgba(232,123,53,0.15)';
         case 'new_product': return 'rgba(34,197,94,0.15)';
         case 'update': return 'rgba(59,130,246,0.15)';
+        case 'invoice': return 'rgba(168,85,247,0.15)';
         default: return 'rgba(100,116,139,0.15)';
       }
     }
@@ -169,6 +188,7 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
       case 'expiration': return '#fff7ed';
       case 'new_product': return '#dcfce7';
       case 'update': return '#dbeafe';
+      case 'invoice': return '#f3e8ff';
       default: return '#f1f5f9';
     }
   };
@@ -258,6 +278,7 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
                             ? (isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)')
                             : 'transparent',
                         }}
+                        onClick={() => handleNotificationClick(notification)}
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = hover}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = !isRead
                           ? (isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)')

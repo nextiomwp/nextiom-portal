@@ -7,7 +7,7 @@ import {
   generateInvoiceNo, getInvoiceSettings,
   createInvoice, updateInvoice,
 } from '@/lib/invoices'
-import { getCustomers } from '@/lib/storage'
+import { getCustomers, getCustomerByEmail, addNotification } from '@/lib/storage'
 
 function newItem(): InvoiceItem {
   return { description: '', qty: 1, unit_price: 0 }
@@ -120,6 +120,18 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
       } else {
         await createInvoice(invoiceData, validItems)
         toast({ title: `Invoice ${invoiceNo} saved` })
+        // Notify the customer
+        if (clientEmail) {
+          const customer = await getCustomerByEmail(clientEmail).catch(() => null)
+          if (customer?.id) {
+            addNotification({
+              customer_id: customer.id,
+              type: 'invoice',
+              title: `New invoice — ${invoiceNo}`,
+              message: `You have a new invoice of ${fmtLKR(total)} due by ${dueDate}. Please check your Invoices section.`,
+            }).catch(() => {})
+          }
+        }
       }
       onBack()
     } catch { toast({ title: 'Failed to save invoice', variant: 'destructive' }) }

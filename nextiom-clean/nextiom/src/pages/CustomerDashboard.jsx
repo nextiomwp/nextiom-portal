@@ -7,8 +7,6 @@ import {
   Sun, Moon, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { getUserProfile } from '@/lib/storage';
-import { supabase } from '@/lib/customSupabaseClient';
 
 import DashboardPage from '@/components/customer/DashboardPage';
 import MyServicesPage from '@/components/customer/MyServicesPage';
@@ -83,7 +81,7 @@ function getActiveLabel(activeTab) {
 
 function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [expandedMenus, setExpandedMenus] = useState([]);
+  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'orders', 'support']);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('cust_sidebar_collapsed') === 'true'
@@ -91,39 +89,8 @@ function CustomerDashboard() {
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem('cust_dark') !== 'false'
   );
-  const [customerProfile, setCustomerProfile] = useState(null);
-  const [isInitializing, setIsInitializing] = useState(true);
-
-  const { user, signOut } = useAuth();
+  const { user, signOut, customerProfile } = useAuth();
   const c = isDark ? DARK : LIGHT;
-
-  useEffect(() => {
-    const initializeUser = async () => {
-      if (!user) { setIsInitializing(false); return; }
-      setIsInitializing(true);
-      try {
-        let profile = await getUserProfile(user.id);
-        if (!profile) {
-          const { data: newProfile } = await supabase
-            .from('customers')
-            .insert([{
-              user_id: user.id, email: user.email,
-              name: user.user_metadata?.full_name || user.email.split('@')[0],
-              status: 'active', created_at: new Date().toISOString(),
-            }])
-            .select().single();
-          profile = newProfile;
-        }
-        setCustomerProfile(profile || { name: user.user_metadata?.full_name || user.email, id: user.id, email: user.email });
-      } catch (e) {
-        console.error(e);
-        setCustomerProfile({ name: user.user_metadata?.full_name || user.email, id: user.id, email: user.email });
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-    initializeUser();
-  }, [user]);
 
   const handleLogout = async () => {
     await signOut();
@@ -320,14 +287,6 @@ function CustomerDashboard() {
     }
   };
 
-  if (isInitializing) {
-    return (
-      <div style={{ background: c.bg }} className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin" style={{ color: c.brand }} />
-      </div>
-    );
-  }
-
   if (!user) {
     window.location.replace('/');
     return (
@@ -434,6 +393,7 @@ function CustomerDashboard() {
               <NotificationBell
                 userId={customerProfile.id}
                 onViewAll={() => navigate('notifications')}
+                onNavigate={navigate}
                 isDark={isDark}
                 c={c}
               />

@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState(null);
+  const [customerProfile, setCustomerProfile] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -47,14 +48,25 @@ export const AuthProvider = ({ children }) => {
     try {
       const userRole = authUser.user_metadata?.role || 'customer';
       
-      // If customer, ensure we have a customer record
       if (userRole === 'customer') {
-          const profile = await getUserProfile(authUser.id);
-          // If no profile, we might be in a race condition with registration, 
-          // or user exists in Auth but not in public.customers table yet.
-          // For now, we trust Auth.
+        let profile = await getUserProfile(authUser.id);
+        if (!profile) {
+          const { data: newProfile } = await supabase
+            .from('customers')
+            .insert([{
+              user_id: authUser.id, email: authUser.email,
+              name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+              status: 'active', created_at: new Date().toISOString(),
+            }])
+            .select().single();
+          profile = newProfile;
+        }
+        setCustomerProfile(profile || {
+          name: authUser.user_metadata?.full_name || authUser.email,
+          id: authUser.id, email: authUser.email,
+        });
       }
-      
+
       setUser(authUser);
       setRole(userRole);
     } catch (err) {
@@ -126,6 +138,7 @@ export const AuthProvider = ({ children }) => {
     if (!error) {
       setUser(null);
       setRole(null);
+      setCustomerProfile(null);
     }
     setLoading(false);
     return { error };
@@ -135,6 +148,7 @@ export const AuthProvider = ({ children }) => {
     user,
     role,
     loading,
+    customerProfile,
     signIn,
     signUp,
     signOut,

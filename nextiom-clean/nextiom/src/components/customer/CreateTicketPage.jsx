@@ -1,7 +1,40 @@
 import React, { useState } from 'react';
-import { Send, Ticket, CheckCircle, ChevronRight } from 'lucide-react';
+import { Send, Ticket, CheckCircle, ChevronRight, Lightbulb } from 'lucide-react';
 import { createTicket, addTicketMessage, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+
+const SUGGESTIONS = [
+  {
+    label: 'Hosting Down',
+    subject: 'My hosting / website is down',
+    message: 'My website is currently not loading or accessible. The issue started around [time]. Please investigate and restore service as soon as possible.\n\nAffected domain/URL: \nError message (if any): ',
+  },
+  {
+    label: 'cPanel Credentials',
+    subject: 'Request for cPanel login credentials',
+    message: 'I need my cPanel login credentials for the following hosting package:\n\nDomain: \nHosting plan: \n\nPlease send the credentials to my registered email or provide them securely.',
+  },
+  {
+    label: 'Domain Transfer',
+    subject: 'Domain transfer request',
+    message: 'I would like to initiate a transfer for the following domain:\n\nDomain name: \nTransfer to (registrar): \nAdditional notes: ',
+  },
+  {
+    label: 'DNS Change',
+    subject: 'DNS record update request',
+    message: 'I need to update the DNS records for my domain. Please make the following changes:\n\nDomain: \nRecord type (A / CNAME / MX / TXT): \nName: \nValue/Points to: \nTTL (if applicable): ',
+  },
+  {
+    label: 'SSL Issue',
+    subject: 'SSL certificate issue on my domain',
+    message: 'My website is showing an SSL/HTTPS error. Details:\n\nDomain: \nBrowser error message: \nWhen did it start: \n\nPlease check and renew/fix the SSL certificate.',
+  },
+  {
+    label: 'Billing Query',
+    subject: 'Billing / invoice query',
+    message: 'I have a question regarding a charge or invoice on my account:\n\nInvoice/reference number (if available): \nAmount in question: \nQuestion or concern: ',
+  },
+];
 
 export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
   const [subject, setSubject] = useState('');
@@ -35,6 +68,19 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
     marginBottom: 6,
   };
 
+  const cardS = {
+    background: c.card,
+    border: `1px solid ${c.border}`,
+    borderRadius: 16,
+    overflow: 'hidden',
+    boxShadow: isDark ? '0 2px 16px rgba(0,0,0,0.25)' : '0 2px 16px rgba(0,0,0,0.06)',
+  };
+
+  const applySuggestion = (s) => {
+    setSubject(s.subject);
+    setMessage(s.message);
+  };
+
   async function handleSubmit(e) {
     e.preventDefault();
     if (!subject.trim() || !message.trim()) {
@@ -58,14 +104,6 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
       setSending(false);
     }
   }
-
-  const cardS = {
-    background: c.card,
-    border: `1px solid ${c.border}`,
-    borderRadius: 16,
-    overflow: 'hidden',
-    boxShadow: isDark ? '0 2px 16px rgba(0,0,0,0.25)' : '0 2px 16px rgba(0,0,0,0.06)',
-  };
 
   if (done) {
     return (
@@ -99,9 +137,44 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>Create Support Ticket</h1>
         <p style={{ fontSize: 13, color: c.subText, marginTop: 4 }}>Describe your issue and our team will get back to you</p>
+      </div>
+
+      {/* Suggestion chips */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <Lightbulb size={13} style={{ color: c.brand }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            Quick Suggestions
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {SUGGESTIONS.map(s => (
+            <button
+              key={s.label}
+              type="button"
+              onClick={() => applySuggestion(s)}
+              style={{
+                padding: '6px 13px',
+                border: `1.5px solid ${subject === s.subject ? c.brand : c.border}`,
+                borderRadius: 20,
+                background: subject === s.subject
+                  ? (isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.08)')
+                  : 'transparent',
+                color: subject === s.subject ? c.brand : c.subText,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.15s',
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={cardS}>
@@ -141,7 +214,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           <div>
             <label style={labelS}>Message</label>
             <textarea
-              style={{ ...inp, minHeight: 140, resize: 'vertical', lineHeight: 1.6 }}
+              style={{ ...inp, minHeight: 160, resize: 'vertical', lineHeight: 1.6 }}
               placeholder="Describe your issue in detail. Include any error messages or steps to reproduce."
               value={message}
               onChange={e => setMessage(e.target.value)}
