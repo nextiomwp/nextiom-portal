@@ -306,8 +306,7 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose }) {
         <div style={{ padding: '14px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <button
             onClick={() => {
-              const settings_data = null;
-              localStorage.setItem('nxt_invoice_print', JSON.stringify({ ...invoice, settings: settings_data }));
+              localStorage.setItem('nxt_invoice_print', JSON.stringify({ ...invoice, settings }));
               window.open('/invoices/print', '_blank');
             }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
@@ -526,13 +525,12 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 {pageItems.map((inv, i) => {
                   const firstItem = (inv.items || [])[0];
                   const service = firstItem?.description || inv.invoice_no;
-                  const isActive = openInvoice?.id === inv.id;
                   return (
                     <tr key={inv.id}
-                      onClick={() => setOpenInvoice(inv)}
-                      style={{ cursor: 'pointer', background: isActive ? (isDark ? 'rgba(232,123,53,0.08)' : 'rgba(232,123,53,0.04)') : 'transparent', transition: 'background 0.1s' }}
-                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : '#f9f9f9'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'rgba(232,123,53,0.08)' : 'rgba(232,123,53,0.04)') : 'transparent'; }}
+                      onClick={() => handleDownload(inv)}
+                      style={{ cursor: 'pointer', background: 'transparent', transition: 'background 0.1s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : '#f9f9f9'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
                       <td style={tdS}>
                         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: isDark ? '#93c5fd' : '#2563eb' }}>{inv.invoice_no}</span>
@@ -556,11 +554,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                          <button onClick={() => setOpenInvoice(inv)} title="View" style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: c.subText, display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                            <Eye size={13} />
-                          </button>
-                          <button onClick={() => handleDownload(inv)} title="Download PDF" style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 8px', cursor: 'pointer', color: c.subText, display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                            <Download size={13} />
+                          <button onClick={() => handleDownload(inv)} title="View / Download PDF" style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: c.subText, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                            <Eye size={13} /> View PDF
                           </button>
                         </div>
                       </td>

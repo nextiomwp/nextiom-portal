@@ -75,15 +75,16 @@ function AdminNotificationManagement({ isDark = true }) {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'stretch' }}>
+
       {/* Send Announcement */}
-      <div style={cardS}>
+      <div style={{ ...cardS, display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ width: 3, height: 18, borderRadius: 2, background: c.brand, flexShrink: 0 }} />
           <Megaphone size={16} style={{ color: c.brand }} />
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text }}>Send Announcement</span>
         </div>
-        <form onSubmit={handleSend} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSend} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
           <div>
             <label style={labelS}>Recipient</label>
             <select style={{ ...inpS, appearance: 'none' }} value={formData.recipientId} onChange={e => setFormData(f => ({ ...f, recipientId: e.target.value }))}>
@@ -117,12 +118,12 @@ function AdminNotificationManagement({ isDark = true }) {
       </div>
 
       {/* Templates & Recent */}
-      <div style={cardS}>
+      <div style={{ ...cardS, display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ width: 3, height: 18, borderRadius: 2, background: c.brand, flexShrink: 0 }} />
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text }}>Templates & Recent</span>
         </div>
-        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
           <p style={{ fontSize: 12, color: c.subText, marginBottom: 4 }}>Click a template to auto-fill the form.</p>
           {TEMPLATES.map((t, i) => (
             <div key={i}

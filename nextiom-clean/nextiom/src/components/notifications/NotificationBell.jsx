@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCircle, X, Mail, AlertCircle, ShoppingBag, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getNotifications, markAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
+import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 
 function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +16,20 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
   const hover = c.hover || '#f5f5f5';
+
+  const getReadState = () => {
+    const markAllAt = localStorage.getItem('cust_notif_mark_all_at');
+    const readVirtIds = (() => { try { return JSON.parse(localStorage.getItem('cust_notif_read_virt') || '[]'); } catch { return []; } })();
+    return { markAllAt, readVirtIds };
+  };
+
+  const applyReadState = (notif) => {
+    if (notif.read_status) return notif;
+    const { markAllAt, readVirtIds } = getReadState();
+    if (markAllAt && notif.created_at && notif.created_at < markAllAt) return { ...notif, read_status: true };
+    if (notif.virtual && readVirtIds.includes(notif.id)) return { ...notif, read_status: true };
+    return notif;
+  };
 
   const loadNotifications = async () => {
     try {
@@ -74,9 +88,9 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
         }
       });
 
-      const combined = [...dbNotifications, ...virtualNotifs].sort((a, b) =>
-        new Date(b.created_at || 0) - new Date(a.created_at || 0)
-      );
+      const combined = [...dbNotifications, ...virtualNotifs]
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+        .map(applyReadState);
 
       setUnreadCount(combined.filter(n => !n.read_status).length);
       setRecentNotifications(combined.slice(0, 5));
@@ -106,6 +120,8 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
   const handleMarkAsRead = async (e, notification) => {
     e.stopPropagation();
     if (notification.virtual) {
+      const { readVirtIds } = getReadState();
+      localStorage.setItem('cust_notif_read_virt', JSON.stringify([...new Set([...readVirtIds, notification.id])]));
       setRecentNotifications(prev =>
         prev.map(n => n.id === notification.id ? { ...n, read_status: true } : n)
       );
@@ -114,6 +130,21 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
     }
     await markAsRead(notification.id);
     loadNotifications();
+  };
+
+  const handleMarkAllRead = async () => {
+    const now = new Date().toISOString();
+    localStorage.setItem('cust_notif_mark_all_at', now);
+    const virtUnreadIds = recentNotifications
+      .filter(n => n.virtual && !n.read_status)
+      .map(n => n.id);
+    if (virtUnreadIds.length > 0) {
+      const { readVirtIds } = getReadState();
+      localStorage.setItem('cust_notif_read_virt', JSON.stringify([...new Set([...readVirtIds, ...virtUnreadIds])]));
+    }
+    setRecentNotifications(prev => prev.map(n => ({ ...n, read_status: true })));
+    setUnreadCount(0);
+    await markAllNotificationsAsRead(userId);
   };
 
   const getIcon = (type) => {
@@ -193,9 +224,22 @@ function NotificationBell({ userId, onViewAll, isDark = false, c = {} }) {
                   </span>
                 )}
               </div>
-              <button onClick={() => setIsOpen(false)} style={{ color: subText }}>
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-md transition-colors"
+                    style={{ color: brand, background: c.brandLight || 'rgba(232,123,53,0.1)' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    Mark all as read
+                  </button>
+                )}
+                <button onClick={() => setIsOpen(false)} style={{ color: subText }}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* List */}

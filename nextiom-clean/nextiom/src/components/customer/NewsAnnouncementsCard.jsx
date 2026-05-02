@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Megaphone, Sparkles } from 'lucide-react';
+import { supabase } from '@/lib/customSupabaseClient';
 
-function NewsAnnouncementsCard({ isDark = false, c = {} }) {
+function NewsAnnouncementsCard({ isDark = false, c = {}, customerId }) {
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const brand = c.brand || '#E87B35';
   const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
   const panel2 = c.panel2 || '#f5f5f5';
+
+  const [announcement, setAnnouncement] = useState(null);
+
+  useEffect(() => {
+    if (!customerId) return;
+    supabase
+      .from('notifications')
+      .select('title, message, created_at')
+      .eq('type', 'announcement')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => { if (data) setAnnouncement(data); });
+  }, [customerId]);
+
+  const fmtDate = (iso) => iso
+    ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
 
   return (
     <div style={{
@@ -36,19 +56,22 @@ function NewsAnnouncementsCard({ isDark = false, c = {} }) {
         <span style={{ color: brand, fontSize: 11, fontWeight: 600 }}>Latest from Nextiom</span>
       </div>
 
-      {/* Content */}
-      <p style={{ color: subText, fontSize: 13, lineHeight: 1.65, margin: 0 }}>
-        Stay informed with the latest updates, system maintenance schedules, and feature releases from Nextiom.
-      </p>
-
-      {/* Announcement item */}
-      <div style={{ padding: '12px 14px', borderRadius: 12, background: panel2, border: `1px solid ${border}` }}>
-        <p style={{ color: text, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>🚀 Platform Update v2.1</p>
-        <p style={{ color: subText, fontSize: 11, lineHeight: 1.55, marginBottom: 4 }}>
-          New hosting management features and improved dashboard performance are now live.
-        </p>
-        <p style={{ color: subText, fontSize: 10 }}>Apr 29, 2026</p>
-      </div>
+      {/* Announcement */}
+      {announcement ? (
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: panel2, border: `1px solid ${border}` }}>
+          <p style={{ color: text, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{announcement.title}</p>
+          <p style={{ color: subText, fontSize: 11, lineHeight: 1.55, marginBottom: 6 }}>
+            {announcement.message}
+          </p>
+          <p style={{ color: subText, fontSize: 10 }}>{fmtDate(announcement.created_at)}</p>
+        </div>
+      ) : (
+        <div style={{ padding: '12px 14px', borderRadius: 12, background: panel2, border: `1px solid ${border}` }}>
+          <p style={{ color: subText, fontSize: 12, lineHeight: 1.55, margin: 0 }}>
+            No announcements yet. Check back soon for the latest updates from Nextiom.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

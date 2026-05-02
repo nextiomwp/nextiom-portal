@@ -36,6 +36,23 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
 
   useEffect(() => { loadPackages(); }, [user]);
 
+  const billingMonths = (billing) => {
+    const b = String(billing || '').toLowerCase();
+    if (b.includes('yearly') || b.includes('annual')) return 12;
+    if (b.includes('6')) return 6;
+    if (b.includes('3')) return 3;
+    return 1;
+  };
+
+  const calcExpiry = (pkg) => {
+    if (pkg.expiry_date) return new Date(pkg.expiry_date);
+    const isApproved = ['active', 'approved', 'completed'].includes(String(pkg.status || '').toLowerCase());
+    if (!isApproved || !pkg.updated_at) return null;
+    const base = new Date(pkg.updated_at);
+    base.setMonth(base.getMonth() + billingMonths(pkg.billing_period));
+    return base;
+  };
+
   const parseRequestField = (raw, label) => {
     if (!raw) return null;
     const regex = new RegExp(`${label}:\\s*([^|;\\n]+)`, 'i');
@@ -163,10 +180,10 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
-                {['Package', 'Domain', 'Status', 'Actions'].map((h, i) => (
+                {['Package', 'Domain', 'Status', 'Expiry', 'Actions'].map((h, i) => (
                   <th key={h} style={{
                     padding: '10px 20px',
-                    textAlign: i === 3 ? 'right' : 'left',
+                    textAlign: i === 4 ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: subText,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     borderBottom: `1px solid ${border}`,
@@ -178,6 +195,9 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
               {filteredPackages.length > 0 ? filteredPackages.map(pkg => {
                 const { bg, color } = statusStyle(pkg.status, isDark);
                 const displayName = pkg.package_name || pkg.package_type || pkg.packageName || 'N/A';
+                const expiryDate = calcExpiry(pkg);
+                const daysLeft = expiryDate ? Math.ceil((expiryDate - new Date()) / 86400000) : null;
+                const expiryColor = daysLeft !== null && daysLeft <= 7 ? '#ef4444' : daysLeft !== null && daysLeft <= 30 ? '#f97316' : subText;
                 return (
                   <tr
                     key={pkg.id}
@@ -191,6 +211,20 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                       <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
                         {pkg.status}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px 20px' }}>
+                      {expiryDate ? (
+                        <div>
+                          <div style={{ fontSize: 12, color: expiryColor, fontWeight: 600 }}>
+                            {expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </div>
+                          <div style={{ fontSize: 11, color: expiryColor, marginTop: 2 }}>
+                            {daysLeft <= 0 ? 'Expired' : `${daysLeft}d remaining`}
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ color: subText, fontSize: 12 }}>—</span>
+                      )}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -226,7 +260,7 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                 );
               }) : (
                 <tr>
-                  <td colSpan={4} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                  <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
                     No hosting packages found
                   </td>
                 </tr>

@@ -182,9 +182,8 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             .order('created_at', { ascending: false })
             .limit(5),
           supabase.from('invoices')
-            .select('amount, status')
-            .eq('customer_id', customerId)
-            .not('amount', 'is', null),
+            .select('total')
+            .eq('status', 'paid'),
         ]);
 
         const domains = domainRes.data || [];
@@ -196,7 +195,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         );
 
         const invoices = invoiceRes.data || [];
-        const totalSpend = invoices.reduce((sum, i) => sum + (parseFloat(i.amount) || 0), 0);
+        const totalSpend = invoices.reduce((sum, i) => sum + (parseFloat(i.total) || 0), 0);
 
         const months = getLast6Months();
         const chartData = months.map(m => ({
@@ -301,7 +300,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           iconBg={isDark ? 'rgba(59,130,246,0.15)' : '#dbeafe'}
           iconColor="#2563eb"
           label="Total Spend"
-          value={`$${data.totalSpend.toFixed(2)}`}
+          value={`LKR ${data.totalSpend.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           c={c}
           isDark={isDark}
         />
@@ -415,7 +414,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
       {/* Row 3: News + Rate Us */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <NewsAnnouncementsCard isDark={isDark} c={c} />
+        <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
         <RateUsCard user={user} isDark={isDark} c={c} />
       </div>
     </div>

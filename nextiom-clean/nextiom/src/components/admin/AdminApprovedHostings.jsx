@@ -80,6 +80,23 @@ function AdminApprovedHostings({ isDark = true }) {
     }
   };
 
+  const billingMonths = (billing) => {
+    const b = String(billing || '').toLowerCase();
+    if (b.includes('yearly') || b.includes('annual')) return 12;
+    if (b.includes('6')) return 6;
+    if (b.includes('3')) return 3;
+    return 1; // monthly default
+  };
+
+  const calcExpiry = (h) => {
+    if (h.expiry_date) return new Date(h.expiry_date);
+    if (!h.updated_at) return null;
+    const { billing } = parsePackageType(h.package_type);
+    const base = new Date(h.updated_at);
+    base.setMonth(base.getMonth() + billingMonths(billing));
+    return base;
+  };
+
   const daysUntilExpiry = (expiry) => {
     if (!expiry) return null;
     return Math.ceil((new Date(expiry) - new Date()) / 86400000);
@@ -100,7 +117,8 @@ function AdminApprovedHostings({ isDark = true }) {
         .toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchSearch) return false;
     if (expFilter === 'all') return true;
-    const days = daysUntilExpiry(h.expiry_date);
+    const expiryDate = calcExpiry(h);
+    const days = expiryDate ? daysUntilExpiry(expiryDate) : null;
     if (days === null) return false;
     const limit = parseInt(expFilter);
     return days >= 0 && days <= limit;
@@ -234,7 +252,8 @@ function AdminApprovedHostings({ isDark = true }) {
           <tbody>
             {filteredHostings.map((h, i) => {
               const parsed = parsePackageType(h.package_type);
-              const days = daysUntilExpiry(h.expiry_date);
+              const expiryDate = calcExpiry(h);
+              const days = expiryDate ? daysUntilExpiry(expiryDate) : null;
               const urgentColor = days !== null && days <= 7 ? '#ef4444' : days !== null && days <= 30 ? '#f97316' : null;
               return (
                 <tr key={h.id}>
@@ -245,10 +264,10 @@ function AdminApprovedHostings({ isDark = true }) {
                   <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.text }}>{h.customers?.name || 'Unknown'}</span></td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={h.status} /></td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}>
-                    {h.expiry_date ? (
+                    {expiryDate ? (
                       <div>
-                        <span style={{ color: urgentColor || c.text }}>{new Date(h.expiry_date).toLocaleDateString()}</span>
-                        {days !== null && days <= 30 && (
+                        <span style={{ color: urgentColor || c.text }}>{expiryDate.toLocaleDateString()}</span>
+                        {days !== null && (
                           <div style={{ fontSize: 11, color: urgentColor || c.subText, marginTop: 2 }}>
                             {days <= 0 ? 'Expired' : `in ${days} day${days !== 1 ? 's' : ''}`}
                           </div>

@@ -1,0 +1,253 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, addNotification } from '@/lib/storage';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useToast } from '@/components/ui/use-toast';
+
+const PRIORITY_CFG = {
+  low:    { label: 'Low',    color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+  normal: { label: 'Normal', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  high:   { label: 'High',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+};
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export default function AdminTicketsPage({ c, isDark }) {
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
+  const chatEndRef = useRef(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    try { setTickets(await getAllTickets()); }
+    catch { toast({ title: 'Failed to load tickets', variant: 'destructive' }); }
+    finally { setLoading(false); }
+  }
+
+  async function openTicket(ticket) {
+    setSelected(ticket);
+    setMsgLoading(true);
+    setMessages([]);
+    try {
+      const msgs = await getTicketMessages(ticket.id);
+      setMessages(msgs);
+    } catch {}
+    finally { setMsgLoading(false); }
+  }
+
+  useEffect(() => {
+    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  async function handleSend() {
+    if (!reply.trim() || !selected) return;
+    setSending(true);
+    try {
+      const msg = await addTicketMessage(selected.id, 'admin', reply.trim());
+      setMessages(m => [...m, msg]);
+      setReply('');
+      // notify customer
+      await addNotification({
+        customer_id: selected.customer_id,
+        type: 'ticket_reply',
+        title: 'Support reply received',
+        message: `Admin replied to your ticket: ${selected.subject}`,
+      });
+      // update local ticket list
+      setTickets(ts => ts.map(t => t.id === selected.id ? { ...t, updated_at: new Date().toISOString(), ticket_messages: [...(t.ticket_messages || []), msg] } : t));
+    } catch { toast({ title: 'Failed to send reply', variant: 'destructive' }); }
+    finally { setSending(false); }
+  }
+
+  async function handleClose() {
+    if (!selected) return;
+    try {
+      await closeTicket(selected.id);
+      const updated = { ...selected, status: 'closed' };
+      setSelected(updated);
+      setTickets(ts => ts.map(t => t.id === selected.id ? updated : t));
+      toast({ title: 'Ticket closed' });
+    } catch { toast({ title: 'Failed to close ticket', variant: 'destructive' }); }
+  }
+
+  function isUnread(ticket) {
+    return !(ticket.ticket_messages || []).some(m => m.sender_role === 'admin');
+  }
+
+  const inp = { outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 0, height: 'calc(100vh - 180px)', minHeight: 500, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+      {/* Inbox list */}
+      <div style={{ borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', background: c.card }}>
+        <div style={{ padding: '14px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Ticket size={15} style={{ color: c.brand }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: c.text }}>Support Tickets</span>
+            <span style={{ fontSize: 11, color: c.subText, background: c.hover, borderRadius: 10, padding: '1px 7px' }}>{tickets.length}</span>
+          </div>
+          <button onClick={load} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}>
+            <RefreshCw size={13} />
+          </button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {loading ? (
+            [...Array(5)].map((_, i) => (
+              <div key={i} style={{ height: 72, margin: '8px 12px', borderRadius: 8, background: c.hover }} />
+            ))
+          ) : tickets.length === 0 ? (
+            <div style={{ padding: 32, textAlign: 'center', color: c.subText, fontSize: 13 }}>
+              <MessageSquare size={32} style={{ margin: '0 auto 10px', opacity: 0.3, display: 'block' }} />
+              No tickets yet
+            </div>
+          ) : tickets.map(ticket => {
+            const unread = isUnread(ticket);
+            const isOpen = ticket.status === 'open';
+            const isActive = selected?.id === ticket.id;
+            const pCfg = PRIORITY_CFG[ticket.priority] || PRIORITY_CFG.normal;
+            return (
+              <div
+                key={ticket.id}
+                onClick={() => openTicket(ticket)}
+                style={{
+                  padding: '12px 14px',
+                  borderBottom: `1px solid ${c.border}`,
+                  cursor: 'pointer',
+                  background: isActive ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : unread ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : 'transparent',
+                  borderLeft: isActive ? `3px solid ${c.brand}` : '3px solid transparent',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.hover; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent'; }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: unread ? 700 : 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{ticket.subject}</span>
+                  <span style={{ fontSize: 10, color: c.subText, flexShrink: 0, marginLeft: 6 }}>{fmtTime(ticket.updated_at)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <User size={10} style={{ color: c.subText }} />
+                  <span style={{ fontSize: 11, color: c.subText }}>{ticket.customers?.name || 'Unknown'}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: isOpen ? c.brand : c.subText, background: isOpen ? `rgba(232,123,53,0.12)` : c.hover, padding: '1px 7px', borderRadius: 10 }}>
+                    {isOpen ? 'Open' : 'Closed'}
+                  </span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: pCfg.color, background: pCfg.bg, padding: '1px 7px', borderRadius: 10 }}>{pCfg.label}</span>
+                  {unread && isOpen && <span style={{ width: 6, height: 6, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Chat panel */}
+      {selected ? (
+        <div style={{ display: 'flex', flexDirection: 'column', background: isDark ? '#15161A' : '#f8f8f7' }}>
+          {/* Chat header */}
+          <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: c.card }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject}</div>
+              <div style={{ fontSize: 11, color: c.subText }}>
+                {selected.customers?.name} · {selected.customers?.email}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              {selected.status === 'open' && (
+                <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                  <CheckCircle size={13} /> Close Ticket
+                </button>
+              )}
+              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}>
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {msgLoading ? (
+              <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>Loading messages…</div>
+            ) : messages.length === 0 ? (
+              <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>No messages yet.</div>
+            ) : messages.map(msg => {
+              const isAdmin = msg.sender_role === 'admin';
+              return (
+                <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                  <div style={{ maxWidth: '72%' }}>
+                    <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isAdmin ? 'right' : 'left' }}>
+                      {isAdmin ? 'You (Admin)' : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
+                    </div>
+                    <div style={{
+                      padding: '10px 14px',
+                      borderRadius: isAdmin ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                      background: isAdmin ? c.brand : c.card,
+                      color: isAdmin ? '#fff' : c.text,
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      border: isAdmin ? 'none' : `1px solid ${c.border}`,
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                    }}>
+                      {msg.message}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Reply input */}
+          <div style={{ padding: '12px 18px', borderTop: `1px solid ${c.border}`, background: c.card }}>
+            {selected.status === 'closed' ? (
+              <div style={{ padding: '10px 14px', background: c.hover, borderRadius: 8, fontSize: 12, color: c.subText, textAlign: 'center' }}>
+                This ticket is closed. Reopen it to reply.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                <textarea
+                  value={reply}
+                  onChange={e => setReply(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="Type a reply… (Enter to send)"
+                  rows={2}
+                  style={{ ...inp, flex: 1, padding: '10px 12px', border: `1.5px solid ${c.border}`, borderRadius: 10, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, resize: 'none', width: '100%' }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={sending || !reply.trim()}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: c.brand, color: '#fff', border: 'none', borderRadius: 10, cursor: sending || !reply.trim() ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: sending || !reply.trim() ? 0.6 : 1, fontFamily: 'inherit', flexShrink: 0 }}
+                >
+                  <Send size={14} /> Send
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: c.subText, background: isDark ? '#15161A' : '#f8f8f7' }}>
+          <Ticket size={40} style={{ opacity: 0.2 }} />
+          <p style={{ fontSize: 13 }}>Select a ticket to view the conversation</p>
+        </div>
+      )}
+    </div>
+  );
+}
