@@ -20,7 +20,7 @@ import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getAdminNotifications, getUnreadTicketCount } from '@/lib/storage';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount } from '@/lib/storage';
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 
 const NAV = [
@@ -89,8 +89,8 @@ function Dashboard({ onLogout }) {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [cus, prd, lic, sts, lgs, domReq, hostReq, hostPkg, adminN] = await Promise.all([
-        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications()
+      const [cus, prd, lic, sts, lgs, domReq, hostReq, hostPkg, adminN, hostPlans] = await Promise.all([
+        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications(), getHostingPlans()
       ]);
       setAdminNotifs(adminN || []);
       const utc = await getUnreadTicketCount().catch(() => 0);
@@ -118,7 +118,7 @@ function Dashboard({ onLogout }) {
       setRequests(allReq);
       setPendingRequests(pendingReqRows);
       setPendingRequestsCount(pendingReqRows.length);
-      setHostingPlans(hostReq || []);
+      setHostingPlans(hostPlans || []);
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
     } finally {
@@ -451,25 +451,29 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
           </div>
 
           <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
-            <div style={{fontSize:16,fontWeight:600,marginBottom:20}}>Hosting plans</div>
+            <div style={{fontSize:16,fontWeight:600,marginBottom:20,color:c.text}}>Hosting plans</div>
             {(()=>{
-              const counts={Shared:0,VPS:0,Cloud:0};
+              const COLORS = [c.brand,'#378ADD','#639922','#a855f7','#f59e0b','#ec4899'];
+              const counts={};
               hostingPlans.forEach(p=>{
-                const t=(p.package_type||p.type||p.package_name||'').toLowerCase();
-                if(t.includes('vps'))counts.VPS++;
-                else if(t.includes('cloud'))counts.Cloud++;
-                else counts.Shared++;
+                const t=p.hosting_type||'Other';
+                counts[t]=(counts[t]||0)+1;
               });
+              const entries=Object.entries(counts);
               const total=hostingPlans.length||1;
-              return [['Shared',counts.Shared,c.brand],['VPS',counts.VPS,'#378ADD'],['Cloud',counts.Cloud,'#639922']].map(([n,v,bg])=>(
-                <div key={n} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
-                  <div style={{width:48,fontSize:13,color:c.text}}>{n}</div>
-                  <div style={{flex:1,height:6,background:isDark?'rgba(255,255,255,0.04)':'#ebebeb',borderRadius:3}}>
-                    <div style={{width:`${Math.round((v/total)*100)}%`,height:'100%',background:bg,borderRadius:3}}/>
+              if(!entries.length) return <div style={{color:c.subText,fontSize:13}}>No plans yet</div>;
+              return entries.map(([name,val],i)=>{
+                const short=name.replace(' Hosting','').replace(' Server','');
+                return (
+                  <div key={name} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+                    <div style={{width:64,fontSize:13,color:c.text,flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={name}>{short}</div>
+                    <div style={{flex:1,height:6,background:isDark?'rgba(255,255,255,0.07)':'#ebebeb',borderRadius:3}}>
+                      <div style={{width:`${Math.round((val/total)*100)}%`,height:'100%',background:COLORS[i%COLORS.length],borderRadius:3,transition:'width 0.4s'}}/>
+                    </div>
+                    <div style={{width:38,fontSize:12,color:c.subText,textAlign:'right',flexShrink:0}}>{val} <span style={{opacity:0.6}}>({Math.round((val/total)*100)}%)</span></div>
                   </div>
-                  <div style={{width:32,fontSize:12,color:c.subText,textAlign:'right'}}>{Math.round((v/total)*100)}%</div>
-                </div>
-              ));
+                );
+              });
             })()}
           </div>
         </div>
