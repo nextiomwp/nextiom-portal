@@ -517,6 +517,17 @@ export const markAsRead = async (id) => {
   return data;
 };
 
+export const markAllNotificationsAsRead = async (customerId) => {
+  if (!customerId) return;
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_status: true })
+    .eq('customer_id', customerId)
+    .eq('read_status', false);
+
+  if (error) handleSupabaseError(error, 'markAllNotificationsAsRead');
+};
+
 export const deleteNotification = async (id) => {
   const { error } = await supabase
     .from('notifications')
@@ -790,4 +801,76 @@ export const getSettings = () => {
 export const saveSettings = (settings) => {
   console.log('Settings saved:', settings);
   localStorage.setItem('app_settings', JSON.stringify(settings));
+};
+
+// ── Ticket Functions ──────────────────────────────────────────
+
+export const createTicket = async (customerId, subject, priority = 'normal') => {
+  const { data, error } = await supabase
+    .from('tickets')
+    .insert([{ customer_id: customerId, subject, priority, status: 'open' }])
+    .select()
+    .single();
+  if (error) handleSupabaseError(error, 'createTicket');
+  return data;
+};
+
+export const getTicketsByCustomer = async (customerId) => {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*, ticket_messages(*)')
+    .eq('customer_id', customerId)
+    .order('updated_at', { ascending: false });
+  if (error) handleSupabaseError(error, 'getTicketsByCustomer');
+  return data || [];
+};
+
+export const getAllTickets = async () => {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*, customers(name, email), ticket_messages(*)')
+    .order('updated_at', { ascending: false });
+  if (error) handleSupabaseError(error, 'getAllTickets');
+  return data || [];
+};
+
+export const addTicketMessage = async (ticketId, senderRole, message) => {
+  const { data, error } = await supabase
+    .from('ticket_messages')
+    .insert([{ ticket_id: ticketId, sender_role: senderRole, message }])
+    .select()
+    .single();
+  if (error) handleSupabaseError(error, 'addTicketMessage');
+  await supabase.from('tickets').update({ updated_at: new Date().toISOString() }).eq('id', ticketId);
+  return data;
+};
+
+export const getTicketMessages = async (ticketId) => {
+  const { data, error } = await supabase
+    .from('ticket_messages')
+    .select('*')
+    .eq('ticket_id', ticketId)
+    .order('created_at', { ascending: true });
+  if (error) handleSupabaseError(error, 'getTicketMessages');
+  return data || [];
+};
+
+export const closeTicket = async (ticketId) => {
+  const { error } = await supabase
+    .from('tickets')
+    .update({ status: 'closed', updated_at: new Date().toISOString() })
+    .eq('id', ticketId);
+  if (error) handleSupabaseError(error, 'closeTicket');
+  return true;
+};
+
+export const getUnreadTicketCount = async () => {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('id, ticket_messages(sender_role)')
+    .eq('status', 'open');
+  if (error) return 0;
+  return (data || []).filter(t =>
+    !(t.ticket_messages || []).some(m => m.sender_role === 'admin')
+  ).length;
 };
