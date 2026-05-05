@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { updateUserProfile } from '@/lib/storage';
-import { Loader2, User, Edit3, Check } from 'lucide-react';
+import { supabase } from '@/lib/customSupabaseClient';
+import { Loader2, User, Edit3, Check, Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
   const safeUser = user || {};
@@ -13,6 +14,9 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
     country: safeUser.country || '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [showPw, setShowPw] = useState(false);
+  const [pwLoading, setPwLoading] = useState(false);
   const { toast } = useToast();
 
   const border = c.border || '#ebebeb';
@@ -22,6 +26,38 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
   const brand = c.brand || '#E87B35';
   const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
   const panel2 = c.panel2 || '#f5f5f5';
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (pwForm.next.length < 8) {
+      toast({ title: 'Error', description: 'New password must be at least 8 characters.', variant: 'destructive' });
+      return;
+    }
+    if (pwForm.next !== pwForm.confirm) {
+      toast({ title: 'Error', description: 'Passwords do not match.', variant: 'destructive' });
+      return;
+    }
+    setPwLoading(true);
+    try {
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email: safeUser.email,
+        password: pwForm.current,
+      });
+      if (signInErr) {
+        toast({ title: 'Error', description: 'Current password is incorrect.', variant: 'destructive' });
+        return;
+      }
+      const { error: updateErr } = await supabase.auth.updateUser({ password: pwForm.next });
+      if (updateErr) {
+        toast({ title: 'Error', description: updateErr.message || 'Failed to update password.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Password Updated', description: 'Your password has been changed successfully.' });
+        setPwForm({ current: '', next: '', confirm: '' });
+      }
+    } finally {
+      setPwLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -97,7 +133,7 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
         )}
       </div>
 
-      {/* Card */}
+      {/* Profile Card */}
       <div style={cardStyle}>
         {/* Avatar section */}
         <div style={{ padding: '24px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -221,6 +257,64 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
               </button>
             </div>
           )}
+        </form>
+      </div>
+
+      {/* Change Password Card */}
+      <div style={cardStyle}>
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ShieldCheck style={{ width: 16, height: 16, color: brand }} />
+          </div>
+          <h2 style={{ color: text, fontSize: 15, fontWeight: 700 }}>Change Password</h2>
+        </div>
+        <form onSubmit={handleChangePassword} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {[
+            { key: 'current', label: 'Current Password', placeholder: '••••••••' },
+            { key: 'next', label: 'New Password', placeholder: 'Minimum 8 characters' },
+            { key: 'confirm', label: 'Confirm New Password', placeholder: 'Re-enter new password' },
+          ].map(f => (
+            <div key={f.key}>
+              <label style={labelStyle}>{f.label}</label>
+              <div style={{ position: 'relative' }}>
+                <Lock style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: subText }} />
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={pwForm[f.key]}
+                  onChange={e => setPwForm({ ...pwForm, [f.key]: e.target.value })}
+                  placeholder={f.placeholder}
+                  required
+                  style={{ ...inputStyle(true), paddingLeft: 38, paddingRight: f.key === 'current' ? 38 : 12 }}
+                  onFocus={e => { e.target.style.borderColor = brand; }}
+                  onBlur={e => e.target.style.borderColor = panel2}
+                />
+                {f.key === 'current' && (
+                  <button type="button" onClick={() => setShowPw(!showPw)}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: subText, padding: 0 }}>
+                    {showPw ? <EyeOff style={{ width: 14, height: 14 }} /> : <Eye style={{ width: 14, height: 14 }} />}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="submit"
+              disabled={pwLoading}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '10px 22px', borderRadius: 10,
+                background: brand, color: '#fff', border: 'none',
+                fontSize: 13, fontWeight: 700, cursor: pwLoading ? 'not-allowed' : 'pointer',
+                opacity: pwLoading ? 0.75 : 1,
+              }}
+            >
+              {pwLoading
+                ? <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
+                : <Check style={{ width: 14, height: 14 }} />}
+              {pwLoading ? 'Updating…' : 'Update Password'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

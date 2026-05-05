@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2 } from 'lucide-react';
+import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound } from 'lucide-react';
+import { supabase } from '@/lib/customSupabaseClient';
 import {
   getCustomerById,
   updateCustomer,
@@ -23,6 +24,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [domainRequests, setDomainRequests] = useState([]);
   const [hostingRequests, setHostingRequests] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSendingReset, setIsSendingReset] = useState(false);
   const { toast } = useToast();
 
   const loadAll = async () => {
@@ -100,6 +102,24 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
     }
     await addNotification({ customer_id: customerData.id, type: 'expiration', title, message });
     toast({ title: 'Notification Sent', description: 'Expiry reminder sent to customer.' });
+  };
+
+  const handleSendPasswordReset = async () => {
+    if (!customerData?.email) return;
+    setIsSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(customerData.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setIsSendingReset(false);
+    if (error) {
+      const msg = error.message || '';
+      const friendly = msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('over_email') || error.status === 429
+        ? 'Email rate limit reached (3/hour). Please wait before trying again.'
+        : msg || 'Failed to send reset email.';
+      toast({ title: 'Error', description: friendly, variant: 'destructive' });
+    } else {
+      toast({ title: 'Reset Email Sent', description: `Password reset link sent to ${customerData.email}.` });
+    }
   };
 
   const handleSaveCustomer = async () => {
@@ -201,13 +221,28 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
               </div>
             </div>
           </div>
-          <button onClick={handleSaveCustomer} disabled={isSaving} style={{
-            padding: '9px 22px', borderRadius: 9, border: 'none', background: c.brand,
-            color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer',
-            opacity: isSaving ? 0.65 : 1, transition: 'opacity 0.2s'
-          }}>
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={handleSendPasswordReset} disabled={isSendingReset} title="Send password reset email to this customer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '9px 16px', borderRadius: 9, border: `1.5px solid ${c.brand}`,
+              background: 'transparent', color: c.brand, fontSize: 12, fontWeight: 600,
+              cursor: isSendingReset ? 'default' : 'pointer', opacity: isSendingReset ? 0.65 : 1,
+              transition: 'opacity 0.2s, background 0.15s', whiteSpace: 'nowrap',
+            }}
+              onMouseEnter={e => { if (!isSendingReset) e.currentTarget.style.background = 'rgba(232,123,53,0.08)'; }}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <KeyRound size={13} />
+              {isSendingReset ? 'Sending…' : 'Send Password Reset'}
+            </button>
+            <button onClick={handleSaveCustomer} disabled={isSaving} style={{
+              padding: '9px 22px', borderRadius: 9, border: 'none', background: c.brand,
+              color: '#fff', fontSize: 13, fontWeight: 600, cursor: isSaving ? 'default' : 'pointer',
+              opacity: isSaving ? 0.65 : 1, transition: 'opacity 0.2s'
+            }}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
         </div>
         <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           {[
