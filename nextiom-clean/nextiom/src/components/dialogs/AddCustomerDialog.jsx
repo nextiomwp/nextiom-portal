@@ -45,7 +45,10 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
       const { data: authData, error: authError } = await tempClient.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: { data: { role: 'customer', full_name: formData.name } },
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: { role: 'customer', full_name: formData.name },
+        },
       });
 
       if (authError) {
