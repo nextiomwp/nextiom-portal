@@ -31,15 +31,21 @@ function ResetPasswordPage() {
     if (password !== confirmPassword) { setError('Passwords do not match.'); return; }
 
     setIsLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    setIsLoading(false);
-
-    if (updateError) {
-      setError(updateError.message || 'Failed to update password. Please request a new reset link.');
-    } else {
-      await supabase.auth.signOut();
-      setIsDone(true);
-      setTimeout(() => navigate('/'), 3000);
+    const safetyId = setTimeout(() => setIsLoading(false), 30000);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) {
+        setError(updateError.message || 'Failed to update password. Please request a new reset link.');
+      } else {
+        await supabase.auth.signOut();
+        setIsDone(true);
+        setTimeout(() => navigate('/'), 3000);
+      }
+    } catch {
+      setError('Failed to update password. Please request a new reset link.');
+    } finally {
+      clearTimeout(safetyId);
+      setIsLoading(false);
     }
   };
 
