@@ -37,9 +37,9 @@ function ResetPasswordPage() {
       if (updateError) {
         setError(updateError.message || 'Failed to update password. Please request a new reset link.');
       } else {
-        await supabase.auth.signOut();
+        supabase.auth.signOut().catch(() => {});
         setIsDone(true);
-        setTimeout(() => navigate('/'), 3000);
+        setTimeout(() => navigate('/'), 2000);
       }
     } catch {
       setError('Failed to update password. Please request a new reset link.');
