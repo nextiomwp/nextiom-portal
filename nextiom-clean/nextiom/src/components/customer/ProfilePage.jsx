@@ -38,6 +38,7 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
       return;
     }
     setPwLoading(true);
+    const safetyId = setTimeout(() => setPwLoading(false), 30000);
     try {
       const { error: signInErr } = await supabase.auth.signInWithPassword({
         email: safeUser.email,
@@ -55,6 +56,7 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
         setPwForm({ current: '', next: '', confirm: '' });
       }
     } finally {
+      clearTimeout(safetyId);
       setPwLoading(false);
     }
   };
