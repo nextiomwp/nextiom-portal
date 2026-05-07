@@ -56,6 +56,7 @@ export const AuthProvider = ({ children }) => {
             .insert([{
               user_id: authUser.id, email: authUser.email,
               name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
+              phone: authUser.user_metadata?.phone || null,
               status: 'active', created_at: new Date().toISOString(),
             }])
             .select().single();
