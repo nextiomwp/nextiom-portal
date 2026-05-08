@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 function ResetPasswordPage() {
@@ -11,7 +10,6 @@ function ResetPasswordPage() {
   const [isReady, setIsReady] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -39,7 +37,7 @@ function ResetPasswordPage() {
       } else {
         supabase.auth.signOut().catch(() => {});
         setIsDone(true);
-        setTimeout(() => navigate('/'), 2000);
+        setTimeout(() => { window.location.href = '/'; }, 2000);
       }
     } catch {
       setError('Failed to update password. Please request a new reset link.');
