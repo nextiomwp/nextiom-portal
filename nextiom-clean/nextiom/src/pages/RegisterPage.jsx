@@ -48,12 +48,13 @@ function RegisterPage() {
     if (!validateForm()) return;
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signUp({
         email: formData.email,
-        options: { shouldCreateUser: true }
+        password: formData.password,
+        options: { data: { role: 'customer', full_name: formData.fullName, phone: formData.phone } }
       });
       if (error) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to send verification code.' });
+        toast({ variant: 'destructive', title: 'Registration Failed', description: error.message || 'Failed to create account.' });
       } else {
         setStep('otp');
       }
@@ -68,14 +69,10 @@ function RegisterPage() {
     setIsLoading(true);
     setOtpError('');
     try {
-      const { data, error } = await supabase.auth.verifyOtp({ email: formData.email, token: otp, type: 'email' });
+      const { data, error } = await supabase.auth.verifyOtp({ email: formData.email, token: otp, type: 'signup' });
       if (error) {
         setOtpError('Wrong OTP. Please try again.');
       } else {
-        await supabase.auth.updateUser({
-          password: formData.password,
-          data: { role: 'customer', full_name: formData.fullName, phone: formData.phone }
-        });
         const { error: profileErr } = await supabase.from('customers').upsert([{
           user_id: data.user.id,
           email: formData.email,
@@ -101,7 +98,7 @@ function RegisterPage() {
 
   const handleResend = async () => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email: formData.email, options: { shouldCreateUser: true } });
+    const { error } = await supabase.auth.resend({ type: 'signup', email: formData.email });
     setIsLoading(false);
     toast(error
       ? { variant: 'destructive', description: error.message || 'Failed to resend.' }
