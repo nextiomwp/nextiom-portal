@@ -6,6 +6,7 @@ import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
 import InvoiceSettingsPage from '@/pages/invoices/InvoiceSettingsPage';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { supabase } from '@/lib/customSupabaseClient';
 import AdminCustomerManagement from '@/components/admin/AdminCustomerManagement';
 import AdminNotificationManagement from '@/components/admin/AdminNotificationManagement';
 import AdminApprovedHostings from '@/components/admin/AdminApprovedHostings';
@@ -60,6 +61,26 @@ function Dashboard({ onLogout }) {
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('adminNotifReadIds') || '[]'); } catch { return []; }
   });
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      const meta = user.user_metadata || {};
+      const metaAt = meta.admin_notif_read_at;
+      const metaIds = meta.admin_notif_read_ids || [];
+      if (metaAt && (!localStorage.getItem('adminNotifReadAt') || metaAt > localStorage.getItem('adminNotifReadAt'))) {
+        localStorage.setItem('adminNotifReadAt', metaAt);
+        setMarkedReadAt(metaAt);
+      }
+      if (metaIds.length) {
+        setReadNotifIds(prev => {
+          const merged = [...new Set([...prev, ...metaIds])];
+          localStorage.setItem('adminNotifReadIds', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    });
+  }, []);
   const notifRef = useRef(null);
   const [invoiceView, setInvoiceView] = useState('list');
   const [editInvoiceId, setEditInvoiceId] = useState(null);
@@ -135,6 +156,7 @@ function Dashboard({ onLogout }) {
     localStorage.setItem('adminNotifReadAt', now);
     setMarkedReadAt(now);
     setIsNotificationsOpen(false);
+    supabase.auth.updateUser({ data: { admin_notif_read_at: now, admin_notif_read_ids: next } });
   };
 
   const markNotifRead = (id) => {

@@ -43,6 +43,8 @@ function triggerDownload(url, name) {
 export default function MyProductsPage({ user, isDark, c }) {
   const [licenses, setLicenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sortDir, setSortDir] = useState('desc');
   const { toast } = useToast();
 
   const bg = c?.bg || (isDark ? '#15161A' : '#f8f8f7');
@@ -82,10 +84,50 @@ export default function MyProductsPage({ user, isDark, c }) {
   return (
     <div style={{ padding: '0 0 32px' }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <h2 style={{ color: text, fontSize: 22, fontWeight: 700, margin: 0 }}>My Products</h2>
         <p style={{ color: sub, fontSize: 14, marginTop: 4 }}>Your licensed software and downloads</p>
       </div>
+
+      {/* Search + Filter */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            flex: 1, minWidth: 180, padding: '8px 13px', borderRadius: 8,
+            border: `1px solid ${border}`, background: panel, color: text,
+            outline: 'none', fontSize: 14,
+          }}
+        />
+        <button
+          onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+          style={{
+            padding: '8px 14px', borderRadius: 8, border: `1px solid ${border}`,
+            background: panel, color: text, cursor: 'pointer', fontSize: 13,
+            fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          {sortDir === 'desc' ? '↓ Newest First' : '↑ Oldest First'}
+        </button>
+      </div>
+
+      {(() => {
+        const filtered = licenses
+          .filter(l => !search || (l.name || '').toLowerCase().includes(search.toLowerCase()) || (l.product?.type || '').toLowerCase().includes(search.toLowerCase()))
+          .sort((a, b) => {
+            const da = new Date(a.created_at || 0);
+            const db = new Date(b.created_at || 0);
+            return sortDir === 'desc' ? db - da : da - db;
+          });
+        return filtered.length === 0 && licenses.length > 0 ? (
+          <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, padding: 32, textAlign: 'center' }}>
+            <p style={{ color: sub }}>No products match your search.</p>
+          </div>
+        ) : null;
+      })()}
 
       {licenses.length === 0 ? (
         <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, padding: 48, textAlign: 'center' }}>
@@ -95,7 +137,13 @@ export default function MyProductsPage({ user, isDark, c }) {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-          {licenses.map(license => {
+          {licenses
+            .filter(l => !search || (l.name || '').toLowerCase().includes(search.toLowerCase()) || (l.product?.type || '').toLowerCase().includes(search.toLowerCase()))
+            .sort((a, b) => {
+              const da = new Date(a.created_at || 0), db = new Date(b.created_at || 0);
+              return sortDir === 'desc' ? db - da : da - db;
+            })
+            .map(license => {
             const product = license.product || {};
             const lt = product.license_type || license.license_type || 'one_time';
             const cfg = LICENSE_CFG[lt] || LICENSE_CFG.one_time;
@@ -133,19 +181,29 @@ export default function MyProductsPage({ user, isDark, c }) {
                 </div>
 
                 {/* Validity */}
-                <div style={{ display: 'flex', align: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {validity.valid ? (
                     <CheckCircle style={{ width: 14, height: 14, color: '#22c55e', marginTop: 1 }} />
                   ) : (
                     <AlertCircle style={{ width: 14, height: 14, color: '#ef4444', marginTop: 1 }} />
                   )}
                   <span style={{ color: validity.valid ? '#22c55e' : '#ef4444', fontSize: 13, fontWeight: 500 }}>
-                    {validity.valid ? validity.label : 'License Expired'}
+                    {validity.valid ? validity.label : (lt === 'one_time' ? 'Download Used' : 'Expired')}
                   </span>
-                  {validity.days !== null && validity.days > 0 && validity.days <= 30 && (
+                  {lt === 'yearly' && validity.days !== null && validity.days > 0 && validity.days <= 30 && (
                     <span style={{ color: '#f59e0b', fontSize: 12, marginLeft: 4 }}>⚠ Renew soon</span>
                   )}
                 </div>
+
+                {/* Expiry date — yearly only */}
+                {lt === 'yearly' && license.expiry_date && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Clock style={{ width: 12, height: 12, color: sub }} />
+                    <span style={{ color: sub, fontSize: 12 }}>
+                      Expires: {new Date(license.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                )}
 
                 {/* License key */}
                 {license.license_key && (

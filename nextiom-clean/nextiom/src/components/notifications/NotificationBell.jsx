@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCircle, X, Mail, AlertCircle, ShoppingBag, Info, Receipt } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
+import { supabase } from '@/lib/customSupabaseClient';
 
 function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {} }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -33,6 +34,16 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
 
   const loadNotifications = async () => {
     try {
+      // Sync mark-all-at from user metadata (cross-browser)
+      const { data: { user } } = await supabase.auth.getUser();
+      const metaMarkAllAt = user?.user_metadata?.cust_notif_mark_all_at;
+      if (metaMarkAllAt) {
+        const local = localStorage.getItem('cust_notif_mark_all_at');
+        if (!local || metaMarkAllAt > local) {
+          localStorage.setItem('cust_notif_mark_all_at', metaMarkAllAt);
+        }
+      }
+
       const [all, domainReqs, hostingReqs] = await Promise.all([
         getNotifications(userId),
         getCustomerDomainRequests(userId).catch(() => []),
@@ -145,12 +156,14 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     setRecentNotifications(prev => prev.map(n => ({ ...n, read_status: true })));
     setUnreadCount(0);
     await markAllNotificationsAsRead(userId);
+    supabase.auth.updateUser({ data: { cust_notif_mark_all_at: now } });
   };
 
   const getNavTarget = (notification) => {
     const title = (notification.title || '').toLowerCase();
     const type = (notification.type || '').toLowerCase();
     if (type === 'announcement') return null;
+    if (type === 'product_assigned' || title.includes('product')) return 'products';
     if (type === 'invoice' || title.includes('invoice')) return 'invoices';
     if (title.includes('domain')) return 'domains_my';
     if (title.includes('hosting')) return 'hosting_my';

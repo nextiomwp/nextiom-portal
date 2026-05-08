@@ -164,11 +164,13 @@ export const updateCustomer = async (id, updates) => {
 };
 
 export const deleteCustomer = async (id) => {
-  const { error } = await supabase
-    .from('customers')
-    .delete()
-    .eq('id', id);
-
+  await Promise.all([
+    supabase.from('licenses').delete().eq('customer_id', id),
+    supabase.from('notifications').delete().eq('customer_id', id),
+    supabase.from('domain_requests').delete().eq('customer_id', id),
+    supabase.from('hosting_requests').delete().eq('customer_id', id),
+  ]);
+  const { error } = await supabase.from('customers').delete().eq('id', id);
   if (error) handleSupabaseError(error, 'deleteCustomer');
   return true;
 };

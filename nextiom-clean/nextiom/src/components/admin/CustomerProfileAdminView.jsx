@@ -452,8 +452,10 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     </td>
                     <td style={row}><StatusBadge status={lic.status} /></td>
                     <td style={row}>
-                      <span style={{ color: lic.expiry_date ? c.text : c.subText, fontSize: 12 }}>
-                        {lic.expiry_date ? format(new Date(lic.expiry_date), 'MMM dd, yy') : '—'}
+                      <span style={{ color: c.text, fontSize: 12 }}>
+                        {lt === 'yearly'
+                          ? (lic.expiry_date ? format(new Date(lic.expiry_date), 'MMM dd, yyyy') : '—')
+                          : lt === 'lifetime' ? 'Lifetime' : 'One Time'}
                       </span>
                     </td>
                     <td style={{ ...row, textAlign: 'right' }}>
