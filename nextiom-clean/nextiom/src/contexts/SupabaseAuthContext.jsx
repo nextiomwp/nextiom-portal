@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
               user_id: authUser.id, email: authUser.email,
               name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
               phone: authUser.user_metadata?.phone || null,
-              status: 'active', created_at: new Date().toISOString(),
+              status: 'pending', created_at: new Date().toISOString(),
             }])
             .select().single();
           profile = newProfile;
@@ -83,6 +83,24 @@ export const AuthProvider = ({ children }) => {
     if (error) {
       setLoading(false);
       return { error };
+    }
+    // Check if customer account is pending approval
+    if (data.user?.user_metadata?.role === 'customer') {
+      const { data: profile } = await supabase
+        .from('customers')
+        .select('status')
+        .eq('user_id', data.user.id)
+        .single();
+      if (profile?.status === 'pending') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        return { error: { message: 'ACCOUNT_PENDING' } };
+      }
+      if (profile?.status === 'rejected') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        return { error: { message: 'ACCOUNT_REJECTED' } };
+      }
     }
     return { data, error: null };
   };
@@ -114,7 +132,7 @@ export const AuthProvider = ({ children }) => {
             user_id: data.user.id,
             email: email,
             name: metadata.full_name || email.split('@')[0],
-            status: 'active',
+            status: 'pending',
             created_at: new Date().toISOString()
         }]);
         

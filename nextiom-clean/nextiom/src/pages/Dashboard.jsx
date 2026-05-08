@@ -21,7 +21,7 @@ import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount } from '@/lib/storage';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification } from '@/lib/storage';
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 
 const NAV = [
@@ -147,8 +147,13 @@ function Dashboard({ onLogout }) {
     }
   };
 
+  const newRegNotifs = adminNotifs.filter(n => n.type === 'new_registration');
+
   const handleMarkAllRead = () => {
-    const allIds = pendingRequests.map(r => r.id).filter(Boolean);
+    const allIds = [
+      ...pendingRequests.map(r => r.id),
+      ...newRegNotifs.map(n => n.id)
+    ].filter(Boolean);
     const next = [...new Set([...readNotifIds, ...allIds])];
     setReadNotifIds(next);
     localStorage.setItem('adminNotifReadIds', JSON.stringify(next));
@@ -164,9 +169,13 @@ function Dashboard({ onLogout }) {
     const next = [...readNotifIds, id];
     setReadNotifIds(next);
     localStorage.setItem('adminNotifReadIds', JSON.stringify(next));
+    supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
   };
 
-  const unreadCount = pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)).length;
+  const unreadCount = [
+    ...pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)),
+    ...newRegNotifs.filter(n => n.id && !readNotifIds.includes(n.id))
+  ].length;
 
   useEffect(() => {
     if (!isNotificationsOpen) return;
@@ -193,10 +202,42 @@ function Dashboard({ onLogout }) {
     window.location.replace('/');
   };
 
+  const handleConfirmCustomer = async (cu) => {
+    try {
+      await updateCustomer(cu.id, { status: 'active' });
+      await addNotification({
+        customer_id: cu.id,
+        type: 'account_confirmed',
+        title: 'Account Confirmed',
+        message: 'Your account has been confirmed. You can now sign in to the portal.',
+      });
+      toast({ title: 'Confirmed', description: `${cu.name}'s account has been confirmed.` });
+      loadData();
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to confirm account.', variant: 'destructive' });
+    }
+  };
+
+  const handleRejectCustomer = async (cu) => {
+    try {
+      await updateCustomer(cu.id, { status: 'rejected' });
+      await addNotification({
+        customer_id: cu.id,
+        type: 'account_rejected',
+        title: 'Account Rejected',
+        message: 'Your account registration has been rejected. Please contact support for assistance.',
+      });
+      toast({ title: 'Rejected', description: `${cu.name}'s account has been rejected.` });
+      loadData();
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to reject account.', variant: 'destructive' });
+    }
+  };
+
   const renderContent = () => {
     if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div>;
     switch (active) {
-      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} onViewCustomer={cu => { setSelectedCustomer(cu); setActive('customerProfile'); }} c={c} isDark={isDark} />;
+      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} onViewCustomer={cu => { setSelectedCustomer(cu); setActive('customerProfile'); }} onConfirmCustomer={handleConfirmCustomer} onRejectCustomer={handleRejectCustomer} c={c} isDark={isDark} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
       case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => setActive('overview')} isDark={isDark} /> : null;
       case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={setActive} c={c} isDark={isDark} />;
@@ -273,11 +314,26 @@ function Dashboard({ onLogout }) {
               {isNotificationsOpen && (
                 <div style={{ position: 'absolute', top: 44, right: 0, width: 320, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 50, display: 'flex', flexDirection: 'column', maxHeight: 420 }}>
                   <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                    <span style={{ fontWeight: 600, color: c.text }}>Pending Requests</span>
+                    <span style={{ fontWeight: 600, color: c.text }}>Notifications</span>
                     {unreadCount > 0 && <span style={{ fontSize: 11, background: c.brand, color: '#fff', borderRadius: 10, padding: '2px 7px', fontWeight: 700 }}>{unreadCount} new</span>}
                   </div>
                   <div style={{ overflowY: 'auto', flex: 1 }}>
-                    {pendingRequests.slice(0, 10).map((r, i) => {
+                    {newRegNotifs.map((n, i) => {
+                      const isUnread = n.id && !readNotifIds.includes(n.id);
+                      return (
+                        <div key={n.id || 'nr'+i}
+                          style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' }}
+                          onClick={() => { markNotifRead(n.id); setActive('customers'); setIsNotificationsOpen(false); }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
+                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>{n.title}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.message}</div>
+                          <div style={{ fontSize: 11, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.created_at ? new Date(n.created_at).toLocaleDateString() : ''}</div>
+                        </div>
+                      );
+                    })}
+                    {pendingRequests.slice(0, 8).map((r, i) => {
                       const isUnread = r.id && !readNotifIds.includes(r.id);
                       return (
                         <div key={r.id || i}
@@ -291,7 +347,7 @@ function Dashboard({ onLogout }) {
                         </div>
                       );
                     })}
-                    {pendingRequests.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No pending requests</div>}
+                    {pendingRequests.length === 0 && newRegNotifs.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>}
                   </div>
                   <div style={{ padding: '10px 16px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <button onClick={handleMarkAllRead} style={{ fontSize: 12, color: c.subText, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Mark all as read</button>
@@ -355,8 +411,9 @@ function MiniSparkline({ value, color }) {
   return <svg width={W} height={H} style={{display:'block'}}><polyline points={coords} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
 }
 
-function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, onViewCustomer, c, isDark }) {
+function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, onViewCustomer, onConfirmCustomer, onRejectCustomer, c, isDark }) {
   const approvedDomains = requests.filter(r => r.source === 'domain' && String(r.status||'').toLowerCase() === 'approved').length;
+  const pendingCustomers = customers.filter(cu => String(cu.status||'').toLowerCase() === 'pending');
   const initials = name => (name||'?').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
 
   const statCards = [
@@ -392,52 +449,55 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:16}}>
-        <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,alignItems:'flex-start'}}>
+        <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20,display:'flex',flexDirection:'column'}}>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,alignItems:'flex-start',flexShrink:0}}>
             <div>
-              <div style={{fontSize:16,fontWeight:600}}>Recent customers</div>
-              <div style={{fontSize:12,color:c.subText,marginTop:2}}>Latest sign-ups &amp; domain activity</div>
+              <div style={{fontSize:16,fontWeight:600}}>Pending Customers</div>
+              <div style={{fontSize:12,color:c.subText,marginTop:2}}>Awaiting admin confirmation</div>
             </div>
             <button onClick={()=>onNavigate('customers')} style={{color:c.brand,background:'none',border:'none',fontSize:13,cursor:'pointer',fontWeight:500,display:'flex',alignItems:'center',gap:4}}>View all →</button>
           </div>
-          <table style={{width:'100%',borderCollapse:'collapse',marginTop:16}}>
-            <thead>
-              <tr style={{color:c.subText,fontSize:11,letterSpacing:'0.05em'}}>
-                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Customer</th>
-                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Phone</th>
-                <th style={{paddingBottom:12,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Status</th>
-                <th style={{paddingBottom:12,fontWeight:500,textAlign:'right',textTransform:'uppercase'}}>Joined</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.slice(0,8).map((cu,i)=>{
-                const st=String(cu.status||'active').toLowerCase();
-                const isActive=st==='active'||st==='approved';
-                const col=avatarColor(cu.name);
-                return (
-                  <tr key={cu.id||i} style={{borderTop:`1px solid ${c.border}`,cursor:'pointer'}} onClick={()=>onViewCustomer(cu)}>
-                    <td style={{padding:'12px 0'}}>
-                      <div style={{display:'flex',alignItems:'center',gap:10}}>
-                        <div style={{width:36,height:36,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(cu.name)}</div>
-                        <div>
-                          <div style={{fontSize:14,fontWeight:500}}>{cu.name}</div>
-                          <div style={{fontSize:11,color:c.subText}}>{cu.email}</div>
+          <div style={{overflowY:'auto',maxHeight:320,marginTop:8}}>
+            <table style={{width:'100%',borderCollapse:'collapse'}}>
+              <thead style={{position:'sticky',top:0,background:c.card,zIndex:1}}>
+                <tr style={{color:c.subText,fontSize:11,letterSpacing:'0.05em'}}>
+                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Customer</th>
+                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Phone</th>
+                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Joined</th>
+                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'right',textTransform:'uppercase'}}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingCustomers.length === 0 && (
+                  <tr><td colSpan={4} style={{padding:'24px 0',textAlign:'center',fontSize:13,color:c.subText}}>No pending customers</td></tr>
+                )}
+                {pendingCustomers.map((cu,i)=>{
+                  const col=avatarColor(cu.name);
+                  return (
+                    <tr key={cu.id||i} style={{borderTop:`1px solid ${c.border}`}}>
+                      <td style={{padding:'10px 0',cursor:'pointer'}} onClick={()=>onViewCustomer(cu)}>
+                        <div style={{display:'flex',alignItems:'center',gap:10}}>
+                          <div style={{width:34,height:34,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(cu.name)}</div>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:500}}>{cu.name}</div>
+                            <div style={{fontSize:11,color:c.subText}}>{cu.email}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td style={{padding:'12px 0',fontSize:13,color:c.subText}}>{cu.phone||'—'}</td>
-                    <td style={{padding:'12px 0'}}>
-                      <span style={{background:isActive?'rgba(99,153,34,0.15)':'rgba(186,117,23,0.15)',color:isActive?'#639922':'#BA7517',fontSize:12,fontWeight:500,padding:'3px 10px',borderRadius:20,display:'inline-flex',alignItems:'center',gap:5}}>
-                        <span style={{width:6,height:6,borderRadius:'50%',background:isActive?'#639922':'#BA7517',display:'inline-block'}}/>
-                        {isActive?'Active':'Pending'}
-                      </span>
-                    </td>
-                    <td style={{padding:'12px 0',fontSize:12,color:c.subText,textAlign:'right'}}>{cu.created_at?timeAgo(cu.created_at):'—'}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td style={{padding:'10px 0',fontSize:13,color:c.subText}}>{cu.phone||'—'}</td>
+                      <td style={{padding:'10px 0',fontSize:12,color:c.subText}}>{cu.created_at?timeAgo(cu.created_at):'—'}</td>
+                      <td style={{padding:'10px 0',textAlign:'right'}}>
+                        <div style={{display:'inline-flex',gap:6}}>
+                          <button onClick={()=>onConfirmCustomer(cu)} style={{background:'rgba(99,153,34,0.15)',color:'#639922',border:'none',borderRadius:6,padding:'4px 10px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Confirm</button>
+                          <button onClick={()=>onRejectCustomer(cu)} style={{background:'rgba(229,57,53,0.12)',color:'#e53935',border:'none',borderRadius:6,padding:'4px 10px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Reject</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div style={{display:'flex',flexDirection:'column',gap:16}}>

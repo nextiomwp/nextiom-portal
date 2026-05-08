@@ -21,6 +21,7 @@ function Login({ onLoginSuccess }) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotCooldown, setForgotCooldown] = useState(0);
+  const [loginStatusMsg, setLoginStatusMsg] = useState(null); // 'pending' | 'rejected' | null
 
   const { signIn, user, role } = useAuth();
   const { toast } = useToast();
@@ -56,6 +57,8 @@ function Login({ onLoginSuccess }) {
 
   const getErrorMessage = (error) => {
     const msg = typeof error === 'string' ? error : error?.message || '';
+    if (msg === 'ACCOUNT_PENDING') return 'PENDING';
+    if (msg === 'ACCOUNT_REJECTED') return 'REJECTED';
     if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
       return 'Invalid email or password. Please try again.';
     }
@@ -71,15 +74,23 @@ function Login({ onLoginSuccess }) {
   const handleCustomerLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setLoginStatusMsg(null);
 
     const { error } = await signIn(email, password);
 
     if (error) {
-      toast({
-        title: "Login Failed",
-        description: getErrorMessage(error),
-        variant: "destructive",
-      });
+      const msg = getErrorMessage(error);
+      if (msg === 'PENDING') {
+        setLoginStatusMsg('pending');
+      } else if (msg === 'REJECTED') {
+        setLoginStatusMsg('rejected');
+      } else {
+        toast({
+          title: "Login Failed",
+          description: msg,
+          variant: "destructive",
+        });
+      }
       setIsLoading(false);
     } else {
       toast({
@@ -366,6 +377,19 @@ function Login({ onLoginSuccess }) {
                         </button>
                       </>
                     )}
+                  </div>
+                )}
+
+                {loginStatusMsg === 'pending' && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center space-y-1">
+                    <p className="text-sm font-semibold text-amber-800">Account Pending Approval</p>
+                    <p className="text-xs text-amber-700">Please wait for admin approval before signing in.</p>
+                  </div>
+                )}
+                {loginStatusMsg === 'rejected' && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center space-y-1">
+                    <p className="text-sm font-semibold text-red-800">Account Rejected</p>
+                    <p className="text-xs text-red-700">Your account registration was rejected. Please contact support.</p>
                   </div>
                 )}
 

@@ -31,6 +31,10 @@ function ProtectedRoute({ children, allowedRoles }) {
                } else {
                    console.error("Status check failed", error);
                }
+             } else if (data && data.status === 'pending') {
+               setAccessError("PENDING");
+             } else if (data && data.status === 'rejected') {
+               setAccessError("Your account registration was rejected. Please contact support.");
              } else if (data && data.status !== 'active') {
                setAccessError("Your account has been disabled.");
              }
@@ -87,23 +91,21 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (accessError) {
-      return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-            <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center space-y-4">
-                <div className="bg-red-50 p-3 rounded-full w-fit mx-auto">
-                    <AlertTriangle className="h-8 w-8 text-red-500" />
-                </div>
-                <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
-                <p className="text-slate-600">{accessError}</p>
-                <Button 
-                    onClick={() => { window.location.href = '/'; }}
-                    className="bg-slate-900 text-white"
-                >
-                    Return to Login
-                </Button>
-            </div>
+    const isPending = accessError === 'PENDING';
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center space-y-4">
+          <div className={`${isPending ? 'bg-amber-50' : 'bg-red-50'} p-3 rounded-full w-fit mx-auto`}>
+            <AlertTriangle className={`h-8 w-8 ${isPending ? 'text-amber-500' : 'text-red-500'}`} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">{isPending ? 'Pending Approval' : 'Access Restricted'}</h2>
+          <p className="text-slate-600">{isPending ? 'Please wait for admin approval before accessing your account.' : accessError}</p>
+          <Button onClick={() => { window.location.href = '/'; }} className="bg-slate-900 text-white">
+            Return to Login
+          </Button>
         </div>
-      );
+      </div>
+    );
   }
 
   if (!user) {
