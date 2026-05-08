@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
-  Sun, Moon, ChevronLeft, ChevronRight,
+  Sun, Moon, ChevronLeft, ChevronRight, Package,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -14,6 +14,7 @@ import ProfilePage from '@/components/customer/ProfilePage';
 import NotificationsPage from '@/components/notifications/NotificationsPage';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import MyDomainsPage from '@/components/customer/MyDomainsPage';
+import MyProductsPage from '@/components/customer/MyProductsPage';
 import NewDomainRequestPage from '@/components/customer/NewDomainRequestPage';
 import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import NewHostingOrderPage from '@/components/customer/NewHostingOrderPage';
@@ -65,6 +66,7 @@ const NAV_STRUCTURE = [
       { id: 'support_tickets', label: 'My Tickets' },
     ],
   },
+  { id: 'products', label: 'My Products', icon: Package, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
 ];
 
@@ -278,6 +280,8 @@ function CustomerDashboard() {
         return <CreateTicketPage key="support_create" user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
       case 'support_tickets':
         return <MyTicketsPage key="support_tickets" user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
+      case 'products':
+        return <MyProductsPage key="products" user={userProp} isDark={isDark} c={c} />;
       case 'profile':
         return <ProfilePage key="profile" user={userProp} onUpdate={() => {}} {...theme} />;
       case 'notifications':

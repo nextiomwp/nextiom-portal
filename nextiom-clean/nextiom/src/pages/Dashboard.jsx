@@ -184,7 +184,7 @@ function Dashboard({ onLogout }) {
       case 'hosting': return <AdminHostingManagement isDark={isDark} />;
       case 'hostingRequests': return <AdminHostingRequestManagement isDark={isDark} />;
       case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;
-      case 'products': return <ProductList products={products} onUpdate={loadData} />;
+      case 'products': return <ProductList products={products} onUpdate={loadData} isDark={isDark} c={c} />;
       case 'notifications': return <AdminNotificationManagement isDark={isDark} />;
       case 'logs': return <AdminTicketsPage c={c} isDark={isDark} />;
       case 'invoices': {
@@ -295,7 +295,7 @@ function Dashboard({ onLogout }) {
         </div>
       </div>
       <AddCustomerDialog open={isAddCustomerOpen} onOpenChange={setIsAddCustomerOpen} onSuccess={loadData} />
-      <AddProductDialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen} onSuccess={loadData} />
+      <AddProductDialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen} onSuccess={loadData} isDark={isDark} c={c} />
       <AssignProductDialog open={isAssignProductOpen} onOpenChange={setIsAssignProductOpen} customers={customers} products={products} onSuccess={loadData} />
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} onUpdate={loadData} />
     </div>

@@ -1,136 +1,147 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Package, Edit, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { deleteProduct } from '@/lib/storage';
 import EditProductDialog from '@/components/dialogs/EditProductDialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-function ProductList({ products, onUpdate }) {
+const LICENSE_LABEL = {
+  one_time: { label: 'One Time', icon: Package, color: '#22c55e' },
+  yearly: { label: 'Yearly', icon: RefreshCw, color: '#f59e0b' },
+  lifetime: { label: 'Lifetime', icon: Infinity, color: '#6366f1' },
+};
+
+function ProductList({ products, onUpdate, isDark, c }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
   const [deletingProductId, setDeletingProductId] = useState(null);
   const { toast } = useToast();
 
+  const bg = c?.card || (isDark ? '#1C1E24' : '#fff');
+  const panelBg = c?.panel2 || (isDark ? '#22252C' : '#f5f5f5');
+  const border = c?.border || (isDark ? 'rgba(255,255,255,0.06)' : '#ebebeb');
+  const borderStrong = c?.borderStrong || (isDark ? 'rgba(255,255,255,0.1)' : '#d0d0d0');
+  const text = c?.text || (isDark ? '#fff' : '#1a1a1a');
+  const sub = c?.subText || (isDark ? '#a0a0a0' : '#888');
+  const brand = c?.brand || '#E87B35';
+  const hover = c?.hover || (isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5');
+
   const handleDelete = async (productId) => {
     await deleteProduct(productId);
     onUpdate();
-    toast({
-      title: "Product deleted",
-      description: "Product has been removed successfully",
-    });
+    toast({ title: 'Product deleted', description: 'Product removed successfully' });
     setDeletingProductId(null);
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-      <div className="p-6 border-b border-slate-200">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+    <div style={{ background: bg, border: `1px solid ${border}`, borderRadius: 12, overflow: 'hidden' }}>
+      {/* Search */}
+      <div style={{ padding: '16px 20px', borderBottom: `1px solid ${border}` }}>
+        <div style={{ position: 'relative' }}>
+          <Search style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 16, height: 16, color: sub }} />
           <input
             type="text"
             placeholder="Search products..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#e87b35] focus:border-transparent transition-all"
+            onChange={e => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%', padding: '8px 12px 8px 36px', borderRadius: 8,
+              border: `1px solid ${borderStrong}`, background: panelBg,
+              color: text, outline: 'none', fontSize: 14, boxSizing: 'border-box',
+            }}
           />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+      {/* Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, padding: 20 }}>
         <AnimatePresence>
-          {filteredProducts.map((product, index) => (
-            <motion.div
-              key={product.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
-              whileHover={{ y: -4 }}
-              className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <Package className="w-6 h-6 text-white" />
+          {filtered.map((product, i) => {
+            const lt = LICENSE_LABEL[product.license_type] || LICENSE_LABEL.one_time;
+            const LtIcon = lt.icon;
+            return (
+              <motion.div key={product.id}
+                initial={{ opacity: 0, scale: 0.93 }} animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.93 }} transition={{ duration: 0.2, delay: i * 0.04 }}
+                whileHover={{ y: -3 }}
+                style={{ background: panelBg, border: `1px solid ${border}`, borderRadius: 10, padding: 16 }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'linear-gradient(135deg,#4F46E5,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Package style={{ width: 18, height: 18, color: '#fff' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button onClick={() => setEditingProduct(product)}
+                      style={{ padding: 6, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: sub }}
+                      onMouseEnter={e => { e.currentTarget.style.background = hover; e.currentTarget.style.color = brand; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = sub; }}>
+                      <Edit style={{ width: 14, height: 14 }} />
+                    </button>
+                    <button onClick={() => setDeletingProductId(product.id)}
+                      style={{ padding: 6, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: sub }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#ef4444'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = sub; }}>
+                      <Trash2 style={{ width: 14, height: 14 }} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingProduct(product)}
-                    className="hover:bg-blue-50 hover:text-blue-600"
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeletingProductId(product.id)}
-                    className="hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+
+                <p style={{ color: text, fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{product.name}</p>
+                <p style={{ color: sub, fontSize: 12, marginBottom: 8 }}>{product.type}</p>
+
+                {product.description && (
+                  <p style={{ color: sub, fontSize: 12, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {product.description}
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: product.download_url ? 8 : 0 }}>
+                  <LtIcon style={{ width: 12, height: 12, color: lt.color }} />
+                  <span style={{ color: lt.color, fontSize: 11, fontWeight: 500 }}>{lt.label}</span>
                 </div>
-              </div>
 
-              <h3 className="text-lg font-semibold text-slate-800 mb-2">{product.name}</h3>
-              <p className="text-sm text-slate-600 mb-3">{product.type}</p>
-
-              {product.description && (
-                <p className="text-sm text-slate-500 line-clamp-3">{product.description}</p>
-              )}
-            </motion.div>
-          ))}
+                {product.download_url && (
+                  <a href={product.download_url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, color: brand, fontSize: 12, textDecoration: 'none', marginTop: 4 }}>
+                    <Download style={{ width: 12, height: 12 }} /> Download URL set
+                  </a>
+                )}
+              </motion.div>
+            );
+          })}
         </AnimatePresence>
 
-        {filteredProducts.length === 0 && (
-          <div className="col-span-full text-center py-12 text-slate-500">
+        {filtered.length === 0 && (
+          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '48px 0', color: sub }}>
             No products found
           </div>
         )}
       </div>
 
       {editingProduct && (
-        <EditProductDialog
-          open={!!editingProduct}
-          onOpenChange={(open) => !open && setEditingProduct(null)}
-          product={editingProduct}
-          onSuccess={() => {
-            setEditingProduct(null);
-            onUpdate();
-          }}
-        />
+        <EditProductDialog open={!!editingProduct} onOpenChange={o => !o && setEditingProduct(null)}
+          product={editingProduct} onSuccess={() => { setEditingProduct(null); onUpdate(); }} />
       )}
 
-      <AlertDialog open={!!deletingProductId} onOpenChange={(open) => !open && setDeletingProductId(null)}>
+      <AlertDialog open={!!deletingProductId} onOpenChange={o => !o && setDeletingProductId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the product.
-            </AlertDialogDescription>
+            <AlertDialogDescription>This will permanently delete the product.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleDelete(deletingProductId)}>
-              Delete
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => handleDelete(deletingProductId)}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

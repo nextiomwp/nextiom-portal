@@ -455,7 +455,7 @@ export const getCustomerServices = async (customerId) => {
 };
 
 export const getLicenses = async (customerId) => {
-  let query = supabase.from('licenses').select('*, products(name)');
+  let query = supabase.from('licenses').select('*, products(name, type, description, download_url, license_type, license_registration, manual_updates, automatic_updates)');
 
   if (customerId) {
     query = query.eq('customer_id', customerId);
@@ -466,7 +466,8 @@ export const getLicenses = async (customerId) => {
 
   return (data || []).map(l => ({
     ...l,
-    name: l.products?.name || 'Unknown Product'
+    name: l.products?.name || 'Unknown Product',
+    product: l.products || {},
   }));
 };
 
@@ -757,8 +758,47 @@ export const addHostingRequest = async (requestData) => {
 };
 
 export const assignProductToCustomer = async (data) => {
-  console.log('Product assigned:', data);
-  return true;
+  const { customerId, productId, activationDate } = data;
+
+  const { data: product } = await supabase
+    .from('products')
+    .select('name, license_type')
+    .eq('id', productId)
+    .single();
+
+  let expiryDate = null;
+  if (product?.license_type === 'yearly') {
+    const d = new Date(activationDate || new Date());
+    d.setFullYear(d.getFullYear() + 1);
+    expiryDate = d.toISOString().split('T')[0];
+  }
+
+  const licenseKey = generateLicenseKey();
+
+  const { data: license, error } = await supabase
+    .from('licenses')
+    .insert([{
+      customer_id: customerId,
+      product_id: productId,
+      license_key: licenseKey,
+      status: 'Active',
+      expiry_date: expiryDate,
+      license_type: product?.license_type || 'one_time',
+    }])
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'assignProductToCustomer');
+
+  await supabase.from('notifications').insert([{
+    customer_id: customerId,
+    title: 'New Product Assigned',
+    message: `You have been assigned access to "${product?.name || 'a product'}". Download it from your Products page.`,
+    type: 'product_assigned',
+    read_status: false,
+  }]);
+
+  return license;
 };
 
 export const deleteDomainRequest = async (id) => {
