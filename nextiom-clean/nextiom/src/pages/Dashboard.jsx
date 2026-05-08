@@ -147,12 +147,12 @@ function Dashboard({ onLogout }) {
     }
   };
 
-  const newRegNotifs = adminNotifs.filter(n => n.type === 'new_registration');
+  const pendingCustomers = customers.filter(c => c.status === 'pending');
 
   const handleMarkAllRead = () => {
     const allIds = [
       ...pendingRequests.map(r => r.id),
-      ...newRegNotifs.map(n => n.id)
+      ...pendingCustomers.map(c => 'cust_' + c.id)
     ].filter(Boolean);
     const next = [...new Set([...readNotifIds, ...allIds])];
     setReadNotifIds(next);
@@ -174,7 +174,7 @@ function Dashboard({ onLogout }) {
 
   const unreadCount = [
     ...pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)),
-    ...newRegNotifs.filter(n => n.id && !readNotifIds.includes(n.id))
+    ...pendingCustomers.filter(c => c.id && !readNotifIds.includes('cust_' + c.id))
   ].length;
 
   useEffect(() => {
@@ -318,18 +318,19 @@ function Dashboard({ onLogout }) {
                     {unreadCount > 0 && <span style={{ fontSize: 11, background: c.brand, color: '#fff', borderRadius: 10, padding: '2px 7px', fontWeight: 700 }}>{unreadCount} new</span>}
                   </div>
                   <div style={{ overflowY: 'auto', flex: 1 }}>
-                    {newRegNotifs.map((n, i) => {
-                      const isUnread = n.id && !readNotifIds.includes(n.id);
+                    {pendingCustomers.map((cu, i) => {
+                      const key = 'cust_' + cu.id;
+                      const isUnread = !readNotifIds.includes(key);
                       return (
-                        <div key={n.id || 'nr'+i}
+                        <div key={cu.id || 'pc'+i}
                           style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' }}
-                          onClick={() => { markNotifRead(n.id); setActive('customers'); setIsNotificationsOpen(false); }}>
+                          onClick={() => { markNotifRead(key); setActive('customers'); setIsNotificationsOpen(false); }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
-                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>{n.title}</span>
+                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>New Registration: {cu.name}</span>
                           </div>
-                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.message}</div>
-                          <div style={{ fontSize: 11, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.created_at ? new Date(n.created_at).toLocaleDateString() : ''}</div>
+                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{cu.email} — awaiting approval</div>
+                          <div style={{ fontSize: 11, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{cu.created_at ? new Date(cu.created_at).toLocaleDateString() : ''}</div>
                         </div>
                       );
                     })}
@@ -347,7 +348,7 @@ function Dashboard({ onLogout }) {
                         </div>
                       );
                     })}
-                    {pendingRequests.length === 0 && newRegNotifs.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>}
+                    {pendingRequests.length === 0 && pendingCustomers.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>}
                   </div>
                   <div style={{ padding: '10px 16px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <button onClick={handleMarkAllRead} style={{ fontSize: 12, color: c.subText, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Mark all as read</button>
@@ -590,7 +591,7 @@ function AdminProfileContent({ c, isDark }) {
 
 function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark }) {
   const pendingReqs = requests.filter(r => String(r.status||'').toLowerCase() === 'pending');
-  const recentCustomers = [...customers].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,10);
+  const recentCustomers = customers.filter(c=>c.status==='pending').sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
 
   const allItems = [
     ...pendingReqs.map(r=>({ type:'request', source:r.source, title:`${r.n} — ${r.reqType}`, sub: r.source==='domain'?'Domain Request':'Hosting Request', date:r.created_at, id:r.id })),
