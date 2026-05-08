@@ -64,24 +64,24 @@ function ProtectedRoute({ children, allowedRoles }) {
 
   if (loading || accessCheckLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#FF8C42]" />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#15161A' }}>
+        <Loader2 className="h-8 w-8 animate-spin text-[#E87B35]" />
       </div>
     );
   }
 
   if (authError) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center space-y-4">
-          <div className="bg-red-50 p-3 rounded-full w-fit mx-auto">
-            <AlertTriangle className="h-8 w-8 text-red-500" />
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: '#15161A' }}>
+        <div className="p-8 rounded-xl max-w-md w-full text-center space-y-4" style={{ background: '#1C1E24', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="p-3 rounded-full w-fit mx-auto" style={{ background: 'rgba(239,68,68,0.15)' }}>
+            <AlertTriangle className="h-8 w-8 text-red-400" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">Authentication Error</h2>
-          <p className="text-slate-600">{authError}</p>
-          <Button 
+          <h2 className="text-xl font-bold" style={{ color: '#fff' }}>Authentication Error</h2>
+          <p style={{ color: '#a0a0a0' }}>{authError}</p>
+          <Button
             onClick={() => window.location.reload()}
-            className="bg-[#FF8C42] hover:bg-[#e67e3b] text-white"
+            className="bg-[#E87B35] hover:bg-[#d06b28] text-white"
           >
             Retry Connection
           </Button>
@@ -93,14 +93,14 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (accessError) {
     const isPending = accessError === 'PENDING';
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center space-y-4">
-          <div className={`${isPending ? 'bg-amber-50' : 'bg-red-50'} p-3 rounded-full w-fit mx-auto`}>
-            <AlertTriangle className={`h-8 w-8 ${isPending ? 'text-amber-500' : 'text-red-500'}`} />
+      <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: '#15161A' }}>
+        <div className="p-8 rounded-xl max-w-md w-full text-center space-y-4" style={{ background: '#1C1E24', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="p-3 rounded-full w-fit mx-auto" style={{ background: isPending ? 'rgba(232,123,53,0.15)' : 'rgba(239,68,68,0.15)' }}>
+            <AlertTriangle className={`h-8 w-8 ${isPending ? 'text-[#E87B35]' : 'text-red-400'}`} />
           </div>
-          <h2 className="text-xl font-bold text-slate-900">{isPending ? 'Pending Approval' : 'Access Restricted'}</h2>
-          <p className="text-slate-600">{isPending ? 'Please wait for admin approval before accessing your account.' : accessError}</p>
-          <Button onClick={() => { window.location.href = '/'; }} className="bg-slate-900 text-white">
+          <h2 className="text-xl font-bold" style={{ color: '#fff' }}>{isPending ? 'Pending Approval' : 'Access Restricted'}</h2>
+          <p style={{ color: '#a0a0a0' }}>{isPending ? 'Please wait for admin approval before accessing your account.' : accessError}</p>
+          <Button onClick={() => { window.location.href = '/'; }} style={{ background: '#E87B35', color: '#fff' }} className="hover:opacity-90">
             Return to Login
           </Button>
         </div>
