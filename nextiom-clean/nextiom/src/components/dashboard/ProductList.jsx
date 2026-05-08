@@ -130,7 +130,7 @@ function ProductList({ products, onUpdate, isDark, c }) {
 
       {editingProduct && (
         <EditProductDialog open={!!editingProduct} onOpenChange={o => !o && setEditingProduct(null)}
-          product={editingProduct} onSuccess={() => { setEditingProduct(null); onUpdate(); }} />
+          product={editingProduct} onSuccess={() => { setEditingProduct(null); onUpdate(); }} isDark={isDark} c={c} />
       )}
 
       <AlertDialog open={!!deletingProductId} onOpenChange={o => !o && setDeletingProductId(null)}>

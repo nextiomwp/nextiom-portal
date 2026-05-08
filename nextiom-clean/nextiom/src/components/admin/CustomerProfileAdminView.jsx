@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound } from 'lucide-react';
+import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound, Package, Edit, RefreshCw, Infinity } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import {
   getCustomerById,
@@ -10,7 +10,10 @@ import {
   updateHostingRequest,
   deleteDomainRequest,
   deleteHostingRequest,
-  addNotification
+  addNotification,
+  getLicenses,
+  updateLicense,
+  deleteLicense,
 } from '@/lib/storage';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
@@ -23,20 +26,23 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [customerData, setCustomerData] = useState(customer || null);
   const [domainRequests, setDomainRequests] = useState([]);
   const [hostingRequests, setHostingRequests] = useState([]);
+  const [licenses, setLicenses] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
   const { toast } = useToast();
 
   const loadAll = async () => {
     if (!customer?.id) return;
-    const [fullCustomer, domReqs, hostReqs] = await Promise.all([
+    const [fullCustomer, domReqs, hostReqs, lics] = await Promise.all([
       getCustomerById(customer.id),
       getCustomerDomainRequests(customer.id),
-      getCustomerHostingRequests(customer.id)
+      getCustomerHostingRequests(customer.id),
+      getLicenses(customer.id),
     ]);
     setCustomerData(fullCustomer || customer);
     setDomainRequests(domReqs || []);
     setHostingRequests(hostReqs || []);
+    setLicenses(lics || []);
   };
 
   useEffect(() => { loadAll(); }, [customer?.id]);
@@ -271,151 +277,212 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
         </div>
       </div>
 
-      {/* Approved Domains */}
-      <div style={cardS}>
-        <SectionHeader title="Active Domains" accent="#378ADD" />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={thS}>Domain Name</th>
-              <th style={thS}>Status</th>
-              <th style={thS}>Expiry Date</th>
-              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {approvedDomains.map((d, i) => (
-              <tr key={d.id}>
-                <td style={i % 2 === 0 ? tdS : tdAlt}>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb' }}>{d.domain_name || '-'}</span>
-                </td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={d.status} /></td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}>
-                  <span style={{ color: d.expiry_date ? c.text : c.subText }}>
-                    {d.expiry_date ? format(new Date(d.expiry_date), 'MMM dd, yyyy') : '—'}
-                  </span>
-                </td>
-                <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <Btn color={c.brand} onClick={() => sendExpiryReminder('domain', d)} title="Send expiry reminder"><Bell size={12} /> Notify</Btn>
-                    <Btn color="#ef4444" onClick={() => deleteItem('domain', d.id)} title="Delete domain"><Trash2 size={12} /> Delete</Btn>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {approvedDomains.length === 0 && <tr><td colSpan={4} style={emptyS}>No active domains</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Approved Hosting Packages */}
-      <div style={cardS}>
-        <SectionHeader title="Hosting Packages" accent="#639922" />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={thS}>Package</th>
-              <th style={thS}>Domain</th>
-              <th style={thS}>Status</th>
-              <th style={thS}>Expiry Date</th>
-              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {approvedHosting.map((h, i) => {
-              const { name, domain } = parsePackage(h.package_type);
-              const expiry = h.expiry_date ? new Date(h.expiry_date) : computeExpiry(h.package_type, h.updated_at || h.created_at);
-              const row = i % 2 === 0 ? tdS : tdAlt;
-              return (
-                <tr key={h.id}>
-                  <td style={row}><span style={{ fontWeight: 600, color: c.text }}>{name}</span></td>
-                  <td style={row}><span style={{ fontFamily: 'monospace', color: isDark ? '#a5b4fc' : '#4f46e5' }}>{domain}</span></td>
-                  <td style={row}><StatusBadge status={h.status} /></td>
-                  <td style={row}>
-                    <span style={{ color: expiry ? c.text : c.subText }}>
-                      {expiry ? format(expiry, 'MMM dd, yyyy') : '—'}
-                    </span>
-                  </td>
-                  <td style={{ ...row, textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <Btn color={c.brand} onClick={() => sendExpiryReminder('hosting', h)} title="Send expiry reminder"><Bell size={12} /> Notify</Btn>
-                      <Btn color="#ef4444" onClick={() => deleteItem('hosting', h.id)} title="Delete package"><Trash2 size={12} /> Delete</Btn>
-                    </div>
-                  </td>
+      {/* Row 1: Active Domains | Hosting Packages */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ ...cardS, marginBottom: 0 }}>
+          <SectionHeader title="Active Domains" accent="#378ADD" />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thS}>Domain</th>
+                  <th style={thS}>Status</th>
+                  <th style={thS}>Expiry</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                 </tr>
-              );
-            })}
-            {approvedHosting.length === 0 && <tr><td colSpan={5} style={emptyS}>No hosting packages found</td></tr>}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {approvedDomains.map((d, i) => (
+                  <tr key={d.id}>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb', fontSize: 12 }}>{d.domain_name || '-'}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={d.status} /></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: d.expiry_date ? c.text : c.subText, fontSize: 12 }}>{d.expiry_date ? format(new Date(d.expiry_date), 'MMM dd, yy') : '—'}</span></td>
+                    <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <Btn color={c.brand} onClick={() => sendExpiryReminder('domain', d)}><Bell size={11} /></Btn>
+                        <Btn color="#ef4444" onClick={() => deleteItem('domain', d.id)}><Trash2 size={11} /></Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {approvedDomains.length === 0 && <tr><td colSpan={4} style={emptyS}>No active domains</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-      {/* Pending Domain Requests */}
-      <div style={cardS}>
-        <SectionHeader title="Pending Domain Requests" accent="#ba7517" />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={thS}>Domain</th>
-              <th style={thS}>Status</th>
-              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pendingDomainReqs.map((r, i) => (
-              <tr key={r.id}>
-                <td style={i % 2 === 0 ? tdS : tdAlt}>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb' }}>{r.domain_name || '-'}</span>
-                </td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={r.status} /></td>
-                <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <Btn color="#16a34a" filled onClick={() => updateRequestStatus('domain', r.id, 'approved')}>Approve</Btn>
-                    <Btn color="#dc2626" onClick={() => updateRequestStatus('domain', r.id, 'rejected')}>Reject</Btn>
-                    <Btn color={c.subText} onClick={() => deleteItem('domain', r.id)}><Trash2 size={12} /></Btn>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {pendingDomainReqs.length === 0 && <tr><td colSpan={3} style={emptyS}>No pending domain requests</td></tr>}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pending Hosting Requests */}
-      <div style={cardS}>
-        <SectionHeader title="Pending Hosting Requests" accent="#8b5cf6" />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={thS}>Package</th>
-              <th style={thS}>Domain</th>
-              <th style={thS}>Status</th>
-              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pendingHostingReqs.map((r, i) => {
-              const { name, domain } = parsePackage(r.package_type);
-              const row = i % 2 === 0 ? tdS : tdAlt;
-              return (
-                <tr key={r.id}>
-                  <td style={row}><span style={{ fontWeight: 600, color: c.text }}>{name}</span></td>
-                  <td style={row}><span style={{ fontFamily: 'monospace', color: isDark ? '#a5b4fc' : '#4f46e5' }}>{domain}</span></td>
-                  <td style={row}><StatusBadge status={r.status} /></td>
-                  <td style={{ ...row, textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <Btn color="#16a34a" filled onClick={() => updateRequestStatus('hosting', r.id, 'approved')}>Approve</Btn>
-                      <Btn color="#dc2626" onClick={() => updateRequestStatus('hosting', r.id, 'rejected')}>Reject</Btn>
-                      <Btn color={c.subText} onClick={() => deleteItem('hosting', r.id)}><Trash2 size={12} /></Btn>
-                    </div>
-                  </td>
+        <div style={{ ...cardS, marginBottom: 0 }}>
+          <SectionHeader title="Hosting Packages" accent="#639922" />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thS}>Package</th>
+                  <th style={thS}>Status</th>
+                  <th style={thS}>Expiry</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                 </tr>
-              );
-            })}
-            {pendingHostingReqs.length === 0 && <tr><td colSpan={4} style={emptyS}>No pending hosting requests</td></tr>}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {approvedHosting.map((h, i) => {
+                  const { name } = parsePackage(h.package_type);
+                  const expiry = h.expiry_date ? new Date(h.expiry_date) : computeExpiry(h.package_type, h.updated_at || h.created_at);
+                  const row = i % 2 === 0 ? tdS : tdAlt;
+                  return (
+                    <tr key={h.id}>
+                      <td style={row}><span style={{ fontWeight: 600, color: c.text, fontSize: 12 }}>{name}</span></td>
+                      <td style={row}><StatusBadge status={h.status} /></td>
+                      <td style={row}><span style={{ color: expiry ? c.text : c.subText, fontSize: 12 }}>{expiry ? format(expiry, 'MMM dd, yy') : '—'}</span></td>
+                      <td style={{ ...row, textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          <Btn color={c.brand} onClick={() => sendExpiryReminder('hosting', h)}><Bell size={11} /></Btn>
+                          <Btn color="#ef4444" onClick={() => deleteItem('hosting', h.id)}><Trash2 size={11} /></Btn>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {approvedHosting.length === 0 && <tr><td colSpan={4} style={emptyS}>No hosting packages</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Pending Domain Requests | Pending Hosting Requests */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ ...cardS, marginBottom: 0 }}>
+          <SectionHeader title="Pending Domain Requests" accent="#ba7517" />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thS}>Domain</th>
+                  <th style={thS}>Status</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingDomainReqs.map((r, i) => (
+                  <tr key={r.id}>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb', fontSize: 12 }}>{r.domain_name || '-'}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={r.status} /></td>
+                    <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                        <Btn color="#16a34a" filled onClick={() => updateRequestStatus('domain', r.id, 'approved')}>✓</Btn>
+                        <Btn color="#dc2626" onClick={() => updateRequestStatus('domain', r.id, 'rejected')}>✗</Btn>
+                        <Btn color={c.subText} onClick={() => deleteItem('domain', r.id)}><Trash2 size={11} /></Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pendingDomainReqs.length === 0 && <tr><td colSpan={3} style={emptyS}>No pending requests</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ ...cardS, marginBottom: 0 }}>
+          <SectionHeader title="Pending Hosting Requests" accent="#8b5cf6" />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thS}>Package</th>
+                  <th style={thS}>Status</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingHostingReqs.map((r, i) => {
+                  const { name } = parsePackage(r.package_type);
+                  const row = i % 2 === 0 ? tdS : tdAlt;
+                  return (
+                    <tr key={r.id}>
+                      <td style={row}><span style={{ fontWeight: 600, color: c.text, fontSize: 12 }}>{name}</span></td>
+                      <td style={row}><StatusBadge status={r.status} /></td>
+                      <td style={{ ...row, textAlign: 'right' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                          <Btn color="#16a34a" filled onClick={() => updateRequestStatus('hosting', r.id, 'approved')}>✓</Btn>
+                          <Btn color="#dc2626" onClick={() => updateRequestStatus('hosting', r.id, 'rejected')}>✗</Btn>
+                          <Btn color={c.subText} onClick={() => deleteItem('hosting', r.id)}><Trash2 size={11} /></Btn>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {pendingHostingReqs.length === 0 && <tr><td colSpan={3} style={emptyS}>No pending requests</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Assigned Products */}
+      <div style={{ ...cardS, marginBottom: 0 }}>
+        <SectionHeader title="Assigned Products" accent="#6366f1" />
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thS}>Product</th>
+                <th style={thS}>Type</th>
+                <th style={thS}>License Type</th>
+                <th style={thS}>License Key</th>
+                <th style={thS}>Status</th>
+                <th style={thS}>Expiry</th>
+                <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {licenses.map((lic, i) => {
+                const row = i % 2 === 0 ? tdS : tdAlt;
+                const lt = lic.product?.license_type || lic.license_type || 'one_time';
+                const ltLabel = lt === 'one_time' ? 'One Time' : lt === 'yearly' ? 'Yearly' : 'Lifetime';
+                const ltColor = lt === 'one_time' ? '#22c55e' : lt === 'yearly' ? '#f59e0b' : '#6366f1';
+                return (
+                  <tr key={lic.id}>
+                    <td style={row}><span style={{ fontWeight: 600, color: c.text, fontSize: 13 }}>{lic.name}</span></td>
+                    <td style={row}><span style={{ color: c.subText, fontSize: 12 }}>{lic.product?.type || '-'}</span></td>
+                    <td style={row}>
+                      <span style={{ color: ltColor, fontWeight: 500, fontSize: 12 }}>{ltLabel}</span>
+                    </td>
+                    <td style={row}>
+                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: c.subText }}>{lic.license_key || '-'}</span>
+                    </td>
+                    <td style={row}><StatusBadge status={lic.status} /></td>
+                    <td style={row}>
+                      <span style={{ color: lic.expiry_date ? c.text : c.subText, fontSize: 12 }}>
+                        {lic.expiry_date ? format(new Date(lic.expiry_date), 'MMM dd, yy') : '—'}
+                      </span>
+                    </td>
+                    <td style={{ ...row, textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <Btn color={c.brand} onClick={async () => {
+                          const next = lic.status === 'Active' ? 'Disabled' : 'Active';
+                          await updateLicense(lic.id, { status: next });
+                          await loadAll();
+                          toast({ title: 'License updated', description: `Status set to ${next}.` });
+                        }}>
+                          <Edit size={11} /> {lic.status === 'Active' ? 'Disable' : 'Enable'}
+                        </Btn>
+                        <Btn color="#ef4444" onClick={async () => {
+                          if (!confirm('Revoke this product license? Customer will lose access.')) return;
+                          await deleteLicense(lic.id);
+                          await loadAll();
+                          toast({ title: 'License revoked', description: 'Product access removed.' });
+                        }}>
+                          <Trash2 size={11} /> Delete
+                        </Btn>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {licenses.length === 0 && <tr><td colSpan={7} style={emptyS}>No products assigned</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

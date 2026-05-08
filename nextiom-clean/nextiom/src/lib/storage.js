@@ -822,8 +822,22 @@ export const deleteHostingRequest = async (id) => {
 };
 
 export const updateLicense = async (id, updates) => {
-  console.log('License updated:', id, updates);
+  const { data, error } = await supabase.from('licenses').update(updates).eq('id', id).select().single();
+  if (error) handleSupabaseError(error, 'updateLicense');
+  return data;
+};
+
+export const deleteLicense = async (id) => {
+  const { error } = await supabase.from('licenses').delete().eq('id', id);
+  if (error) handleSupabaseError(error, 'deleteLicense');
   return true;
+};
+
+export const incrementDownloadCount = async (licenseId) => {
+  const { data: row } = await supabase.from('licenses').select('download_count').eq('id', licenseId).single();
+  const next = (row?.download_count || 0) + 1;
+  await supabase.from('licenses').update({ download_count: next }).eq('id', licenseId);
+  return next;
 };
 
 export const generateLicenseKey = () => {

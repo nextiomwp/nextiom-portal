@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { getLicenses } from '@/lib/storage';
+import { getLicenses, incrementDownloadCount } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
 const LICENSE_CFG = {
@@ -11,7 +11,11 @@ const LICENSE_CFG = {
 
 function getValidity(license) {
   const lt = license.product?.license_type || license.license_type || 'one_time';
-  if (lt === 'lifetime' || lt === 'one_time') return { valid: true, label: lt === 'lifetime' ? 'Lifetime' : 'Permanent', days: null };
+  if (lt === 'lifetime') return { valid: true, label: 'Lifetime', days: null };
+  if (lt === 'one_time') {
+    const used = (license.download_count || 0) >= 1;
+    return { valid: !used, label: used ? 'Download Used' : 'One Time Download', days: null, downloadUsed: used };
+  }
   if (lt === 'yearly' && license.expiry_date) {
     const days = Math.ceil((new Date(license.expiry_date) - new Date()) / 86400000);
     if (days <= 0) return { valid: false, label: 'Expired', days: 0 };
@@ -155,14 +159,21 @@ export default function MyProductsPage({ user, isDark, c }) {
 
                 {/* Download button */}
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!isValid) {
-                      toast({ title: 'License Expired', description: 'Your license has expired. Please renew to download.', variant: 'destructive' });
+                      const lt = product.license_type || license.license_type || 'one_time';
+                      const msg = lt === 'one_time' ? 'You have already used your one-time download.' : 'Your license has expired. Please renew to download.';
+                      toast({ title: 'Download Unavailable', description: msg, variant: 'destructive' });
                       return;
                     }
                     if (!downloadUrl) {
                       toast({ title: 'No download available', description: 'Download URL not configured for this product.', variant: 'destructive' });
                       return;
+                    }
+                    const lt = product.license_type || license.license_type || 'one_time';
+                    if (lt === 'one_time') {
+                      await incrementDownloadCount(license.id);
+                      setLicenses(prev => prev.map(l => l.id === license.id ? { ...l, download_count: (l.download_count || 0) + 1 } : l));
                     }
                     triggerDownload(downloadUrl, license.name);
                   }}
