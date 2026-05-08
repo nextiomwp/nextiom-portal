@@ -65,7 +65,7 @@ function RegisterPage() {
 
   const handleOtpSubmit = async (e) => {
     e.preventDefault();
-    if (otp.length !== 6) { setOtpError('Please enter the 6-digit code.'); return; }
+    if (otp.length !== 8) { setOtpError('Please enter the 8-digit code.'); return; }
     setIsLoading(true);
     setOtpError('');
     try {
@@ -139,14 +139,14 @@ function RegisterPage() {
                     id="otp"
                     type="text"
                     inputMode="numeric"
-                    maxLength={6}
+                    maxLength={8}
                     value={otp}
                     onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '')); setOtpError(''); }}
                     className={cn(
-                      "w-full text-center py-3 bg-white border rounded-lg text-2xl font-bold tracking-[0.5em] focus:outline-none focus:ring-2 focus:ring-[#FF8C42]/20 transition-all",
+                      "w-full text-center py-3 bg-white border rounded-lg text-2xl font-bold tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-[#FF8C42]/20 transition-all",
                       otpError ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-[#FF8C42]"
                     )}
-                    placeholder="______"
+                    placeholder="________"
                     autoFocus
                   />
                   {otpError && <p className="text-xs text-red-500 text-center font-medium">{otpError}</p>}
@@ -154,7 +154,7 @@ function RegisterPage() {
 
                 <Button
                   type="submit"
-                  disabled={isLoading || otp.length !== 6}
+                  disabled={isLoading || otp.length !== 8}
                   className="w-full bg-[#FF8C42] hover:bg-[#e67e3b] text-white font-semibold h-11 rounded-lg transition-all shadow-sm hover:shadow-md"
                 >
                   {isLoading ? (
