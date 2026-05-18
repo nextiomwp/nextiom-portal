@@ -164,16 +164,13 @@ export const updateCustomer = async (id, updates) => {
 };
 
 export const deleteCustomer = async (id) => {
-  // Delete ticket_messages before tickets (FK: ticket_messages.ticket_id → tickets.id)
-  const { data: tickets } = await supabase.from('tickets').select('id').eq('customer_id', id);
-  if (tickets?.length) {
-    await supabase.from('ticket_messages').delete().in('ticket_id', tickets.map(t => t.id));
-    await supabase.from('tickets').delete().eq('customer_id', id);
-  }
-  await supabase.from('licenses').delete().eq('customer_id', id);
-  await supabase.from('notifications').delete().eq('customer_id', id);
+  // NO ACTION FKs — must be cleaned manually before delete
   await supabase.from('domain_requests').delete().eq('customer_id', id);
   await supabase.from('hosting_requests').delete().eq('customer_id', id);
+  await supabase.from('requests').delete().eq('customer_id', id);
+  await supabase.from('services').delete().eq('customer_id', id);
+  await supabase.from('licenses').delete().eq('customer_id', id);
+  // CASCADE FKs (tickets, ticket_messages, notifications, customer_*) handled by Postgres
   const { error } = await supabase.from('customers').delete().eq('id', id);
   if (error) handleSupabaseError(error, 'deleteCustomer');
   return true;
