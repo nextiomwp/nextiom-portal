@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity } from 'lucide-react';
+import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity, Layers, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { deleteProduct } from '@/lib/storage';
 import EditProductDialog from '@/components/dialogs/EditProductDialog';
@@ -67,6 +67,7 @@ function ProductList({ products, onUpdate, isDark, c }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, padding: 20 }}>
         <AnimatePresence>
           {filtered.map((product, i) => {
+            const isVirtual = product.category === 'virtual';
             const lt = LICENSE_LABEL[product.license_type] || LICENSE_LABEL.one_time;
             const LtIcon = lt.icon;
             return (
@@ -77,10 +78,22 @@ function ProductList({ products, onUpdate, isDark, c }) {
                 style={{ background: panelBg, border: `1px solid ${border}`, borderRadius: 10, padding: 16 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 8, background: 'linear-gradient(135deg,#4F46E5,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Package style={{ width: 18, height: 18, color: '#fff' }} />
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
+                    background: product.image_url ? 'transparent' : 'linear-gradient(135deg,#4F46E5,#6366f1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {product.image_url
+                      ? <img src={product.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : (isVirtual ? <Layers style={{ width: 18, height: 18, color: '#fff' }} /> : <Package style={{ width: 18, height: 18, color: '#fff' }} />)
+                    }
                   </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 20,
+                      background: isVirtual ? 'rgba(99,102,241,0.12)' : 'rgba(34,197,94,0.12)',
+                      color: isVirtual ? '#6366f1' : '#22c55e' }}>
+                      {isVirtual ? 'Virtual' : 'Digital'}
+                    </span>
                     <button onClick={() => setEditingProduct(product)}
                       style={{ padding: 6, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer', color: sub }}
                       onMouseEnter={e => { e.currentTarget.style.background = hover; e.currentTarget.style.color = brand; }}
@@ -105,16 +118,38 @@ function ProductList({ products, onUpdate, isDark, c }) {
                   </p>
                 )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: product.download_url ? 8 : 0 }}>
-                  <LtIcon style={{ width: 12, height: 12, color: lt.color }} />
-                  <span style={{ color: lt.color, fontSize: 11, fontWeight: 500 }}>{lt.label}</span>
-                </div>
+                {product.price != null && (
+                  <p style={{ color: brand, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>${Number(product.price).toFixed(2)}</p>
+                )}
 
-                {product.download_url && (
-                  <a href={product.download_url} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, color: brand, fontSize: 12, textDecoration: 'none', marginTop: 4 }}>
-                    <Download style={{ width: 12, height: 12 }} /> Download URL set
-                  </a>
+                {isVirtual ? (
+                  <>
+                    {product.renewal_date && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Clock style={{ width: 12, height: 12, color: sub }} />
+                        <span style={{ color: sub, fontSize: 11 }}>Renews: {product.renewal_date}</span>
+                      </div>
+                    )}
+                    {product.renewal_enabled && product.renewal_price && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                        <RefreshCw style={{ width: 12, height: 12, color: sub }} />
+                        <span style={{ color: sub, fontSize: 11 }}>Renewal: ${product.renewal_price}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: product.download_url ? 8 : 0 }}>
+                      <LtIcon style={{ width: 12, height: 12, color: lt.color }} />
+                      <span style={{ color: lt.color, fontSize: 11, fontWeight: 500 }}>{lt.label}</span>
+                    </div>
+                    {product.download_url && (
+                      <a href={product.download_url} target="_blank" rel="noopener noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, color: brand, fontSize: 12, textDecoration: 'none', marginTop: 4 }}>
+                        <Download style={{ width: 12, height: 12 }} /> Download URL set
+                      </a>
+                    )}
+                  </>
                 )}
               </motion.div>
             );

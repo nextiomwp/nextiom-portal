@@ -10,21 +10,32 @@ export const AuthProvider = ({ children }) => {
   const [role, setRole] = useState(null);
   const [customerProfile, setCustomerProfile] = useState(null);
 
+  const clearStaleAuth = () => {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('sb-'))
+      .forEach(k => localStorage.removeItem(k));
+  };
+
   useEffect(() => {
     let mounted = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        clearStaleAuth();
+        setUser(null);
+        setRole(null);
+        setCustomerProfile(null);
+        setLoading(false);
+        return;
+      }
+
       if (session?.user) {
         await handleUserSession(session.user);
       } else {
-        // On initial load with no valid session, clear any stale auth tokens
-        // that Supabase may not have cleaned up (expired refresh tokens, revoked sessions, etc.)
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
-          Object.keys(localStorage)
-            .filter(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
-            .forEach(k => localStorage.removeItem(k));
+          clearStaleAuth();
         }
         setUser(null);
         setRole(null);
@@ -67,7 +78,7 @@ export const AuthProvider = ({ children }) => {
       setRole(userRole);
     } catch (err) {
       console.error("Error handling user session:", err);
-      // Clear broken session from storage so users can log in cleanly
+      clearStaleAuth();
       await supabase.auth.signOut({ scope: 'local' });
       setUser(null);
       setRole(null);

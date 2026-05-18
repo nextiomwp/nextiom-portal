@@ -164,12 +164,16 @@ export const updateCustomer = async (id, updates) => {
 };
 
 export const deleteCustomer = async (id) => {
-  await Promise.all([
-    supabase.from('licenses').delete().eq('customer_id', id),
-    supabase.from('notifications').delete().eq('customer_id', id),
-    supabase.from('domain_requests').delete().eq('customer_id', id),
-    supabase.from('hosting_requests').delete().eq('customer_id', id),
-  ]);
+  // Delete ticket_messages before tickets (FK: ticket_messages.ticket_id → tickets.id)
+  const { data: tickets } = await supabase.from('tickets').select('id').eq('customer_id', id);
+  if (tickets?.length) {
+    await supabase.from('ticket_messages').delete().in('ticket_id', tickets.map(t => t.id));
+    await supabase.from('tickets').delete().eq('customer_id', id);
+  }
+  await supabase.from('licenses').delete().eq('customer_id', id);
+  await supabase.from('notifications').delete().eq('customer_id', id);
+  await supabase.from('domain_requests').delete().eq('customer_id', id);
+  await supabase.from('hosting_requests').delete().eq('customer_id', id);
   const { error } = await supabase.from('customers').delete().eq('id', id);
   if (error) handleSupabaseError(error, 'deleteCustomer');
   return true;
@@ -229,6 +233,17 @@ export const deleteProduct = async (id) => {
 
   if (error) handleSupabaseError(error, 'deleteProduct');
   return true;
+};
+
+export const uploadProductImage = async (file) => {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const path = `${Date.now()}.${ext}`;
+  const { data, error } = await supabase.storage
+    .from('product-images')
+    .upload(path, file, { upsert: true });
+  if (error) handleSupabaseError(error, 'uploadProductImage');
+  const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
+  return publicUrl;
 };
 
 // --- Domains ---
