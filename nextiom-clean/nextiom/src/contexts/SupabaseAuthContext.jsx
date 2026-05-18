@@ -19,6 +19,22 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
+    // Validate session on mount — catches stale/corrupted tokens that fail silently
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data: { user: validUser }, error } = await supabase.auth.getUser();
+          if (error || !validUser) {
+            clearStaleAuth();
+            await supabase.auth.signOut({ scope: 'local' });
+          }
+        }
+      } catch {
+        clearStaleAuth();
+      }
+    })();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
@@ -166,11 +182,10 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signOut();
-    if (!error) {
-      setUser(null);
-      setRole(null);
-      setCustomerProfile(null);
-    }
+    clearStaleAuth();
+    setUser(null);
+    setRole(null);
+    setCustomerProfile(null);
     setLoading(false);
     return { error };
   };

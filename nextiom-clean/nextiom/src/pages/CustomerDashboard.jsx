@@ -81,8 +81,18 @@ function getActiveLabel(activeTab) {
   return 'Dashboard';
 }
 
+const KEEP_ALIVE_TABS = ['dashboard','hosting_my','domains_my','services','invoices','support_tickets','products','profile','notifications'];
+
 function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [mountedTabs, setMountedTabs] = useState(() => new Set(['dashboard']));
+
+  useEffect(() => {
+    if (KEEP_ALIVE_TABS.includes(activeTab)) {
+      setMountedTabs(s => s.has(activeTab) ? s : new Set(s).add(activeTab));
+    }
+  }, [activeTab]);
+
   const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'orders', 'support']);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
@@ -261,34 +271,28 @@ function CustomerDashboard() {
     const userProp = { ...user, ...customerProfile, id: customerProfile.id || user.id, email: customerProfile.email || user.email, memberSince: customerProfile.created_at };
     const theme = { isDark, c };
 
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardPage key="dashboard" user={userProp} {...theme} onNavigate={navigate} />;
-      case 'hosting_my':
-        return <MyHostingPackagesPage key="hosting_my" user={userProp} {...theme} />;
-      case 'hosting_new':
-        return <NewHostingOrderPage key="hosting_new" onSuccess={() => setActiveTab('hosting_my')} {...theme} />;
-      case 'domains_my':
-        return <MyDomainsPage key="domains_my" user={userProp} {...theme} />;
-      case 'domains_new':
-        return <NewDomainRequestPage key="domains_new" onSuccess={() => setActiveTab('domains_my')} {...theme} />;
-      case 'services':
-        return <MyServicesPage key="services" user={userProp} {...theme} />;
-      case 'invoices':
-        return <CustomerInvoicesPage key="invoices" user={userProp} isDark={isDark} c={c} />;
-      case 'support_create':
-        return <CreateTicketPage key="support_create" user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
-      case 'support_tickets':
-        return <MyTicketsPage key="support_tickets" user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
-      case 'products':
-        return <MyProductsPage key="products" user={userProp} isDark={isDark} c={c} />;
-      case 'profile':
-        return <ProfilePage key="profile" user={userProp} onUpdate={() => {}} {...theme} />;
-      case 'notifications':
-        return <NotificationsPage key="notifications" customerId={customerProfile.id} {...theme} />;
-      default:
-        return <DashboardPage key="dashboard" user={userProp} {...theme} />;
-    }
+    // Form pages — rendered fresh each visit (no keep-alive)
+    if (activeTab === 'hosting_new') return <NewHostingOrderPage onSuccess={() => setActiveTab('hosting_my')} {...theme} />;
+    if (activeTab === 'domains_new') return <NewDomainRequestPage onSuccess={() => setActiveTab('domains_my')} {...theme} />;
+    if (activeTab === 'support_create') return <CreateTicketPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
+
+    const wrap = (id, node) => (
+      <div key={id} style={{ display: activeTab === id ? 'block' : 'none' }}>{node}</div>
+    );
+
+    return (
+      <>
+        {mountedTabs.has('dashboard')       && wrap('dashboard',       <DashboardPage user={userProp} {...theme} onNavigate={navigate} />)}
+        {mountedTabs.has('hosting_my')      && wrap('hosting_my',      <MyHostingPackagesPage user={userProp} {...theme} />)}
+        {mountedTabs.has('domains_my')      && wrap('domains_my',      <MyDomainsPage user={userProp} {...theme} />)}
+        {mountedTabs.has('services')        && wrap('services',        <MyServicesPage user={userProp} {...theme} />)}
+        {mountedTabs.has('invoices')        && wrap('invoices',        <CustomerInvoicesPage user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />)}
+        {mountedTabs.has('products')        && wrap('products',        <MyProductsPage user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('profile')         && wrap('profile',         <ProfilePage user={userProp} onUpdate={() => {}} {...theme} />)}
+        {mountedTabs.has('notifications')   && wrap('notifications',   <NotificationsPage customerId={customerProfile.id} {...theme} />)}
+      </>
+    );
   };
 
   if (!user) {

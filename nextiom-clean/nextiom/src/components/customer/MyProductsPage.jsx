@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers } from 'lucide-react';
+import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, X, Key, Calendar, DollarSign, Shield, Zap } from 'lucide-react';
 import { getLicenses, incrementDownloadCount } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -45,6 +45,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortDir, setSortDir] = useState('desc');
+  const [detailLicense, setDetailLicense] = useState(null);
   const { toast } = useToast();
 
   const bg = c?.bg || (isDark ? '#15161A' : '#f8f8f7');
@@ -129,6 +130,112 @@ export default function MyProductsPage({ user, isDark, c }) {
         ) : null;
       })()}
 
+      {/* Detail Modal */}
+      {detailLicense && (() => {
+        const dp = detailLicense.product || {};
+        const dIsVirtual = dp.category === 'virtual';
+        const dlt = dp.license_type || detailLicense.license_type || 'one_time';
+        const dcfg = LICENSE_CFG[dlt] || LICENSE_CFG.one_time;
+        const DLtIcon = dcfg.icon;
+        const dValidity = getValidity(detailLicense);
+        const fmt = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+        const Row = ({ icon: Icon, label, value, mono }) => value ? (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: `1px solid ${border}` }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: panelBg || panel, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon style={{ width: 14, height: 14, color: brand }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: sub, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>{label}</p>
+              <p style={{ color: text, fontSize: 13, fontFamily: mono ? 'monospace' : 'inherit', wordBreak: 'break-all', margin: 0 }}>{value}</p>
+            </div>
+          </div>
+        ) : null;
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+            onClick={() => setDetailLicense(null)}>
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} />
+            <div style={{ position: 'relative', background: card, borderRadius: 16, width: '100%', maxWidth: 480, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: `1px solid ${border}` }}
+              onClick={e => e.stopPropagation()}>
+              {/* Image banner */}
+              {dp.image_url ? (
+                <div style={{ height: 160, overflow: 'hidden', position: 'relative' }}>
+                  <img src={dp.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7))' }} />
+                  <p style={{ position: 'absolute', bottom: 12, left: 16, color: '#fff', fontWeight: 700, fontSize: 18, margin: 0 }}>{detailLicense.name}</p>
+                </div>
+              ) : (
+                <div style={{ height: 80, background: 'linear-gradient(135deg,#4F46E5,#6366f1)', display: 'flex', alignItems: 'center', padding: '0 20px' }}>
+                  {dIsVirtual ? <Layers style={{ width: 28, height: 28, color: '#fff', marginRight: 12 }} /> : <Package style={{ width: 28, height: 28, color: '#fff', marginRight: 12 }} />}
+                  <p style={{ color: '#fff', fontWeight: 700, fontSize: 18, margin: 0 }}>{detailLicense.name}</p>
+                </div>
+              )}
+
+              {/* Header strip */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: `1px solid ${border}` }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20,
+                    background: dIsVirtual ? 'rgba(99,102,241,0.12)' : 'rgba(34,197,94,0.12)',
+                    color: dIsVirtual ? '#6366f1' : '#22c55e' }}>
+                    {dIsVirtual ? 'Virtual' : 'Digital'}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 20, background: dcfg.bg }}>
+                    <DLtIcon style={{ width: 11, height: 11, color: dcfg.color }} />
+                    <span style={{ color: dcfg.color, fontSize: 11, fontWeight: 500 }}>{dcfg.label}</span>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 20,
+                    background: detailLicense.status === 'Active' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                    color: detailLicense.status === 'Active' ? '#22c55e' : '#ef4444' }}>
+                    {detailLicense.status}
+                  </span>
+                </div>
+                <button onClick={() => setDetailLicense(null)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4 }}>
+                  <X style={{ width: 18, height: 18 }} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div style={{ overflowY: 'auto', padding: '4px 20px 20px' }}>
+                {dp.description && <p style={{ color: sub, fontSize: 13, margin: '12px 0' }}>{dp.description}</p>}
+
+                {dp.price != null && <Row icon={DollarSign} label="Purchase Price" value={`$${Number(dp.price).toFixed(2)}`} />}
+                {dp.renewal_price != null && <Row icon={RefreshCw} label="Renewal Price" value={`$${Number(dp.renewal_price).toFixed(2)}`} />}
+                {detailLicense.license_key && <Row icon={Key} label="License Key" value={detailLicense.license_key} mono />}
+                {detailLicense.expiry_date && <Row icon={Calendar} label="Expiry Date" value={fmt(detailLicense.expiry_date)} />}
+                {dp.renewal_date && <Row icon={Calendar} label="Renewal Date" value={fmt(dp.renewal_date)} />}
+                {detailLicense.created_at && <Row icon={Clock} label="Assigned On" value={fmt(detailLicense.created_at)} />}
+                {dp.renewal_period_days && <Row icon={Clock} label="Validity Period" value={`${dp.renewal_period_days} days`} />}
+                {dp.type && <Row icon={Package} label="Product Type" value={dp.type} />}
+
+                {!dIsVirtual && (
+                  <div style={{ marginTop: 12 }}>
+                    <p style={{ color: sub, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Features</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {dp.license_registration && <span style={{ padding: '4px 10px', borderRadius: 20, background: panel, color: text, fontSize: 12 }}>License Registration</span>}
+                      {dp.manual_updates && <span style={{ padding: '4px 10px', borderRadius: 20, background: panel, color: text, fontSize: 12 }}>Manual Updates</span>}
+                      {dp.automatic_updates && <span style={{ padding: '4px 10px', borderRadius: 20, background: panel, color: text, fontSize: 12 }}>Automatic Updates</span>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Validity status */}
+                <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10,
+                  background: dValidity.valid ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                  border: `1px solid ${dValidity.valid ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                  display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {dValidity.valid
+                    ? <CheckCircle style={{ width: 16, height: 16, color: '#22c55e' }} />
+                    : <AlertCircle style={{ width: 16, height: 16, color: '#ef4444' }} />}
+                  <span style={{ color: dValidity.valid ? '#22c55e' : '#ef4444', fontWeight: 500, fontSize: 13 }}>
+                    {dValidity.valid ? `Active — ${dValidity.label}` : 'License Expired / Used'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {licenses.length === 0 ? (
         <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, padding: 48, textAlign: 'center' }}>
           <Package style={{ width: 40, height: 40, color: sub, margin: '0 auto 12px' }} />
@@ -154,30 +261,39 @@ export default function MyProductsPage({ user, isDark, c }) {
             const isValid = license.status === 'Active' && validity.valid;
 
             return (
-              <div key={license.id} style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Top row */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 10, flexShrink: 0, overflow: 'hidden',
-                    background: product.image_url ? 'transparent' : 'linear-gradient(135deg,#4F46E5,#6366f1)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {product.image_url
-                      ? <img src={product.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : (isVirtual ? <Layers style={{ width: 20, height: 20, color: '#fff' }} /> : <Package style={{ width: 20, height: 20, color: '#fff' }} />)
-                    }
+              <div key={license.id} style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                {/* Image banner */}
+                <div style={{ position: 'relative', height: 120, background: product.image_url ? 'transparent' : 'linear-gradient(135deg,#4F46E5,#6366f1)', flexShrink: 0, overflow: 'hidden' }}>
+                  {product.image_url
+                    ? <img src={product.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {isVirtual ? <Layers style={{ width: 36, height: 36, color: 'rgba(255,255,255,0.6)' }} /> : <Package style={{ width: 36, height: 36, color: 'rgba(255,255,255,0.6)' }} />}
+                      </div>
+                  }
+                  {/* Overlay gradient */}
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.55))' }} />
+                  {/* Category badge top-left */}
+                  <div style={{ position: 'absolute', top: 8, left: 10, padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500,
+                    background: isVirtual ? 'rgba(99,102,241,0.85)' : 'rgba(34,197,94,0.85)', color: '#fff', backdropFilter: 'blur(4px)' }}>
+                    {isVirtual ? 'Virtual' : 'Digital'}
                   </div>
+                  {/* Eye button top-right */}
+                  <button onClick={() => setDetailLicense(license)}
+                    style={{ position: 'absolute', top: 8, right: 10, width: 30, height: 30, borderRadius: '50%', border: 'none',
+                      background: 'rgba(0,0,0,0.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      backdropFilter: 'blur(4px)', color: '#fff' }}>
+                    <Eye style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
+
+                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                {/* Name row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ color: text, fontWeight: 600, fontSize: 15, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {license.name}
                     </p>
                     {product.type && <p style={{ color: sub, fontSize: 12, marginTop: 2 }}>{product.type}</p>}
-                  </div>
-                  {/* Category badge */}
-                  <div style={{ padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500,
-                    background: isVirtual ? 'rgba(99,102,241,0.12)' : 'rgba(34,197,94,0.12)',
-                    color: isVirtual ? '#6366f1' : '#22c55e', flexShrink: 0 }}>
-                    {isVirtual ? 'Virtual' : 'Digital'}
                   </div>
                 </div>
 
@@ -276,6 +392,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                     </button>
                   </>
                 )}
+                </div>
               </div>
             );
           })}
