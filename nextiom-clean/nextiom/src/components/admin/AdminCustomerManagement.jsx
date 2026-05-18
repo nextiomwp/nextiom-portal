@@ -78,8 +78,9 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
   };
 
   const filteredCustomers = customers.filter(cu =>
-    (cu.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-    (cu.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    cu.status !== 'rejected' &&
+    ((cu.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+    (cu.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()))
   );
 
   if (isLoading) return (
