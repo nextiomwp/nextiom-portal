@@ -13,28 +13,23 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    async function getSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (mounted) {
-        if (session?.user) {
-          await handleUserSession(session.user);
-        } else {
-          setLoading(false);
-        }
-      }
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
 
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         await handleUserSession(session.user);
       } else {
-        if (mounted) {
-          setUser(null);
-          setRole(null);
-          setLoading(false);
+        // On initial load with no valid session, clear any stale auth tokens
+        // that Supabase may not have cleaned up (expired refresh tokens, revoked sessions, etc.)
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+            .forEach(k => localStorage.removeItem(k));
         }
+        setUser(null);
+        setRole(null);
+        setCustomerProfile(null);
+        setLoading(false);
       }
     });
 
@@ -47,7 +42,7 @@ export const AuthProvider = ({ children }) => {
   const handleUserSession = async (authUser) => {
     try {
       const userRole = authUser.user_metadata?.role || 'customer';
-      
+
       if (userRole === 'customer') {
         let profile = await getUserProfile(authUser.id);
         if (!profile) {
@@ -72,6 +67,11 @@ export const AuthProvider = ({ children }) => {
       setRole(userRole);
     } catch (err) {
       console.error("Error handling user session:", err);
+      // Clear broken session from storage so users can log in cleanly
+      await supabase.auth.signOut({ scope: 'local' });
+      setUser(null);
+      setRole(null);
+      setCustomerProfile(null);
     } finally {
       setLoading(false);
     }

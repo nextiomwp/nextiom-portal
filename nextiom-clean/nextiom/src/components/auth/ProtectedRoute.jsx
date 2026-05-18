@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 
 function ProtectedRoute({ children, allowedRoles }) {
-  const { user, loading, authError } = useAuth();
+  const { user, loading, authError, signOut } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
   const [accessCheckLoading, setAccessCheckLoading] = useState(true);
@@ -80,10 +80,10 @@ function ProtectedRoute({ children, allowedRoles }) {
           <h2 className="text-xl font-bold" style={{ color: '#fff' }}>Authentication Error</h2>
           <p style={{ color: '#a0a0a0' }}>{authError}</p>
           <Button
-            onClick={() => window.location.reload()}
+            onClick={async () => { await signOut(); window.location.href = '/'; }}
             className="bg-[#E87B35] hover:bg-[#d06b28] text-white"
           >
-            Retry Connection
+            Return to Login
           </Button>
         </div>
       </div>
@@ -100,7 +100,11 @@ function ProtectedRoute({ children, allowedRoles }) {
           </div>
           <h2 className="text-xl font-bold" style={{ color: '#fff' }}>{isPending ? 'Pending Approval' : 'Access Restricted'}</h2>
           <p style={{ color: '#a0a0a0' }}>{isPending ? 'Please wait for admin approval before accessing your account.' : accessError}</p>
-          <Button onClick={() => { window.location.href = '/'; }} style={{ background: '#E87B35', color: '#fff' }} className="hover:opacity-90">
+          <Button
+            onClick={async () => { await signOut(); window.location.href = '/'; }}
+            style={{ background: '#E87B35', color: '#fff' }}
+            className="hover:opacity-90"
+          >
             Return to Login
           </Button>
         </div>
