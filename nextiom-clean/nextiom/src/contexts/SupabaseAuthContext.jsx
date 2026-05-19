@@ -19,23 +19,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Validate session on mount — catches stale/corrupted tokens that fail silently
-    (async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          const { data: { user: validUser }, error } = await supabase.auth.getUser();
-          if (error || !validUser) {
-            clearStaleAuth();
-            await supabase.auth.signOut({ scope: 'local' });
-          }
-        }
-      } catch {
-        clearStaleAuth();
-      }
-    })();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
       if (event === 'TOKEN_REFRESHED' && !session) {
@@ -48,7 +32,12 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (session?.user) {
-        await handleUserSession(session.user);
+        // Defer DB work out of the auth callback — running Supabase queries
+        // inside onAuthStateChange deadlocks the auth lock and causes the
+        // dashboard to hang on refresh.
+        setTimeout(() => {
+          if (mounted) handleUserSession(session.user);
+        }, 0);
       } else {
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
           clearStaleAuth();
