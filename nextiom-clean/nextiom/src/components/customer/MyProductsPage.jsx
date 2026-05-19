@@ -141,7 +141,7 @@ export default function MyProductsPage({ user, isDark, c }) {
         const fmt = (d) => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—';
         const Row = ({ icon: Icon, label, value, mono }) => value ? (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: `1px solid ${border}` }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: panelBg || panel, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: panel, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Icon style={{ width: 14, height: 14, color: brand }} />
             </div>
             <div style={{ flex: 1 }}>
