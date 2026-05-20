@@ -1,12 +1,160 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
+import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Invoice, getInvoices, deleteInvoice, fmtLKR } from '@/lib/invoices'
+import { Invoice, InvoicePayment, getInvoices, deleteInvoice, fmtLKR, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: 'Paid',    color: '#22c55e', bg: 'rgba(34,197,94,0.13)' },
   unpaid:  { label: 'Unpaid',  color: '#f59e0b', bg: 'rgba(245,158,11,0.13)' },
   overdue: { label: 'Overdue', color: '#ef4444', bg: 'rgba(239,68,68,0.13)' },
+  payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.13)' },
+}
+
+function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
+  invoice: Invoice; c: any; isDark: boolean; onClose: () => void; onChanged: () => void
+}) {
+  const { toast } = useToast()
+  const [payment, setPayment] = useState<InvoicePayment | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState<'view' | 'reject' | 'info'>('view')
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    getLatestPaymentByInvoice(invoice.id!).then(p => { setPayment(p); setLoading(false) }).catch(() => setLoading(false))
+  }, [invoice.id])
+
+  async function doApprove() {
+    if (!payment) return
+    setBusy(true)
+    try {
+      await approveInvoicePayment(payment, invoice)
+      toast({ title: 'Payment approved' })
+      onChanged(); onClose()
+    } catch { toast({ title: 'Failed to approve', variant: 'destructive' }) }
+    finally { setBusy(false) }
+  }
+
+  async function doReject() {
+    if (!payment || !reason.trim()) return
+    setBusy(true)
+    try {
+      await rejectInvoicePayment(payment, invoice, reason.trim())
+      toast({ title: 'Payment rejected' })
+      onChanged(); onClose()
+    } catch { toast({ title: 'Failed to reject', variant: 'destructive' }) }
+    finally { setBusy(false) }
+  }
+
+  async function doRequestInfo() {
+    if (!payment || !reason.trim()) return
+    setBusy(true)
+    try {
+      await requestPaymentInfo(payment, invoice, reason.trim())
+      toast({ title: 'Info request sent' })
+      onChanged(); onClose()
+    } catch { toast({ title: 'Failed', variant: 'destructive' }) }
+    finally { setBusy(false) }
+  }
+
+  const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase' as const, letterSpacing: 0.6, marginBottom: 4 }
+  const val: React.CSSProperties = { fontSize: 13, color: c.text, marginBottom: 10 }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 300 }} />
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 720, maxWidth: '95vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
+        <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <CreditCard size={18} style={{ color: c.brand }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Review Payment — {invoice.invoice_no}</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding: 22, overflowY: 'auto' }}>
+          {loading ? (
+            <div style={{ color: c.subText, fontSize: 13 }}>Loading payment…</div>
+          ) : !payment ? (
+            <div style={{ color: c.subText, fontSize: 13 }}>No payment submission found.</div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                <div>
+                  <div style={lbl}>Customer</div>
+                  <div style={val}>{invoice.client_name} ({invoice.client_email})</div>
+                  <div style={lbl}>Transaction ID / Reference</div>
+                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
+                  <div style={lbl}>Paid Amount</div>
+                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const, fontWeight: 700, color: c.brand }}>{fmtLKR(payment.paid_amount)}</div>
+                  <div style={lbl}>Payment Date</div>
+                  <div style={val}>{payment.payment_date}</div>
+                  <div style={lbl}>Invoice Total</div>
+                  <div style={val}>{fmtLKR(invoice.total)}</div>
+                  {payment.notes && (<><div style={lbl}>Customer Notes</div><div style={val}>{payment.notes}</div></>)}
+                  <div style={lbl}>Submitted</div>
+                  <div style={val}>{payment.created_at ? new Date(payment.created_at).toLocaleString() : '—'}</div>
+                </div>
+                <div>
+                  <div style={lbl}>Payment Slip</div>
+                  {payment.slip_url ? (
+                    <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: 'hidden', background: isDark ? '#22252C' : '#fafafa' }}>
+                      {/\.(png|jpe?g|gif|webp)$/i.test(payment.slip_url) ? (
+                        <img src={payment.slip_url} alt="slip" style={{ width: '100%', display: 'block', maxHeight: 320, objectFit: 'contain' }} />
+                      ) : (
+                        <div style={{ padding: 20, fontSize: 13, color: c.text }}>Slip uploaded (PDF or non-image).</div>
+                      )}
+                      <a href={payment.slip_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderTop: `1px solid ${c.border}`, color: c.brand, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                        <ExternalLink size={13} /> Open original
+                      </a>
+                    </div>
+                  ) : (
+                    <div style={{ ...val, fontStyle: 'italic' as const }}>No slip uploaded</div>
+                  )}
+                </div>
+              </div>
+
+              {mode !== 'view' && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={lbl}>{mode === 'reject' ? 'Rejection reason' : 'Information needed from customer'}</div>
+                  <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder={mode === 'reject' ? 'Why is this payment being rejected?' : 'What additional information is needed?'}
+                    style={{ width: '100%', minHeight: 80, padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box', resize: 'vertical' as const, fontFamily: 'inherit' }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {payment && (
+          <div style={{ padding: '14px 22px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' as const }}>
+            {mode === 'view' && payment.status === 'submitted' && (
+              <>
+                <button onClick={() => { setMode('info'); setReason('') }} disabled={busy} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Request Info</button>
+                <button onClick={() => { setMode('reject'); setReason('') }} disabled={busy} style={{ padding: '8px 16px', border: 'none', background: '#ef4444', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Reject</button>
+                <button onClick={doApprove} disabled={busy} style={{ padding: '8px 20px', border: 'none', background: '#22c55e', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}>Mark as Paid</button>
+              </>
+            )}
+            {mode === 'reject' && (
+              <>
+                <button onClick={() => setMode('view')} disabled={busy} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Back</button>
+                <button onClick={doReject} disabled={busy || !reason.trim()} style={{ padding: '8px 20px', border: 'none', background: '#ef4444', color: '#fff', borderRadius: 8, cursor: busy ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, opacity: busy || !reason.trim() ? 0.6 : 1, fontFamily: 'inherit' }}>Confirm Reject</button>
+              </>
+            )}
+            {mode === 'info' && (
+              <>
+                <button onClick={() => setMode('view')} disabled={busy} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Back</button>
+                <button onClick={doRequestInfo} disabled={busy || !reason.trim()} style={{ padding: '8px 20px', border: 'none', background: c.brand, color: '#fff', borderRadius: 8, cursor: busy ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, opacity: busy || !reason.trim() ? 0.6 : 1, fontFamily: 'inherit' }}>Send Request</button>
+              </>
+            )}
+            {mode === 'view' && payment.status !== 'submitted' && (
+              <span style={{ fontSize: 12, color: c.subText, padding: '6px 12px' }}>Status: <strong>{payment.status}</strong>{payment.admin_reason ? ` — ${payment.admin_reason}` : ''}</span>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  )
 }
 
 function dayKey(d: Date) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
@@ -121,6 +269,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [calFilter, setCalFilter] = useState<CalFilter>({ mode: 'none' })
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [reviewInvoice, setReviewInvoice] = useState<Invoice | null>(null)
 
   useEffect(() => { load() }, [])
 
@@ -242,11 +391,12 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
               <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText, pointerEvents: 'none' }} />
               <input style={{ ...inp, paddingLeft: 30, width: '100%' }} placeholder="Search by client, company, or invoice no…" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...inp, width: 130, cursor: 'pointer' }}>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...inp, width: 160, cursor: 'pointer' }}>
               <option value="all">All status</option>
               <option value="paid">Paid</option>
               <option value="unpaid">Unpaid</option>
               <option value="overdue">Overdue</option>
+              <option value="payment_submitted">Pending Review</option>
             </select>
             <button
               onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
@@ -298,6 +448,11 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                     <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
                     <div style={{ display: 'flex', gap: 2 }}>
+                      {inv.status === 'payment_submitted' && (
+                        <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Review payment">
+                          <CreditCard size={14} />
+                        </button>
+                      )}
                       <button onClick={() => onEdit(inv.id!)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Edit">
                         <Edit3 size={14} />
                       </button>
@@ -322,6 +477,16 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
           isDark={isDark}
         />
       </div>
+
+      {reviewInvoice && (
+        <PaymentReviewDialog
+          invoice={reviewInvoice}
+          c={c}
+          isDark={isDark}
+          onClose={() => setReviewInvoice(null)}
+          onChanged={load}
+        />
+      )}
 
       {/* Delete confirm dialog */}
       {deleteId && (

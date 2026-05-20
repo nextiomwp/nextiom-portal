@@ -2,9 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Receipt, Wallet, CheckCircle, AlertTriangle, RefreshCw,
   Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  Eye, Download, X, Globe, Server, Shield, Cpu, Calendar
+  Eye, Download, X, Globe, Server, Shield, Cpu, Calendar,
+  CreditCard, Upload, Clock
 } from 'lucide-react';
-import { getCustomerInvoices, getPublicInvoiceSettings } from '@/lib/invoices';
+import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment } from '@/lib/invoices';
 
 const PAGE_SIZE = 6;
 
@@ -36,6 +37,7 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
     paid: { label: 'Paid', color: '#22c55e', bg: 'rgba(34,197,94,0.15)', border: '#22c55e' },
     unpaid: { label: 'Unpaid', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', border: '#f59e0b' },
     overdue: { label: 'Overdue', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: '#ef4444' },
+    payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)', border: '#3b82f6' },
   }[status] || { label: status, color: '#888', bg: 'rgba(136,136,136,0.1)', border: '#888' };
 
   if (badgeStyle === 'dot') {
@@ -324,6 +326,128 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose }) {
   );
 }
 
+function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted }) {
+  const [txn, setTxn] = useState('');
+  const [amount, setAmount] = useState(String(invoice.total ?? ''));
+  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
+  const [file, setFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState('');
+
+  const handleSubmit = async () => {
+    if (!txn.trim()) { setErr('Transaction ID / reference is required'); return; }
+    if (!amount || Number(amount) <= 0) { setErr('Paid amount is required'); return; }
+    if (!payDate) { setErr('Payment date is required'); return; }
+    setErr('');
+    setSubmitting(true);
+    try {
+      await submitInvoicePayment(invoice, {
+        transaction_id: txn.trim(),
+        paid_amount: Number(amount),
+        payment_date: payDate,
+        notes: notes.trim() || undefined,
+      }, file);
+      onSubmitted();
+      onClose();
+    } catch (e) {
+      setErr(e?.message || 'Failed to submit payment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const inp = {
+    width: '100%', padding: '9px 12px', border: `1.5px solid ${c.border}`,
+    borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text,
+    fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+  };
+  const label = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 5, display: 'block' };
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 300 }} />
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 880, maxWidth: '95vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
+        <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <CreditCard size={18} style={{ color: c.brand }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Pay Invoice — {invoice.invoice_no}</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding: 22, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22 }}>
+          {/* Left: form */}
+          <div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={label}>Transaction ID / Reference *</label>
+              <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. TXN123456" />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={label}>Paid Amount (LKR) *</label>
+                <input style={inp} type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
+              </div>
+              <div>
+                <label style={label}>Payment Date *</label>
+                <input style={inp} type="date" value={payDate} onChange={e => setPayDate(e.target.value)} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={label}>Notes (optional)</label>
+              <textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything we should know…" />
+            </div>
+            <div>
+              <label style={label}>Upload Payment Slip</label>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: `1.5px dashed ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fafafa', color: c.subText, cursor: 'pointer', fontSize: 13 }}>
+                <Upload size={15} />
+                <span>{file ? file.name : 'Click to choose a file (image or PDF)'}</span>
+                <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} style={{ display: 'none' }} />
+              </label>
+            </div>
+          </div>
+
+          {/* Right: bank details + summary */}
+          <div>
+            <div style={{ background: isDark ? '#22252C' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Bank Details</div>
+              {settings ? (
+                <div style={{ fontSize: 13, color: c.text, lineHeight: 1.7 }}>
+                  <div><span style={{ color: c.subText }}>Bank:</span> {settings.bank_name}</div>
+                  <div><span style={{ color: c.subText }}>Branch:</span> {settings.bank_branch}</div>
+                  <div><span style={{ color: c.subText }}>Account Name:</span> {settings.account_name}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace' }}><span style={{ color: c.subText, fontFamily: 'inherit' }}>Account #:</span> {settings.account_no}</div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12, color: c.subText }}>Loading bank details…</div>
+              )}
+            </div>
+            <div style={{ background: isDark ? 'rgba(232,123,53,0.08)' : 'rgba(232,123,53,0.06)', border: `1px solid ${c.brand}40`, borderRadius: 10, padding: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>Invoice Summary</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.text, marginBottom: 4 }}>
+                <span>{invoice.invoice_no}</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{fmtAmt(invoice.total)}</span>
+              </div>
+              <div style={{ fontSize: 11, color: c.subText }}>Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
+            </div>
+          </div>
+        </div>
+
+        {err && (
+          <div style={{ margin: '0 22px 12px', padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: 12, fontWeight: 600 }}>{err}</div>
+        )}
+
+        <div style={{ padding: '14px 22px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={onClose} disabled={submitting} style={{ padding: '8px 18px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Cancel</button>
+          <button onClick={handleSubmit} disabled={submitting} style={{ padding: '8px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: submitting ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, opacity: submitting ? 0.7 : 1, fontFamily: 'inherit' }}>
+            {submitting ? 'Submitting…' : 'Submit Payment'}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function CustomerInvoicesPage({ user, isDark, c }) {
   const [invoices, setInvoices] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -334,6 +458,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   const [page, setPage] = useState(1);
   const [calFilter, setCalFilter] = useState({ mode: 'none' });
   const [openInvoice, setOpenInvoice] = useState(null);
+  const [payInvoice, setPayInvoice] = useState(null);
   const [badgeStyle, setBadgeStyle] = useState('filled');
   const [showTweaks, setShowTweaks] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -554,6 +679,16 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          {(inv.status === 'unpaid' || inv.status === 'overdue') && (
+                            <button onClick={() => setPayInvoice(inv)} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
+                              <CreditCard size={13} /> Pay Invoice
+                            </button>
+                          )}
+                          {inv.status === 'payment_submitted' && (
+                            <span title="Payment under review" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 600 }}>
+                              <Clock size={13} /> Pending Review
+                            </span>
+                          )}
                           <button onClick={() => handleDownload(inv)} title="View / Download PDF" style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: c.subText, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
                             <Eye size={13} /> View PDF
                           </button>
@@ -609,6 +744,18 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
       {/* Invoice Drawer */}
       {openInvoice && (
         <InvoiceDrawer invoice={openInvoice} settings={settings} badgeStyle={badgeStyle} isDark={isDark} c={c} onClose={() => setOpenInvoice(null)} />
+      )}
+
+      {/* Pay Invoice Dialog */}
+      {payInvoice && (
+        <PayInvoiceDialog
+          invoice={payInvoice}
+          settings={settings}
+          isDark={isDark}
+          c={c}
+          onClose={() => setPayInvoice(null)}
+          onSubmitted={() => setRefreshKey(k => k + 1)}
+        />
       )}
 
       {/* Tweaks panel */}

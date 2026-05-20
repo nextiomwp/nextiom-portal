@@ -15,7 +15,7 @@ export interface InvoiceItem {
   sort_order?: number
 }
 
-export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue'
+export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted'
 
 export interface Invoice {
   id?: string
@@ -266,4 +266,120 @@ export async function deleteInvoice(id: string): Promise<void> {
 
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus): Promise<void> {
   await supabase.from('invoices').update({ status }).eq('id', id)
+}
+
+// ── Payments ─────────────────────────────────────────────────
+
+export interface InvoicePayment {
+  id?: string
+  invoice_id: string
+  customer_email?: string
+  transaction_id: string
+  paid_amount: number
+  payment_date: string
+  notes?: string
+  slip_url?: string
+  status?: 'submitted' | 'approved' | 'rejected' | 'info_requested'
+  admin_reason?: string
+  created_at?: string
+  updated_at?: string
+}
+
+export async function uploadPaymentSlip(invoiceId: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+  const path = `payment-slips/${invoiceId}/${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from('invoice-assets').upload(path, file, { upsert: false })
+  if (error) throw error
+  const { data } = supabase.storage.from('invoice-assets').getPublicUrl(path)
+  return data.publicUrl
+}
+
+async function notifyCustomerByEmail(email: string, notif: { type: string; title: string; message: string }): Promise<void> {
+  if (!email) return
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle()
+  if (!customer) return
+  await supabase.from('notifications').insert({
+    customer_id: customer.id,
+    type: notif.type,
+    title: notif.title,
+    message: notif.message,
+  })
+}
+
+export async function submitInvoicePayment(
+  invoice: Invoice,
+  payment: { transaction_id: string; paid_amount: number; payment_date: string; notes?: string },
+  file: File | null
+): Promise<void> {
+  let slip_url = ''
+  if (file) slip_url = await uploadPaymentSlip(invoice.id!, file)
+
+  const { error } = await supabase.from('invoice_payments').insert({
+    invoice_id: invoice.id!,
+    customer_email: invoice.client_email,
+    transaction_id: payment.transaction_id,
+    paid_amount: payment.paid_amount,
+    payment_date: payment.payment_date,
+    notes: payment.notes ?? null,
+    slip_url,
+    status: 'submitted',
+  })
+  if (error) throw error
+
+  await supabase.from('invoices').update({ status: 'payment_submitted' }).eq('id', invoice.id)
+
+  await supabase.from('notifications').insert({
+    customer_id: null,
+    type: 'payment_submitted',
+    title: `Payment Submitted: ${invoice.invoice_no}`,
+    message: `${invoice.client_name} submitted ${fmtLKR(payment.paid_amount)} for invoice ${invoice.invoice_no} (Ref: ${payment.transaction_id}).`,
+  })
+}
+
+export async function getInvoicePayments(invoiceId: string): Promise<InvoicePayment[]> {
+  const { data, error } = await supabase
+    .from('invoice_payments')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function getLatestPaymentByInvoice(invoiceId: string): Promise<InvoicePayment | null> {
+  const list = await getInvoicePayments(invoiceId)
+  return list[0] ?? null
+}
+
+export async function approveInvoicePayment(payment: InvoicePayment, invoice: Invoice): Promise<void> {
+  await supabase.from('invoice_payments').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', payment.id)
+  await supabase.from('invoices').update({ status: 'paid' }).eq('id', invoice.id)
+  await notifyCustomerByEmail(invoice.client_email, {
+    type: 'payment_approved',
+    title: `Payment Approved: ${invoice.invoice_no}`,
+    message: `Your payment for invoice ${invoice.invoice_no} has been approved. Thank you!`,
+  })
+}
+
+export async function rejectInvoicePayment(payment: InvoicePayment, invoice: Invoice, reason: string): Promise<void> {
+  await supabase.from('invoice_payments').update({ status: 'rejected', admin_reason: reason, updated_at: new Date().toISOString() }).eq('id', payment.id)
+  await supabase.from('invoices').update({ status: 'unpaid' }).eq('id', invoice.id)
+  await notifyCustomerByEmail(invoice.client_email, {
+    type: 'payment_rejected',
+    title: `Payment Rejected: ${invoice.invoice_no}`,
+    message: `Your payment for invoice ${invoice.invoice_no} was rejected. Reason: ${reason}`,
+  })
+}
+
+export async function requestPaymentInfo(payment: InvoicePayment, invoice: Invoice, message: string): Promise<void> {
+  await supabase.from('invoice_payments').update({ status: 'info_requested', admin_reason: message, updated_at: new Date().toISOString() }).eq('id', payment.id)
+  await notifyCustomerByEmail(invoice.client_email, {
+    type: 'payment_info_requested',
+    title: `Info Requested: ${invoice.invoice_no}`,
+    message: `Additional information needed for your payment on ${invoice.invoice_no}: ${message}`,
+  })
 }
