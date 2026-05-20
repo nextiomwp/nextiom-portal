@@ -375,6 +375,30 @@ export async function rejectInvoicePayment(payment: InvoicePayment, invoice: Inv
   })
 }
 
+export async function resubmitPaymentInfo(
+  payment: InvoicePayment,
+  invoice: Invoice,
+  reply: string,
+  file: File | null
+): Promise<void> {
+  let slip_url = payment.slip_url ?? ''
+  if (file) slip_url = await uploadPaymentSlip(invoice.id!, file)
+  const newNotes = [payment.notes, `Customer reply: ${reply}`].filter(Boolean).join('\n\n')
+  await supabase.from('invoice_payments').update({
+    status: 'submitted',
+    notes: newNotes,
+    slip_url,
+    admin_reason: null,
+    updated_at: new Date().toISOString(),
+  }).eq('id', payment.id)
+  await supabase.from('notifications').insert({
+    customer_id: null,
+    type: 'payment_submitted',
+    title: `Payment Info Updated: ${invoice.invoice_no}`,
+    message: `${invoice.client_name} replied to your info request on invoice ${invoice.invoice_no}.`,
+  })
+}
+
 export async function requestPaymentInfo(payment: InvoicePayment, invoice: Invoice, message: string): Promise<void> {
   await supabase.from('invoice_payments').update({ status: 'info_requested', admin_reason: message, updated_at: new Date().toISOString() }).eq('id', payment.id)
   await notifyCustomerByEmail(invoice.client_email, {

@@ -91,6 +91,7 @@ function Dashboard({ onLogout }) {
   useEffect(() => {
     if (active !== 'invoices') { setInvoiceView('list'); setEditInvoiceId(null); }
     if (active !== 'customerProfile') setSelectedCustomer(null);
+    if (active === 'invoices') markInvoicesRead();
   }, [active]);
   const { toast } = useToast();
   const { signOut } = useAuth();
@@ -152,7 +153,8 @@ function Dashboard({ onLogout }) {
   const handleMarkAllRead = () => {
     const allIds = [
       ...pendingRequests.map(r => r.id),
-      ...pendingCustomers.map(c => 'cust_' + c.id)
+      ...pendingCustomers.map(c => 'cust_' + c.id),
+      ...paymentNotifs.map(n => 'pay_' + n.id)
     ].filter(Boolean);
     const next = [...new Set([...readNotifIds, ...allIds])];
     setReadNotifIds(next);
@@ -172,10 +174,22 @@ function Dashboard({ onLogout }) {
     supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
   };
 
+  const paymentNotifs = (adminNotifs || []).filter(n => n.type === 'payment_submitted');
+  const unreadPaymentNotifs = paymentNotifs.filter(n => n.id && !readNotifIds.includes('pay_' + n.id));
   const unreadCount = [
     ...pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)),
-    ...pendingCustomers.filter(c => c.id && !readNotifIds.includes('cust_' + c.id))
+    ...pendingCustomers.filter(c => c.id && !readNotifIds.includes('cust_' + c.id)),
+    ...unreadPaymentNotifs,
   ].length;
+
+  const markInvoicesRead = () => {
+    const ids = paymentNotifs.map(n => 'pay_' + n.id).filter(Boolean);
+    if (!ids.length) return;
+    const next = [...new Set([...readNotifIds, ...ids])];
+    setReadNotifIds(next);
+    localStorage.setItem('adminNotifReadIds', JSON.stringify(next));
+    supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
+  };
 
   useEffect(() => {
     if (!isNotificationsOpen) return;
@@ -273,7 +287,7 @@ function Dashboard({ onLogout }) {
           {NAV.filter(n => n.section === 'main').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} />)}
           <div style={{ height: 24 }} />
           {sidebarOpen && <div style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1 }}>MANAGE</div>}
-          {NAV.filter(n => n.section === 'manage').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={i.id === 'logs' ? unreadTicketCount : 0} />)}
+          {NAV.filter(n => n.section === 'manage').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={i.id === 'logs' ? unreadTicketCount : 0} dot={i.id === 'invoices' && unreadPaymentNotifs.length > 0} />)}
         </div>
         <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 12, padding: sidebarOpen ? '12px' : '12px 0', background: c.bg, borderRadius: 8 }}>
@@ -348,7 +362,23 @@ function Dashboard({ onLogout }) {
                         </div>
                       );
                     })}
-                    {pendingRequests.length === 0 && pendingCustomers.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>}
+                    {paymentNotifs.slice(0, 8).map((n, i) => {
+                      const key = 'pay_' + n.id;
+                      const isUnread = n.id && !readNotifIds.includes(key);
+                      return (
+                        <div key={n.id || 'pay'+i}
+                          style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' }}
+                          onClick={() => { markNotifRead(key); setActive('invoices'); setIsNotificationsOpen(false); }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
+                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>{n.title}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.message}</div>
+                          <div style={{ fontSize: 11, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.created_at ? new Date(n.created_at).toLocaleDateString() : ''}</div>
+                        </div>
+                      );
+                    })}
+                    {pendingRequests.length === 0 && pendingCustomers.length === 0 && paymentNotifs.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>}
                   </div>
                   <div style={{ padding: '10px 16px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <button onClick={handleMarkAllRead} style={{ fontSize: 12, color: c.subText, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Mark all as read</button>
@@ -381,7 +411,7 @@ function Dashboard({ onLogout }) {
   );
 }
 
-function NavItem({ item, active, setActive, open, c, badge = 0 }) {
+function NavItem({ item, active, setActive, open, c, badge = 0, dot = false }) {
   const isActive = active === item.id;
   const color = isActive ? c.text : c.subText;
   return (
@@ -393,6 +423,7 @@ function NavItem({ item, active, setActive, open, c, badge = 0 }) {
       <div style={{ position: 'relative', flexShrink: 0, marginLeft: open ? 0 : -3 }}>
         <item.icon size={18} color={isActive ? c.brand : c.subText} />
         {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -6, width: 14, height: 14, background: c.brand, borderRadius: '50%', fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{badge > 9 ? '9+' : badge}</span>}
+        {dot && badge === 0 && <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, background: c.brand, borderRadius: '50%', border: `2px solid ${c.sidebar}` }} />}
       </div>
       {open && <span style={{ fontSize: 14, color, fontWeight: isActive ? 600 : 400 }}>{item.label}</span>}
     </button>

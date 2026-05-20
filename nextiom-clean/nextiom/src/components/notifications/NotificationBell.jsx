@@ -164,7 +164,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     const type = (notification.type || '').toLowerCase();
     if (type === 'announcement') return null;
     if (type === 'product_assigned' || title.includes('product')) return 'products';
-    if (type === 'invoice' || title.includes('invoice')) return 'invoices';
+    if (type === 'invoice' || type.startsWith('payment_') || title.includes('invoice') || title.includes('payment')) return 'invoices';
     if (title.includes('domain')) return 'domains_my';
     if (title.includes('hosting')) return 'hosting_my';
     if (type === 'ticket' || title.includes('ticket')) return 'support_tickets';

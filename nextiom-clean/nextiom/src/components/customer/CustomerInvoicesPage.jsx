@@ -5,7 +5,7 @@ import {
   Eye, Download, X, Globe, Server, Shield, Cpu, Calendar,
   CreditCard, Upload, Clock
 } from 'lucide-react';
-import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment } from '@/lib/invoices';
+import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment, getLatestPaymentByInvoice, resubmitPaymentInfo } from '@/lib/invoices';
 
 const PAGE_SIZE = 6;
 
@@ -326,6 +326,126 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose }) {
   );
 }
 
+function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged }) {
+  const [payment, setPayment] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [reply, setReply] = useState('');
+  const [file, setFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    getLatestPaymentByInvoice(invoice.id).then(p => { setPayment(p); setLoading(false); }).catch(() => setLoading(false));
+  }, [invoice.id]);
+
+  const handleResubmit = async () => {
+    if (!reply.trim()) { setErr('Please add a reply'); return; }
+    setErr(''); setSubmitting(true);
+    try {
+      await resubmitPaymentInfo(payment, invoice, reply.trim(), file);
+      onChanged(); onClose();
+    } catch (e) {
+      setErr(e?.message || 'Failed to send');
+    } finally { setSubmitting(false); }
+  };
+
+  const lbl = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 };
+  const val = { fontSize: 13, color: c.text, marginBottom: 10 };
+  const needsReply = payment && payment.status === 'info_requested';
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 300 }} />
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 720, maxWidth: '95vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
+        <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Clock size={18} style={{ color: c.brand }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Payment Status — {invoice.invoice_no}</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding: 22, overflowY: 'auto' }}>
+          {loading ? (
+            <div style={{ color: c.subText, fontSize: 13 }}>Loading…</div>
+          ) : !payment ? (
+            <div style={{ color: c.subText, fontSize: 13 }}>No payment submission found.</div>
+          ) : (
+            <>
+              {needsReply && (
+                <div style={{ marginBottom: 18, padding: '12px 14px', borderRadius: 10, background: 'rgba(232,123,53,0.08)', border: `1px solid ${c.brand}40` }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: c.brand, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 5 }}>Admin requested more information</div>
+                  <div style={{ fontSize: 13, color: c.text, lineHeight: 1.55 }}>{payment.admin_reason}</div>
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+                <div>
+                  <div style={lbl}>Status</div>
+                  <div style={val}>
+                    {needsReply ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 12, background: 'rgba(232,123,53,0.15)', color: c.brand, fontSize: 11, fontWeight: 700 }}>Action Required</span>
+                    ) : (
+                      <BadgeComponent status="payment_submitted" />
+                    )}
+                  </div>
+                  <div style={lbl}>Transaction ID</div>
+                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' }}>{payment.transaction_id}</div>
+                  <div style={lbl}>Paid Amount</div>
+                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: c.brand }}>{fmtAmt(payment.paid_amount)}</div>
+                  <div style={lbl}>Payment Date</div>
+                  <div style={val}>{payment.payment_date}</div>
+                  {payment.notes && (<><div style={lbl}>Notes</div><div style={{ ...val, whiteSpace: 'pre-wrap' }}>{payment.notes}</div></>)}
+                  <div style={lbl}>Submitted</div>
+                  <div style={val}>{payment.created_at ? new Date(payment.created_at).toLocaleString() : '—'}</div>
+                </div>
+                <div>
+                  <div style={lbl}>Payment Slip</div>
+                  {payment.slip_url ? (
+                    <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: 'hidden', background: isDark ? '#22252C' : '#fafafa' }}>
+                      {/\.(png|jpe?g|gif|webp)$/i.test(payment.slip_url) ? (
+                        <img src={payment.slip_url} alt="slip" style={{ width: '100%', display: 'block', maxHeight: 280, objectFit: 'contain' }} />
+                      ) : (
+                        <div style={{ padding: 20, fontSize: 13, color: c.text }}>Slip uploaded (PDF/other).</div>
+                      )}
+                      <a href={payment.slip_url} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '8px 12px', borderTop: `1px solid ${c.border}`, color: c.brand, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Open original</a>
+                    </div>
+                  ) : (
+                    <div style={{ ...val, fontStyle: 'italic' }}>No slip uploaded</div>
+                  )}
+                </div>
+              </div>
+
+              {needsReply && (
+                <div style={{ marginTop: 18, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                  <div style={{ ...lbl, marginBottom: 6 }}>Your Reply</div>
+                  <textarea value={reply} onChange={e => setReply(e.target.value)} placeholder="Provide the information the admin requested…"
+                    style={{ width: '100%', minHeight: 80, padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', marginBottom: 10 }}
+                  />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', border: `1.5px dashed ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fafafa', color: c.subText, cursor: 'pointer', fontSize: 13 }}>
+                    <Upload size={14} />
+                    <span>{file ? file.name : 'Attach a new file (optional)'}</span>
+                    <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} style={{ display: 'none' }} />
+                  </label>
+                  {err && <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: 12, fontWeight: 600 }}>{err}</div>}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div style={{ padding: '14px 22px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={onClose} disabled={submitting} style={{ padding: '8px 18px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Close</button>
+          {needsReply && (
+            <button onClick={handleResubmit} disabled={submitting || !reply.trim()} style={{ padding: '8px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: submitting ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, opacity: submitting || !reply.trim() ? 0.6 : 1, fontFamily: 'inherit' }}>
+              {submitting ? 'Sending…' : 'Resubmit'}
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted }) {
   const [txn, setTxn] = useState('');
   const [amount, setAmount] = useState(String(invoice.total ?? ''));
@@ -459,6 +579,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   const [calFilter, setCalFilter] = useState({ mode: 'none' });
   const [openInvoice, setOpenInvoice] = useState(null);
   const [payInvoice, setPayInvoice] = useState(null);
+  const [statusInvoice, setStatusInvoice] = useState(null);
   const [badgeStyle, setBadgeStyle] = useState('filled');
   const [showTweaks, setShowTweaks] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -605,10 +726,10 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
             </div>
             {/* Status segmented */}
             <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: 8, overflow: 'hidden' }}>
-              {['all', 'paid', 'unpaid', 'overdue'].map(s => (
+              {['all', 'paid', 'unpaid', 'overdue', 'payment_submitted'].map(s => (
                 <button key={s} onClick={() => setStatusFilter(s)}
-                  style={{ padding: '6px 12px', border: 'none', borderRight: `1px solid ${c.border}`, background: statusFilter === s ? c.brand : 'transparent', color: statusFilter === s ? '#fff' : c.subText, fontSize: 12, fontWeight: statusFilter === s ? 700 : 400, cursor: 'pointer', textTransform: 'capitalize' }}>
-                  {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                  style={{ padding: '6px 12px', border: 'none', borderRight: `1px solid ${c.border}`, background: statusFilter === s ? c.brand : 'transparent', color: statusFilter === s ? '#fff' : c.subText, fontSize: 12, fontWeight: statusFilter === s ? 700 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {s === 'all' ? 'All' : s === 'payment_submitted' ? 'Pending Review' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
             </div>
@@ -685,9 +806,9 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                             </button>
                           )}
                           {inv.status === 'payment_submitted' && (
-                            <span title="Payment under review" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 600 }}>
+                            <button onClick={() => setStatusInvoice(inv)} title="View payment status" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
                               <Clock size={13} /> Pending Review
-                            </span>
+                            </button>
                           )}
                           <button onClick={() => handleDownload(inv)} title="View / Download PDF" style={{ background: 'none', border: `1px solid ${c.border}`, borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: c.subText, display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
                             <Eye size={13} /> View PDF
@@ -744,6 +865,17 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
       {/* Invoice Drawer */}
       {openInvoice && (
         <InvoiceDrawer invoice={openInvoice} settings={settings} badgeStyle={badgeStyle} isDark={isDark} c={c} onClose={() => setOpenInvoice(null)} />
+      )}
+
+      {/* Payment Status Dialog (view + reply) */}
+      {statusInvoice && (
+        <PaymentStatusDialog
+          invoice={statusInvoice}
+          isDark={isDark}
+          c={c}
+          onClose={() => setStatusInvoice(null)}
+          onChanged={() => setRefreshKey(k => k + 1)}
+        />
       )}
 
       {/* Pay Invoice Dialog */}
