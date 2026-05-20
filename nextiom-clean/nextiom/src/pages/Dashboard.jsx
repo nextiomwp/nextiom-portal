@@ -332,53 +332,65 @@ function Dashboard({ onLogout }) {
                     {unreadCount > 0 && <span style={{ fontSize: 11, background: c.brand, color: '#fff', borderRadius: 10, padding: '2px 7px', fontWeight: 700 }}>{unreadCount} new</span>}
                   </div>
                   <div style={{ overflowY: 'auto', flex: 1 }}>
-                    {pendingCustomers.map((cu, i) => {
-                      const key = 'cust_' + cu.id;
-                      const isUnread = !readNotifIds.includes(key);
-                      return (
-                        <div key={cu.id || 'pc'+i}
-                          style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' }}
-                          onClick={() => { markNotifRead(key); setActive('customers'); setIsNotificationsOpen(false); }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
-                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>New Registration: {cu.name}</span>
+                    {(() => {
+                      const merged = [
+                        ...pendingCustomers.map(cu => ({ kind: 'customer', id: cu.id, key: 'cust_' + cu.id, date: cu.created_at, data: cu })),
+                        ...pendingRequests.map(r => ({ kind: 'request', id: r.id, key: r.id, date: r.created_at, data: r })),
+                        ...paymentNotifs.map(n => ({ kind: 'payment', id: n.id, key: 'pay_' + n.id, date: n.created_at, data: n })),
+                      ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 16);
+
+                      if (!merged.length) return <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>;
+
+                      return merged.map((item, i) => {
+                        const isUnread = item.key && !readNotifIds.includes(item.key);
+                        const rowStyle = { padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' };
+                        const dot = isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />;
+                        const titleStyle = { fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text };
+                        const subStyle = { fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 };
+                        const dateStyle = { fontSize: 11, color: c.subText, paddingLeft: isUnread ? 13 : 0 };
+                        const dateStr = item.date ? new Date(item.date).toLocaleDateString() : '';
+
+                        if (item.kind === 'customer') {
+                          const cu = item.data;
+                          return (
+                            <div key={'pc' + (cu.id || i)} style={rowStyle}
+                              onClick={() => { markNotifRead(item.key); setActive('customers'); setIsNotificationsOpen(false); }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {dot}
+                                <span style={titleStyle}>New Registration: {cu.name}</span>
+                              </div>
+                              <div style={subStyle}>{cu.email} — awaiting approval</div>
+                              <div style={dateStyle}>{dateStr}</div>
+                            </div>
+                          );
+                        }
+                        if (item.kind === 'request') {
+                          const r = item.data;
+                          return (
+                            <div key={'rq' + (r.id || i)} style={rowStyle}
+                              onClick={() => { markNotifRead(item.key); setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {dot}
+                                <span style={titleStyle}>{r.n} — {r.reqType}</span>
+                              </div>
+                              <div style={subStyle}>{dateStr}</div>
+                            </div>
+                          );
+                        }
+                        const n = item.data;
+                        return (
+                          <div key={'pay' + (n.id || i)} style={rowStyle}
+                            onClick={() => { markNotifRead(item.key); setActive('invoices'); setIsNotificationsOpen(false); }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {dot}
+                              <span style={titleStyle}>{n.title}</span>
+                            </div>
+                            <div style={subStyle}>{n.message}</div>
+                            <div style={dateStyle}>{dateStr}</div>
                           </div>
-                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{cu.email} — awaiting approval</div>
-                          <div style={{ fontSize: 11, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{cu.created_at ? new Date(cu.created_at).toLocaleDateString() : ''}</div>
-                        </div>
-                      );
-                    })}
-                    {pendingRequests.slice(0, 8).map((r, i) => {
-                      const isUnread = r.id && !readNotifIds.includes(r.id);
-                      return (
-                        <div key={r.id || i}
-                          style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' }}
-                          onClick={() => { markNotifRead(r.id); setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
-                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>{r.n} — {r.reqType}</span>
-                          </div>
-                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{new Date(r.created_at).toLocaleDateString()}</div>
-                        </div>
-                      );
-                    })}
-                    {paymentNotifs.slice(0, 8).map((n, i) => {
-                      const key = 'pay_' + n.id;
-                      const isUnread = n.id && !readNotifIds.includes(key);
-                      return (
-                        <div key={n.id || 'pay'+i}
-                          style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' }}
-                          onClick={() => { markNotifRead(key); setActive('invoices'); setIsNotificationsOpen(false); }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />}
-                            <span style={{ fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text }}>{n.title}</span>
-                          </div>
-                          <div style={{ fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.message}</div>
-                          <div style={{ fontSize: 11, color: c.subText, paddingLeft: isUnread ? 13 : 0 }}>{n.created_at ? new Date(n.created_at).toLocaleDateString() : ''}</div>
-                        </div>
-                      );
-                    })}
-                    {pendingRequests.length === 0 && pendingCustomers.length === 0 && paymentNotifs.length === 0 && <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>}
+                        );
+                      });
+                    })()}
                   </div>
                   <div style={{ padding: '10px 16px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <button onClick={handleMarkAllRead} style={{ fontSize: 12, color: c.subText, background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Mark all as read</button>
