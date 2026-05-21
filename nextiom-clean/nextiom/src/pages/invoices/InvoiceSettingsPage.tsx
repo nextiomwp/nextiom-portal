@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Upload, X, Save, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { InvoiceSettings, getInvoiceSettings, saveInvoiceSettings, uploadLogo, defaultSettings } from '@/lib/invoices'
+import { InvoiceSettings, getInvoiceSettings, saveInvoiceSettings, uploadLogo, resolveLogoUrl, defaultSettings } from '@/lib/invoices'
 
 interface Props {
   c: any
@@ -15,8 +15,17 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
   const [s, setS] = useState<InvoiceSettings>(defaultSettings())
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  // logo_url in `s` holds a STORAGE PATH (or legacy public URL / data URL).
+  // displayLogo is the renderable URL we put in <img src>. We re-resolve
+  // whenever logo_url changes.
+  const [displayLogo, setDisplayLogo] = useState('')
 
   useEffect(() => { getInvoiceSettings().then(setS) }, [])
+  useEffect(() => {
+    let cancelled = false
+    resolveLogoUrl(s.logo_url).then(url => { if (!cancelled) setDisplayLogo(url) })
+    return () => { cancelled = true }
+  }, [s.logo_url])
 
   const update = (field: keyof InvoiceSettings, value: string) =>
     setS(prev => ({ ...prev, [field]: value }))
@@ -74,7 +83,7 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
         <p style={secTitle}>Company logo</p>
         {s.logo_url ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <img src={s.logo_url} alt="logo" style={{ maxHeight: 56, maxWidth: 180, objectFit: 'contain', borderRadius: 8, border: `1px solid ${c.border}`, padding: 8, background: '#fff' }} />
+            <img src={displayLogo} alt="logo" style={{ maxHeight: 56, maxWidth: 180, objectFit: 'contain', borderRadius: 8, border: `1px solid ${c.border}`, padding: 8, background: '#fff' }} />
             <div style={{ display: 'flex', gap: 8 }}>
               <button style={btnOutline} onClick={() => fileRef.current?.click()} disabled={uploading}>
                 <Upload size={14} /> Replace

@@ -3,17 +3,25 @@
 // It reads print data from sessionStorage set by InvoiceForm
 
 import { useEffect, useState } from 'react'
-import { fmtLKR } from '@/lib/invoices'
+import { fmtLKR, resolveLogoUrl } from '@/lib/invoices'
 
 export default function InvoicePrintPage() {
   const [data, setData] = useState<any>(null)
+  const [logoUrl, setLogoUrl] = useState('')
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem('nxt_invoice_print')
       if (raw) {
-        setData(JSON.parse(raw))
+        const parsed = JSON.parse(raw)
+        setData(parsed)
         localStorage.removeItem('nxt_invoice_print')
+        // Resolve the logo path / legacy URL to a signed URL the browser
+        // can render. Bucket is private; raw paths from invoice_settings
+        // are not directly fetchable.
+        if (parsed?.settings?.logo_url) {
+          resolveLogoUrl(parsed.settings.logo_url).then(setLogoUrl)
+        }
       }
     } catch {}
   }, [])
@@ -76,8 +84,8 @@ export default function InvoicePrintPage() {
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36, paddingBottom: 24, borderBottom: '3px solid #E8650A' }}>
             <div>
-              {s?.logo_url
-                ? <img src={s.logo_url} alt="logo" style={{ maxHeight: 52, maxWidth: 180, objectFit: 'contain', marginBottom: 10 }} />
+              {logoUrl
+                ? <img src={logoUrl} alt="logo" style={{ maxHeight: 52, maxWidth: 180, objectFit: 'contain', marginBottom: 10 }} />
                 : <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>{s?.company_name ?? 'Nextiom (Pvt) Ltd'}</div>
               }
               <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.8 }}>

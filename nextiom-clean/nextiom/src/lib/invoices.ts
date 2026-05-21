@@ -107,6 +107,12 @@ export function defaultSettings(): InvoiceSettings {
 
 // ── Settings ─────────────────────────────────────────────────
 
+// NOTE: invoice_settings.logo_url stores a STORAGE PATH (or, for legacy data
+// uploaded before the bucket went private, a full public URL). It is NOT a
+// directly-renderable URL. UI components must call resolveLogoUrl() before
+// using it as an <img src>. Readers below intentionally do not resolve, so
+// that a subsequent saveInvoiceSettings() doesn't persist an expiring URL.
+
 export async function getPublicInvoiceSettings(): Promise<InvoiceSettings> {
   const { data } = await supabase
     .from('invoice_settings')
@@ -159,8 +165,40 @@ export async function uploadLogo(file: File): Promise<string> {
 
   if (error) throw error
 
-  const { data } = supabase.storage.from('invoice-assets').getPublicUrl(path)
-  return data.publicUrl
+  // Return the storage PATH (not a renderable URL). Callers store this in
+  // invoice_settings.logo_url and call resolveLogoUrl() when rendering.
+  return path
+}
+
+// Resolve a stored logo_url value (storage path, legacy public URL, or
+// external http URL) into a renderable URL. Signs storage paths; leaves
+// external URLs untouched. Returns empty string on missing/empty input.
+export async function resolveLogoUrl(value: string | null | undefined, expiresInSec = 3600): Promise<string> {
+  if (!value) return ''
+  // Data URL (transient local preview) — render directly.
+  if (value.startsWith('data:')) return value
+  // Legacy: full Supabase public URL stored before the bucket went private.
+  // Extract the storage path so we can sign it.
+  const m = value.match(/\/storage\/v1\/object\/public\/invoice-assets\/(.+)$/)
+  if (m) {
+    try {
+      const { data, error } = await supabase.storage
+        .from('invoice-assets')
+        .createSignedUrl(m[1], expiresInSec)
+      if (!error && data?.signedUrl) return data.signedUrl
+    } catch { /* fall through */ }
+    return value
+  }
+  // Any other http(s) URL: leave alone (could be external CDN).
+  if (/^https?:\/\//i.test(value)) return value
+  // Otherwise treat as a storage path.
+  try {
+    const { data, error } = await supabase.storage
+      .from('invoice-assets')
+      .createSignedUrl(value, expiresInSec)
+    if (!error && data?.signedUrl) return data.signedUrl
+  } catch { /* fall through */ }
+  return value
 }
 
 // ── Invoices ─────────────────────────────────────────────────
