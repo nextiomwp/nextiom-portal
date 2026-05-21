@@ -285,11 +285,20 @@ export default defineConfig({
 		addTransformIndexHtml
 	],
 	server: {
-		cors: true,
+		// Restrict CORS + Host header check. Wildcard origins / hosts on a
+		// dev server become a leak if anyone exposes it (ngrok, LAN demo).
+		// Edit the lists below if you need to add a new dev host.
+		cors: {
+			origin: [
+				'http://localhost:3000',
+				'http://127.0.0.1:3000',
+				'http://192.168.8.106:3000',
+			],
+		},
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
-		allowedHosts: true,
+		allowedHosts: ['localhost', '127.0.0.1', '192.168.8.106'],
 	},
 	resolve: {
 		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json', ],
