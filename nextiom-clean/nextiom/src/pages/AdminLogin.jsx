@@ -37,7 +37,7 @@ function AdminLogin() {
       });
       setIsLoading(false);
     } else {
-       if (data.user?.user_metadata?.role !== 'admin') {
+       if (data.user?.app_metadata?.role !== 'admin') {
           toast({
             title: "Access Denied",
             description: "You are not authorized to access the admin portal.",

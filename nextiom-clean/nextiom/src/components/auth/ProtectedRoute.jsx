@@ -18,7 +18,8 @@ function ProtectedRoute({ children, allowedRoles }) {
     const checkCustomerStatus = async () => {
       if (!loading && user) {
         try {
-          if (user.user_metadata?.role === 'customer') {
+          const userRole = user.app_metadata?.role || 'customer';
+          if (userRole !== 'admin') {
              const { data, error } = await supabase
                .from('customers')
                .select('status')
@@ -53,7 +54,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   }, [loading, user]);
 
   useEffect(() => {
-    if (!loading && user && allowedRoles && !allowedRoles.includes(user.user_metadata?.role)) {
+    if (!loading && user && allowedRoles && !allowedRoles.includes(user.app_metadata?.role || 'customer')) {
        toast({
          variant: "destructive",
          title: "Access Denied",
@@ -116,8 +117,9 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.user_metadata?.role)) {
-    const redirectPath = user.user_metadata?.role === 'admin' ? '/admin-dashboard' : '/customer-dashboard';
+  const effectiveRole = user.app_metadata?.role || 'customer';
+  if (allowedRoles && !allowedRoles.includes(effectiveRole)) {
+    const redirectPath = effectiveRole === 'admin' ? '/admin-dashboard' : '/customer-dashboard';
     return <Navigate to={redirectPath} replace />;
   }
 

@@ -42,12 +42,15 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         auth: { persistSession: false, autoRefreshToken: false, storageKey: 'tmp_add_customer' },
       });
 
+      // Do NOT write `role` into user_metadata — that field is user-writable.
+      // New accounts default to 'customer' on read; admins are promoted by
+      // setting app_metadata.role server-side (Dashboard / service_role API).
       const { data: authData, error: authError } = await tempClient.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
-          data: { role: 'customer', full_name: formData.name },
+          data: { full_name: formData.name },
         },
       });
 

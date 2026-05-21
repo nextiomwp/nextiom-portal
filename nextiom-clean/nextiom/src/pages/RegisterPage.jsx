@@ -51,7 +51,7 @@ function RegisterPage() {
       const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
-        options: { data: { role: 'customer', full_name: formData.fullName, phone: formData.phone } }
+        options: { data: { full_name: formData.fullName, phone: formData.phone } }
       });
       if (error) {
         toast({ variant: 'destructive', title: 'Registration Failed', description: error.message || 'Failed to create account.' });

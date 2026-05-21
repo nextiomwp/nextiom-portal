@@ -144,7 +144,7 @@ function Login({ onLoginSuccess }) {
       return;
     }
 
-    if (data.user?.user_metadata?.role !== 'admin') {
+    if (data.user?.app_metadata?.role !== 'admin') {
       toast({
         title: "Access Denied",
         description: "This portal is restricted to administrative staff only.",

@@ -57,7 +57,9 @@ export const AuthProvider = ({ children }) => {
 
   const handleUserSession = async (authUser) => {
     try {
-      const userRole = authUser.user_metadata?.role || 'customer';
+      // Role MUST come from app_metadata (server-only). user_metadata is
+      // user-writable and can be tampered with via supabase.auth.updateUser.
+      const userRole = authUser.app_metadata?.role || 'customer';
 
       if (userRole === 'customer') {
         let profile = await getUserProfile(authUser.id);
@@ -100,8 +102,10 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return { error };
     }
-    // Check if customer account is pending approval
-    if (data.user?.user_metadata?.role === 'customer') {
+    // Check if customer account is pending approval.
+    // Anyone who isn't an admin is treated as a customer (default role).
+    const signedInRole = data.user?.app_metadata?.role || 'customer';
+    if (signedInRole !== 'admin') {
       const { data: profile } = await supabase
         .from('customers')
         .select('status')
@@ -123,15 +127,17 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (email, password, metadata = {}) => {
     setLoading(true);
+    // Do NOT pass `role` here — `options.data` writes to user_metadata, which
+    // is user-writable and therefore untrusted. New users default to
+    // 'customer' on the server; admins must be promoted by setting
+    // app_metadata.role = 'admin' via Dashboard or service_role API.
+    const { role: _ignoredRole, ...safeMetadata } = metadata;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/`,
-        data: {
-          role: 'customer',
-          ...metadata
-        }
+        data: safeMetadata
       }
     });
 
