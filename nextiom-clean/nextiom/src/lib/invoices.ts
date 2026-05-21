@@ -286,12 +286,28 @@ export interface InvoicePayment {
 }
 
 export async function uploadPaymentSlip(invoiceId: string, file: File): Promise<string> {
+  // Path must start with payment-slips/{auth.uid()}/... so the storage RLS
+  // policy "payment-slips: customer upload own" passes. The bucket is no
+  // longer public, so we sign a URL for read access instead of getPublicUrl.
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
   const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
-  const path = `payment-slips/${invoiceId}/${Date.now()}.${ext}`
+  const path = `payment-slips/${user.id}/${invoiceId}/${Date.now()}.${ext}`
   const { error } = await supabase.storage.from('invoice-assets').upload(path, file, { upsert: false })
   if (error) throw error
-  const { data } = supabase.storage.from('invoice-assets').getPublicUrl(path)
-  return data.publicUrl
+  // Store the storage path; consumers call createSignedUrl to view.
+  return path
+}
+
+export async function getPaymentSlipSignedUrl(path: string, expiresInSec = 3600): Promise<string> {
+  // Back-compat: if `path` is already a full URL (legacy public-bucket data),
+  // return it unchanged.
+  if (/^https?:\/\//i.test(path)) return path
+  const { data, error } = await supabase.storage
+    .from('invoice-assets')
+    .createSignedUrl(path, expiresInSec)
+  if (error) throw error
+  return data.signedUrl
 }
 
 async function notifyCustomerByEmail(email: string, notif: { type: string; title: string; message: string }): Promise<void> {
@@ -330,7 +346,9 @@ export async function submitInvoicePayment(
   })
   if (error) throw error
 
-  await supabase.from('invoices').update({ status: 'payment_submitted' }).eq('id', invoice.id)
+  // invoices.status flip is handled server-side by the
+  // trg_payment_flip_invoice trigger (see security_hardening_migration.sql).
+  // Customers no longer have UPDATE permission on the invoices table.
 
   await supabase.from('notifications').insert({
     customer_id: null,
@@ -347,7 +365,15 @@ export async function getInvoicePayments(invoiceId: string): Promise<InvoicePaym
     .eq('invoice_id', invoiceId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data ?? []
+  const rows = data ?? []
+  // slip_url stores a storage path (post-hardening) or a legacy public URL.
+  // Resolve to a signed URL the UI can render directly.
+  await Promise.all(rows.map(async (r: InvoicePayment) => {
+    if (r.slip_url) {
+      try { r.slip_url = await getPaymentSlipSignedUrl(r.slip_url) } catch { /* leave as-is */ }
+    }
+  }))
+  return rows
 }
 
 export async function getLatestPaymentByInvoice(invoiceId: string): Promise<InvoicePayment | null> {
@@ -381,16 +407,19 @@ export async function resubmitPaymentInfo(
   reply: string,
   file: File | null
 ): Promise<void> {
-  let slip_url = payment.slip_url ?? ''
-  if (file) slip_url = await uploadPaymentSlip(invoice.id!, file)
+  // Only overwrite slip_url if a new file was uploaded — otherwise leave the
+  // existing storage path in the DB. (payment.slip_url here is a signed URL
+  // resolved by getInvoicePayments; writing it back would persist an
+  // expiring URL.)
   const newNotes = [payment.notes, `Customer reply: ${reply}`].filter(Boolean).join('\n\n')
-  await supabase.from('invoice_payments').update({
+  const update: Record<string, unknown> = {
     status: 'submitted',
     notes: newNotes,
-    slip_url,
     admin_reason: null,
     updated_at: new Date().toISOString(),
-  }).eq('id', payment.id)
+  }
+  if (file) update.slip_url = await uploadPaymentSlip(invoice.id!, file)
+  await supabase.from('invoice_payments').update(update).eq('id', payment.id)
   await supabase.from('notifications').insert({
     customer_id: null,
     type: 'payment_submitted',

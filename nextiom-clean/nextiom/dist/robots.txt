@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://portal.nextiom.com/sitemap.xml
