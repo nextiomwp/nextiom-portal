@@ -14,6 +14,7 @@ const ACTION_MAP = {
   admin_login: { label: 'Admin Login', color: '#e87b35', bg: '#2b1a0a' },
   ticket: { label: 'Ticket', color: '#38bdf8', bg: '#0c2233' },
   payment: { label: 'Payment', color: '#facc15', bg: '#2b2008' },
+  delete: { label: 'Deleted', color: '#f87171', bg: '#3a1515' },
 };
 
 function getAction(type) {

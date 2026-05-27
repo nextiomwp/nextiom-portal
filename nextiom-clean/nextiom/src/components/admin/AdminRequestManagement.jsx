@@ -104,8 +104,17 @@ function AdminRequestManagement({ isDark = true }) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
+    const req = requests.find(r => r.id === deleteTarget);
     try {
       await deleteDomainRequest(deleteTarget);
+      const domainName = req?.domain_name || 'Unknown Domain';
+      const custName = req ? getCustomerName(req) : 'Unknown';
+      await addNotification({
+        customer_id: null,
+        type: 'delete',
+        title: `Domain Request Deleted — ${domainName}`,
+        message: `Admin permanently deleted a domain request for ${custName} (${domainName}).`,
+      }).catch(() => {});
       toast({ title: 'Deleted', description: 'Domain request deleted.' });
       loadData();
     } catch {

@@ -138,8 +138,17 @@ function AdminHostingRequestManagement({ isDark = true }) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
+    const req = requests.find(r => r.id === deleteTarget);
     try {
       await deleteHostingRequest(deleteTarget);
+      const planName = req ? parsePkg(req.package_type).plan : 'Hosting';
+      const custName = req ? getCustomerName(req.customer_id) : 'Unknown';
+      await addNotification({
+        customer_id: null,
+        type: 'delete',
+        title: `Hosting Request Deleted — ${planName}`,
+        message: `Admin permanently deleted a hosting request for ${custName} (${planName}).`,
+      }).catch(() => {});
       toast({ title: 'Deleted', description: 'Hosting request deleted.' });
       loadData();
     } catch {
