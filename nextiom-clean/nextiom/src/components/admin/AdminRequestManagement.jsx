@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle } from 'lucide-react';
-import { getDomainRequests, updateDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
+import { CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { getDomainRequests, updateDomainRequest, deleteDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
 function AdminRequestManagement({ isDark = true }) {
@@ -78,6 +78,17 @@ function AdminRequestManagement({ isDark = true }) {
     loadData();
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this domain request?')) return;
+    try {
+      await deleteDomainRequest(id);
+      toast({ title: 'Deleted', description: 'Domain request deleted.' });
+      loadData();
+    } catch {
+      toast({ title: 'Error', description: 'Could not delete request.', variant: 'destructive' });
+    }
+  };
+
   const getCustomerName = (req) => req.customers?.name || customers.find(cu => cu.id === req.customer_id)?.name || 'Unknown';
   const isPending = (status) => String(status || '').toLowerCase() === 'pending';
   const formatStatus = (status) => { if (!status) return 'Unknown'; const n = String(status).toLowerCase(); return n.charAt(0).toUpperCase() + n.slice(1); };
@@ -106,12 +117,15 @@ function AdminRequestManagement({ isDark = true }) {
                 <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{getCustomerName(req)}</span></td>
                 <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={formatStatus(req.status)} /></td>
                 <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
-                  {isPending(req.status) && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}><CheckCircle size={12} /> Approve</Btn>
-                      <Btn color="#ef4444" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}><XCircle size={12} /> Reject</Btn>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    {isPending(req.status) && (
+                      <>
+                        <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}><CheckCircle size={12} /> Approve</Btn>
+                        <Btn color="#ef4444" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}><XCircle size={12} /> Reject</Btn>
+                      </>
+                    )}
+                    <Btn color="#ef4444" onClick={() => handleDelete(req.id)}><Trash2 size={12} /> Delete</Btn>
+                  </div>
                 </td>
               </tr>
             ))}

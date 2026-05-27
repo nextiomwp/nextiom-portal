@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -23,6 +23,7 @@ import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
 import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification } from '@/lib/storage';
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
+import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 
 const NAV = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, section: 'main' },
@@ -36,6 +37,7 @@ const NAV = [
   { id: 'notifications', label: 'Announcements', icon: Megaphone, section: 'manage' },
   { id: 'logs', label: 'Tickets', icon: FileText, section: 'manage' },
   { id: 'invoices', label: 'Invoices', icon: Receipt, section: 'manage' },
+  { id: 'activityLog', label: 'Activity Log', icon: Activity, section: 'manage' },
 ];
 
 function Dashboard({ onLogout }) {
@@ -271,6 +273,7 @@ function Dashboard({ onLogout }) {
         if (invoiceView === 'settings') return <InvoiceSettingsPage c={c} isDark={isDark} onBack={goList} />;
         return <InvoicesPage c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
       }
+      case 'activityLog': return <AdminActivityLogPage isDark={isDark} />;
       default: return null;
     }
   };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, CheckCircle, XCircle, User, Package } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, User, Package, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { getHostingRequests, updateHostingRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
+import { getHostingRequests, updateHostingRequest, deleteHostingRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 
@@ -114,6 +114,18 @@ function AdminHostingRequestManagement({ isDark = true }) {
     }
   };
 
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this hosting request?')) return;
+    try {
+      await deleteHostingRequest(id);
+      toast({ title: 'Deleted', description: 'Hosting request deleted.' });
+      loadData();
+    } catch {
+      toast({ title: 'Error', description: 'Could not delete request.', variant: 'destructive' });
+    }
+  };
+
   const getCustomerName = (id) => customers.find(cu => cu.id === id)?.name || 'Unknown';
   const isPending = (status) => String(status || '').toLowerCase() === 'pending';
 
@@ -161,7 +173,12 @@ function AdminHostingRequestManagement({ isDark = true }) {
                 </td>
                 <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={req.status} /></td>
                 <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                  <Btn color="#8b5cf6" onClick={() => setSelectedRequest(req)}>View →</Btn>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <Btn color="#8b5cf6" onClick={() => setSelectedRequest(req)}>View →</Btn>
+                    <Btn color="#ef4444" onClick={(e) => handleDelete(req.id, e)} title="Delete request">
+                      <Trash2 size={12} /> Delete
+                    </Btn>
+                  </div>
                 </td>
               </tr>
             ))}
