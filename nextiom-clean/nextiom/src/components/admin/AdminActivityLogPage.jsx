@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, Search, Download, RefreshCw, Shield, Users, Zap, AlertTriangle, TrendingUp, FileText, HelpCircle, Database, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
-import { format, subDays, isWithinInterval, parseISO, eachDayOfInterval } from 'date-fns';
+import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
 
 const ACTION_MAP = {
   new_registration: { label: 'New Registration', color: '#60a5fa', bg: '#1a3052' },
@@ -93,39 +93,6 @@ function ExportModal({ open, onClose, onCSV, onPDF, isDark, c }) {
   );
 }
 
-function ActivityOverviewChart({ logs, days, c }) {
-  const since = subDays(new Date(), days - 1);
-  const dayRange = eachDayOfInterval({ start: since, end: new Date() });
-  const counts = dayRange.map(d => {
-    const dayStr = format(d, 'yyyy-MM-dd');
-    return logs.filter(l => l.created_at && l.created_at.startsWith(dayStr)).length;
-  });
-  const maxCount = Math.max(...counts, 1);
-  const labels = dayRange.map(d => format(d, days <= 7 ? 'EEE' : days <= 14 ? 'dd' : 'dd'));
-  const showEvery = Math.ceil(dayRange.length / 10);
-
-  return (
-    <div style={{ padding: '0 2px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 80 }}>
-        {counts.map((count, i) => {
-          const h = Math.max(3, Math.round((count / maxCount) * 72));
-          return (
-            <div key={i} title={`${labels[i]}: ${count}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: 80 }}>
-              <div style={{ width: '100%', height: count > 0 ? h : 3, borderRadius: '3px 3px 0 0', background: count > 0 ? `rgba(232,123,53,${0.35 + (count / maxCount) * 0.65})` : (c.border) }} />
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ display: 'flex', gap: 2, marginTop: 5 }}>
-        {counts.map((_, i) => (
-          <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: 9, color: c.subText }}>
-            {i % showEvery === 0 ? labels[i] : ''}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function AdminActivityLogPage({ isDark = true }) {
   const [logs, setLogs] = useState([]);
@@ -346,17 +313,6 @@ function AdminActivityLogPage({ isDark = true }) {
             )}
           </div>
 
-          {/* Activity Overview */}
-          <div style={cardStyle}>
-            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 8, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
-              <TrendingUp size={14} color={c.brand} />
-              <span style={{ fontWeight: 700, fontSize: 13, color: c.text }}>Activity Overview</span>
-              <span style={{ marginLeft: 'auto', fontSize: 11, color: c.subText }}>Last {days} days</span>
-            </div>
-            <div style={{ padding: '16px 16px 12px' }}>
-              <ActivityOverviewChart logs={filtered} days={days} c={c} />
-            </div>
-          </div>
         </div>
 
         {/* RIGHT */}
