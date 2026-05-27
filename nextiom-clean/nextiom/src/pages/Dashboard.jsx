@@ -22,6 +22,7 @@ import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
 import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification } from '@/lib/storage';
+
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 
@@ -102,7 +103,18 @@ function Dashboard({ onLogout }) {
     ? { bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', card: '#1C1E24', panel2: '#22252C', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
     : { bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', card: '#fff', panel2: '#f5f5f5', hover: '#f5f5f5', brand: '#e87b35' };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      addNotification({
+        customer_id: null,
+        type: 'admin_login',
+        title: `Admin Login`,
+        message: `Admin signed in as ${user.email}`,
+      }).catch(() => {});
+    });
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dashboard-dark', isDark);

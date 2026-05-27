@@ -1,9 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, CheckCircle, XCircle, User, Package, Trash2 } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, User, Package, Trash2, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { getHostingRequests, updateHostingRequest, deleteHostingRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+
+function DeleteModal({ open, onCancel, onConfirm, loading }) {
+  if (!open) return null;
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: '#1C1E24', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '32px 28px', maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <AlertTriangle size={26} color="#ef4444" />
+        </div>
+        <h3 style={{ color: '#fff', fontSize: 17, fontWeight: 700, marginBottom: 10, lineHeight: 1.4 }}>Are you sure you want to permanently delete this request?</h3>
+        <p style={{ color: '#a0a0a0', fontSize: 13.5, marginBottom: 28 }}>This action cannot be undone.</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <button onClick={onCancel} style={{ padding: '10px 24px', borderRadius: 9, border: '1.5px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onConfirm} disabled={loading} style={{ padding: '10px 24px', borderRadius: 9, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>{loading ? 'Deleting…' : 'Delete Permanently'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const parsePkg = (packageType) => {
   const parts = (packageType || '').split(' | ');
@@ -22,6 +41,8 @@ function AdminHostingRequestManagement({ isDark = true }) {
   const [rejectReason, setRejectReason] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
 
   const c = isDark
@@ -114,15 +135,18 @@ function AdminHostingRequestManagement({ isDark = true }) {
     }
   };
 
-  const handleDelete = async (id, e) => {
-    e.stopPropagation();
-    if (!window.confirm('Delete this hosting request?')) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
     try {
-      await deleteHostingRequest(id);
+      await deleteHostingRequest(deleteTarget);
       toast({ title: 'Deleted', description: 'Hosting request deleted.' });
       loadData();
     } catch {
       toast({ title: 'Error', description: 'Could not delete request.', variant: 'destructive' });
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -134,6 +158,8 @@ function AdminHostingRequestManagement({ isDark = true }) {
 
   return (
     <div>
+      <DeleteModal open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
+
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
         {allStatuses.map(s => (
           <button key={s} onClick={() => setStatusFilter(s)} style={{
@@ -175,7 +201,7 @@ function AdminHostingRequestManagement({ isDark = true }) {
                 <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                     <Btn color="#8b5cf6" onClick={() => setSelectedRequest(req)}>View →</Btn>
-                    <Btn color="#ef4444" onClick={(e) => handleDelete(req.id, e)} title="Delete request">
+                    <Btn color="#ef4444" onClick={(e) => { e.stopPropagation(); setDeleteTarget(req.id); }} title="Delete request">
                       <Trash2 size={12} /> Delete
                     </Btn>
                   </div>

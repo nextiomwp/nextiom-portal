@@ -1,19 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { getDomainRequests, updateDomainRequest, deleteDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+import { format } from 'date-fns';
+
+function DeleteModal({ open, onCancel, onConfirm, loading }) {
+  if (!open) return null;
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: '#1C1E24', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '32px 28px', maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
+        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <AlertTriangle size={26} color="#ef4444" />
+        </div>
+        <h3 style={{ color: '#fff', fontSize: 17, fontWeight: 700, marginBottom: 10, lineHeight: 1.4 }}>Are you sure you want to permanently delete this request?</h3>
+        <p style={{ color: '#a0a0a0', fontSize: 13.5, marginBottom: 28 }}>This action cannot be undone.</p>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+          <button onClick={onCancel} style={{ padding: '10px 24px', borderRadius: 9, border: '1.5px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onConfirm} disabled={loading} style={{ padding: '10px 24px', borderRadius: 9, border: 'none', background: '#ef4444', color: '#fff', fontSize: 14, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}>{loading ? 'Deleting…' : 'Delete Permanently'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AdminRequestManagement({ isDark = true }) {
   const [requests, setRequests] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
 
   const c = isDark
-    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
-    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35' };
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35', panel: '#22252C' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35', panel: '#f5f5f5' };
 
   const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
-  const thS = { textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}` };
+  const thS = { textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}`, whiteSpace: 'nowrap' };
   const tdS = { padding: '13px 18px', borderTop: `1px solid ${c.border}`, fontSize: 13.5, color: c.text, verticalAlign: 'middle' };
   const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
   const emptyS = { padding: 32, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' };
@@ -35,8 +58,8 @@ function AdminRequestManagement({ isDark = true }) {
     );
   };
 
-  const Btn = ({ onClick, color, children, filled }) => (
-    <button onClick={onClick} style={{
+  const Btn = ({ onClick, color, children, filled, title }) => (
+    <button onClick={onClick} title={title} style={{
       display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px',
       borderRadius: 8, border: `1.5px solid ${color}`,
       background: filled ? color : 'transparent',
@@ -78,60 +101,92 @@ function AdminRequestManagement({ isDark = true }) {
     loadData();
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this domain request?')) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
     try {
-      await deleteDomainRequest(id);
+      await deleteDomainRequest(deleteTarget);
       toast({ title: 'Deleted', description: 'Domain request deleted.' });
       loadData();
     } catch {
       toast({ title: 'Error', description: 'Could not delete request.', variant: 'destructive' });
+    } finally {
+      setDeleteLoading(false);
+      setDeleteTarget(null);
     }
   };
 
   const getCustomerName = (req) => req.customers?.name || customers.find(cu => cu.id === req.customer_id)?.name || 'Unknown';
   const isPending = (status) => String(status || '').toLowerCase() === 'pending';
-  const formatStatus = (status) => { if (!status) return 'Unknown'; const n = String(status).toLowerCase(); return n.charAt(0).toUpperCase() + n.slice(1); };
+  const fmtStatus = (status) => { if (!status) return 'Unknown'; const n = String(status).toLowerCase(); return n.charAt(0).toUpperCase() + n.slice(1); };
+
+  const allStatuses = ['All', REQUEST_STATUS.PENDING, REQUEST_STATUS.COMPLETED, REQUEST_STATUS.REJECTED];
+  const filtered = requests.filter(r => statusFilter === 'All' || String(r.status || '').toLowerCase() === String(statusFilter || '').toLowerCase());
 
   return (
     <div>
+      <DeleteModal open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
+
+      {/* Status filter tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+        {allStatuses.map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)} style={{
+            padding: '7px 16px', fontSize: 13, fontWeight: 500, borderRadius: 9, border: 'none', cursor: 'pointer', transition: 'all 0.15s', textTransform: 'capitalize',
+            background: statusFilter === s ? c.card : 'transparent',
+            color: statusFilter === s ? c.brand : c.subText,
+            boxShadow: statusFilter === s ? (isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.08)') : 'none'
+          }}>{s}</button>
+        ))}
+      </div>
+
       <div style={cardS}>
         <SectionHeader title="Domain Requests" accent="#ba7517" />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={thS}>Type</th>
-              <th style={thS}>Domain</th>
-              <th style={thS}>Customer</th>
-              <th style={thS}>Status</th>
-              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((req, i) => (
-              <tr key={req.id}>
-                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600 }}>{req.type || 'New Registration'}</span></td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb' }}>{req.domain_name || '—'}</span>
-                </td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{getCustomerName(req)}</span></td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={formatStatus(req.status)} /></td>
-                <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    {isPending(req.status) && (
-                      <>
-                        <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}><CheckCircle size={12} /> Approve</Btn>
-                        <Btn color="#ef4444" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}><XCircle size={12} /> Reject</Btn>
-                      </>
-                    )}
-                    <Btn color="#ef4444" onClick={() => handleDelete(req.id)}><Trash2 size={12} /> Delete</Btn>
-                  </div>
-                </td>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thS}>Type</th>
+                <th style={thS}>Domain</th>
+                <th style={thS}>Customer</th>
+                <th style={thS}>Date</th>
+                <th style={thS}>Status</th>
+                <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
               </tr>
-            ))}
-            {requests.length === 0 && <tr><td colSpan={5} style={emptyS}>No domain requests found</td></tr>}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((req, i) => (
+                <tr key={req.id}>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600 }}>{req.type || 'New Registration'}</span></td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb' }}>{req.domain_name || '—'}</span>
+                  </td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{getCustomerName(req)}</span></td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ color: c.subText, fontSize: 13, whiteSpace: 'nowrap' }}>
+                      {req.created_at ? format(new Date(req.created_at), 'MMM dd, yyyy') : '—'}
+                    </span>
+                    <div style={{ fontSize: 11, color: c.subText }}>
+                      {req.created_at ? format(new Date(req.created_at), 'HH:mm') : ''}
+                    </div>
+                  </td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={fmtStatus(req.status)} /></td>
+                  <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                      {isPending(req.status) && (
+                        <>
+                          <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}><CheckCircle size={12} /> Approve</Btn>
+                          <Btn color="#ef4444" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}><XCircle size={12} /> Reject</Btn>
+                        </>
+                      )}
+                      <Btn color="#ef4444" onClick={() => setDeleteTarget(req.id)} title="Delete request"><Trash2 size={12} /> Delete</Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && <tr><td colSpan={6} style={emptyS}>No domain requests found</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
