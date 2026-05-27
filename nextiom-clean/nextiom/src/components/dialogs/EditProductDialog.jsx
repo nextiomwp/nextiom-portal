@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { updateProduct, uploadProductImage } from '@/lib/storage';
+import { updateProduct, uploadProductImage, addNotification } from '@/lib/storage';
 import { Upload, Download, Layers, X } from 'lucide-react';
 
 const LICENSE_TYPES = [
@@ -121,6 +121,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
         renewal_period_days: !isDigital ? parseInt(form.renewal_period_days) || 365 : null,
       };
       await updateProduct(product.id, updates);
+      addNotification({ customer_id: null, type: 'product_updated', title: `Product Updated — ${product.name}`, message: `Admin updated product details for "${product.name}".` }).catch(() => {});
       toast({ title: 'Success', description: 'Product updated successfully.' });
       onSuccess();
       onOpenChange(false);

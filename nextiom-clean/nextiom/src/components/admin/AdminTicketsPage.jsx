@@ -84,6 +84,7 @@ export default function AdminTicketsPage({ c, isDark }) {
       const updated = { ...selected, status: 'closed' };
       setSelected(updated);
       setTickets(ts => ts.map(t => t.id === selected.id ? updated : t));
+      addNotification({ customer_id: null, type: 'ticket_closed', title: `Ticket Closed — ${selected.subject}`, message: `Admin closed support ticket: "${selected.subject}".` }).catch(() => {});
       toast({ title: 'Ticket closed' });
     } catch { toast({ title: 'Failed to close ticket', variant: 'destructive' }); }
   }

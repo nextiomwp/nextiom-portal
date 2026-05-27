@@ -115,6 +115,7 @@ function AdminDomainManagement({ isDark = true }) {
         notes: editForm.notes,
         admin_reply: editForm.admin_reply,
       });
+      addNotification({ customer_id: null, type: 'request_updated', title: `Domain Updated — ${editForm.domain_name}`, message: `Admin updated domain record for ${editForm.domain_name} (status: ${editForm.status}).` }).catch(() => {});
       toast({ title: 'Domain Updated', description: 'Changes saved successfully.' });
       setEditDomain(null);
       loadData();
@@ -129,6 +130,7 @@ function AdminDomainManagement({ isDark = true }) {
     if (!window.confirm(`Delete domain "${d.domain_name}"? This cannot be undone.`)) return;
     try {
       await deleteDomainRequest(d.id);
+      addNotification({ customer_id: null, type: 'delete', title: `Domain Deleted — ${d.domain_name}`, message: `Admin permanently deleted domain record for ${d.domain_name}.` }).catch(() => {});
       toast({ title: 'Domain Deleted', description: `${d.domain_name} has been removed.` });
       loadData();
     } catch (e) {

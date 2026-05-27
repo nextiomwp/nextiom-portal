@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { updateCustomer } from '@/lib/storage';
+import { updateCustomer, addNotification } from '@/lib/storage';
 
 function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -48,6 +48,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
     };
 
     updateCustomer(customer.id, customerData);
+    addNotification({ customer_id: null, type: 'customer_updated', title: `Customer Updated — ${customerData.name}`, message: `Admin updated customer profile for ${customerData.name} (${customerData.email}).` }).catch(() => {});
     toast({
       title: "Success",
       description: "Customer updated successfully",

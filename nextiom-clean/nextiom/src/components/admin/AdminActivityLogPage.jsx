@@ -13,8 +13,21 @@ const ACTION_MAP = {
   account_confirmed: { label: 'Account Confirmed', color: '#34d399', bg: '#0d2b1e' },
   admin_login: { label: 'Admin Login', color: '#e87b35', bg: '#2b1a0a' },
   ticket: { label: 'Ticket', color: '#38bdf8', bg: '#0c2233' },
+  ticket_reply: { label: 'Ticket Reply', color: '#38bdf8', bg: '#0c2233' },
+  ticket_closed: { label: 'Ticket Closed', color: '#94a3b8', bg: '#1e2433' },
   payment: { label: 'Payment', color: '#facc15', bg: '#2b2008' },
   delete: { label: 'Deleted', color: '#f87171', bg: '#3a1515' },
+  product_added: { label: 'Product Added', color: '#4ade80', bg: '#0f2a1a' },
+  product_updated: { label: 'Product Updated', color: '#60a5fa', bg: '#0f1f3a' },
+  product_assigned: { label: 'Product Assigned', color: '#a78bfa', bg: '#1e1040' },
+  customer_added: { label: 'Customer Added', color: '#34d399', bg: '#0a2318' },
+  customer_updated: { label: 'Customer Updated', color: '#60a5fa', bg: '#0f1f3a' },
+  request_updated: { label: 'Request Updated', color: '#4ade80', bg: '#1a3020' },
+  domain_request: { label: 'Domain Request', color: '#38bdf8', bg: '#0c2233' },
+  hosting_request: { label: 'Hosting Request', color: '#a78bfa', bg: '#1e1040' },
+  domain_expiry: { label: 'Domain Expiry', color: '#fb923c', bg: '#3b2508' },
+  hosting_expiry: { label: 'Hosting Expiry', color: '#fb923c', bg: '#3b2508' },
+  license_updated: { label: 'License Updated', color: '#e87b35', bg: '#2b1a0a' },
 };
 
 function getAction(type) {

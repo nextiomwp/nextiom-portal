@@ -147,6 +147,8 @@ function AdminApprovedHostings({ isDark = true }) {
         expiry_date: editForm.expiry_date ? new Date(editForm.expiry_date).toISOString() : null,
         admin_reply: editForm.admin_reply,
       });
+      const label = `${editForm.hosting_type} — ${editForm.plan_name}`;
+      addNotification({ customer_id: null, type: 'request_updated', title: `Hosting Updated — ${label}`, message: `Admin updated hosting record for ${label} (status: ${editForm.status}).` }).catch(() => {});
       toast({ title: 'Hosting Updated', description: 'Changes saved successfully.' });
       setEditItem(null);
       loadData();
@@ -162,6 +164,8 @@ function AdminApprovedHostings({ isDark = true }) {
     if (!window.confirm(`Delete approved hosting "${parsed.hostingType} - ${parsed.planName}" for ${h.customers?.name || 'this customer'}? This cannot be undone.`)) return;
     try {
       await deleteHostingRequest(h.id);
+      const label = `${parsed.hostingType} — ${parsed.planName}`;
+      addNotification({ customer_id: null, type: 'delete', title: `Hosting Deleted — ${label}`, message: `Admin permanently deleted hosting record for ${h.customers?.name || 'a customer'} (${label}).` }).catch(() => {});
       toast({ title: 'Hosting Deleted', description: 'Hosting record has been removed.' });
       loadData();
     } catch (e) {

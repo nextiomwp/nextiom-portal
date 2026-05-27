@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { addProduct, uploadProductImage } from '@/lib/storage';
+import { addProduct, uploadProductImage, addNotification } from '@/lib/storage';
 import { Upload, Download, Layers, X } from 'lucide-react';
 
 const LICENSE_TYPES = [
@@ -99,6 +99,7 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
         renewal_period_days: form.category === 'virtual' ? parseInt(form.renewal_period_days) || 365 : null,
       };
       await addProduct(payload);
+      addNotification({ customer_id: null, type: 'product_added', title: `Product Added — ${payload.name}`, message: `Admin added a new product: "${payload.name}" (${payload.category || 'digital'}).` }).catch(() => {});
       toast({ title: 'Success', description: 'Product added successfully.' });
       onSuccess();
       onOpenChange(false);

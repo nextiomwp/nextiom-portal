@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
+import { addNotification } from '@/lib/storage';
 
 const SUPABASE_URL = 'https://fewhvlsqkbsmqbrqclya.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZld2h2bHNxa2JzbXFicnFjbHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDIyODEsImV4cCI6MjA4NTY3ODI4MX0.3_rloCyJNjU3e2CxqKnsBy8vhmTSkTG2SqOPMN3evSM';
@@ -82,6 +83,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         return;
       }
 
+      addNotification({ customer_id: null, type: 'customer_added', title: `Customer Added — ${formData.name}`, message: `Admin created new customer account: ${formData.name} (${formData.email}).` }).catch(() => {});
       toast({ title: 'Success', description: `Customer ${formData.name} created successfully.` });
       onSuccess();
       onOpenChange(false);

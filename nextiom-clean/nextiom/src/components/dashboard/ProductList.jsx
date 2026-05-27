@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity, Layers, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { deleteProduct } from '@/lib/storage';
+import { deleteProduct, addNotification } from '@/lib/storage';
 import EditProductDialog from '@/components/dialogs/EditProductDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -31,7 +31,9 @@ function ProductList({ products, onUpdate, isDark, c }) {
   const hover = c?.hover || (isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5');
 
   const handleDelete = async (productId) => {
+    const product = products.find(p => p.id === productId);
     await deleteProduct(productId);
+    addNotification({ customer_id: null, type: 'delete', title: `Product Deleted — ${product?.name || 'Unknown'}`, message: `Admin permanently deleted product: "${product?.name || 'Unknown'}".` }).catch(() => {});
     onUpdate();
     toast({ title: 'Product deleted', description: 'Product removed successfully' });
     setDeletingProductId(null);

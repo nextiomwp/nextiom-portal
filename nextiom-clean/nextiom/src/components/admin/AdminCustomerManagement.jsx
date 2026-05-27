@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Edit, Trash2, Plus, Eye, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getCustomers, deleteCustomer } from '@/lib/storage';
+import { getCustomers, deleteCustomer, addNotification } from '@/lib/storage';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -67,8 +67,10 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
 
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this customer?')) {
+      const customer = customers.find(cu => cu.id === id);
       try {
         await deleteCustomer(id);
+        addNotification({ customer_id: null, type: 'delete', title: `Customer Deleted — ${customer?.name || 'Unknown'}`, message: `Admin permanently deleted customer account: ${customer?.name || 'Unknown'} (${customer?.email || ''}).` }).catch(() => {});
         toast({ title: 'Customer Deleted' });
         loadCustomers();
       } catch (err) {

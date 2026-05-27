@@ -77,16 +77,26 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   };
 
   const updateRequestStatus = async (type, id, status) => {
+    const req = type === 'domain'
+      ? domainRequests.find(r => r.id === id)
+      : hostingRequests.find(r => r.id === id);
     if (type === 'domain') await updateDomainRequest(id, { status, updated_at: new Date().toISOString() });
     else await updateHostingRequest(id, { status, updated_at: new Date().toISOString() });
+    const label = type === 'domain' ? (req?.domain_name || 'Domain') : (parsePackage(req?.package_type || '').name || 'Hosting');
+    addNotification({ customer_id: null, type: 'request_updated', title: `${type === 'domain' ? 'Domain' : 'Hosting'} Request Updated — ${label}`, message: `Admin set ${label} request to "${status}" for ${customerData.name}.` }).catch(() => {});
     await loadAll();
     toast({ title: 'Updated', description: `Request marked as ${status}.` });
   };
 
   const deleteItem = async (type, id) => {
     if (!confirm('Delete this item? This cannot be undone.')) return;
+    const req = type === 'domain'
+      ? [...domainRequests].find(r => r.id === id)
+      : [...hostingRequests].find(r => r.id === id);
     if (type === 'domain') await deleteDomainRequest(id);
     else await deleteHostingRequest(id);
+    const label = type === 'domain' ? (req?.domain_name || 'Domain') : (parsePackage(req?.package_type || '').name || 'Hosting');
+    addNotification({ customer_id: null, type: 'delete', title: `${type === 'domain' ? 'Domain' : 'Hosting'} Request Deleted — ${label}`, message: `Admin deleted ${label} request for ${customerData.name}.` }).catch(() => {});
     await loadAll();
     toast({ title: 'Deleted', description: 'Item removed successfully.' });
   };
@@ -135,6 +145,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
         name: customerData.name, email: customerData.email,
         phone: customerData.phone, company: customerData.company, country: customerData.country
       });
+      addNotification({ customer_id: null, type: 'customer_updated', title: `Customer Updated — ${customerData.name}`, message: `Admin updated profile for ${customerData.name} (${customerData.email}).` }).catch(() => {});
       toast({ title: 'Customer Updated', description: 'Profile saved.' });
       await loadAll();
     } finally { setIsSaving(false); }
@@ -463,6 +474,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                         <Btn color={c.brand} onClick={async () => {
                           const next = lic.status === 'Active' ? 'Disabled' : 'Active';
                           await updateLicense(lic.id, { status: next });
+                          addNotification({ customer_id: null, type: 'license_updated', title: `License ${next} — ${lic.products?.name || 'Product'}`, message: `Admin set license for "${lic.products?.name || 'a product'}" to ${next} for ${customerData.name}.` }).catch(() => {});
                           await loadAll();
                           toast({ title: 'License updated', description: `Status set to ${next}.` });
                         }}>
@@ -471,6 +483,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                         <Btn color="#ef4444" onClick={async () => {
                           if (!confirm('Revoke this product license? Customer will lose access.')) return;
                           await deleteLicense(lic.id);
+                          addNotification({ customer_id: null, type: 'delete', title: `License Revoked — ${lic.products?.name || 'Product'}`, message: `Admin revoked license for "${lic.products?.name || 'a product'}" from ${customerData.name}.` }).catch(() => {});
                           await loadAll();
                           toast({ title: 'License revoked', description: 'Product access removed.' });
                         }}>
