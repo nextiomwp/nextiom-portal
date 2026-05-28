@@ -43,9 +43,10 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
       const expiryDate = new Date(today);
       expiryDate.setFullYear(today.getFullYear() + parseInt(period));
 
-      const { data: domainRequest, error: domainError } = await supabase.from('email_requests').insert([{
+      const email = `${emailName}${extension}`;
+      const { data: emailRequest, error: emailError } = await supabase.from('email_requests').insert([{
         customer_id: customerId,
-        domain_name: `${emailName}${extension}`,
+        email,
         status: 'pending',
         registration_period: parseInt(period),
         expiry_date: expiryDate.toISOString(),
@@ -54,8 +55,8 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         created_at: new Date().toISOString(),
       }]).select().single();
 
-      if (domainError) throw new Error(domainError?.message || 'Failed to create email request');
-      if (!domainRequest) throw new Error('No data returned from email request insert');
+      if (emailError) throw new Error(emailError?.message || 'Failed to create email request');
+      if (!emailRequest) throw new Error('No data returned from email request insert');
 
 
       await supabase.from('notifications').insert([{

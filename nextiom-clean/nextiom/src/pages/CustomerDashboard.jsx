@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
-  Sun, Moon, ChevronLeft, ChevronRight, Package,
+  Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -16,6 +16,8 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import MyDomainsPage from '@/components/customer/MyDomainsPage';
 import MyProductsPage from '@/components/customer/MyProductsPage';
 import NewDomainRequestPage from '@/components/customer/NewDomainRequestPage';
+import MyEmailsPage from '@/components/customer/MyEmailsPage';
+import NewEmailRequestPage from '@/components/customer/NewEmailRequestPage';
 import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import NewHostingOrderPage from '@/components/customer/NewHostingOrderPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
@@ -55,6 +57,13 @@ const NAV_STRUCTURE = [
     ],
   },
   {
+    id: 'emails', label: 'Emails', icon: Mail, type: 'group',
+    children: [
+      { id: 'emails_my', label: 'My Emails' },
+      { id: 'emails_new', label: 'Email Registration' },
+    ],
+  },
+  {
     id: 'orders', label: 'Orders', icon: ShoppingCart, type: 'group',
     children: [
       { id: 'services', label: 'My Subscriptions' },
@@ -84,7 +93,7 @@ function getActiveLabel(activeTab) {
 }
 
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'services', 'invoices', 'support_tickets', 'products', 'profile', 'notifications'];
+const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'support_tickets', 'products', 'profile', 'notifications'];
 
 function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -97,7 +106,7 @@ function CustomerDashboard() {
     }
   }, [activeTab]);
 
-  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'orders', 'support']);
+  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'emails', 'orders', 'support']);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('cust_sidebar_collapsed') === 'true'
@@ -278,6 +287,7 @@ function CustomerDashboard() {
     // Form pages — rendered fresh each visit (no keep-alive)
     if (activeTab === 'hosting_new') return <NewHostingOrderPage onSuccess={() => setActiveTab('hosting_my')} {...theme} />;
     if (activeTab === 'domains_new') return <NewDomainRequestPage onSuccess={() => setActiveTab('domains_my')} {...theme} />;
+    if (activeTab === 'emails_new') return <NewEmailRequestPage onSuccess={() => setActiveTab('emails_my')} {...theme} />;
     if (activeTab === 'support_create') return <CreateTicketPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
 
     const wrap = (id, node) => (
@@ -289,6 +299,7 @@ function CustomerDashboard() {
         {mountedTabs.has('dashboard') && wrap('dashboard', <DashboardPage user={userProp} {...theme} onNavigate={navigate} />)}
         {mountedTabs.has('hosting_my') && wrap('hosting_my', <MyHostingPackagesPage user={userProp} {...theme} />)}
         {mountedTabs.has('domains_my') && wrap('domains_my', <MyDomainsPage user={userProp} {...theme} />)}
+        {mountedTabs.has('emails_my') && wrap('emails_my', <MyEmailsPage user={userProp} {...theme} />)}
         {mountedTabs.has('services') && wrap('services', <MyServicesPage user={userProp} {...theme} />)}
         {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />)}

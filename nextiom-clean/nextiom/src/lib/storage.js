@@ -852,6 +852,20 @@ export const getEmailRequests = async () => {
   return data || [];
 };
 
+export const getCustomerEmailRequests = async (customerId) => {
+  const { data, error } = await supabase
+    .from('email_requests')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('getCustomerEmailRequests failed:', error?.message || error);
+    return [];
+  }
+  return data || [];
+};
+
 export const updateEmailRequest = async (id, updates) => {
   const { data, error } = await supabase
     .from('email_requests')

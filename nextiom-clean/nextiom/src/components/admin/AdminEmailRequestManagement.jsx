@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Trash2, AlertTriangle } from 'lucide-react';
-import { getDomainRequests, updateDomainRequest, deleteDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
+import { getEmailRequests, updateEmailRequest, deleteEmailRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 
@@ -81,21 +81,21 @@ function AdminEmailRequestManagement({ isDark = true }) {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    const [reqs, custs] = await Promise.all([getDomainRequests(), getCustomers()]);
+    const [reqs, custs] = await Promise.all([getEmailRequests(), getCustomers()]);
     setRequests(reqs || []);
     setCustomers(custs || []);
   };
 
   const handleStatusUpdate = async (id, newStatus) => {
     const req = requests.find(r => r.id === id);
-    await updateDomainRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString() });
+    await updateEmailRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString() });
     if (req?.customer_id) {
       const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
       await addNotification({
         customer_id: req.customer_id,
         type: isApproved ? 'update' : 'expiration',
-        title: isApproved ? `Domain Request Approved — ${req.email_name}` : `Domain Request Rejected — ${req.email_name}`,
-        message: isApproved ? `Your domain request for ${req.email_name} has been approved.` : `Your domain request for ${req.email_name} has been declined.`
+        title: isApproved ? `Email Request Approved — ${req.email}` : `Email Request Rejected — ${req.email}`,
+        message: isApproved ? `Your email request for ${req.email} has been approved.` : `Your email request for ${req.email} has been declined.`
       }).catch(() => { });
     }
     toast({ title: 'Request Updated', description: `Request marked as ${newStatus}` });
@@ -107,14 +107,14 @@ function AdminEmailRequestManagement({ isDark = true }) {
     setDeleteLoading(true);
     const req = requests.find(r => r.id === deleteTarget);
     try {
-      await deleteDomainRequest(deleteTarget);
-      const domainName = req?.email_name || 'Unknown Domain';
+      await deleteEmailRequest(deleteTarget);
+      const email = req?.email || 'Unknown Email';
       const custName = req ? getCustomerName(req) : 'Unknown';
       await addNotification({
         customer_id: null,
         type: 'delete',
-        title: `Domain Request Deleted — ${domainName}`,
-        message: `Admin permanently deleted a domain request for ${custName} (${domainName}).`,
+        title: `Email Request Deleted — ${email}`,
+        message: `Admin permanently deleted an email request for ${custName} (${email}).`,
       }).catch(() => { });
       toast({ title: 'Deleted', description: 'Email request deleted.' });
       loadData();
@@ -166,9 +166,9 @@ function AdminEmailRequestManagement({ isDark = true }) {
             <tbody>
               {filtered.map((req, i) => (
                 <tr key={req.id}>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600 }}>{req.type || 'New Registration'}</span></td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600 }}>Email Registration</span></td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb' }}>{req.email_name || '—'}</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb' }}>{req.email || '—'}</span>
                   </td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{getCustomerName(req)}</span></td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}>
