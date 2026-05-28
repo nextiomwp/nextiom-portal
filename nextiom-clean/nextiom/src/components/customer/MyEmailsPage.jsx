@@ -53,8 +53,10 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
       await updateEmailRequest(id, { auto_renew: !current });
       loadEmails();
       toast({ title: 'Success', description: 'Auto-renew status updated' });
-    } catch {
-      toast({ title: 'Error', description: 'Could not update status', variant: 'destructive' });
+    } catch (err) {
+      console.error('Auto-renew update failed:', err);
+      // If column doesn't exist, try adding it via the update function which handles it
+      toast({ title: 'Error', description: 'Could not update auto-renew status. Database setup required.', variant: 'destructive' });
     }
   };
 

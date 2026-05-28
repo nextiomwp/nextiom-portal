@@ -172,7 +172,7 @@ function Dashboard({ onLogout }) {
     const allIds = [
       ...pendingRequests.map(r => r.id),
       ...pendingCustomers.map(c => 'cust_' + c.id),
-      ...paymentNotifs.map(n => 'pay_' + n.id)
+      ...allAdminNotifs.map(n => 'notif_' + n.id)
     ].filter(Boolean);
     const next = [...new Set([...readNotifIds, ...allIds])];
     setReadNotifIds(next);
@@ -192,16 +192,17 @@ function Dashboard({ onLogout }) {
     supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
   };
 
-  const paymentNotifs = (adminNotifs || []).filter(n => n.type === 'payment_submitted');
-  const unreadPaymentNotifs = paymentNotifs.filter(n => n.id && !readNotifIds.includes('pay_' + n.id));
+  // Include ALL admin notifications (not just payment_submitted) for dropdown
+  const allAdminNotifs = (adminNotifs || []);
   const unreadCount = [
     ...pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)),
     ...pendingCustomers.filter(c => c.id && !readNotifIds.includes('cust_' + c.id)),
-    ...unreadPaymentNotifs,
+    ...allAdminNotifs.filter(n => n.id && !readNotifIds.includes('notif_' + n.id)),
   ].length;
 
   const markInvoicesRead = () => {
-    const ids = paymentNotifs.map(n => 'pay_' + n.id).filter(Boolean);
+    const invoiceNotifs = allAdminNotifs.filter(n => n.type === 'payment_submitted');
+    const ids = invoiceNotifs.map(n => 'notif_' + n.id).filter(Boolean);
     if (!ids.length) return;
     const next = [...new Set([...readNotifIds, ...ids])];
     setReadNotifIds(next);
@@ -308,7 +309,7 @@ function Dashboard({ onLogout }) {
           {NAV.filter(n => n.section === 'main').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} />)}
           <div style={{ height: 24 }} />
           {sidebarOpen && <div style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1 }}>MANAGE</div>}
-          {NAV.filter(n => n.section === 'manage').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={i.id === 'logs' ? unreadTicketCount : 0} dot={i.id === 'invoices' && unreadPaymentNotifs.length > 0} />)}
+          {NAV.filter(n => n.section === 'manage').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={i.id === 'logs' ? unreadTicketCount : 0} dot={i.id === 'invoices' && allAdminNotifs.filter(n => n.type === 'payment_submitted' && !readNotifIds.includes('notif_' + n.id)).length > 0} />)}
         </div>
         <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 12, padding: sidebarOpen ? '12px' : '12px 0', background: c.bg, borderRadius: 8 }}>
@@ -357,7 +358,7 @@ function Dashboard({ onLogout }) {
                       const merged = [
                         ...pendingCustomers.map(cu => ({ kind: 'customer', id: cu.id, key: 'cust_' + cu.id, date: cu.created_at, data: cu })),
                         ...pendingRequests.map(r => ({ kind: 'request', id: r.id, key: r.id, date: r.created_at, data: r })),
-                        ...paymentNotifs.map(n => ({ kind: 'payment', id: n.id, key: 'pay_' + n.id, date: n.created_at, data: n })),
+                        ...allAdminNotifs.map(n => ({ kind: 'notification', id: n.id, key: 'notif_' + n.id, date: n.created_at, data: n })),
                       ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 16);
 
                       if (!merged.length) return <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>;
@@ -399,14 +400,15 @@ function Dashboard({ onLogout }) {
                           );
                         }
                         const n = item.data;
+                        const isPayment = n.type === 'payment_submitted';
                         return (
-                          <div key={'pay' + (n.id || i)} style={rowStyle}
-                            onClick={() => { markNotifRead(item.key); setActive('invoices'); setIsNotificationsOpen(false); }}>
+                          <div key={'notif' + (n.id || i)} style={rowStyle}
+                            onClick={() => { markNotifRead(item.key); setActive(isPayment ? 'invoices' : 'adminNotifications'); setIsNotificationsOpen(false); }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               {dot}
-                              <span style={titleStyle}>{n.title}</span>
+                              <span style={titleStyle}>{n.title || 'Notification'}</span>
                             </div>
-                            <div style={subStyle}>{n.message}</div>
+                            <div style={subStyle}>{n.message || dateStr}</div>
                             <div style={dateStyle}>{dateStr}</div>
                           </div>
                         );
