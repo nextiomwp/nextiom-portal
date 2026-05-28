@@ -50,7 +50,6 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         status: 'pending',
         registration_period: parseInt(period),
         expiry_date: expiryDate.toISOString(),
-        auto_renew: false,
         notes: notes || null,
         created_at: new Date().toISOString(),
       }]).select().single();

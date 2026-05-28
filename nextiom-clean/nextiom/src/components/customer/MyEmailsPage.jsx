@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Mail } from 'lucide-react';
-import { getCustomerEmailRequests, resolveCustomerId } from '@/lib/storage';
+import { getCustomerEmailRequests, updateEmailRequest, resolveCustomerId } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 function statusStyle(status, isDark) {
   const s = String(status || '').toLowerCase();
@@ -44,6 +45,16 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
       toast({ title: 'Error', description: 'Failed to load emails', variant: 'destructive' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAutoRenew = async (id, current) => {
+    try {
+      await updateEmailRequest(id, { auto_renew: !current });
+      loadEmails();
+      toast({ title: 'Success', description: 'Auto-renew status updated' });
+    } catch {
+      toast({ title: 'Error', description: 'Could not update status', variant: 'destructive' });
     }
   };
 
@@ -103,10 +114,10 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
-                {['Email', 'Status', 'Expiry', 'Actions'].map((h, i) => (
+                {['Email', 'Status', 'Expiry', 'Auto Renew', 'Actions'].map((h, i) => (
                   <th key={h} style={{
                     padding: '10px 20px',
-                    textAlign: i === 3 ? 'right' : 'left',
+                    textAlign: i === 4 ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: subText,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     borderBottom: `1px solid ${border}`,
@@ -133,6 +144,12 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                     <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
                       {email.expiry_date ? new Date(email.expiry_date).toLocaleDateString() : 'N/A'}
                     </td>
+                    <td style={{ padding: '12px 20px' }}>
+                      <Switch
+                        checked={!!email.auto_renew}
+                        onCheckedChange={() => handleAutoRenew(email.id, email.auto_renew)}
+                      />
+                    </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                       <span style={{ color: subText, fontSize: 12 }}>—</span>
                     </td>
@@ -140,7 +157,7 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                 );
               }) : (
                 <tr>
-                  <td colSpan={4} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                  <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
                     No emails found
                   </td>
                 </tr>
