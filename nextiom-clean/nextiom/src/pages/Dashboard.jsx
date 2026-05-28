@@ -112,7 +112,7 @@ function Dashboard({ onLogout }) {
         type: 'admin_login',
         title: `Admin Login`,
         message: `Admin signed in as ${user.email}`,
-      }).catch(() => {});
+      }).catch(() => { });
     });
   }, []);
 
@@ -457,98 +457,98 @@ function NavItem({ item, active, setActive, open, c, badge = 0, dot = false }) {
   );
 }
 
-const AVATAR_COLORS = ['#e87b35','#e85d5d','#378ADD','#639922','#BA7517','#8b5cf6'];
-const avatarColor = str => AVATAR_COLORS[(str?.charCodeAt(0)||0) % AVATAR_COLORS.length];
-const timeAgo = d => { const days=Math.floor((Date.now()-new Date(d))/86400000); if(days<1)return'Today'; if(days<7)return`${days}d ago`; return`${Math.floor(days/7)}w ago`; };
+const AVATAR_COLORS = ['#e87b35', '#e85d5d', '#378ADD', '#639922', '#BA7517', '#8b5cf6'];
+const avatarColor = str => AVATAR_COLORS[(str?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+const timeAgo = d => { const days = Math.floor((Date.now() - new Date(d)) / 86400000); if (days < 1) return 'Today'; if (days < 7) return `${days}d ago`; return `${Math.floor(days / 7)}w ago`; };
 
 function MiniSparkline({ value, color }) {
   const s = value || 3;
-  const pts = Array.from({length:12},(_,i)=>0.15+i/11*0.55+Math.sin(i*1.9+s)*0.12+Math.sin(i*0.8)*0.08);
-  const mn=Math.min(...pts), rng=(Math.max(...pts)-mn)||1;
-  const W=80,H=28;
-  const coords=pts.map((v,i)=>`${(i/11)*W},${H-((v-mn)/rng)*(H-4)+2}`).join(' ');
-  return <svg width={W} height={H} style={{display:'block'}}><polyline points={coords} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+  const pts = Array.from({ length: 12 }, (_, i) => 0.15 + i / 11 * 0.55 + Math.sin(i * 1.9 + s) * 0.12 + Math.sin(i * 0.8) * 0.08);
+  const mn = Math.min(...pts), rng = (Math.max(...pts) - mn) || 1;
+  const W = 80, H = 28;
+  const coords = pts.map((v, i) => `${(i / 11) * W},${H - ((v - mn) / rng) * (H - 4) + 2}`).join(' ');
+  return <svg width={W} height={H} style={{ display: 'block' }}><polyline points={coords} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, onViewCustomer, onConfirmCustomer, onRejectCustomer, c, isDark }) {
-  const approvedDomains = requests.filter(r => r.source === 'domain' && String(r.status||'').toLowerCase() === 'approved').length;
-  const pendingCustomers = customers.filter(cu => String(cu.status||'').toLowerCase() === 'pending');
-  const initials = name => (name||'?').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+  const approvedDomains = requests.filter(r => r.source === 'domain' && String(r.status || '').toLowerCase() === 'approved').length;
+  const pendingCustomers = customers.filter(cu => String(cu.status || '').toLowerCase() === 'pending');
+  const initials = name => (name || '?').split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
 
   const statCards = [
-    { label:'Total customers', value:customers.length||0, icon:<Users size={18} color={c.brand}/>, sub:'↑ +12 this month', subColor:'#639922', bg:isDark?'#3d2518':'#fff5ee', sparkColor:c.brand },
-    { label:'Active domains', value:approvedDomains, icon:<CheckCircle size={18} color="#378ADD"/>, sub:`${stats.expiringSoon||0} expiring soon`, subColor:'#378ADD', bg:isDark?'#1a2736':'#e6f1fb', sparkColor:'#378ADD' },
-    { label:'Hosting packages', value:hostingPlans.length||0, icon:<Server size={18} color="#639922"/>, sub:'All active', subColor:'#639922', bg:isDark?'#1e2e1e':'#eaf3de', sparkColor:'#639922' },
-    { label:'Pending requests', value:pendingRequestsCount||0, icon:<Star size={18} color="#BA7517"/>, sub:'Needs review', subColor:'#BA7517', bg:isDark?'#382512':'#faeeda', sparkColor:'#BA7517' },
+    { label: 'Total customers', value: customers.length || 0, icon: <Users size={18} color={c.brand} />, sub: '↑ +12 this month', subColor: '#639922', bg: isDark ? '#3d2518' : '#fff5ee', sparkColor: c.brand },
+    { label: 'Active domains', value: approvedDomains, icon: <CheckCircle size={18} color="#378ADD" />, sub: `${stats.expiringSoon || 0} expiring soon`, subColor: '#378ADD', bg: isDark ? '#1a2736' : '#e6f1fb', sparkColor: '#378ADD' },
+    { label: 'Hosting packages', value: hostingPlans.length || 0, icon: <Server size={18} color="#639922" />, sub: 'All active', subColor: '#639922', bg: isDark ? '#1e2e1e' : '#eaf3de', sparkColor: '#639922' },
+    { label: 'Pending requests', value: pendingRequestsCount || 0, icon: <Star size={18} color="#BA7517" />, sub: 'Needs review', subColor: '#BA7517', bg: isDark ? '#382512' : '#faeeda', sparkColor: '#BA7517' },
   ];
 
   return (
     <div>
-      <div style={{marginBottom:32}}>
-        <h1 style={{fontSize:24,fontWeight:700,marginBottom:4}}>Good day, Admin</h1>
-        <p style={{fontSize:14,color:c.subText}}>Here's what's happening with your portal today.</p>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Good day, Admin</h1>
+        <p style={{ fontSize: 14, color: c.subText }}>Here's what's happening with your portal today.</p>
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24}}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         {statCards.map(s => (
-          <div key={s.label} style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:12}}>
-              <div style={{fontSize:13,color:c.subText}}>{s.label}</div>
-              <div style={{width:36,height:36,borderRadius:8,background:s.bg,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{s.icon}</div>
+          <div key={s.label} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: c.subText }}>{s.label}</div>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{s.icon}</div>
             </div>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
               <div>
-                <div style={{fontSize:32,fontWeight:700,lineHeight:1.1}}>{s.value}</div>
-                <div style={{fontSize:12,color:s.subColor,fontWeight:500,marginTop:8}}>{s.sub}</div>
+                <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1.1 }}>{s.value}</div>
+                <div style={{ fontSize: 12, color: s.subColor, fontWeight: 500, marginTop: 8 }}>{s.sub}</div>
               </div>
-              <MiniSparkline value={s.value} color={s.sparkColor}/>
+              <MiniSparkline value={s.value} color={s.sparkColor} />
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:16}}>
-        <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20,display:'flex',flexDirection:'column'}}>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,alignItems:'flex-start',flexShrink:0}}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start', flexShrink: 0 }}>
             <div>
-              <div style={{fontSize:16,fontWeight:600}}>Pending Customers</div>
-              <div style={{fontSize:12,color:c.subText,marginTop:2}}>Awaiting admin confirmation</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>Pending Customers</div>
+              <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Awaiting admin confirmation</div>
             </div>
-            <button onClick={()=>onNavigate('customers')} style={{color:c.brand,background:'none',border:'none',fontSize:13,cursor:'pointer',fontWeight:500,display:'flex',alignItems:'center',gap:4}}>View all →</button>
+            <button onClick={() => onNavigate('customers')} style={{ color: c.brand, background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>View all →</button>
           </div>
-          <div style={{overflowY:'auto',maxHeight:320,marginTop:8}}>
-            <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead style={{position:'sticky',top:0,background:c.card,zIndex:1}}>
-                <tr style={{color:c.subText,fontSize:11,letterSpacing:'0.05em'}}>
-                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Customer</th>
-                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Phone</th>
-                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'left',textTransform:'uppercase'}}>Joined</th>
-                  <th style={{paddingBottom:10,fontWeight:500,textAlign:'right',textTransform:'uppercase'}}>Actions</th>
+          <div style={{ overflowY: 'auto', maxHeight: 320, marginTop: 8 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ position: 'sticky', top: 0, background: c.card, zIndex: 1 }}>
+                <tr style={{ color: c.subText, fontSize: 11, letterSpacing: '0.05em' }}>
+                  <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Customer</th>
+                  <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Phone</th>
+                  <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Joined</th>
+                  <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'right', textTransform: 'uppercase' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingCustomers.length === 0 && (
-                  <tr><td colSpan={4} style={{padding:'24px 0',textAlign:'center',fontSize:13,color:c.subText}}>No pending customers</td></tr>
+                  <tr><td colSpan={4} style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: c.subText }}>No pending customers</td></tr>
                 )}
-                {pendingCustomers.map((cu,i)=>{
-                  const col=avatarColor(cu.name);
+                {pendingCustomers.map((cu, i) => {
+                  const col = avatarColor(cu.name);
                   return (
-                    <tr key={cu.id||i} style={{borderTop:`1px solid ${c.border}`}}>
-                      <td style={{padding:'10px 0',cursor:'pointer'}} onClick={()=>onViewCustomer(cu)}>
-                        <div style={{display:'flex',alignItems:'center',gap:10}}>
-                          <div style={{width:34,height:34,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(cu.name)}</div>
+                    <tr key={cu.id || i} style={{ borderTop: `1px solid ${c.border}` }}>
+                      <td style={{ padding: '10px 0', cursor: 'pointer' }} onClick={() => onViewCustomer(cu)}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: '50%', background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(cu.name)}</div>
                           <div>
-                            <div style={{fontSize:13,fontWeight:500}}>{cu.name}</div>
-                            <div style={{fontSize:11,color:c.subText}}>{cu.email}</div>
+                            <div style={{ fontSize: 13, fontWeight: 500 }}>{cu.name}</div>
+                            <div style={{ fontSize: 11, color: c.subText }}>{cu.email}</div>
                           </div>
                         </div>
                       </td>
-                      <td style={{padding:'10px 0',fontSize:13,color:c.subText}}>{cu.phone||'—'}</td>
-                      <td style={{padding:'10px 0',fontSize:12,color:c.subText}}>{cu.created_at?timeAgo(cu.created_at):'—'}</td>
-                      <td style={{padding:'10px 0',textAlign:'right'}}>
-                        <div style={{display:'inline-flex',gap:6}}>
-                          <button onClick={()=>onConfirmCustomer(cu)} style={{background:'rgba(99,153,34,0.15)',color:'#639922',border:'none',borderRadius:6,padding:'4px 10px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Confirm</button>
-                          <button onClick={()=>onRejectCustomer(cu)} style={{background:'rgba(229,57,53,0.12)',color:'#e53935',border:'none',borderRadius:6,padding:'4px 10px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Reject</button>
+                      <td style={{ padding: '10px 0', fontSize: 13, color: c.subText }}>{cu.phone || '—'}</td>
+                      <td style={{ padding: '10px 0', fontSize: 12, color: c.subText }}>{cu.created_at ? timeAgo(cu.created_at) : '—'}</td>
+                      <td style={{ padding: '10px 0', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button onClick={() => onConfirmCustomer(cu)} style={{ background: 'rgba(99,153,34,0.15)', color: '#639922', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Confirm</button>
+                          <button onClick={() => onRejectCustomer(cu)} style={{ background: 'rgba(229,57,53,0.12)', color: '#e53935', border: 'none', borderRadius: 6, padding: '4px 10px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Reject</button>
                         </div>
                       </td>
                     </tr>
@@ -559,59 +559,59 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
           </div>
         </div>
 
-        <div style={{display:'flex',flexDirection:'column',gap:16}}>
-          <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4,alignItems:'flex-start'}}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start' }}>
               <div>
-                <div style={{fontSize:16,fontWeight:600}}>New requests</div>
-                <div style={{fontSize:12,color:c.subText,marginTop:2}}>Awaiting your review</div>
+                <div style={{ fontSize: 16, fontWeight: 600 }}>New requests</div>
+                <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Awaiting your review</div>
               </div>
-              <button onClick={()=>onNavigate('hostingRequests')} style={{color:c.brand,background:'none',border:'none',fontSize:13,cursor:'pointer',fontWeight:500}}>View all →</button>
+              <button onClick={() => onNavigate('hostingRequests')} style={{ color: c.brand, background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>View all →</button>
             </div>
-            <div style={{marginTop:16}}>
-              {requests.slice(0,4).map((r,i)=>{
-                const isHosting=r.source==='hosting';
-                const col=avatarColor(r.n);
-                const date=r.created_at?new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+            <div style={{ marginTop: 16 }}>
+              {requests.slice(0, 4).map((r, i) => {
+                const isHosting = r.source === 'hosting';
+                const col = avatarColor(r.n);
+                const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
                 return (
-                  <div key={r.id||i} onClick={()=>onNavigate(r.source==='hosting'?'hostingRequests':'domainsRequests')} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 0',borderTop:i===0?'none':`1px solid ${c.border}`,cursor:'pointer'}}>
-                    <div style={{width:36,height:36,borderRadius:'50%',background:col,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0}}>{initials(r.n)}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.n}</div>
-                      <div style={{fontSize:11,color:c.subText}}>{r.reqType}</div>
+                  <div key={r.id || i} onClick={() => onNavigate(r.source === 'hosting' ? 'hostingRequests' : 'domainsRequests')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : `1px solid ${c.border}`, cursor: 'pointer' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(r.n)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.n}</div>
+                      <div style={{ fontSize: 11, color: c.subText }}>{r.reqType}</div>
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-                      <span style={{background:isHosting?'rgba(55,138,221,0.15)':'rgba(99,153,34,0.15)',color:isHosting?'#5b9aff':'#639922',fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:6}}>{isHosting?'Hosting':'Domain'}</span>
-                      <span style={{fontSize:11,color:c.subText,minWidth:40,textAlign:'right'}}>{date}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <span style={{ background: isHosting ? 'rgba(55,138,221,0.15)' : 'rgba(99,153,34,0.15)', color: isHosting ? '#5b9aff' : '#639922', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>{isHosting ? 'Hosting' : 'Domain'}</span>
+                      <span style={{ fontSize: 11, color: c.subText, minWidth: 40, textAlign: 'right' }}>{date}</span>
                     </div>
                   </div>
                 );
               })}
-              {requests.length===0 && <div style={{fontSize:13,color:c.subText}}>No new requests</div>}
+              {requests.length === 0 && <div style={{ fontSize: 13, color: c.subText }}>No new requests</div>}
             </div>
           </div>
 
-          <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:12,padding:20}}>
-            <div style={{fontSize:16,fontWeight:600,marginBottom:20,color:c.text}}>Hosting plans</div>
-            {(()=>{
-              const COLORS = [c.brand,'#378ADD','#639922','#a855f7','#f59e0b','#ec4899'];
-              const counts={};
-              hostingPlans.forEach(p=>{
-                const t=p.hosting_type||'Other';
-                counts[t]=(counts[t]||0)+1;
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 20, color: c.text }}>Hosting plans</div>
+            {(() => {
+              const COLORS = [c.brand, '#378ADD', '#639922', '#a855f7', '#f59e0b', '#ec4899'];
+              const counts = {};
+              hostingPlans.forEach(p => {
+                const t = p.hosting_type || 'Other';
+                counts[t] = (counts[t] || 0) + 1;
               });
-              const entries=Object.entries(counts);
-              const total=hostingPlans.length||1;
-              if(!entries.length) return <div style={{color:c.subText,fontSize:13}}>No plans yet</div>;
-              return entries.map(([name,val],i)=>{
-                const short=name.replace(' Hosting','').replace(' Server','');
+              const entries = Object.entries(counts);
+              const total = hostingPlans.length || 1;
+              if (!entries.length) return <div style={{ color: c.subText, fontSize: 13 }}>No plans yet</div>;
+              return entries.map(([name, val], i) => {
+                const short = name.replace(' Hosting', '').replace(' Server', '');
                 return (
-                  <div key={name} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
-                    <div style={{width:64,fontSize:13,color:c.text,flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} title={name}>{short}</div>
-                    <div style={{flex:1,height:6,background:isDark?'rgba(255,255,255,0.07)':'#ebebeb',borderRadius:3}}>
-                      <div style={{width:`${Math.round((val/total)*100)}%`,height:'100%',background:COLORS[i%COLORS.length],borderRadius:3,transition:'width 0.4s'}}/>
+                  <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    <div style={{ width: 64, fontSize: 13, color: c.text, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{short}</div>
+                    <div style={{ flex: 1, height: 6, background: isDark ? 'rgba(255,255,255,0.07)' : '#ebebeb', borderRadius: 3 }}>
+                      <div style={{ width: `${Math.round((val / total) * 100)}%`, height: '100%', background: COLORS[i % COLORS.length], borderRadius: 3, transition: 'width 0.4s' }} />
                     </div>
-                    <div style={{width:38,fontSize:12,color:c.subText,textAlign:'right',flexShrink:0}}>{val} <span style={{opacity:0.6}}>({Math.round((val/total)*100)}%)</span></div>
+                    <div style={{ width: 38, fontSize: 12, color: c.subText, textAlign: 'right', flexShrink: 0 }}>{val} <span style={{ opacity: 0.6 }}>({Math.round((val / total) * 100)}%)</span></div>
                   </div>
                 );
               });
@@ -648,45 +648,45 @@ function AdminProfileContent({ c, isDark }) {
 }
 
 function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark }) {
-  const pendingReqs = requests.filter(r => String(r.status||'').toLowerCase() === 'pending');
-  const recentCustomers = customers.filter(c=>c.status==='pending').sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  const pendingReqs = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
+  const recentCustomers = customers.filter(c => c.status === 'pending').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const allItems = [
-    ...pendingReqs.map(r=>({ type:'request', source:r.source, title:`${r.n} — ${r.reqType}`, sub: r.source==='domain'?'Domain Request':'Hosting Request', date:r.created_at, id:r.id })),
-    ...recentCustomers.map(cu=>({ type:'customer', title:`New Customer: ${cu.name}`, sub:cu.email||'', date:cu.created_at, id:cu.id, customer:cu })),
-    ...notifications.map(n=>({ type:'notification', title:n.title||'Notification', sub:n.message||'', date:n.created_at, id:n.id, nType:n.type })),
-  ].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    ...pendingReqs.map(r => ({ type: 'request', source: r.source, title: `${r.n} — ${r.reqType}`, sub: r.source === 'domain' ? 'Domain Request' : 'Hosting Request', date: r.created_at, id: r.id })),
+    ...recentCustomers.map(cu => ({ type: 'customer', title: `New Customer: ${cu.name}`, sub: cu.email || '', date: cu.created_at, id: cu.id, customer: cu })),
+    ...notifications.map(n => ({ type: 'notification', title: n.title || 'Notification', sub: n.message || '', date: n.created_at, id: n.id, nType: n.type })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  const typeColor = t => t==='request'?'#8b5cf6':t==='customer'?'#639922':'#378ADD';
-  const typeLabel = item => item.type==='request'?(item.source==='domain'?'Domain':'Hosting'):item.type==='customer'?'New User':'Notification';
+  const typeColor = t => t === 'request' ? '#8b5cf6' : t === 'customer' ? '#639922' : '#378ADD';
+  const typeLabel = item => item.type === 'request' ? (item.source === 'domain' ? 'Domain' : 'Hosting') : item.type === 'customer' ? 'New User' : 'Notification';
 
   return (
     <div>
-      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
-        <button onClick={()=>onNavigate('overview')} style={{background:'none',border:'none',color:c.subText,cursor:'pointer',padding:'6px 8px',borderRadius:8,display:'flex',alignItems:'center',fontSize:13}}>← Back</button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <button onClick={() => onNavigate('overview')} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '6px 8px', borderRadius: 8, display: 'flex', alignItems: 'center', fontSize: 13 }}>← Back</button>
         <div>
-          <h2 style={{fontSize:20,fontWeight:700,margin:0,color:c.text}}>All Notifications</h2>
-          <p style={{fontSize:13,color:c.subText,marginTop:2}}>Pending requests, new customers, and system notifications</p>
+          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: c.text }}>All Notifications</h2>
+          <p style={{ fontSize: 13, color: c.subText, marginTop: 2 }}>Pending requests, new customers, and system notifications</p>
         </div>
       </div>
 
-      <div style={{background:c.card,border:`1px solid ${c.border}`,borderRadius:14,overflow:'hidden'}}>
-        <div style={{padding:'14px 20px',borderBottom:`1px solid ${c.border}`,background:isDark?'rgba(255,255,255,0.02)':'rgba(0,0,0,0.02)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <span style={{fontSize:13,fontWeight:600,color:c.text}}>{allItems.length} items</span>
+      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{allItems.length} items</span>
         </div>
-        {allItems.length===0 && <div style={{padding:32,textAlign:'center',color:c.subText,fontSize:13}}>No notifications</div>}
-        {allItems.map((item,i)=>(
-          <div key={item.id+i} onClick={()=>{ if(item.type==='request') onNavigate(item.source==='domain'?'domainsRequests':'hostingRequests'); else if(item.type==='customer') onNavigate('customers'); }} style={{padding:'14px 20px',borderBottom:`1px solid ${c.border}`,display:'flex',alignItems:'center',gap:14,cursor:item.type!=='notification'?'pointer':'default',transition:'background 0.1s'}} onMouseEnter={e=>e.currentTarget.style.background=c.hover} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-            <div style={{width:38,height:38,borderRadius:'50%',background:typeColor(item.type)+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        {allItems.length === 0 && <div style={{ padding: 32, textAlign: 'center', color: c.subText, fontSize: 13 }}>No notifications</div>}
+        {allItems.map((item, i) => (
+          <div key={item.id + i} onClick={() => { if (item.type === 'request') onNavigate(item.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); else if (item.type === 'customer') onNavigate('customers'); }} style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 14, cursor: item.type !== 'notification' ? 'pointer' : 'default', transition: 'background 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = c.hover} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+            <div style={{ width: 38, height: 38, borderRadius: '50%', background: typeColor(item.type) + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Bell size={16} color={typeColor(item.type)} />
             </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:13,fontWeight:600,color:c.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.title}</div>
-              <div style={{fontSize:12,color:c.subText,marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.sub}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+              <div style={{ fontSize: 12, color: c.subText, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</div>
             </div>
-            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:6,flexShrink:0}}>
-              <span style={{background:typeColor(item.type)+'22',color:typeColor(item.type),fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:6,textTransform:'uppercase',letterSpacing:0.5}}>{typeLabel(item)}</span>
-              <span style={{fontSize:11,color:c.subText}}>{item.date?new Date(item.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+              <span style={{ background: typeColor(item.type) + '22', color: typeColor(item.type), fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{typeLabel(item)}</span>
+              <span style={{ fontSize: 11, color: c.subText }}>{item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
             </div>
           </div>
         ))}
