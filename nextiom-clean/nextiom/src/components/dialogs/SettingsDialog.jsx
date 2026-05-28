@@ -8,11 +8,13 @@ import { useToast } from '@/components/ui/use-toast';
 import {
   DEFAULT_APP_SETTINGS,
   DEFAULT_PORTAL_SETTINGS,
+  getCustomers,
   getSettings,
   saveSettings,
   getPortalSettings,
   savePortalSettings,
   getPortalActionBlock,
+  addNotification,
 } from '@/lib/storage';
 
 function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
@@ -56,6 +58,17 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
 
   const portalPreview = getPortalActionBlock(settings);
 
+  const formatPortalPauseMessage = () => {
+    const start = settings.customerActionsStartDate ? new Date(settings.customerActionsStartDate) : null;
+    const end = settings.customerActionsEndDate ? new Date(settings.customerActionsEndDate) : null;
+    const startLabel = start && !Number.isNaN(start.getTime()) ? start.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+    const endLabel = end && !Number.isNaN(end.getTime()) ? end.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+    const schedule = startLabel || endLabel
+      ? ` (${startLabel ? `starts ${startLabel}` : ''}${startLabel && endLabel ? ', ' : ''}${endLabel ? `ends ${endLabel}` : ''})`
+      : '';
+    return `${settings.customerActionsNote?.trim() || 'Customer requests and payments are temporarily paused by the administrator.'}${schedule}`;
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -90,6 +103,37 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
         customerActionsEndDate: settings.customerActionsEndDate,
         customerActionsNote: settings.customerActionsNote,
       });
+
+      if (settings.customerActionsEnabled) {
+        const customers = await getCustomers().catch(() => []);
+        const message = formatPortalPauseMessage();
+        await Promise.all((customers || []).map((customer) => {
+          if (!customer?.id) return Promise.resolve();
+          return addNotification({
+            customer_id: customer.id,
+            type: 'portal_pause',
+            title: 'Customer Portal Pause',
+            message,
+          }).catch(() => {});
+        }));
+
+        // Log to admin activity log
+        await addNotification({
+          customer_id: null,
+          type: 'portal_pause',
+          title: 'Customer Portal Pause Enabled',
+          message: message,
+        }).catch(() => {});
+      } else {
+        // Also log when disabled
+        await addNotification({
+          customer_id: null,
+          type: 'portal_pause',
+          title: 'Customer Portal Pause Disabled',
+          message: 'The administrator has disabled the customer portal pause.',
+        }).catch(() => {});
+      }
+
       results.portal = { ok: true };
     } catch (err) {
       results.portal = { ok: false, error: err };

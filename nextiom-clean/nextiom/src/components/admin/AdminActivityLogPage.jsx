@@ -28,6 +28,7 @@ const ACTION_MAP = {
   domain_expiry: { label: 'Domain Expiry', color: '#fb923c', bg: '#3b2508' },
   hosting_expiry: { label: 'Hosting Expiry', color: '#fb923c', bg: '#3b2508' },
   license_updated: { label: 'License Updated', color: '#e87b35', bg: '#2b1a0a' },
+  portal_pause: { label: 'Portal Pause', color: '#fb923c', bg: '#3b2508' },
 };
 
 function getAction(type) {

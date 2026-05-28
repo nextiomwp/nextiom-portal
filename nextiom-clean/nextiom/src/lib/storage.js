@@ -837,6 +837,43 @@ export const deleteHostingRequest = async (id) => {
   return true;
 };
 
+// --- Email Requests ---
+
+export const getEmailRequests = async () => {
+  const { data, error } = await supabase
+    .from('email_requests')
+    .select('*, customers(name, email)')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('getEmailRequests failed:', error?.message || error);
+    return [];
+  }
+  return data || [];
+};
+
+export const updateEmailRequest = async (id, updates) => {
+  const { data, error } = await supabase
+    .from('email_requests')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'updateEmailRequest');
+  return data;
+};
+
+export const deleteEmailRequest = async (id) => {
+  const { error } = await supabase
+    .from('email_requests')
+    .delete()
+    .eq('id', id);
+
+  if (error) handleSupabaseError(error, 'deleteEmailRequest');
+  return true;
+};
+
 export const updateLicense = async (id, updates) => {
   const { data, error } = await supabase.from('licenses').update(updates).eq('id', id).select().single();
   if (error) handleSupabaseError(error, 'updateLicense');
@@ -873,6 +910,24 @@ export const DEFAULT_PORTAL_SETTINGS = {
   customerActionsNote: ''
 };
 
+const PORTAL_SETTINGS_STORAGE_KEY = 'portal_settings';
+
+const toPortalSettingsRecord = (settings = {}) => ({
+  id: 1,
+  customer_actions_enabled: !!settings.customerActionsEnabled,
+  customer_actions_start_date: settings.customerActionsStartDate || null,
+  customer_actions_end_date: settings.customerActionsEndDate || null,
+  customer_actions_note: settings.customerActionsNote || '',
+});
+
+const fromPortalSettingsRecord = (record = {}) => ({
+  ...DEFAULT_PORTAL_SETTINGS,
+  customerActionsEnabled: !!(record.customer_actions_enabled ?? record.customerActionsEnabled),
+  customerActionsStartDate: record.customer_actions_start_date ?? record.customerActionsStartDate ?? '',
+  customerActionsEndDate: record.customer_actions_end_date ?? record.customerActionsEndDate ?? '',
+  customerActionsNote: record.customer_actions_note ?? record.customerActionsNote ?? '',
+});
+
 export const getSettings = () => {
   const raw = localStorage.getItem('app_settings');
   if (!raw) return { ...DEFAULT_APP_SETTINGS };
@@ -899,11 +954,11 @@ export const getPortalSettings = async () => {
       .maybeSingle();
 
     if (error) throw error;
-    return { ...DEFAULT_PORTAL_SETTINGS, ...(data || {}) };
+    return fromPortalSettingsRecord(data || {});
   } catch (err) {
     console.warn('getPortalSettings: falling back to localStorage due to Supabase error', err?.message || err);
     try {
-      const raw = localStorage.getItem('portal_settings');
+      const raw = localStorage.getItem(PORTAL_SETTINGS_STORAGE_KEY);
       if (!raw) return { ...DEFAULT_PORTAL_SETTINGS };
       return { ...DEFAULT_PORTAL_SETTINGS, ...JSON.parse(raw) };
     } catch (e) {
@@ -913,18 +968,24 @@ export const getPortalSettings = async () => {
 };
 
 export const savePortalSettings = async (settings) => {
-  const next = { ...DEFAULT_PORTAL_SETTINGS, ...settings, id: 1 };
+  const next = { ...DEFAULT_PORTAL_SETTINGS, ...settings };
+  const record = toPortalSettingsRecord(next);
   try {
     const { error } = await supabase
       .from('portal_settings')
-      .upsert(next, { onConflict: 'id' });
+      .upsert(record, { onConflict: 'id' });
 
     if (error) throw error;
+    try {
+      localStorage.setItem(PORTAL_SETTINGS_STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.warn('savePortalSettings: failed to mirror portal settings to localStorage', e?.message || e);
+    }
     return next;
   } catch (err) {
     console.warn('savePortalSettings: Supabase upsert failed, saving to localStorage instead', err?.message || err);
     try {
-      localStorage.setItem('portal_settings', JSON.stringify(next));
+      localStorage.setItem(PORTAL_SETTINGS_STORAGE_KEY, JSON.stringify(next));
     } catch (e) {
       console.warn('savePortalSettings: failed to save to localStorage', e?.message || e);
     }

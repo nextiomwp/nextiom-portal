@@ -3,7 +3,7 @@ import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server } from 'luc
 import { getEmailRequests, updateEmailRequest, deleteEmailRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
-function parseEmail NameType(raw) {
+function parseEmailNameType(raw) {
   if (!raw) return { emailType: '—', planName: '—', billing: '—' };
   const parts = raw.split('|').map(s => s.trim());
   const mainPart = parts[0] || '';
@@ -91,7 +91,7 @@ function AdminApprovedEmails({ isDark = true }) {
   const calcExpiry = (h) => {
     if (h.expiry_date) return new Date(h.expiry_date);
     if (!h.updated_at) return null;
-    const { billing } = parseEmail NameType(h.package_type);
+    const { billing } = parseEmailNameType(h.package_type);
     const base = new Date(h.updated_at);
     base.setMonth(base.getMonth() + billingMonths(billing));
     return base;
@@ -111,7 +111,7 @@ function AdminApprovedEmails({ isDark = true }) {
   ];
 
   const filteredEmails = emails.filter(h => {
-    const parsed = parseEmail NameType(h.package_type);
+    const parsed = parseEmailNameType(h.package_type);
     const matchSearch =
       (parsed.emailType + ' ' + parsed.planName + ' ' + (h.customers?.name || '') + ' ' + (h.package_type || ''))
         .toLowerCase().includes(searchTerm.toLowerCase());
@@ -126,7 +126,7 @@ function AdminApprovedEmails({ isDark = true }) {
 
   const openEdit = (h) => {
     setEditItem(h);
-    const parsed = parseEmail NameType(h.package_type);
+    const parsed = parseEmailNameType(h.package_type);
     setEditForm({
       email_type: h.email_type || parsed.emailType || '',
       plan_name: h.plan_name || parsed.planName || '',
@@ -161,7 +161,7 @@ function AdminApprovedEmails({ isDark = true }) {
   };
 
   const handleDelete = async (h) => {
-    const parsed = parseEmail NameType(h.package_type);
+    const parsed = parseEmailNameType(h.package_type);
     if (!window.confirm(`Delete approved email "${parsed.emailType} - ${parsed.planName}" for ${h.customers?.name || 'this customer'}? This cannot be undone.`)) return;
     try {
       await deleteEmailRequest(h.id);
@@ -177,7 +177,7 @@ function AdminApprovedEmails({ isDark = true }) {
   const handleNotify = async (h) => {
     if (!h.customer_id) { toast({ title: 'Error', description: 'No customer linked.', variant: 'destructive' }); return; }
     const days = daysUntilExpiry(h.expiry_date);
-    const parsed = parseEmail NameType(h.package_type);
+    const parsed = parseEmailNameType(h.package_type);
     const daysText = days !== null ? `${days} day${days !== 1 ? 's' : ''}` : 'soon';
     const expiryStr = h.expiry_date ? new Date(h.expiry_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
     const packageName = `${parsed.emailType} — ${parsed.planName}`;
@@ -256,7 +256,7 @@ function AdminApprovedEmails({ isDark = true }) {
           </thead>
           <tbody>
             {filteredEmails.map((h, i) => {
-              const parsed = parseEmail NameType(h.package_type);
+              const parsed = parseEmailNameType(h.package_type);
               const expiryDate = calcExpiry(h);
               const days = expiryDate ? daysUntilExpiry(expiryDate) : null;
               const urgentColor = days !== null && days <= 7 ? '#ef4444' : days !== null && days <= 30 ? '#f97316' : null;

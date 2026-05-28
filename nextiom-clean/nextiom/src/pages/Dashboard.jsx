@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -14,6 +14,8 @@ import AdminDomainManagement from '@/components/admin/AdminDomainManagement';
 import AdminRequestManagement from '@/components/admin/AdminRequestManagement';
 import AdminHostingManagement from '@/components/admin/AdminHostingManagement';
 import AdminHostingRequestManagement from '@/components/admin/AdminHostingRequestManagement';
+import AdminEmailRequestManagement from '@/components/admin/AdminEmailRequestManagement';
+import AdminApprovedEmails from '@/components/admin/AdminApprovedEmails';
 import AddCustomerDialog from '@/components/dialogs/AddCustomerDialog';
 import AddProductDialog from '@/components/dialogs/AddProductDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
@@ -34,6 +36,8 @@ const NAV = [
   { id: 'hosting', label: 'Hosting', icon: Server, section: 'main' },
   { id: 'hostingRequests', label: 'Hosting Requests', icon: MessageSquare, section: 'manage' },
   { id: 'domainsRequests', label: 'Domain Requests', icon: ClipboardList, section: 'manage' },
+  { id: 'emailRequests', label: 'Email Requests', icon: Mail, section: 'manage' },
+  { id: 'approvedEmails', label: 'Approved Emails', icon: CheckSquare, section: 'main' },
   { id: 'products', label: 'Products', icon: Package, section: 'manage' },
   { id: 'notifications', label: 'Announcements', icon: Megaphone, section: 'manage' },
   { id: 'logs', label: 'Tickets', icon: FileText, section: 'manage' },
@@ -286,6 +290,8 @@ function Dashboard({ onLogout }) {
         return <InvoicesPage c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
       }
       case 'activityLog': return <AdminActivityLogPage isDark={isDark} />;
+      case 'emailRequests': return <AdminEmailRequestManagement isDark={isDark} />;
+      case 'approvedEmails': return <AdminApprovedEmails isDark={isDark} />;
       default: return null;
     }
   };
