@@ -932,6 +932,15 @@ export const closeTicket = async (ticketId) => {
   return true;
 };
 
+export const reopenTicket = async (ticketId) => {
+  const { error } = await supabase
+    .from('tickets')
+    .update({ status: 'open', updated_at: new Date().toISOString() })
+    .eq('id', ticketId);
+  if (error) handleSupabaseError(error, 'reopenTicket');
+  return true;
+};
+
 export const getUnreadTicketCount = async () => {
   const { data, error } = await supabase
     .from('tickets')

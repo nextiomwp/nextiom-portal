@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
-import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, addNotification } from '@/lib/storage';
+import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, addNotification } from '@/lib/storage';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -89,6 +89,23 @@ export default function AdminTicketsPage({ c, isDark }) {
     } catch { toast({ title: 'Failed to close ticket', variant: 'destructive' }); }
   }
 
+  async function handleReopen() {
+    if (!selected) return;
+    try {
+      await reopenTicket(selected.id);
+      const updated = { ...selected, status: 'open' };
+      setSelected(updated);
+      setTickets(ts => ts.map(t => t.id === selected.id ? updated : t));
+      await addNotification({
+        customer_id: selected.customer_id,
+        type: 'ticket_reply',
+        title: 'Support ticket reopened',
+        message: `Your ticket "${selected.subject}" has been reopened by admin.`,
+      });
+      toast({ title: 'Ticket reopened' });
+    } catch { toast({ title: 'Failed to reopen ticket', variant: 'destructive' }); }
+  }
+
   function isUnread(ticket) {
     return !(ticket.ticket_messages || []).some(m => m.sender_role === 'admin');
   }
@@ -172,9 +189,13 @@ export default function AdminTicketsPage({ c, isDark }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              {selected.status === 'open' && (
+              {selected.status === 'open' ? (
                 <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
                   <CheckCircle size={13} /> Close Ticket
+                </button>
+              ) : (
+                <button onClick={handleReopen} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.brand}`, background: 'transparent', color: c.brand, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                  <RefreshCw size={13} /> Reopen Ticket
                 </button>
               )}
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}>
@@ -220,7 +241,7 @@ export default function AdminTicketsPage({ c, isDark }) {
           <div style={{ padding: '12px 18px', borderTop: `1px solid ${c.border}`, background: c.card }}>
             {selected.status === 'closed' ? (
               <div style={{ padding: '10px 14px', background: c.hover, borderRadius: 8, fontSize: 12, color: c.subText, textAlign: 'center' }}>
-                This ticket is closed. Reopen it to reply.
+                This ticket is closed. Click <strong>Reopen Ticket</strong> above to resume the conversation.
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
