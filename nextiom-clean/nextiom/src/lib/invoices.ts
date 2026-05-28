@@ -2,6 +2,7 @@
 //All Supabase queries for the invoice module
 
 import { supabase } from './customSupabaseClient'
+import { assertPortalActionsAllowed } from './storage'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -369,6 +370,7 @@ export async function submitInvoicePayment(
   payment: { transaction_id: string; paid_amount: number; payment_date: string; notes?: string },
   file: File | null
 ): Promise<void> {
+  await assertPortalActionsAllowed()
   let slip_url = ''
   if (file) slip_url = await uploadPaymentSlip(invoice.id!, file)
 
@@ -445,6 +447,7 @@ export async function resubmitPaymentInfo(
   reply: string,
   file: File | null
 ): Promise<void> {
+  await assertPortalActionsAllowed()
   // Only overwrite slip_url if a new file was uploaded — otherwise leave the
   // existing storage path in the DB. (payment.slip_url here is a signed URL
   // resolved by getInvoicePayments; writing it back would persist an

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Loader2, Server } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { resolveCustomerId } from '@/lib/storage';
+import { resolveCustomerId, assertPortalActionsAllowed } from '@/lib/storage';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -75,6 +75,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
     if (e && e.preventDefault) e.preventDefault();
     setLoading(true);
     try {
+      await assertPortalActionsAllowed();
       const customerId = await resolveCustomerId({
         customerId: user?.id,
         userId: authUser?.id,

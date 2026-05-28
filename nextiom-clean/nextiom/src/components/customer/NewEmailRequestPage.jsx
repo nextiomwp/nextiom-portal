@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, CheckCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { resolveCustomerId } from '@/lib/storage';
+import { resolveCustomerId, assertPortalActionsAllowed } from '@/lib/storage';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -25,12 +25,13 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!emailName) {
-      toast({ title: 'Error', description: 'Please enter a domain name', variant: 'destructive' });
-      return;
-    }
     setLoading(true);
     try {
+      await assertPortalActionsAllowed();
+      if (!emailName) {
+        toast({ title: 'Error', description: 'Please enter a domain name', variant: 'destructive' });
+        return;
+      }
       const customerId = await resolveCustomerId({
         customerId: user?.id,
         userId: authUser?.id,
@@ -56,6 +57,7 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
       if (domainError) throw new Error(domainError?.message || 'Failed to create email request');
       if (!domainRequest) throw new Error('No data returned from email request insert');
 
+
       await supabase.from('notifications').insert([{
         type: 'email_request',
         title: 'New Email Request',
@@ -65,11 +67,12 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         created_at: new Date().toISOString(),
       }]);
 
+      
       setSubmitted(true);
       toast({ title: 'Request Submitted!', description: 'Admin has been notified.' });
     } catch (err) {
       console.error(err);
-      toast({ title: 'Error', description: 'Failed to submit. Please try again.', variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || 'Failed to submit. Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

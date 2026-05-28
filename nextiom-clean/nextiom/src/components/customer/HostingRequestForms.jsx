@@ -2,17 +2,24 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { addHostingRequest, REQUEST_TYPE, HOSTING_PLANS } from '@/lib/storage';
+import { addHostingRequest, REQUEST_TYPE, HOSTING_PLANS, assertPortalActionsAllowed } from '@/lib/storage';
 
 const BaseHostingForm = ({ pkg, onSubmit, children, title, buttonText = "Submit Request" }) => {
   const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API
-    onSubmit();
-    setLoading(false);
+        setError('');
+        try {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            await onSubmit();
+        } catch (err) {
+            setError(err?.message || 'Unable to submit request right now.');
+        } finally {
+            setLoading(false);
+        }
   };
 
   return (
@@ -21,6 +28,11 @@ const BaseHostingForm = ({ pkg, onSubmit, children, title, buttonText = "Submit 
         <p className="text-sm font-medium text-slate-700">Package: <span className="font-bold">{pkg.packageName}</span></p>
       </div>
       {children}
+            {error && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                    {error}
+                </div>
+            )}
       <div className="flex justify-end pt-4">
         <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
           {loading ? 'Processing...' : buttonText}
@@ -37,8 +49,9 @@ export const UpgradePlanForm = ({ pkg, onSuccess }) => {
 
   const plans = Object.keys(HOSTING_PLANS[Object.keys(HOSTING_PLANS).find(key => HOSTING_PLANS[key] === pkg.type) || 'SHARED']);
 
-  const handleSubmit = () => {
-    addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+    await addHostingRequest({
       customerId: pkg.customerId,
       packageId: pkg.id,
       packageName: pkg.packageName,
@@ -86,8 +99,9 @@ export const DowngradePlanForm = ({ pkg, onSuccess }) => {
     // Simplified plan retrieval - in real app would filter available downgrades
     const plans = ['Basic', 'Standard', 'Premium']; 
 
-    const handleSubmit = () => {
-        addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+        await addHostingRequest({
             customerId: pkg.customerId,
             packageId: pkg.id,
             packageName: pkg.packageName,
@@ -133,8 +147,9 @@ export const RenewalRequestForm = ({ pkg, onSuccess }) => {
     const [notes, setNotes] = useState('');
     const { toast } = useToast();
 
-    const handleSubmit = () => {
-        addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+        await addHostingRequest({
             customerId: pkg.customerId,
             packageId: pkg.id,
             packageName: pkg.packageName,
@@ -176,8 +191,9 @@ export const DomainChangeForm = ({ pkg, onSuccess }) => {
     const [newDomain, setNewDomain] = useState('');
     const { toast } = useToast();
 
-    const handleSubmit = () => {
-        addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+        await addHostingRequest({
             customerId: pkg.customerId,
             packageId: pkg.id,
             packageName: pkg.packageName,
@@ -210,8 +226,9 @@ export const BackupRestoreForm = ({ pkg, onSuccess }) => {
     const [notes, setNotes] = useState('');
     const { toast } = useToast();
 
-    const handleSubmit = () => {
-        addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+        await addHostingRequest({
             customerId: pkg.customerId,
             packageId: pkg.id,
             packageName: pkg.packageName,
@@ -250,8 +267,9 @@ export const BackupRestoreForm = ({ pkg, onSuccess }) => {
 export const CPanelResendForm = ({ pkg, onSuccess }) => {
      const { toast } = useToast();
 
-    const handleSubmit = () => {
-        addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+        await addHostingRequest({
             customerId: pkg.customerId,
             packageId: pkg.id,
             packageName: pkg.packageName,
@@ -275,8 +293,9 @@ export const CancellationForm = ({ pkg, onSuccess }) => {
     const [reason, setReason] = useState('');
     const { toast } = useToast();
 
-    const handleSubmit = () => {
-        addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+        await addHostingRequest({
             customerId: pkg.customerId,
             packageId: pkg.id,
             packageName: pkg.packageName,
@@ -308,8 +327,9 @@ export const SupportTicketForm = ({ pkg, onSuccess }) => {
     const [message, setMessage] = useState('');
     const { toast } = useToast();
 
-    const handleSubmit = () => {
-        addHostingRequest({
+    const handleSubmit = async () => {
+        await assertPortalActionsAllowed();
+        await addHostingRequest({
             customerId: pkg.customerId,
             packageId: pkg.id,
             packageName: pkg.packageName,

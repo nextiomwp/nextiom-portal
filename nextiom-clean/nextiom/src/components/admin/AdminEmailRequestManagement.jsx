@@ -23,6 +23,7 @@ function DeleteModal({ open, onCancel, onConfirm, loading }) {
   );
 }
 
+
 function AdminEmailRequestManagement({ isDark = true }) {
   const [requests, setRequests] = useState([]);
   const [customers, setCustomers] = useState([]);

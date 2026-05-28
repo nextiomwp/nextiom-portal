@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Send, Ticket, CheckCircle, ChevronRight, Lightbulb } from 'lucide-react';
-import { createTicket, addTicketMessage, addNotification } from '@/lib/storage';
+import { createTicket, addTicketMessage, addNotification, assertPortalActionsAllowed } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
 const SUGGESTIONS = [
@@ -83,12 +83,13 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!subject.trim() || !message.trim()) {
-      toast({ title: 'Required', description: 'Please fill in all fields.', variant: 'destructive' });
-      return;
-    }
     setSending(true);
     try {
+      await assertPortalActionsAllowed();
+      if (!subject.trim() || !message.trim()) {
+        toast({ title: 'Required', description: 'Please fill in all fields.', variant: 'destructive' });
+        return;
+      }
       const ticket = await createTicket(user.id, subject.trim(), priority);
       await addTicketMessage(ticket.id, 'customer', message.trim());
       await addNotification({
@@ -99,7 +100,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
       });
       setDone(true);
     } catch (err) {
-      toast({ title: 'Failed to submit ticket', description: 'Please try again.', variant: 'destructive' });
+      toast({ title: 'Failed to submit ticket', description: err?.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setSending(false);
     }

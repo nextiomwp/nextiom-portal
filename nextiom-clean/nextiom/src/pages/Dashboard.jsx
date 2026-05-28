@@ -433,7 +433,7 @@ function Dashboard({ onLogout }) {
       <AddCustomerDialog open={isAddCustomerOpen} onOpenChange={setIsAddCustomerOpen} onSuccess={loadData} />
       <AddProductDialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen} onSuccess={loadData} isDark={isDark} c={c} />
       <AssignProductDialog open={isAssignProductOpen} onOpenChange={setIsAssignProductOpen} customers={customers} products={products} onSuccess={loadData} />
-      <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} onUpdate={loadData} />
+      <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} onUpdate={loadData} isDark={isDark} />
     </div>
   );
 }
@@ -669,6 +669,7 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
           <p style={{ fontSize: 13, color: c.subText, marginTop: 2 }}>Pending requests, new customers, and system notifications</p>
         </div>
       </div>
+
 
       <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

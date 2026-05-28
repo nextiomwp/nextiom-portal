@@ -6,6 +6,7 @@ import {
   CreditCard, Upload, Clock
 } from 'lucide-react';
 import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment, getLatestPaymentByInvoice, resubmitPaymentInfo } from '@/lib/invoices';
+import { assertPortalActionsAllowed } from '@/lib/storage';
 
 const PAGE_SIZE = 6;
 
@@ -339,9 +340,10 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged }) {
   }, [invoice.id]);
 
   const handleResubmit = async () => {
-    if (!reply.trim()) { setErr('Please add a reply'); return; }
-    setErr(''); setSubmitting(true);
     try {
+      await assertPortalActionsAllowed();
+      if (!reply.trim()) { setErr('Please add a reply'); return; }
+      setErr(''); setSubmitting(true);
       await resubmitPaymentInfo(payment, invoice, reply.trim(), file);
       onChanged(); onClose();
     } catch (e) {
@@ -456,12 +458,13 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted }
   const [err, setErr] = useState('');
 
   const handleSubmit = async () => {
-    if (!txn.trim()) { setErr('Transaction ID / reference is required'); return; }
-    if (!amount || Number(amount) <= 0) { setErr('Paid amount is required'); return; }
-    if (!payDate) { setErr('Payment date is required'); return; }
-    setErr('');
-    setSubmitting(true);
     try {
+      await assertPortalActionsAllowed();
+      if (!txn.trim()) { setErr('Transaction ID / reference is required'); return; }
+      if (!amount || Number(amount) <= 0) { setErr('Paid amount is required'); return; }
+      if (!payDate) { setErr('Payment date is required'); return; }
+      setErr('');
+      setSubmitting(true);
       await submitInvoicePayment(invoice, {
         transaction_id: txn.trim(),
         paid_amount: Number(amount),

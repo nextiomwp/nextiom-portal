@@ -137,6 +137,7 @@ function AdminApprovedEmails({ isDark = true }) {
     });
   };
 
+  
   const handleSave = async () => {
     setSaving(true);
     try {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Globe, CheckCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { resolveCustomerId } from '@/lib/storage';
+import { resolveCustomerId, assertPortalActionsAllowed } from '@/lib/storage';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -25,12 +25,13 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!domainName) {
-      toast({ title: 'Error', description: 'Please enter a domain name', variant: 'destructive' });
-      return;
-    }
     setLoading(true);
     try {
+      await assertPortalActionsAllowed();
+      if (!domainName) {
+        toast({ title: 'Error', description: 'Please enter a domain name', variant: 'destructive' });
+        return;
+      }
       const customerId = await resolveCustomerId({
         customerId: user?.id,
         userId: authUser?.id,
@@ -69,7 +70,7 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
       toast({ title: 'Request Submitted!', description: 'Admin has been notified.' });
     } catch (err) {
       console.error(err);
-      toast({ title: 'Error', description: 'Failed to submit. Please try again.', variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || 'Failed to submit. Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }

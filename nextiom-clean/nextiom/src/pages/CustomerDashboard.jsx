@@ -22,6 +22,8 @@ import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import CustomerInvoicesPage from '@/components/customer/CustomerInvoicesPage';
 import CreateTicketPage from '@/components/customer/CreateTicketPage';
 import MyTicketsPage from '@/components/customer/MyTicketsPage';
+import PortalRestrictionBanner from '@/components/customer/PortalRestrictionBanner';
+import { usePortalRestriction } from '@/hooks/usePortalRestriction';
 import { cn } from '@/lib/utils';
 
 const DARK = {
@@ -81,11 +83,13 @@ function getActiveLabel(activeTab) {
   return 'Dashboard';
 }
 
+
 const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'services', 'invoices', 'support_tickets', 'products', 'profile', 'notifications'];
 
 function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mountedTabs, setMountedTabs] = useState(() => new Set(['dashboard']));
+  const portalRestriction = usePortalRestriction();
 
   useEffect(() => {
     if (KEEP_ALIVE_TABS.includes(activeTab)) {
@@ -422,6 +426,7 @@ function CustomerDashboard() {
         {/* Page content */}
         <div className="flex-1 overflow-auto">
           <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+            <PortalRestrictionBanner restriction={portalRestriction} c={c} isDark={isDark} />
             {renderContent()}
           </div>
         </div>

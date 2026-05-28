@@ -710,6 +710,7 @@ export const deleteHostingPlan = async (id) => {
 // --- Requests (Real Supabase) ---
 
 export const addDomainRequest = async (requestData) => {
+  await assertPortalActionsAllowed();
   const { data, error } = await supabase
     .from('domain_requests')
     .insert([{
@@ -741,6 +742,7 @@ export const addDomainRequest = async (requestData) => {
 };
 
 export const addHostingRequest = async (requestData) => {
+  await assertPortalActionsAllowed();
   const packageLabel = requestData.details?.package || 'Hosting Request';
   const requestSummary = `${packageLabel} | Billing: ${requestData.details?.billing || 'N/A'} | Domain: ${requestData.details?.domain || 'N/A'} | Notes: ${requestData.details?.notes || 'None'}`;
   const { data, error } = await supabase
@@ -858,22 +860,114 @@ export const generateLicenseKey = () => {
   return 'XXXX-XXXX-XXXX-XXXX'.replace(/X/g, () => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.random() * 36 | 0]);
 };
 
+export const DEFAULT_APP_SETTINGS = {
+  emailRemindersEnabled: false,
+  reminderDaysBefore: 15,
+  adminEmail: ''
+};
+
+export const DEFAULT_PORTAL_SETTINGS = {
+  customerActionsEnabled: false,
+  customerActionsStartDate: '',
+  customerActionsEndDate: '',
+  customerActionsNote: ''
+};
+
 export const getSettings = () => {
-  return {
-    emailRemindersEnabled: false,
-    reminderDaysBefore: 15,
-    adminEmail: ''
-  };
+  const raw = localStorage.getItem('app_settings');
+  if (!raw) return { ...DEFAULT_APP_SETTINGS };
+  try {
+    return { ...DEFAULT_APP_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_APP_SETTINGS };
+  }
 };
 
 export const saveSettings = (settings) => {
-  console.log('Settings saved:', settings);
-  localStorage.setItem('app_settings', JSON.stringify(settings));
+  const next = { ...DEFAULT_APP_SETTINGS, ...settings };
+  console.log('Settings saved:', next);
+  localStorage.setItem('app_settings', JSON.stringify(next));
+  return next;
+};
+
+export const getPortalSettings = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('portal_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return { ...DEFAULT_PORTAL_SETTINGS, ...(data || {}) };
+  } catch (err) {
+    console.warn('getPortalSettings: falling back to localStorage due to Supabase error', err?.message || err);
+    try {
+      const raw = localStorage.getItem('portal_settings');
+      if (!raw) return { ...DEFAULT_PORTAL_SETTINGS };
+      return { ...DEFAULT_PORTAL_SETTINGS, ...JSON.parse(raw) };
+    } catch (e) {
+      return { ...DEFAULT_PORTAL_SETTINGS };
+    }
+  }
+};
+
+export const savePortalSettings = async (settings) => {
+  const next = { ...DEFAULT_PORTAL_SETTINGS, ...settings, id: 1 };
+  try {
+    const { error } = await supabase
+      .from('portal_settings')
+      .upsert(next, { onConflict: 'id' });
+
+    if (error) throw error;
+    return next;
+  } catch (err) {
+    console.warn('savePortalSettings: Supabase upsert failed, saving to localStorage instead', err?.message || err);
+    try {
+      localStorage.setItem('portal_settings', JSON.stringify(next));
+    } catch (e) {
+      console.warn('savePortalSettings: failed to save to localStorage', e?.message || e);
+    }
+    return next;
+  }
+};
+
+export const getPortalActionBlock = (settings = DEFAULT_PORTAL_SETTINGS, now = new Date()) => {
+  if (!settings?.customerActionsEnabled) return null;
+
+  const startDate = settings.customerActionsStartDate ? new Date(settings.customerActionsStartDate) : null;
+  const endDate = settings.customerActionsEndDate ? new Date(settings.customerActionsEndDate) : null;
+  const currentTime = now.getTime();
+
+  if (startDate && !Number.isNaN(startDate.getTime()) && currentTime < startDate.getTime()) return null;
+  if (endDate && !Number.isNaN(endDate.getTime()) && currentTime > endDate.getTime()) return null;
+
+  return {
+    message: settings.customerActionsNote?.trim() || 'Customer requests and payments are temporarily paused by the administrator.',
+    startDate: settings.customerActionsStartDate || '',
+    endDate: settings.customerActionsEndDate || '',
+  };
+};
+
+export const getPortalRestrictionStatus = async () => {
+  const settings = await getPortalSettings();
+  const block = getPortalActionBlock(settings);
+  return { settings, block, blocked: !!block };
+};
+
+export const assertPortalActionsAllowed = async () => {
+  const { block } = await getPortalRestrictionStatus();
+  if (block) {
+    const error = new Error(block.message);
+    error.code = 'PORTAL_ACTIONS_PAUSED';
+    throw error;
+  }
 };
 
 // ── Ticket Functions ──────────────────────────────────────────
 
 export const createTicket = async (customerId, subject, priority = 'normal') => {
+  await assertPortalActionsAllowed();
   const { data, error } = await supabase
     .from('tickets')
     .insert([{ customer_id: customerId, subject, priority, status: 'open' }])
