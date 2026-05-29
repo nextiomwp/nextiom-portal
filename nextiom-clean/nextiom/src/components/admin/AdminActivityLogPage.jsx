@@ -12,6 +12,7 @@ const ACTION_MAP = {
   account_rejected: { label: 'Account Rejected', color: '#f87171', bg: '#3a1515' },
   account_confirmed: { label: 'Account Confirmed', color: '#34d399', bg: '#0d2b1e' },
   admin_login: { label: 'Admin Login', color: '#e87b35', bg: '#2b1a0a' },
+  customer_login: { label: 'Customer Login', color: '#34d399', bg: '#0d2b1e' },
   ticket: { label: 'Ticket', color: '#38bdf8', bg: '#0c2233' },
   ticket_reply: { label: 'Ticket Reply', color: '#38bdf8', bg: '#0c2233' },
   ticket_closed: { label: 'Ticket Closed', color: '#94a3b8', bg: '#1e2433' },

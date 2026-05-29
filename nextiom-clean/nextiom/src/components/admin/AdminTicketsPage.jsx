@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle } from 'lucide-react';
-import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, addNotification } from '@/lib/storage';
+import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
+import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, deleteTicket, addNotification } from '@/lib/storage';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -106,6 +106,18 @@ export default function AdminTicketsPage({ c, isDark }) {
     } catch { toast({ title: 'Failed to reopen ticket', variant: 'destructive' }); }
   }
 
+  async function handleDeleteTicket() {
+    if (!selected || selected.status !== 'closed') return;
+    if (!window.confirm(`Permanently delete ticket "${selected.subject}" and all its messages?`)) return;
+    try {
+      await deleteTicket(selected.id);
+      addNotification({ customer_id: null, type: 'delete', title: `Ticket Deleted — ${selected.subject}`, message: `Admin permanently deleted closed ticket "${selected.subject}" from ${selected.customers?.name || 'a customer'}.` }).catch(() => {});
+      setTickets(ts => ts.filter(t => t.id !== selected.id));
+      setSelected(null);
+      toast({ title: 'Ticket deleted' });
+    } catch { toast({ title: 'Failed to delete ticket', variant: 'destructive' }); }
+  }
+
   function isUnread(ticket) {
     return !(ticket.ticket_messages || []).some(m => m.sender_role === 'admin');
   }
@@ -194,9 +206,14 @@ export default function AdminTicketsPage({ c, isDark }) {
                   <CheckCircle size={13} /> Close Ticket
                 </button>
               ) : (
-                <button onClick={handleReopen} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.brand}`, background: 'transparent', color: c.brand, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                  <RefreshCw size={13} /> Reopen Ticket
-                </button>
+                <>
+                  <button onClick={handleDeleteTicket} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid #ef4444`, background: 'transparent', color: '#ef4444', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                    <Trash2 size={13} /> Delete
+                  </button>
+                  <button onClick={handleReopen} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.brand}`, background: 'transparent', color: c.brand, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                    <RefreshCw size={13} /> Reopen Ticket
+                  </button>
+                </>
               )}
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}>
                 <X size={16} />

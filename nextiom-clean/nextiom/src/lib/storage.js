@@ -1110,6 +1110,17 @@ export const reopenTicket = async (ticketId) => {
   return true;
 };
 
+export const deleteTicket = async (ticketId) => {
+  // Delete messages first (child rows), then the ticket
+  await supabase.from('ticket_messages').delete().eq('ticket_id', ticketId);
+  const { error } = await supabase
+    .from('tickets')
+    .delete()
+    .eq('id', ticketId);
+  if (error) handleSupabaseError(error, 'deleteTicket');
+  return true;
+};
+
 export const getUnreadTicketCount = async () => {
   const { data, error } = await supabase
     .from('tickets')

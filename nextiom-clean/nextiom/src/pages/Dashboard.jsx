@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -29,20 +29,31 @@ import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 
 const NAV = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard, section: 'main' },
-  { id: 'customers', label: 'Customers', icon: Users, section: 'main' },
-  { id: 'domains', label: 'Domains', icon: Globe, section: 'main' },
-  { id: 'approvedHostings', label: 'Approved Hostings', icon: CheckSquare, section: 'main' },
-  { id: 'hosting', label: 'Hosting', icon: Server, section: 'main' },
-  { id: 'hostingRequests', label: 'Hosting Requests', icon: MessageSquare, section: 'manage' },
-  { id: 'domainsRequests', label: 'Domain Requests', icon: ClipboardList, section: 'manage' },
-  { id: 'emailRequests', label: 'Email Requests', icon: Mail, section: 'manage' },
-  { id: 'approvedEmails', label: 'Approved Emails', icon: CheckSquare, section: 'main' },
-  { id: 'products', label: 'Products', icon: Package, section: 'manage' },
-  { id: 'notifications', label: 'Announcements', icon: Megaphone, section: 'manage' },
-  { id: 'logs', label: 'Tickets', icon: FileText, section: 'manage' },
-  { id: 'invoices', label: 'Invoices', icon: Receipt, section: 'manage' },
-  { id: 'activityLog', label: 'Activity Log', icon: Activity, section: 'manage' },
+  { id: 'overview', label: 'Dashboard', icon: Home, section: 'top' },
+  { section: 'divider' },
+  { section: 'header', label: 'CUSTOMERS' },
+  { id: 'customers', label: 'Customers', icon: Users },
+  { id: 'logs', label: 'Support Tickets', icon: MessageSquare, badgeType: 'orange' },
+  { id: 'notifications', label: 'Announcements', icon: Megaphone },
+  { section: 'header', label: 'SERVICES' },
+  { id: 'domains', label: 'Domains', icon: Globe },
+  { id: 'hosting', label: 'Hosting', icon: Server },
+  { id: 'approvedEmails', label: 'Emails', icon: Mail },
+  { id: 'products', label: 'Products', icon: Package },
+  { section: 'header', label: 'REQUESTS' },
+  { id: 'domainsRequests', label: 'Domain Requests', icon: ClipboardList, badgeType: 'orange' },
+  { id: 'hostingRequests', label: 'Hosting Requests', icon: Zap, badgeType: 'orange' },
+  { id: 'emailRequests', label: 'Email Requests', icon: Star, badgeType: 'orange' },
+  { section: 'header', label: 'ACTIVE SERVICES' },
+  { id: 'approvedHostings', label: 'Active Domains', icon: CheckCircle, badgeType: 'green' },
+  { id: 'activeHosting', label: 'Active Hosting', icon: CheckSquare, badgeType: 'green' },
+  { id: 'approvedEmailsActive', label: 'Active Emails', icon: Mail, badgeType: 'green' },
+  { section: 'header', label: 'BILLING' },
+  { id: 'invoices', label: 'Invoices', icon: Receipt },
+  { section: 'header', label: 'SYSTEM' },
+  { id: 'activityLog', label: 'Activity Logs', icon: Activity },
+  // { id: 'adminManagement', label: 'Admin Management', icon: Shield },
+  // { id: 'systemSettings', label: 'System Settings', icon: Settings },
 ];
 
 function Dashboard({ onLogout }) {
@@ -298,6 +309,10 @@ function Dashboard({ onLogout }) {
       case 'activityLog': return <AdminActivityLogPage isDark={isDark} />;
       case 'emailRequests': return <AdminEmailRequestManagement isDark={isDark} />;
       case 'approvedEmails': return <AdminApprovedEmails isDark={isDark} />;
+      case 'approvedEmailsActive': return <AdminApprovedEmails isDark={isDark} />;
+      case 'activeHosting': return <AdminApprovedHostings isDark={isDark} />;
+      case 'adminManagement': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>Admin management page coming soon.</div>;
+      case 'systemSettings': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>System settings page coming soon.</div>;
       default: return null;
     }
   };
@@ -305,16 +320,43 @@ function Dashboard({ onLogout }) {
   return (
     <div style={{ display: 'flex', height: '100vh', background: c.bg, color: c.text, fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div style={{ width: sidebarOpen ? 240 : 80, background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.2s', zIndex: 10 }}>
-        <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 8, borderBottom: `1px solid ${c.border}` }}>
-          <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
-          {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>}
+        <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
+            {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>}
+          </div>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', display: 'flex', padding: 2 }}>
+            {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
-          {sidebarOpen && <div style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1 }}>MAIN</div>}
-          {NAV.filter(n => n.section === 'main').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} />)}
-          <div style={{ height: 24 }} />
-          {sidebarOpen && <div style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1 }}>MANAGE</div>}
-          {NAV.filter(n => n.section === 'manage').map(i => <NavItem key={i.id} item={i} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={i.id === 'logs' ? unreadTicketCount : 0} dot={i.id === 'invoices' && allAdminNotifs.filter(n => n.type === 'payment_submitted' && !readNotifIds.includes('notif_' + n.id)).length > 0} />)}
+          {NAV.map((item, i) => {
+            if (item.section === 'divider') return <div key={`div-${i}`} style={{ height: 12 }} />;
+            if (item.section === 'header') {
+              if (!sidebarOpen) return <div key={`h-${i}`} style={{ height: 4 }} />;
+              return <div key={`h-${i}`} style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
+            }
+            const isItem = item;
+            let badge = 0;
+            let dot = false;
+            let badgeColor = c.brand;
+            if (isItem.badgeType === 'orange' || isItem.id === 'logs') {
+              if (isItem.id === 'logs') { badge = unreadTicketCount; badgeColor = c.brand; }
+              else if (isItem.id === 'domainsRequests') { badge = pendingRequests.filter(r => r.source === 'domain').length; }
+              else if (isItem.id === 'hostingRequests') { badge = pendingRequests.filter(r => r.source === 'hosting').length; }
+              else if (isItem.id === 'emailRequests') { /* email pending count from requests — adminNotifs based */ badge = adminNotifsForDropdown.filter(n => n.type === 'email_request' && !readNotifIds.includes('notif_' + n.id)).length; }
+            }
+            if (isItem.badgeType === 'green') {
+              badgeColor = '#16a34a';
+              if (isItem.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && String(r.status).toLowerCase() === 'approved').length; }
+              else if (isItem.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && String(r.status || '').toLowerCase() === 'approved').length; }
+              else if (isItem.id === 'approvedEmailsActive') { badge = 0; /* would need to load */ }
+            }
+            if (isItem.id === 'invoices') {
+              dot = allAdminNotifs.filter(n => n.type === 'payment_submitted' && !readNotifIds.includes('notif_' + n.id)).length > 0;
+            }
+            return <NavItem key={isItem.id} item={isItem} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={badge} badgeColor={badgeColor} dot={dot} />;
+          })}
         </div>
         <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 12, padding: sidebarOpen ? '12px' : '12px 0', background: c.bg, borderRadius: 8 }}>
@@ -451,9 +493,10 @@ function Dashboard({ onLogout }) {
   );
 }
 
-function NavItem({ item, active, setActive, open, c, badge = 0, dot = false }) {
+function NavItem({ item, active, setActive, open, c, badge = 0, badgeColor, dot = false }) {
   const isActive = active === item.id;
   const color = isActive ? c.text : c.subText;
+  const bc = badgeColor || c.brand;
   return (
     <button onClick={() => setActive(item.id)} style={{
       display: 'flex', alignItems: 'center', justifyContent: open ? 'flex-start' : 'center', gap: 12, padding: open ? '10px 12px' : '10px 0', width: '100%', border: 'none',
@@ -462,7 +505,7 @@ function NavItem({ item, active, setActive, open, c, badge = 0, dot = false }) {
     }}>
       <div style={{ position: 'relative', flexShrink: 0, marginLeft: open ? 0 : -3 }}>
         <item.icon size={18} color={isActive ? c.brand : c.subText} />
-        {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -6, width: 14, height: 14, background: c.brand, borderRadius: '50%', fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{badge > 9 ? '9+' : badge}</span>}
+        {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -6, width: 14, height: 14, background: bc, borderRadius: '50%', fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{badge > 9 ? '9+' : badge}</span>}
         {dot && badge === 0 && <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, background: c.brand, borderRadius: '50%', border: `2px solid ${c.sidebar}` }} />}
       </div>
       {open && <span style={{ fontSize: 14, color, fontWeight: isActive ? 600 : 400 }}>{item.label}</span>}

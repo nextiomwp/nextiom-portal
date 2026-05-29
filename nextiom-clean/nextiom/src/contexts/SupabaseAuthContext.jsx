@@ -121,6 +121,13 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         return { error: { message: 'ACCOUNT_REJECTED' } };
       }
+      // Log successful customer login
+      addNotification({
+        customer_id: data.user.id,
+        type: 'customer_login',
+        title: 'Customer Login',
+        message: `${email} signed in to the portal.`,
+      }).catch(() => {});
     }
     return { data, error: null };
   };

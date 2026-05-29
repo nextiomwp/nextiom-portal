@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Mail } from 'lucide-react';
-import { getCustomerEmailRequests, updateEmailRequest, resolveCustomerId } from '@/lib/storage';
+import { Search, Loader2, Mail, Eye, Trash2, X } from 'lucide-react';
+import { getCustomerEmailRequests, updateEmailRequest, deleteEmailRequest, resolveCustomerId } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
 
@@ -48,6 +48,8 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
     }
   };
 
+  const [viewEmail, setViewEmail] = useState(null);
+
   const handleAutoRenew = async (id, current) => {
     try {
       await updateEmailRequest(id, { auto_renew: !current });
@@ -55,9 +57,17 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
       toast({ title: 'Success', description: 'Auto-renew status updated' });
     } catch (err) {
       console.error('Auto-renew update failed:', err);
-      // If column doesn't exist, try adding it via the update function which handles it
       toast({ title: 'Error', description: 'Could not update auto-renew status. Database setup required.', variant: 'destructive' });
     }
+  };
+
+  const handleDeleteEmail = async (id) => {
+    if (!window.confirm('Delete this email request permanently?')) return;
+    try {
+      await deleteEmailRequest(id);
+      loadEmails();
+      toast({ title: 'Deleted', description: 'Email request removed.' });
+    } catch { toast({ title: 'Error', description: 'Failed to delete.', variant: 'destructive' }); }
   };
 
   const filtered = emails.filter(e =>
@@ -153,7 +163,16 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                       />
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                      <span style={{ color: subText, fontSize: 12 }}>—</span>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button onClick={() => setViewEmail(email)} style={{ padding: '6px 12px', background: brandLight, color: brand, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Eye size={12} /> View
+                        </button>
+                        {String(email.status || '').toLowerCase().startsWith('pending') && (
+                          <button onClick={() => handleDeleteEmail(email.id)} style={{ padding: '6px 12px', background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Trash2 size={12} /> Delete
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -168,6 +187,40 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
           </table>
         </div>
       </div>
+
+      {/* Detail modal */}
+      {viewEmail && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: isDark ? '#1C1E24' : '#fff', border: `1px solid ${border}`, borderRadius: 16, padding: 28, maxWidth: 480, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Mail size={18} color={brand} />
+                <span style={{ fontWeight: 700, fontSize: 16, color: text }}>Email Details</span>
+              </div>
+              <button onClick={() => setViewEmail(null)} style={{ background: 'none', border: 'none', color: subText, cursor: 'pointer', padding: 4 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ display: 'grid', gap: 14 }}>
+              {[
+                { label: 'Email', value: viewEmail.email },
+                { label: 'Status', value: viewEmail.status },
+                { label: 'Registration Period', value: viewEmail.registration_period ? `${viewEmail.registration_period} Year(s)` : '—' },
+                { label: 'Expiry Date', value: viewEmail.expiry_date ? new Date(viewEmail.expiry_date).toLocaleDateString() : '—' },
+                { label: 'Auto Renew', value: viewEmail.auto_renew ? 'Enabled' : 'Disabled' },
+                { label: 'Notes', value: viewEmail.notes || '—' },
+                { label: 'Created', value: viewEmail.created_at ? new Date(viewEmail.created_at).toLocaleString() : '—' },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <div style={{ fontSize: 11, color: subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>
+                  <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${border}`, borderRadius: 8, padding: '9px 12px', color: text, fontSize: 13 }}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setViewEmail(null)} style={{ width: '100%', marginTop: 20, padding: '10px', borderRadius: 9, border: `1px solid ${border}`, background: 'transparent', color: subText, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
