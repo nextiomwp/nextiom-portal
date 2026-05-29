@@ -172,7 +172,7 @@ function Dashboard({ onLogout }) {
     const allIds = [
       ...pendingRequests.map(r => r.id),
       ...pendingCustomers.map(c => 'cust_' + c.id),
-      ...allAdminNotifs.map(n => 'notif_' + n.id)
+      ...adminNotifsForDropdown.map(n => 'notif_' + n.id)
     ].filter(Boolean);
     const next = [...new Set([...readNotifIds, ...allIds])];
     setReadNotifIds(next);
@@ -192,12 +192,17 @@ function Dashboard({ onLogout }) {
     supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
   };
 
-  // Include ALL admin notifications (not just payment_submitted) for dropdown
+  // Include ALL admin notifications for dropdown — filter out admin-internal events
   const allAdminNotifs = (adminNotifs || []);
+  // Filter out admin-internal notifications (deletions, admin logins) from the notification bell
+  const adminNotifsForDropdown = allAdminNotifs.filter(n =>
+    n.type !== 'delete' &&
+    n.type !== 'admin_login'
+  );
   const unreadCount = [
     ...pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)),
     ...pendingCustomers.filter(c => c.id && !readNotifIds.includes('cust_' + c.id)),
-    ...allAdminNotifs.filter(n => n.id && !readNotifIds.includes('notif_' + n.id)),
+    ...adminNotifsForDropdown.filter(n => n.id && !readNotifIds.includes('notif_' + n.id)),
   ].length;
 
   const markInvoicesRead = () => {
@@ -358,7 +363,7 @@ function Dashboard({ onLogout }) {
                       const merged = [
                         ...pendingCustomers.map(cu => ({ kind: 'customer', id: cu.id, key: 'cust_' + cu.id, date: cu.created_at, data: cu })),
                         ...pendingRequests.map(r => ({ kind: 'request', id: r.id, key: r.id, date: r.created_at, data: r })),
-                        ...allAdminNotifs.map(n => ({ kind: 'notification', id: n.id, key: 'notif_' + n.id, date: n.created_at, data: n })),
+                        ...adminNotifsForDropdown.map(n => ({ kind: 'notification', id: n.id, key: 'notif_' + n.id, date: n.created_at, data: n })),
                       ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 16);
 
                       if (!merged.length) return <div style={{ padding: '16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>No notifications</div>;
@@ -659,10 +664,16 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
   const pendingReqs = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
   const recentCustomers = customers.filter(c => c.status === 'pending').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
+  // Filter out admin-internal notifications (deletions, admin logins) from the view
+  const filteredNotifications = (notifications || []).filter(n =>
+    n.type !== 'delete' &&
+    n.type !== 'admin_login'
+  );
+
   const allItems = [
     ...pendingReqs.map(r => ({ type: 'request', source: r.source, title: `${r.n} — ${r.reqType}`, sub: r.source === 'domain' ? 'Domain Request' : 'Hosting Request', date: r.created_at, id: r.id })),
     ...recentCustomers.map(cu => ({ type: 'customer', title: `New Customer: ${cu.name}`, sub: cu.email || '', date: cu.created_at, id: cu.id, customer: cu })),
-    ...notifications.map(n => ({ type: 'notification', title: n.title || 'Notification', sub: n.message || '', date: n.created_at, id: n.id, nType: n.type })),
+    ...filteredNotifications.map(n => ({ type: 'notification', title: n.title || 'Notification', sub: n.message || '', date: n.created_at, id: n.id, nType: n.type })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const typeColor = t => t === 'request' ? '#8b5cf6' : t === 'customer' ? '#639922' : '#378ADD';
