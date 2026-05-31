@@ -125,9 +125,9 @@ export default function AdminTicketsPage({ c, isDark }) {
   const inp = { outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 0, height: 'calc(100vh - 180px)', minHeight: 500, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 26vw) minmax(0, 1fr)', gap: 0, width: '100%', height: 'calc(100vh - 180px)', minHeight: 500, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxSizing: 'border-box' }}>
       {/* Inbox list */}
-      <div style={{ borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', background: c.card }}>
+      <div style={{ borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', background: c.card, minHeight: 0 }}>
         <div style={{ padding: '14px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Ticket size={15} style={{ color: c.brand }} />
@@ -138,7 +138,7 @@ export default function AdminTicketsPage({ c, isDark }) {
             <RefreshCw size={13} />
           </button>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {loading ? (
             [...Array(5)].map((_, i) => (
               <div key={i} style={{ height: 72, margin: '8px 12px', borderRadius: 8, background: c.hover }} />
@@ -168,8 +168,8 @@ export default function AdminTicketsPage({ c, isDark }) {
                 onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.hover; }}
                 onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent'; }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: unread ? 700 : 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{ticket.subject}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
+                    <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: unread ? 700 : 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.subject}</span>
                   <span style={{ fontSize: 10, color: c.subText, flexShrink: 0, marginLeft: 6 }}>{fmtTime(ticket.updated_at)}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
@@ -191,7 +191,7 @@ export default function AdminTicketsPage({ c, isDark }) {
 
       {/* Chat panel */}
       {selected ? (
-        <div style={{ display: 'flex', flexDirection: 'column', background: isDark ? '#15161A' : '#f8f8f7' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', background: isDark ? '#15161A' : '#f8f8f7', minHeight: 0 }}>
           {/* Chat header */}
           <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: c.card }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -200,7 +200,7 @@ export default function AdminTicketsPage({ c, isDark }) {
                 {selected.customers?.name} · {selected.customers?.email}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {selected.status === 'open' ? (
                 <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
                   <CheckCircle size={13} /> Close Ticket
@@ -222,7 +222,7 @@ export default function AdminTicketsPage({ c, isDark }) {
           </div>
 
           {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {msgLoading ? (
               <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>Loading messages…</div>
             ) : messages.length === 0 ? (
@@ -231,7 +231,7 @@ export default function AdminTicketsPage({ c, isDark }) {
               const isAdmin = msg.sender_role === 'admin';
               return (
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
-                  <div style={{ maxWidth: '72%' }}>
+                  <div style={{ maxWidth: 'min(860px, 82%)' }}>
                     <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isAdmin ? 'right' : 'left' }}>
                       {isAdmin ? 'You (Admin)' : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
                     </div>

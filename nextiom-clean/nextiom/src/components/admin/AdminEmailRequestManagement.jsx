@@ -88,7 +88,8 @@ function AdminEmailRequestManagement({ isDark = true }) {
 
   const handleStatusUpdate = async (id, newStatus) => {
     const req = requests.find(r => r.id === id);
-    await updateEmailRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString() });
+    const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
+    await updateEmailRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString(), start_date: isApproved ? new Date().toISOString() : undefined });
     if (req?.customer_id) {
       const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
       await addNotification({

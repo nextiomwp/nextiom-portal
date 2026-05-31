@@ -23,7 +23,7 @@ import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification } from '@/lib/storage';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification } from '@/lib/storage';
 
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
@@ -38,7 +38,6 @@ const NAV = [
   { section: 'header', label: 'SERVICES' },
   // { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'hosting', label: 'Hosting', icon: Server },
-  { id: 'approvedEmails', label: 'Emails', icon: Mail },
   { id: 'products', label: 'Products', icon: Package },
   { section: 'header', label: 'REQUESTS' },
   { id: 'domainsRequests', label: 'Domain Requests', icon: ClipboardList, badgeType: 'orange' },
@@ -56,6 +55,29 @@ const NAV = [
   // { id: 'systemSettings', label: 'System Settings', icon: Settings },
 ];
 
+const ADMIN_INTERNAL_NOTIFICATION_TYPES = new Set([
+  'admin_login',
+  'admin_activity',
+  'product_assigned',
+  'delete',
+  'request_updated',
+  'customer_added',
+  'customer_updated',
+  'product_added',
+  'product_updated',
+  'license_updated',
+  'ticket_closed',
+  'portal_pause',
+]);
+
+const isAdminInternalNotification = (notification) => {
+  const type = String(notification?.type || '').toLowerCase();
+  if (ADMIN_INTERNAL_NOTIFICATION_TYPES.has(type)) return true;
+
+  const text = `${notification?.title || ''} ${notification?.message || ''}`.toLowerCase();
+  return text.startsWith('admin ') || text.includes(' administrator ');
+};
+
 function Dashboard({ onLogout }) {
   const [active, setActive] = useState('overview');
   const [customers, setCustomers] = useState([]);
@@ -67,6 +89,7 @@ function Dashboard({ onLogout }) {
   const [pendingRequests, setPendingRequests] = useState([]);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [hostingPlans, setHostingPlans] = useState([]);
+  const [activeEmailsCount, setActiveEmailsCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isDark, setIsDark] = useState(true);
@@ -140,8 +163,8 @@ function Dashboard({ onLogout }) {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [cus, prd, lic, sts, lgs, domReq, hostReq, hostPkg, adminN, hostPlans] = await Promise.all([
-        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications(), getHostingPlans()
+      const [cus, prd, lic, sts, lgs, emailReqs, domReq, hostReq, hostPkg, adminN, hostPlans] = await Promise.all([
+        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getEmailRequests(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications(), getHostingPlans()
       ]);
       setAdminNotifs(adminN || []);
       const utc = await getUnreadTicketCount().catch(() => 0);
@@ -170,6 +193,9 @@ function Dashboard({ onLogout }) {
       setPendingRequests(pendingReqRows);
       setPendingRequestsCount(pendingReqRows.length);
       setHostingPlans(hostPlans || []);
+      const approvedEmailStatuses = new Set(['approved', 'active', 'completed']);
+      const activeEmails = (emailReqs || []).filter(r => approvedEmailStatuses.has(String(r.status || '').toLowerCase()));
+      setActiveEmailsCount(activeEmails.length);
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
     } finally {
@@ -203,12 +229,11 @@ function Dashboard({ onLogout }) {
     supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
   };
 
-  // Include ALL admin notifications for dropdown — filter out admin-internal events
+  // Show only customer/system-facing admin notifications in dropdown
   const allAdminNotifs = (adminNotifs || []);
-  // Filter out admin-internal notifications (deletions, admin logins) from the notification bell
+  // Keep internal admin actions in Activity Logs, not in admin notification UI
   const adminNotifsForDropdown = allAdminNotifs.filter(n =>
-    n.type !== 'delete' &&
-    n.type !== 'admin_login'
+    !isAdminInternalNotification(n)
   );
   const unreadCount = [
     ...pendingRequests.filter(r => r.id && !readNotifIds.includes(r.id)),
@@ -308,7 +333,6 @@ function Dashboard({ onLogout }) {
       }
       case 'activityLog': return <AdminActivityLogPage isDark={isDark} />;
       case 'emailRequests': return <AdminEmailRequestManagement isDark={isDark} />;
-      case 'approvedEmails': return <AdminApprovedEmails isDark={isDark} />;
       case 'approvedEmailsActive': return <AdminApprovedEmails isDark={isDark} />;
       case 'activeHosting': return <AdminApprovedHostings isDark={isDark} />;
       case 'adminManagement': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>Admin management page coming soon.</div>;
@@ -350,7 +374,7 @@ function Dashboard({ onLogout }) {
               badgeColor = '#16a34a';
               if (isItem.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && String(r.status).toLowerCase() === 'approved').length; }
               else if (isItem.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && String(r.status || '').toLowerCase() === 'approved').length; }
-              else if (isItem.id === 'approvedEmailsActive') { badge = 0; /* would need to load */ }
+              else if (isItem.id === 'approvedEmailsActive') { badge = activeEmailsCount; }
             }
             if (isItem.id === 'invoices') {
               dot = allAdminNotifs.filter(n => n.type === 'payment_submitted' && !readNotifIds.includes('notif_' + n.id)).length > 0;
@@ -707,10 +731,9 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
   const pendingReqs = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
   const recentCustomers = customers.filter(c => c.status === 'pending').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-  // Filter out admin-internal notifications (deletions, admin logins) from the view
+  // Keep internal admin actions in Activity Logs, not in admin notification UI
   const filteredNotifications = (notifications || []).filter(n =>
-    n.type !== 'delete' &&
-    n.type !== 'admin_login'
+    !isAdminInternalNotification(n)
   );
 
   const allItems = [

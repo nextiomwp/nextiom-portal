@@ -113,6 +113,10 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
               {pkg.type && <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>{pkg.type}</p>}
             </div>
             <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Start Date</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{pkg.start_date ? new Date(pkg.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : pkg.created_at ? new Date(pkg.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</p>
+            </div>
+            <div style={infoPanel}>
               <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Billing</p>
               <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.billing_period}</p>
               <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>
@@ -126,15 +130,16 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
             <p style={{ color: text, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Resource Usage</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { Icon: HardDrive, label: 'Disk Usage', value: `${pkg.usage?.diskUsage || 0} GB` },
-                { Icon: Wifi, label: 'Bandwidth', value: `${pkg.usage?.bandwidthUsage || 0} GB` },
-                { Icon: Mail, label: 'Email Accounts', value: pkg.usage?.emailAccounts || 0 },
-                { Icon: Database, label: 'Databases', value: pkg.usage?.databases || 0 },
-              ].map(({ Icon, label, value }) => (
+                { Icon: HardDrive, label: 'Disk Usage', value: `${pkg.usage?.diskUsage || 0} GB`, limit: pkg.disk_usage_limit || pkg.planDisk || '' },
+                { Icon: Wifi, label: 'Bandwidth', value: `${pkg.usage?.bandwidthUsage || 0} GB`, limit: pkg.bandwidth_limit || pkg.planBw || '' },
+                { Icon: Mail, label: 'Email Accounts', value: pkg.usage?.emailAccounts || 0, limit: '' },
+                { Icon: Database, label: 'Databases', value: pkg.usage?.databases || 0, limit: '' },
+              ].map(({ Icon, label, value, limit }) => (
                 <div key={label} style={{ ...infoPanel, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '14px 10px' }}>
                   <Icon style={{ width: 18, height: 18, color: subText, marginBottom: 6 }} />
                   <p style={{ color: text, fontWeight: 800, fontSize: 16 }}>{value}</p>
                   <p style={{ color: subText, fontSize: 10, marginTop: 2 }}>{label}</p>
+                  {limit ? <p style={{ color: subText, fontSize: 9, marginTop: 4, opacity: 0.6 }}>Limit: {limit}</p> : null}
                 </div>
               ))}
             </div>

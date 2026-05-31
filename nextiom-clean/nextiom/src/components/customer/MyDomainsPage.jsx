@@ -134,10 +134,10 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
-                {['Domain', 'Status', 'Expiry', 'Auto Renew', 'Actions'].map((h, i) => (
+                {['Domain', 'Status', 'Start Date', 'Expiry', 'Auto Renew', 'Actions'].map((h, i) => (
                   <th key={h} style={{
                     padding: '10px 20px',
-                    textAlign: i === 4 ? 'right' : 'left',
+                    textAlign: i === 5 ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: subText,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     borderBottom: `1px solid ${border}`,
@@ -160,6 +160,9 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
                       <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
                         {domain.status || 'Unknown'}
                       </span>
+                    </td>
+                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
+                      {domain.start_date ? new Date(domain.start_date).toLocaleDateString() : domain.created_at ? new Date(domain.created_at).toLocaleDateString() : '—'}
                     </td>
                     <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
                       {domain.expiry_date ? new Date(domain.expiry_date).toLocaleDateString() : 'N/A'}
@@ -188,7 +191,7 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
                 );
               }) : (
                 <tr>
-                  <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                  <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
                     No domains found
                   </td>
                 </tr>

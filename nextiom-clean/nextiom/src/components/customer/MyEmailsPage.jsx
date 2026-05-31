@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Mail, Eye, Trash2, X } from 'lucide-react';
-import { getCustomerEmailRequests, updateEmailRequest, deleteEmailRequest, resolveCustomerId } from '@/lib/storage';
+import { Search, Loader2, Mail, Eye, X } from 'lucide-react';
+import { getCustomerEmailRequests, updateEmailRequest, resolveCustomerId } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
 
@@ -61,15 +61,6 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
     }
   };
 
-  const handleDeleteEmail = async (id) => {
-    if (!window.confirm('Delete this email request permanently?')) return;
-    try {
-      await deleteEmailRequest(id);
-      loadEmails();
-      toast({ title: 'Deleted', description: 'Email request removed.' });
-    } catch { toast({ title: 'Error', description: 'Failed to delete.', variant: 'destructive' }); }
-  };
-
   const filtered = emails.filter(e =>
     (e.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -126,10 +117,10 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
-                {['Email', 'Status', 'Expiry', 'Auto Renew', 'Actions'].map((h, i) => (
+                {['Email', 'Status', 'Start Date', 'Expiry', 'Auto Renew', 'Actions'].map((h, i) => (
                   <th key={h} style={{
                     padding: '10px 20px',
-                    textAlign: i === 4 ? 'right' : 'left',
+                    textAlign: i === 5 ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: subText,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     borderBottom: `1px solid ${border}`,
@@ -154,6 +145,9 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                       </span>
                     </td>
                     <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
+                      {email.start_date ? new Date(email.start_date).toLocaleDateString() : email.created_at ? new Date(email.created_at).toLocaleDateString() : '—'}
+                    </td>
+                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
                       {email.expiry_date ? new Date(email.expiry_date).toLocaleDateString() : 'N/A'}
                     </td>
                     <td style={{ padding: '12px 20px' }}>
@@ -163,22 +157,15 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                       />
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                        <button onClick={() => setViewEmail(email)} style={{ padding: '6px 12px', background: brandLight, color: brand, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Eye size={12} /> View
-                        </button>
-                        {String(email.status || '').toLowerCase().startsWith('pending') && (
-                          <button onClick={() => handleDeleteEmail(email.id)} style={{ padding: '6px 12px', background: 'rgba(239,68,68,0.12)', color: '#ef4444', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <Trash2 size={12} /> Delete
-                          </button>
-                        )}
-                      </div>
+                      <button onClick={() => setViewEmail(email)} style={{ padding: '6px 12px', background: brandLight, color: brand, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Eye size={12} /> View
+                      </button>
                     </td>
                   </tr>
                 );
               }) : (
                 <tr>
-                  <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                  <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
                     No emails found
                   </td>
                 </tr>
@@ -206,6 +193,7 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                 { label: 'Email', value: viewEmail.email },
                 { label: 'Status', value: viewEmail.status },
                 { label: 'Registration Period', value: viewEmail.registration_period ? `${viewEmail.registration_period} Year(s)` : '—' },
+                { label: 'Start Date', value: viewEmail.start_date ? new Date(viewEmail.start_date).toLocaleDateString() : viewEmail.created_at ? new Date(viewEmail.created_at).toLocaleDateString() : '—' },
                 { label: 'Expiry Date', value: viewEmail.expiry_date ? new Date(viewEmail.expiry_date).toLocaleDateString() : '—' },
                 { label: 'Auto Renew', value: viewEmail.auto_renew ? 'Enabled' : 'Disabled' },
                 { label: 'Notes', value: viewEmail.notes || '—' },

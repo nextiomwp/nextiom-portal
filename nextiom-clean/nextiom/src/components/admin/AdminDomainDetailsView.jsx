@@ -7,12 +7,14 @@ import { useToast } from '@/components/ui/use-toast';
 function AdminDomainDetailsView({ domain, customer, onBack }) {
   const [status, setStatus] = useState(domain.status);
    const [expiryDate, setExpiryDate] = useState(domain.expiry_date ? domain.expiry_date.split('T')[0] : '');
+  const [startDate, setStartDate] = useState(domain.start_date ? domain.start_date.split('T')[0] : domain.created_at ? domain.created_at.split('T')[0] : '');
   const { toast } = useToast();
 
    const handleSave = async () => {
       await updateDomain(domain.id, {
         status,
-            expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null
+            expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null,
+            start_date: startDate ? new Date(startDate).toISOString() : null,
     });
     addDomainActivityLog(domain.id, 'Admin Update', `Status changed to ${status}`);
     toast({ title: "Domain Updated", description: "Changes saved successfully." });
@@ -49,10 +51,20 @@ function AdminDomainDetailsView({ domain, customer, onBack }) {
              </div>
 
              <div className="space-y-2">
-                <label className="text-sm font-medium">Expiry Date</label>
+                <label className="text-sm font-medium">Start Date</label>
                 <input 
                     type="date" 
-                    value={expiryDate} 
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-md"
+                />
+             </div>
+
+             <div className="space-y-2">
+                <label className="text-sm font-medium">Expiry Date</label>
+                <input
+                    type="date"
+                    value={expiryDate}
                     onChange={e => setExpiryDate(e.target.value)}
                     className="w-full p-2 border border-slate-300 rounded-md"
                 />

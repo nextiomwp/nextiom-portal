@@ -96,6 +96,7 @@ function AdminDomainManagement({ isDark = true }) {
       domain_name: d.domain_name || '',
       status: d.status || 'approved',
       registration_period: d.registration_period || '',
+      start_date: d.start_date ? d.start_date.split('T')[0] : d.created_at ? d.created_at.split('T')[0] : '',
       expiry_date: d.expiry_date ? d.expiry_date.split('T')[0] : '',
       auto_renew: d.auto_renew ?? true,
       notes: d.notes || '',
@@ -110,6 +111,7 @@ function AdminDomainManagement({ isDark = true }) {
         domain_name: editForm.domain_name,
         status: editForm.status,
         registration_period: editForm.registration_period ? Number(editForm.registration_period) : null,
+        start_date: editForm.start_date ? new Date(editForm.start_date).toISOString() : null,
         expiry_date: editForm.expiry_date ? new Date(editForm.expiry_date).toISOString() : null,
         auto_renew: editForm.auto_renew,
         notes: editForm.notes,
@@ -211,6 +213,7 @@ function AdminDomainManagement({ isDark = true }) {
               <th style={thS}>Domain</th>
               <th style={thS}>Customer</th>
               <th style={thS}>Status</th>
+              <th style={thS}>Start Date</th>
               <th style={thS}>Expiry</th>
               <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
             </tr>
@@ -226,6 +229,11 @@ function AdminDomainManagement({ isDark = true }) {
                   </td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{d.customers?.name || 'Unknown'}</span></td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={d.status} /></td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ color: c.subText, fontSize: 12 }}>
+                      {d.start_date ? new Date(d.start_date).toLocaleDateString() : d.created_at ? new Date(d.created_at).toLocaleDateString() : '—'}
+                    </span>
+                  </td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}>
                     <div>
                       <span style={{ color: urgentColor || c.text }}>
@@ -248,7 +256,7 @@ function AdminDomainManagement({ isDark = true }) {
                 </tr>
               );
             })}
-            {filteredDomains.length === 0 && <tr><td colSpan={5} style={emptyS}>No approved domains found</td></tr>}
+            {filteredDomains.length === 0 && <tr><td colSpan={6} style={emptyS}>No approved domains found</td></tr>}
           </tbody>
         </table>
       </div>
@@ -282,6 +290,12 @@ function AdminDomainManagement({ isDark = true }) {
                   <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Registration Period (yrs)</label>
                   <input style={inpS} type="number" min="1" value={editForm.registration_period} onChange={e => setEditForm(f => ({ ...f, registration_period: e.target.value }))} />
                 </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Start Date</label>
+                  <input style={inpS} type="date" value={editForm.start_date} onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Expiry Date</label>
                   <input style={inpS} type="date" value={editForm.expiry_date} onChange={e => setEditForm(f => ({ ...f, expiry_date: e.target.value }))} />

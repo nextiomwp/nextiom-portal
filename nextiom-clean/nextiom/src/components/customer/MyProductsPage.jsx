@@ -203,6 +203,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                 {detailLicense.license_key && <Row icon={Key} label="License Key" value={detailLicense.license_key} mono />}
                 {detailLicense.expiry_date && <Row icon={Calendar} label="Expiry Date" value={fmt(detailLicense.expiry_date)} />}
                 {dp.renewal_date && <Row icon={Calendar} label="Renewal Date" value={fmt(dp.renewal_date)} />}
+                {detailLicense.start_date && <Row icon={Calendar} label="Start Date" value={fmt(detailLicense.start_date)} />}
                 {detailLicense.created_at && <Row icon={Clock} label="Assigned On" value={fmt(detailLicense.created_at)} />}
                 {dp.renewal_period_days && <Row icon={Clock} label="Validity Period" value={`${dp.renewal_period_days} days`} />}
                 {dp.type && <Row icon={Package} label="Product Type" value={dp.type} />}
@@ -332,6 +333,15 @@ export default function MyProductsPage({ user, isDark, c }) {
                       <LtIcon style={{ width: 13, height: 13, color: cfg.color }} />
                       <span style={{ color: cfg.color, fontSize: 12, fontWeight: 500 }}>{cfg.label}</span>
                     </div>
+
+                    {license.start_date && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Calendar style={{ width: 12, height: 12, color: sub }} />
+                        <span style={{ color: sub, fontSize: 12 }}>
+                          Started: {new Date(license.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {validity.valid

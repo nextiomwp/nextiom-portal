@@ -87,9 +87,13 @@ function AdminRequestManagement({ isDark = true }) {
 
   const handleStatusUpdate = async (id, newStatus) => {
     const req = requests.find(r => r.id === id);
-    await updateDomainRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString() });
+    const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
+    await updateDomainRequest(id, {
+      status: String(newStatus).toLowerCase(),
+      updated_at: new Date().toISOString(),
+      start_date: isApproved ? new Date().toISOString() : undefined,
+    });
     if (req?.customer_id) {
-      const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
       await addNotification({
         customer_id: req.customer_id,
         type: isApproved ? 'update' : 'expiration',

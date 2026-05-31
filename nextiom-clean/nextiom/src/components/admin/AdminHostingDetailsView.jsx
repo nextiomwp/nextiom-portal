@@ -24,13 +24,24 @@ import {
 } from "@/components/ui/alert-dialog";
 
 function normalizeDetails(pkg) {
+  // Extract plan disk/bandwidth from the package_type string (format: "HostingType - PlanName | ...")
+  const raw = pkg.package_type || pkg.package_name || pkg.packageName || '';
+  const planPart = raw.split('|')[0]?.trim() || '';
+  const planDisk = pkg.disk_usage_limit || '';
+  const planBw = pkg.bandwidth_limit || '';
+
   return {
     ...pkg,
     packageName: pkg.packageName || pkg.package_name || 'Hosting Package',
     expiryDate: pkg.expiryDate || pkg.expiry_date || null,
     autoRenew: typeof pkg.autoRenew === 'boolean' ? pkg.autoRenew : !!pkg.auto_renew,
     usage: pkg.usage || {},
-    cpanel: pkg.cpanel || {}
+    cpanel: pkg.cpanel || {},
+    disk_usage_limit: planDisk,
+    bandwidth_limit: planBw,
+    planDisk,
+    planBw,
+    planLabel: planPart,
   };
 }
 
@@ -232,12 +243,20 @@ function AdminHostingDetailsView({ pkg, customer, onBack }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-1"><HardDrive className="w-3 h-3"/> Disk (GB)</label>
-                <input
-                  type="number"
-                  value={details.usage?.diskUsage || 0}
-                  onChange={(e) => setDetails({ ...details, usage: { ...details.usage, diskUsage: parseFloat(e.target.value) || 0 } })}
-                  className="w-full p-2 border border-slate-300 rounded-md"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={details.usage?.diskUsage || 0}
+                    onChange={(e) => setDetails({ ...details, usage: { ...details.usage, diskUsage: parseFloat(e.target.value) || 0 } })}
+                    className="w-full p-2 border border-slate-300 rounded-md"
+                    placeholder="Current"
+                  />
+                </div>
+                {details.disk_usage_limit || details.planDisk ? (
+                  <span className="text-xs text-slate-400">
+                    Limit: {details.disk_usage_limit || details.planDisk || '—'}
+                  </span>
+                ) : null}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-1"><Wifi className="w-3 h-3"/> Bandwidth</label>
@@ -246,7 +265,13 @@ function AdminHostingDetailsView({ pkg, customer, onBack }) {
                   value={details.usage?.bandwidthUsage || 0}
                   onChange={(e) => setDetails({ ...details, usage: { ...details.usage, bandwidthUsage: parseFloat(e.target.value) || 0 } })}
                   className="w-full p-2 border border-slate-300 rounded-md"
+                  placeholder="Current"
                 />
+                {details.bandwidth_limit || details.planBw ? (
+                  <span className="text-xs text-slate-400">
+                    Limit: {details.bandwidth_limit || details.planBw || '—'}
+                  </span>
+                ) : null}
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase text-slate-500 flex items-center gap-1"><Mail className="w-3 h-3"/> Emails</label>

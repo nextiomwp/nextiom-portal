@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Server, Trash2, Eye } from 'lucide-react';
+import { Search, Loader2, Server, Eye } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getCustomerHostingPackages, getCustomerHostingRequests, resolveCustomerId, deleteHostingRequest, deleteHosting } from '@/lib/storage';
+import { getCustomerHostingPackages, getCustomerHostingRequests, resolveCustomerId } from '@/lib/storage';
 import HostingPackageDetailsModal from './HostingPackageDetailsModal';
 
 function statusStyle(status, isDark) {
@@ -107,21 +107,6 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
     }
   };
 
-  const handleDelete = async (pkg) => {
-    if (!window.confirm('Are you sure you want to delete this hosting order?')) return;
-    try {
-      if (pkg.isRequest) {
-        await deleteHostingRequest(pkg.id.replace(/^req-/, ''));
-      } else {
-        await deleteHosting(pkg.id);
-      }
-      toast({ title: 'Deleted', description: 'Hosting order removed.' });
-      loadPackages();
-    } catch {
-      toast({ title: 'Error', description: 'Could not delete hosting order.', variant: 'destructive' });
-    }
-  };
-
   const filteredPackages = packages.filter(p =>
     (p.package_name || p.package_type || p.packageName || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -180,10 +165,10 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
-                {['Package', 'Domain', 'Status', 'Expiry', 'Actions'].map((h, i) => (
+                {['Package', 'Domain', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (
                   <th key={h} style={{
                     padding: '10px 20px',
-                    textAlign: i === 4 ? 'right' : 'left',
+                    textAlign: i === 5 ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: subText,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     borderBottom: `1px solid ${border}`,
@@ -212,6 +197,9 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                         {pkg.status}
                       </span>
                     </td>
+                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
+                      {pkg.start_date ? new Date(pkg.start_date).toLocaleDateString() : pkg.created_at ? new Date(pkg.created_at).toLocaleDateString() : '—'}
+                    </td>
                     <td style={{ padding: '12px 20px' }}>
                       {expiryDate ? (
                         <div>
@@ -227,40 +215,24 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                       )}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        <button
-                          onClick={() => { setSelectedPackage(pkg); setIsDetailsOpen(true); }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 5,
-                            padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: brandLight, color: brand, border: `1px solid ${brand}`,
-                            transition: 'background 0.15s',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = `rgba(232,123,53,0.25)`}
-                          onMouseLeave={e => e.currentTarget.style.background = brandLight}
-                        >
-                          <Eye style={{ width: 13, height: 13 }} /> View
-                        </button>
-                        <button
-                          onClick={() => handleDelete(pkg)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 5,
-                            padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: 'transparent', color: subText, border: `1px solid ${border}`,
-                            transition: 'all 0.15s',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#ef4444'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = subText; e.currentTarget.style.borderColor = border; }}
-                        >
-                          <Trash2 style={{ width: 13, height: 13 }} /> Delete
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => { setSelectedPackage(pkg); setIsDetailsOpen(true); }}
+                        style={{
+                          padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: brandLight, color: brand, border: `1px solid ${brand}`,
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = `rgba(232,123,53,0.25)`}
+                        onMouseLeave={e => e.currentTarget.style.background = brandLight}
+                      >
+                        <Eye style={{ width: 13, height: 13 }} /> View
+                      </button>
                     </td>
                   </tr>
                 );
               }) : (
                 <tr>
-                  <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                  <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
                     No hosting packages found
                   </td>
                 </tr>

@@ -102,6 +102,7 @@ function AdminHostingRequestManagement({ isDark = true }) {
   };
 
   const handleAction = async (status) => {
+    const isApproved = String(status).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase() || String(status).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase();
     if (status === REQUEST_STATUS.REJECTED && !rejectReason.trim()) {
       toast({ title: 'Reason Required', description: 'Please provide a reason for rejection.', variant: 'destructive' });
       return;
@@ -111,7 +112,8 @@ function AdminHostingRequestManagement({ isDark = true }) {
       await updateHostingRequest(selectedRequest.id, {
         status: String(status).toLowerCase(),
         admin_reply: status === REQUEST_STATUS.REJECTED ? rejectReason : adminReply,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        start_date: isApproved ? new Date().toISOString() : undefined,
       });
       if (selectedRequest.customer_id) {
         const isApproved = String(status).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase() || String(status).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase();

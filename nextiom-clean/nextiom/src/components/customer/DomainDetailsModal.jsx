@@ -33,7 +33,7 @@ function DomainDetailsModal({ domain, isOpen, onClose, isDark = false, c = {} })
   const rows = [
     { label: 'Domain Name', value: domain.name || domain.domain_name || 'N/A' },
     { label: 'Registration Period', value: domain.registration_period ? `${domain.registration_period} Year${domain.registration_period !== 1 ? 's' : ''}` : 'N/A' },
-    { label: 'Registered On', value: formatDate(domain.created_at) },
+    { label: 'Start Date', value: formatDate(domain.start_date || domain.created_at) },
     { label: 'Expiry Date', value: formatDate(domain.expiry_date || domain.expiryDate) },
     { label: 'Auto Renew', value: (domain.auto_renew ?? domain.autoRenew) ? 'Enabled' : 'Disabled' },
     { label: 'Notes', value: domain.notes || '—' },

@@ -10,6 +10,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
   const [price, setPrice] = useState('');
   const [multiYearPct, setMultiYearPct] = useState('');
   const [notes, setNotes] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -67,11 +68,12 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
         expiryDate: calcExpiry(),
         notes: notes.trim() || null,
         price: finalPrice,
+        startDate,
       });
 
       toast({ title: 'Email Assigned', description: `${fullEmail} assigned to ${customer.name}` });
       setEmailName(''); setExtension('.com'); setRegPeriod('1');
-      setPrice(''); setMultiYearPct(''); setNotes('');
+      setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -193,6 +195,19 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
               )}
             </div>
           )}
+
+          {/* Start Date */}
+          <div>
+            <label style={labelS}>Start Date</label>
+            <input
+              style={inpS}
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              onFocus={e => e.target.style.borderColor = brand}
+              onBlur={e => e.target.style.borderColor = border}
+            />
+          </div>
 
           {/* Notes */}
           <div>

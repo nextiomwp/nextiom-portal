@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Server, Loader2, Check, DollarSign } from 'lucide-react';
+import { Server, Loader2, Check, DollarSign, HardDrive, Wifi } from 'lucide-react';
 import { assignHostingToCustomer, getHostingPlans } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
   const [plans, setPlans] = useState([]);
@@ -11,6 +12,10 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
   const [domain, setDomain] = useState('');
   const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [diskUsageLimit, setDiskUsageLimit] = useState('');
+  const [bandwidthLimit, setBandwidthLimit] = useState('');
+  const [overrideAllocated, setOverrideAllocated] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -22,25 +27,19 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
 
   if (!open) return null;
 
-  const text = c.text || '#fff';
-  const subText = c.subText || '#a0a0a0';
-  const card = c.card || '#1C1E24';
-  const border = c.border || 'rgba(255,255,255,0.06)';
-  const borderStrong = c.borderStrong || 'rgba(255,255,255,0.10)';
+  const text = '#111827';
+  const subText = '#6b7280';
   const brand = c.brand || '#e87b35';
-  const input = c.input || '#22252C';
-  const overlay = 'rgba(0,0,0,0.6)';
+  const input = '#f8fafc';
+  const border = 'rgba(15,23,42,0.12)';
+  // Input field classes: fixed height and tighter line-height for consistent vertical alignment
+  const fieldClass = 'w-full mt-1.5 px-3 py-2 h-10 leading-tight rounded-xl outline-none transition-all bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35]';
 
-  const inpS = {
-    width: '100%', padding: '8px 12px',
-    border: `1.5px solid ${border}`, borderRadius: 8,
-    background: input, color: text, fontSize: 13,
-    outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit'
-  };
+  // Label styles: use flex centering so icon + text align vertically
   const labelS = {
     fontSize: 12, fontWeight: 600, color: subText,
     textTransform: 'uppercase', letterSpacing: 0.8,
-    display: 'block', marginBottom: 6
+    display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8
   };
 
   // Get unique hosting types from plans
@@ -48,6 +47,31 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
   const selectedPlans = hostingType
     ? plans.filter(p => p.hosting_type === hostingType && p.is_active !== false)
     : [];
+
+  // Derive default disk/bandwidth from the selected plan
+  const selectedPlan = !planName || !hostingType
+    ? null
+    : plans.find(p => p.hosting_type === hostingType && p.plan_name === planName) || null;
+
+  const planDisk = selectedPlan?.storage || '';
+  const planBw = selectedPlan?.bandwidth || '';
+
+  // Auto-update override fields when plan changes (if not manually overridden)
+  const handlePlanChange = (val) => {
+    setPlanName(val);
+    const plan = plans.find(p => p.hosting_type === hostingType && p.plan_name === val);
+    if (plan) {
+      if (!overrideAllocated) {
+        setDiskUsageLimit(plan.storage || '');
+        setBandwidthLimit(plan.bandwidth || '');
+      }
+    } else {
+      if (!overrideAllocated) {
+        setDiskUsageLimit('');
+        setBandwidthLimit('');
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     if (!hostingType) {
@@ -70,11 +94,16 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
         domain: domain.trim() || null,
         notes: notes.trim() || null,
         price: finalPrice,
+        startDate,
+        diskUsageLimit: overrideAllocated ? diskUsageLimit : '',
+        bandwidthLimit: overrideAllocated ? bandwidthLimit : '',
       });
 
       toast({ title: 'Hosting Assigned', description: `${hostingType} - ${planName} assigned to ${customer.name}` });
       setHostingType(''); setPlanName(''); setBillingPeriod('Monthly');
       setDomain(''); setPrice(''); setNotes('');
+      setDiskUsageLimit(''); setBandwidthLimit(''); setOverrideAllocated(false);
+      setStartDate(new Date().toISOString().split('T')[0]);
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -85,45 +114,29 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
   };
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, background: overlay, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: card, border: `1px solid ${borderStrong}`,
-          borderRadius: 16, width: '100%', maxWidth: 520,
-          boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
-          overflow: 'hidden'
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div style={{
-          padding: '18px 24px', borderBottom: `1px solid ${border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(74,222,128,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Server size={16} color="#4ade80" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: text }}>Assign Hosting</div>
-              <div style={{ fontSize: 11, color: subText }}>{customer?.name} — {customer?.email}</div>
-            </div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: subText, display: 'flex' }}>
-            <X size={18} />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose?.(); }}>
+      <DialogContent className="max-w-3xl bg-white border-slate-200 text-slate-900 max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-3 text-slate-900">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
+              <Server size={16} />
+            </span>
+            <span>
+              Assign Hosting
+              <div className="mt-1 text-xs font-normal text-slate-500">{customer?.name} — {customer?.email}</div>
+            </span>
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Assign a hosting package, billing period, and resource limits to the selected customer.
+          </DialogDescription>
+        </DialogHeader>
 
-        {/* Form */}
-        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="max-h-[calc(90vh-132px)] overflow-y-auto pr-1">
           {/* Hosting Type */}
           <div>
             <label style={labelS}>Hosting Type *</label>
             <select
-              style={{ ...inpS, appearance: 'none' }}
+              className={fieldClass}
               value={hostingType}
               onChange={e => { setHostingType(e.target.value); setPlanName(''); }}
             >
@@ -138,9 +151,9 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
           <div>
             <label style={labelS}>Plan *</label>
             <select
-              style={{ ...inpS, appearance: 'none' }}
+              className={fieldClass}
               value={planName}
-              onChange={e => setPlanName(e.target.value)}
+              onChange={e => handlePlanChange(e.target.value)}
               disabled={!hostingType}
             >
               <option value="">{hostingType ? 'Select a plan…' : 'Choose a type first…'}</option>
@@ -156,7 +169,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
           <div>
             <label style={labelS}>Billing Period</label>
             <select
-              style={{ ...inpS, appearance: 'none' }}
+              className={fieldClass}
               value={billingPeriod}
               onChange={e => setBillingPeriod(e.target.value)}
             >
@@ -166,17 +179,26 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
             </select>
           </div>
 
+          {/* Start Date */}
+          <div>
+            <label style={labelS}>Start Date</label>
+            <input
+              className={fieldClass}
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+            />
+          </div>
+
           {/* Domain + Price */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             <div>
               <label style={labelS}>Domain (optional)</label>
               <input
-                style={inpS}
+                className={fieldClass}
                 placeholder="e.g. example.com"
                 value={domain}
                 onChange={e => setDomain(e.target.value)}
-                onFocus={e => e.target.style.borderColor = brand}
-                onBlur={e => e.target.style.borderColor = border}
               />
             </div>
             <div>
@@ -184,7 +206,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
               <div style={{ position: 'relative' }}>
                 <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
                 <input
-                  style={{ ...inpS, paddingLeft: 28 }}
+                  className={`${fieldClass} pl-8`}
                   type="number" min="0" step="0.01"
                   placeholder="0.00"
                   value={price}
@@ -194,11 +216,74 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
             </div>
           </div>
 
+          {/* Disk Usage + Bandwidth Override (Optional) */}
+          <div>
+            <label style={{ ...labelS, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input
+                type="checkbox"
+                checked={overrideAllocated}
+                onChange={e => {
+                  setOverrideAllocated(e.target.checked);
+                  if (!e.target.checked) {
+                    // Reset to plan defaults
+                    const plan = plans.find(p => p.hosting_type === hostingType && p.plan_name === planName);
+                    setDiskUsageLimit(plan?.storage || '');
+                    setBandwidthLimit(plan?.bandwidth || '');
+                  }
+                }}
+                style={{ accentColor: brand }}
+              />
+              Override Allocated Resources (optional)
+            </label>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            <div>
+              <label style={labelS}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <HardDrive size={12} /> Disk Usage Limit
+                </div>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className={`${fieldClass} pr-10 ${overrideAllocated ? '' : 'opacity-70'}`}
+                  placeholder={planDisk || 'e.g. 50GB'}
+                  value={diskUsageLimit}
+                  onChange={e => { setDiskUsageLimit(e.target.value); setOverrideAllocated(true); }}
+                />
+                {!overrideAllocated && planDisk && (
+                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: subText, background: '#fff', padding: '0 4px' }}>
+                    plan: {planDisk}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div>
+              <label style={labelS}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Wifi size={12} /> Bandwidth Limit
+                </div>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className={`${fieldClass} pr-10 ${overrideAllocated ? '' : 'opacity-70'}`}
+                  placeholder={planBw || 'e.g. 500GB'}
+                  value={bandwidthLimit}
+                  onChange={e => { setBandwidthLimit(e.target.value); setOverrideAllocated(true); }}
+                />
+                {!overrideAllocated && planBw && (
+                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: subText, background: '#fff', padding: '0 4px' }}>
+                    plan: {planBw}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Notes */}
           <div>
             <label style={labelS}>Notes / Comments</label>
             <textarea
-              style={{ ...inpS, resize: 'vertical', minHeight: 72 }}
+              className={`${fieldClass} min-h-[72px] resize-y`}
               placeholder="Internal notes about this hosting assignment..."
               value={notes}
               onChange={e => setNotes(e.target.value)}
@@ -209,7 +294,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
         {/* Footer */}
         <div style={{
           padding: '16px 24px', borderTop: `1px solid ${border}`,
-          display: 'flex', justifyContent: 'flex-end', gap: 10
+          display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0
         }}>
           <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
             Cancel
@@ -228,8 +313,8 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
             {saving ? 'Assigning…' : 'Assign Hosting'}
           </button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

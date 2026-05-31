@@ -246,10 +246,10 @@ function AdminApprovedEmails({ isDark = true }) {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={thS}>Email Type</th>
-              <th style={thS}>Plan</th>
+              <th style={thS}>Email</th>
               <th style={thS}>Customer</th>
               <th style={thS}>Status</th>
+              <th style={thS}>Start Date</th>
               <th style={thS}>Expiry</th>
               <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
             </tr>
@@ -263,11 +263,13 @@ function AdminApprovedEmails({ isDark = true }) {
               return (
                 <tr key={h.id}>
                   <td style={i % 2 === 0 ? tdS : tdAlt}>
-                    <span style={{ fontWeight: 600, color: isDark ? '#86efac' : '#15803d' }}>{h.email_type || parsed.emailType}</span>
+                    <span style={{ fontWeight: 600, color: isDark ? '#86efac' : '#15803d' }}>{h.email || '—'}</span>
                   </td>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{h.plan_name || parsed.planName}</span></td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.text }}>{h.customers?.name || 'Unknown'}</span></td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={h.status} /></td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ color: c.subText, fontSize: 12 }}>{h.start_date ? new Date(h.start_date).toLocaleDateString() : h.created_at ? new Date(h.created_at).toLocaleDateString() : '—'}</span>
+                  </td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}>
                     {expiryDate ? (
                       <div>

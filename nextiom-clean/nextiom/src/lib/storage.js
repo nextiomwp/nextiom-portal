@@ -503,6 +503,7 @@ export const getAdminNotifications = async () => {
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
+    .is('customer_id', null)
     .order('created_at', { ascending: false });
 
   if (error) handleSupabaseError(error, 'getAdminNotifications');
@@ -775,6 +776,9 @@ export const addHostingRequest = async (requestData) => {
 
 export const assignProductToCustomer = async (data) => {
   const { customerId, productId, activationDate } = data;
+  if (!customerId) {
+    throw new Error('Customer is required for product assignment');
+  }
 
   const { data: product } = await supabase
     .from('products')
@@ -800,6 +804,7 @@ export const assignProductToCustomer = async (data) => {
       status: 'Active',
       expiry_date: expiryDate,
       license_type: product?.license_type || 'one_time',
+      start_date: activationDate ? new Date(activationDate).toISOString() : new Date().toISOString(),
     }])
     .select()
     .single();
@@ -1134,7 +1139,7 @@ export const getUnreadTicketCount = async () => {
 // ── Admin Assign Functions ──────────────────────────────────────
 
 export const assignDomainToCustomer = async (data) => {
-  const { customerId, domainName, registrationPeriod, expiryDate, notes, price } = data;
+  const { customerId, domainName, registrationPeriod, expiryDate, notes, price, startDate } = data;
   const { data: record, error } = await supabase
     .from('domain_requests')
     .insert([{
@@ -1146,6 +1151,7 @@ export const assignDomainToCustomer = async (data) => {
       notes: notes || null,
       price: price || null,
       created_at: new Date().toISOString(),
+      start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
     }])
     .select()
     .single();
@@ -1164,7 +1170,7 @@ export const assignDomainToCustomer = async (data) => {
   // Log in activity log
   await supabase.from('notifications').insert([{
     customer_id: null,
-    type: 'product_assigned',
+    type: 'admin_activity',
     title: `Domain Assigned — ${domainName}`,
     message: `Admin assigned domain "${domainName}" (${registrationPeriod} yr) directly to customer.`,
   }]);
@@ -1173,7 +1179,7 @@ export const assignDomainToCustomer = async (data) => {
 };
 
 export const assignHostingToCustomer = async (data) => {
-  const { customerId, hostingType, planName, billingPeriod, domain, notes, price } = data;
+  const { customerId, hostingType, planName, billingPeriod, domain, notes, price, startDate, diskUsageLimit, bandwidthLimit } = data;
   const packageSummary = `${hostingType} - ${planName} | Billing: ${billingPeriod} | Domain: ${domain || 'N/A'} | Notes: ${notes || 'None'}`;
 
   // Calculate expiry based on billing period
@@ -1189,6 +1195,9 @@ export const assignHostingToCustomer = async (data) => {
     expiryDate = d.toISOString();
   }
 
+  const diskLimit = diskUsageLimit && diskUsageLimit.trim() ? diskUsageLimit.trim() : null;
+  const bwLimit = bandwidthLimit && bandwidthLimit.trim() ? bandwidthLimit.trim() : null;
+
   const { data: record, error } = await supabase
     .from('hosting_requests')
     .insert([{
@@ -1202,7 +1211,10 @@ export const assignHostingToCustomer = async (data) => {
       expiry_date: expiryDate,
       notes: notes || null,
       price: price || null,
+      disk_usage_limit: diskLimit,
+      bandwidth_limit: bwLimit,
       created_at: new Date().toISOString(),
+      start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
     }])
     .select()
     .single();
@@ -1221,7 +1233,7 @@ export const assignHostingToCustomer = async (data) => {
   // Log in activity log
   await supabase.from('notifications').insert([{
     customer_id: null,
-    type: 'product_assigned',
+    type: 'admin_activity',
     title: `Hosting Assigned — ${hostingType} ${planName}`,
     message: `Admin assigned hosting "${hostingType} - ${planName}" (${billingPeriod}) directly to customer.`,
   }]);
@@ -1230,7 +1242,7 @@ export const assignHostingToCustomer = async (data) => {
 };
 
 export const assignEmailToCustomer = async (data) => {
-  const { customerId, email, registrationPeriod, expiryDate, notes, price } = data;
+  const { customerId, email, registrationPeriod, expiryDate, notes, price, startDate } = data;
   const { data: record, error } = await supabase
     .from('email_requests')
     .insert([{
@@ -1242,6 +1254,7 @@ export const assignEmailToCustomer = async (data) => {
       notes: notes || null,
       price: price || null,
       created_at: new Date().toISOString(),
+      start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
     }])
     .select()
     .single();
@@ -1260,7 +1273,7 @@ export const assignEmailToCustomer = async (data) => {
   // Log in activity log
   await supabase.from('notifications').insert([{
     customer_id: null,
-    type: 'product_assigned',
+    type: 'admin_activity',
     title: `Email Assigned — ${email}`,
     message: `Admin assigned email "${email}" (${registrationPeriod} yr) directly to customer.`,
   }]);

@@ -9,6 +9,7 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
   const [price, setPrice] = useState('');
   const [multiYearPct, setMultiYearPct] = useState('');
   const [notes, setNotes] = useState('');
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -66,10 +67,11 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
         expiryDate: calcExpiry(),
         notes: notes.trim() || null,
         price: finalPrice,
+        startDate,
       });
 
       toast({ title: 'Domain Assigned', description: `${domainName.trim()} assigned to ${customer.name}` });
-      setDomainName(''); setRegPeriod('1'); setPrice(''); setMultiYearPct(''); setNotes('');
+      setDomainName(''); setRegPeriod('1'); setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -121,6 +123,18 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
               placeholder="example.com"
               value={domainName}
               onChange={e => setDomainName(e.target.value)}
+              onFocus={e => e.target.style.borderColor = brand}
+              onBlur={e => e.target.style.borderColor = border}
+            />
+          </div>
+
+          <div>
+            <label style={labelS}>Start Date</label>
+            <input
+              style={inpS}
+              type="date"
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
               onFocus={e => e.target.style.borderColor = brand}
               onBlur={e => e.target.style.borderColor = border}
             />

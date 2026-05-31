@@ -80,8 +80,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
     const req = type === 'domain'
       ? domainRequests.find(r => r.id === id)
       : hostingRequests.find(r => r.id === id);
-    if (type === 'domain') await updateDomainRequest(id, { status, updated_at: new Date().toISOString() });
-    else await updateHostingRequest(id, { status, updated_at: new Date().toISOString() });
+    const isApproved = String(status).toLowerCase() === 'approved';
+    if (type === 'domain') await updateDomainRequest(id, { status, updated_at: new Date().toISOString(), start_date: isApproved ? new Date().toISOString() : undefined });
+    else await updateHostingRequest(id, { status, updated_at: new Date().toISOString(), start_date: isApproved ? new Date().toISOString() : undefined });
     const label = type === 'domain' ? (req?.domain_name || 'Domain') : (parsePackage(req?.package_type || '').name || 'Hosting');
     addNotification({ customer_id: null, type: 'request_updated', title: `${type === 'domain' ? 'Domain' : 'Hosting'} Request Updated — ${label}`, message: `Admin set ${label} request to "${status}" for ${customerData.name}.` }).catch(() => {});
     await loadAll();
@@ -157,9 +158,10 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
     textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700,
     color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2,
     background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)',
-    borderBottom: `1px solid ${c.border}`
+    borderBottom: `1px solid ${c.border}`,
+    whiteSpace: 'nowrap',
   };
-  const tdS = { padding: '13px 18px', borderTop: `1px solid ${c.border}`, fontSize: 13.5, color: c.text, verticalAlign: 'middle' };
+  const tdS = { padding: '13px 18px', borderTop: `1px solid ${c.border}`, fontSize: 13.5, color: c.text, verticalAlign: 'middle', whiteSpace: 'nowrap' };
   const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
   const emptyS = { padding: 32, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' };
 
@@ -207,7 +209,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   );
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ width: '100%', maxWidth: 1560, margin: '0 auto' }}>
       <button onClick={onBack} style={{
         display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
         color: c.subText, cursor: 'pointer', marginBottom: 24, fontSize: 13.5, padding: '6px 0',
@@ -238,7 +240,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button onClick={handleSendPasswordReset} disabled={isSendingReset} title="Send password reset email to this customer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '9px 16px', borderRadius: 9, border: `1.5px solid ${c.brand}`,
@@ -261,7 +263,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
             </button>
           </div>
         </div>
-        <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
           {[
             { icon: <Mail size={13} />, label: 'Email', key: 'email' },
             { icon: <Phone size={13} />, label: 'Phone', key: 'phone' },
@@ -289,15 +291,16 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       </div>
 
       {/* Row 1: Active Domains | Hosting Packages */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16, marginBottom: 16 }}>
         <div style={{ ...cardS, marginBottom: 0 }}>
           <SectionHeader title="Active Domains" accent="#378ADD" />
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thS}>Domain</th>
                   <th style={thS}>Status</th>
+                  <th style={thS}>Start Date</th>
                   <th style={thS}>Expiry</th>
                   <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -307,6 +310,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                   <tr key={d.id}>
                     <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb', fontSize: 12 }}>{d.domain_name || '-'}</span></td>
                     <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={d.status} /></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText, fontSize: 12 }}>{d.start_date ? format(new Date(d.start_date), 'MMM dd, yy') : d.created_at ? format(new Date(d.created_at), 'MMM dd, yy') : '—'}</span></td>
                     <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: d.expiry_date ? c.text : c.subText, fontSize: 12 }}>{d.expiry_date ? format(new Date(d.expiry_date), 'MMM dd, yy') : '—'}</span></td>
                     <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
@@ -316,7 +320,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     </td>
                   </tr>
                 ))}
-                {approvedDomains.length === 0 && <tr><td colSpan={4} style={emptyS}>No active domains</td></tr>}
+                {approvedDomains.length === 0 && <tr><td colSpan={5} style={emptyS}>No active domains</td></tr>}
               </tbody>
             </table>
           </div>
@@ -325,11 +329,12 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
         <div style={{ ...cardS, marginBottom: 0 }}>
           <SectionHeader title="Hosting Packages" accent="#639922" />
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thS}>Package</th>
                   <th style={thS}>Status</th>
+                  <th style={thS}>Start Date</th>
                   <th style={thS}>Expiry</th>
                   <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -343,6 +348,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     <tr key={h.id}>
                       <td style={row}><span style={{ fontWeight: 600, color: c.text, fontSize: 12 }}>{name}</span></td>
                       <td style={row}><StatusBadge status={h.status} /></td>
+                      <td style={row}><span style={{ color: c.subText, fontSize: 12 }}>{h.start_date ? format(new Date(h.start_date), 'MMM dd, yy') : h.created_at ? format(new Date(h.created_at), 'MMM dd, yy') : '—'}</span></td>
                       <td style={row}><span style={{ color: expiry ? c.text : c.subText, fontSize: 12 }}>{expiry ? format(expiry, 'MMM dd, yy') : '—'}</span></td>
                       <td style={{ ...row, textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
@@ -353,7 +359,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     </tr>
                   );
                 })}
-                {approvedHosting.length === 0 && <tr><td colSpan={4} style={emptyS}>No hosting packages</td></tr>}
+                {approvedHosting.length === 0 && <tr><td colSpan={5} style={emptyS}>No hosting packages</td></tr>}
               </tbody>
             </table>
           </div>
@@ -361,11 +367,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       </div>
 
       {/* Row 2: Pending Domain Requests | Pending Hosting Requests */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16, marginBottom: 16 }}>
         <div style={{ ...cardS, marginBottom: 0 }}>
           <SectionHeader title="Pending Domain Requests" accent="#ba7517" />
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 620, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thS}>Domain</th>
@@ -396,7 +402,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
         <div style={{ ...cardS, marginBottom: 0 }}>
           <SectionHeader title="Pending Hosting Requests" accent="#8b5cf6" />
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: 620, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thS}>Package</th>
@@ -433,7 +439,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       <div style={{ ...cardS, marginBottom: 0 }}>
         <SectionHeader title="Assigned Products" accent="#6366f1" />
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', minWidth: 1120, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={thS}>Product</th>
@@ -441,6 +447,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                 <th style={thS}>License Type</th>
                 <th style={thS}>License Key</th>
                 <th style={thS}>Status</th>
+                <th style={thS}>Start Date</th>
                 <th style={thS}>Expiry</th>
                 <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
               </tr>
@@ -462,6 +469,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                       <span style={{ fontFamily: 'monospace', fontSize: 11, color: c.subText }}>{lic.license_key || '-'}</span>
                     </td>
                     <td style={row}><StatusBadge status={lic.status} /></td>
+                    <td style={row}><span style={{ color: c.subText, fontSize: 12 }}>{lic.start_date ? format(new Date(lic.start_date), 'MMM dd, yy') : lic.created_at ? format(new Date(lic.created_at), 'MMM dd, yy') : '—'}</span></td>
                     <td style={row}>
                       <span style={{ color: c.text, fontSize: 12 }}>
                         {lt === 'yearly'
@@ -494,7 +502,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                   </tr>
                 );
               })}
-              {licenses.length === 0 && <tr><td colSpan={7} style={emptyS}>No products assigned</td></tr>}
+              {licenses.length === 0 && <tr><td colSpan={8} style={emptyS}>No products assigned</td></tr>}
             </tbody>
           </table>
         </div>
