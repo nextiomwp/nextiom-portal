@@ -1131,3 +1131,139 @@ export const getUnreadTicketCount = async () => {
     !(t.ticket_messages || []).some(m => m.sender_role === 'admin')
   ).length;
 };
+// ── Admin Assign Functions ──────────────────────────────────────
+
+export const assignDomainToCustomer = async (data) => {
+  const { customerId, domainName, registrationPeriod, expiryDate, notes, price } = data;
+  const { data: record, error } = await supabase
+    .from('domain_requests')
+    .insert([{
+      customer_id: customerId,
+      domain_name: domainName,
+      status: 'approved',
+      registration_period: parseInt(registrationPeriod) || 1,
+      expiry_date: expiryDate || null,
+      notes: notes || null,
+      price: price || null,
+      created_at: new Date().toISOString(),
+    }])
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'assignDomainToCustomer');
+
+  // Notify customer
+  await supabase.from('notifications').insert([{
+    customer_id: customerId,
+    type: 'update',
+    title: 'Domain Assigned',
+    message: `Domain "${domainName}" has been assigned to your account (${registrationPeriod} yr).`,
+    read_status: false,
+  }]);
+
+  // Log in activity log
+  await supabase.from('notifications').insert([{
+    customer_id: null,
+    type: 'product_assigned',
+    title: `Domain Assigned — ${domainName}`,
+    message: `Admin assigned domain "${domainName}" (${registrationPeriod} yr) directly to customer.`,
+  }]);
+
+  return record;
+};
+
+export const assignHostingToCustomer = async (data) => {
+  const { customerId, hostingType, planName, billingPeriod, domain, notes, price } = data;
+  const packageSummary = `${hostingType} - ${planName} | Billing: ${billingPeriod} | Domain: ${domain || 'N/A'} | Notes: ${notes || 'None'}`;
+
+  // Calculate expiry based on billing period
+  let expiryDate = null;
+  if (billingPeriod) {
+    const d = new Date();
+    const b = String(billingPeriod).toLowerCase();
+    if (b.includes('yearly') || b.includes('annual') || b.includes('12')) d.setFullYear(d.getFullYear() + 1);
+    else if (b.includes('6') || b.includes('semi')) d.setMonth(d.getMonth() + 6);
+    else if (b.includes('3') || b.includes('quarter')) d.setMonth(d.getMonth() + 3);
+    else if (b.includes('2') && !b.includes('month')) d.setFullYear(d.getFullYear() + 2);
+    else d.setMonth(d.getMonth() + 1);
+    expiryDate = d.toISOString();
+  }
+
+  const { data: record, error } = await supabase
+    .from('hosting_requests')
+    .insert([{
+      customer_id: customerId,
+      package_type: packageSummary,
+      hosting_type: hostingType,
+      plan_name: planName,
+      billing_period: billingPeriod,
+      domain: domain || null,
+      status: 'approved',
+      expiry_date: expiryDate,
+      notes: notes || null,
+      price: price || null,
+      created_at: new Date().toISOString(),
+    }])
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'assignHostingToCustomer');
+
+  // Notify customer
+  await supabase.from('notifications').insert([{
+    customer_id: customerId,
+    type: 'update',
+    title: 'Hosting Package Assigned',
+    message: `Hosting package "${hostingType} - ${planName}" (${billingPeriod}) has been assigned to your account.`,
+    read_status: false,
+  }]);
+
+  // Log in activity log
+  await supabase.from('notifications').insert([{
+    customer_id: null,
+    type: 'product_assigned',
+    title: `Hosting Assigned — ${hostingType} ${planName}`,
+    message: `Admin assigned hosting "${hostingType} - ${planName}" (${billingPeriod}) directly to customer.`,
+  }]);
+
+  return record;
+};
+
+export const assignEmailToCustomer = async (data) => {
+  const { customerId, email, registrationPeriod, expiryDate, notes, price } = data;
+  const { data: record, error } = await supabase
+    .from('email_requests')
+    .insert([{
+      customer_id: customerId,
+      email,
+      status: 'approved',
+      registration_period: parseInt(registrationPeriod) || 1,
+      expiry_date: expiryDate || null,
+      notes: notes || null,
+      price: price || null,
+      created_at: new Date().toISOString(),
+    }])
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'assignEmailToCustomer');
+
+  // Notify customer
+  await supabase.from('notifications').insert([{
+    customer_id: customerId,
+    type: 'update',
+    title: 'Email Assigned',
+    message: `Email "${email}" has been assigned to your account (${registrationPeriod} yr).`,
+    read_status: false,
+  }]);
+
+  // Log in activity log
+  await supabase.from('notifications').insert([{
+    customer_id: null,
+    type: 'product_assigned',
+    title: `Email Assigned — ${email}`,
+    message: `Admin assigned email "${email}" (${registrationPeriod} yr) directly to customer.`,
+  }]);
+
+  return record;
+};

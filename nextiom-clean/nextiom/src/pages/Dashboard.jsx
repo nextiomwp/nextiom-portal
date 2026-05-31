@@ -36,7 +36,7 @@ const NAV = [
   { id: 'logs', label: 'Support Tickets', icon: MessageSquare, badgeType: 'orange' },
   { id: 'notifications', label: 'Announcements', icon: Megaphone },
   { section: 'header', label: 'SERVICES' },
-  { id: 'domains', label: 'Domains', icon: Globe },
+  // { id: 'domains', label: 'Domains', icon: Globe },
   { id: 'hosting', label: 'Hosting', icon: Server },
   { id: 'approvedEmails', label: 'Emails', icon: Mail },
   { id: 'products', label: 'Products', icon: Package },
@@ -292,7 +292,7 @@ function Dashboard({ onLogout }) {
       case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={setActive} c={c} isDark={isDark} />;
       case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} isDark={isDark} />;
       case 'domains': return <AdminDomainManagement isDark={isDark} />;
-      case 'approvedHostings': return <AdminApprovedHostings isDark={isDark} />;
+      case 'approvedHostings': return <AdminDomainManagement isDark={isDark} />;
       case 'hosting': return <AdminHostingManagement isDark={isDark} />;
       case 'hostingRequests': return <AdminHostingRequestManagement isDark={isDark} />;
       case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;

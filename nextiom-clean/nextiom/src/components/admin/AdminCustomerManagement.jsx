@@ -4,6 +4,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { getCustomers, deleteCustomer, addNotification } from '@/lib/storage';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
+import AssignOptionsDialog from '@/components/dialogs/AssignOptionsDialog';
+import AssignDomainDialog from '@/components/dialogs/AssignDomainDialog';
+import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
+import AssignEmailDialog from '@/components/dialogs/AssignEmailDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import CustomerProfileAdminView from './CustomerProfileAdminView';
 
@@ -13,6 +17,8 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [assigningCustomer, setAssigningCustomer] = useState(null);
+  const [showAssignOptions, setShowAssignOptions] = useState(false);
+  const [assignTargetType, setAssignTargetType] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -79,6 +85,24 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
     }
   };
 
+  const handleAssignSelect = (assignType) => {
+    setAssignTargetType(assignType);
+    setShowAssignOptions(false);
+    // Note: We intentionally keep assigningCustomer set so the specific
+    // assign dialog (domain/hosting/email/product) can read it
+  };
+
+  const handleAssignClose = () => {
+    setAssignTargetType(null);
+    setShowAssignOptions(false);
+    setAssigningCustomer(null);
+  };
+
+  const handleAssignSuccess = () => {
+    handleAssignClose();
+    onSuccess?.();
+  };
+
   const filteredCustomers = customers.filter(cu =>
     cu.status !== 'rejected' &&
     ((cu.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -132,7 +156,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                     <Btn color="#378ADD" onClick={() => setSelectedCustomer(customer)} title="View profile"><Eye size={12} /> View</Btn>
                     <Btn color={c.subText} onClick={() => setEditingCustomer(customer)} title="Edit"><Edit size={12} /> Edit</Btn>
-                    <Btn color="#16a34a" onClick={() => setAssigningCustomer(customer)} title="Assign product"><Plus size={12} /> Assign</Btn>
+                    <Btn color="#16a34a" onClick={() => { setAssigningCustomer(customer); setShowAssignOptions(true); }} title="Assign product/service"><Plus size={12} /> Assign</Btn>
                     <Btn color="#ef4444" onClick={() => handleDelete(customer.id)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                   </div>
                 </td>
@@ -143,21 +167,59 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
         </table>
       </div>
 
+      {/* Assign Options Dialog */}
+      <AssignOptionsDialog
+        open={showAssignOptions && !!assigningCustomer}
+        onClose={() => { setShowAssignOptions(false); }}
+        onSelect={handleAssignSelect}
+        customer={assigningCustomer}
+        c={c}
+      />
+
+      {/* Assign Product Dialog (existing) */}
+      {assigningCustomer && assignTargetType === 'product' && (
+        <AssignProductDialog
+          open={true}
+          onOpenChange={() => handleAssignClose()}
+          customers={[assigningCustomer]}
+          products={products}
+          onSuccess={handleAssignSuccess}
+        />
+      )}
+
+      {/* Assign Domain Dialog */}
+      <AssignDomainDialog
+        open={assigningCustomer && assignTargetType === 'domain'}
+        onClose={() => handleAssignClose()}
+        customer={assigningCustomer}
+        c={c}
+        onSuccess={handleAssignSuccess}
+      />
+
+      {/* Assign Hosting Dialog */}
+      <AssignHostingDialog
+        open={assigningCustomer && assignTargetType === 'hosting'}
+        onClose={() => handleAssignClose()}
+        customer={assigningCustomer}
+        c={c}
+        onSuccess={handleAssignSuccess}
+      />
+
+      {/* Assign Email Dialog */}
+      <AssignEmailDialog
+        open={assigningCustomer && assignTargetType === 'email'}
+        onClose={() => handleAssignClose()}
+        customer={assigningCustomer}
+        c={c}
+        onSuccess={handleAssignSuccess}
+      />
+
       {editingCustomer && (
         <EditCustomerDialog
           open={!!editingCustomer}
           onOpenChange={() => setEditingCustomer(null)}
           customer={editingCustomer}
           onSuccess={() => { setEditingCustomer(null); loadCustomers(); onSuccess?.(); }}
-        />
-      )}
-      {assigningCustomer && (
-        <AssignProductDialog
-          open={!!assigningCustomer}
-          onOpenChange={() => setAssigningCustomer(null)}
-          customers={[assigningCustomer]}
-          products={products}
-          onSuccess={() => { setAssigningCustomer(null); onSuccess?.(); }}
         />
       )}
     </div>
