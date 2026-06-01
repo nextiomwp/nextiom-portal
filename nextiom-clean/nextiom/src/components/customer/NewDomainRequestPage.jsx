@@ -7,6 +7,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
   const [domainName, setDomainName] = useState('');
+  const [domainNameError, setDomainNameError] = useState('');
   const [extension, setExtension] = useState('.com');
   const [period, setPeriod] = useState('1');
   const [notes, setNotes] = useState('');
@@ -23,15 +24,28 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
 
+  const handleDomainNameChange = (value) => {
+    setDomainName(value);
+    if (value && value.trim().includes(' ')) {
+      setDomainNameError('Domain name must be a single word (no spaces)');
+    } else {
+      setDomainNameError('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!domainName) {
+      toast({ title: 'Error', description: 'Please enter a domain name', variant: 'destructive' });
+      return;
+    }
+    if (domainNameError) {
+      toast({ title: 'Error', description: domainNameError, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       await assertPortalActionsAllowed();
-      if (!domainName) {
-        toast({ title: 'Error', description: 'Please enter a domain name', variant: 'destructive' });
-        return;
-      }
       const customerId = await resolveCustomerId({
         customerId: user?.id,
         userId: authUser?.id,
@@ -152,12 +166,13 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
               <input
                 type="text"
                 value={domainName}
-                onChange={e => setDomainName(e.target.value)}
+                onChange={e => handleDomainNameChange(e.target.value)}
                 placeholder="example"
-                style={{ ...inputStyle, paddingLeft: 34, fontSize: 15 }}
-                onFocus={e => e.target.style.borderColor = brand}
-                onBlur={e => e.target.style.borderColor = borderStrong}
+                style={{ ...inputStyle, paddingLeft: 34, fontSize: 15, borderColor: domainNameError ? '#dc2626' : borderStrong }}
+                onFocus={e => e.target.style.borderColor = domainNameError ? '#dc2626' : brand}
+                onBlur={e => e.target.style.borderColor = domainNameError ? '#dc2626' : borderStrong}
               />
+              {domainNameError && <p style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>{domainNameError}</p>}
             </div>
             <select
               value={extension}

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
   const [emailName, setEmailName] = useState('');
+  const [emailNameError, setEmailNameError] = useState('');
   const [extension, setExtension] = useState('.com');
   const [period, setPeriod] = useState('1');
   const [notes, setNotes] = useState('');
@@ -23,15 +24,28 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
 
+  const handleEmailNameChange = (value) => {
+    setEmailName(value);
+    if (value && value.trim().includes(' ')) {
+      setEmailNameError('Email name must be a single word (no spaces)');
+    } else {
+      setEmailNameError('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!emailName) {
+      toast({ title: 'Error', description: 'Please enter an email name', variant: 'destructive' });
+      return;
+    }
+    if (emailNameError) {
+      toast({ title: 'Error', description: emailNameError, variant: 'destructive' });
+      return;
+    }
     setLoading(true);
     try {
       await assertPortalActionsAllowed();
-      if (!emailName) {
-        toast({ title: 'Error', description: 'Please enter a domain name', variant: 'destructive' });
-        return;
-      }
       const customerId = await resolveCustomerId({
         customerId: user?.id,
         userId: authUser?.id,
@@ -151,7 +165,7 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         </div>
         <div>
           <h1 style={{ color: text, fontSize: 20, fontWeight: 800 }}>Order Email</h1>
-          <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>Submit a request to register a new domain name.</p>
+          <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>Submit a request to register a new email address.</p>
         </div>
       </div>
 
@@ -164,12 +178,13 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
               <input
                 type="text"
                 value={emailName}
-                onChange={e => setEmailName(e.target.value)}
+                onChange={e => handleEmailNameChange(e.target.value)}
                 placeholder="example"
-                style={{ ...inputStyle, paddingLeft: 34, fontSize: 15 }}
-                onFocus={e => e.target.style.borderColor = brand}
-                onBlur={e => e.target.style.borderColor = borderStrong}
+                style={{ ...inputStyle, paddingLeft: 34, fontSize: 15, borderColor: emailNameError ? '#dc2626' : borderStrong }}
+                onFocus={e => e.target.style.borderColor = emailNameError ? '#dc2626' : brand}
+                onBlur={e => e.target.style.borderColor = emailNameError ? '#dc2626' : borderStrong}
               />
+              {emailNameError && <p style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>{emailNameError}</p>}
             </div>
             <select
               value={extension}
