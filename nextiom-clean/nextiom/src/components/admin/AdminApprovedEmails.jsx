@@ -72,7 +72,7 @@ function AdminApprovedEmails({ isDark = true }) {
     try {
       setIsLoading(true);
       const data = await getEmailRequests();
-      setEmails((data || []).filter(h => String(h.status || '').toLowerCase() === 'approved'));
+      setEmails((data || []).filter(h => ['approved', 'active', 'completed'].includes(String(h.status || '').toLowerCase())));
     } catch (e) {
       toast({ title: 'Error', description: 'Failed to load email data', variant: 'destructive' });
     } finally {

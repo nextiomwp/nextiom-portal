@@ -12,6 +12,10 @@ function AdminDomainManagement({ isDark = true }) {
   const [editDomain, setEditDomain] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 900px)').matches;
+  });
   const { toast } = useToast();
 
   const c = isDark
@@ -53,6 +57,18 @@ function AdminDomainManagement({ isDark = true }) {
   );
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    onChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -207,7 +223,8 @@ function AdminDomainManagement({ isDark = true }) {
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Domains</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredDomains.length} domain{filteredDomains.length !== 1 ? 's' : ''}</span>
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: 920, borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th style={thS}>Domain</th>
@@ -259,6 +276,7 @@ function AdminDomainManagement({ isDark = true }) {
             {filteredDomains.length === 0 && <tr><td colSpan={6} style={emptyS}>No approved domains found</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Edit Modal */}
@@ -285,7 +303,7 @@ function AdminDomainManagement({ isDark = true }) {
                   ))}
                 </select>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Registration Period (yrs)</label>
                   <input style={inpS} type="number" min="1" value={editForm.registration_period} onChange={e => setEditForm(f => ({ ...f, registration_period: e.target.value }))} />
@@ -295,7 +313,7 @@ function AdminDomainManagement({ isDark = true }) {
                   <input style={inpS} type="date" value={editForm.start_date} onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Expiry Date</label>
                   <input style={inpS} type="date" value={editForm.expiry_date} onChange={e => setEditForm(f => ({ ...f, expiry_date: e.target.value }))} />

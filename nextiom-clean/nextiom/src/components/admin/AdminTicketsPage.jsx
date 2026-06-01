@@ -21,7 +21,7 @@ function fmtTime(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export default function AdminTicketsPage({ c, isDark }) {
+export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -124,10 +124,12 @@ export default function AdminTicketsPage({ c, isDark }) {
 
   const inp = { outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
 
+  const showList = !isMobile || !selected;
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 26vw) minmax(0, 1fr)', gap: 0, width: '100%', height: 'calc(100vh - 180px)', minHeight: 500, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(360px, 26vw) minmax(0, 1fr)', gap: 0, width: '100%', height: isMobile ? 'auto' : 'calc(100vh - 180px)', minHeight: 500, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxSizing: 'border-box' }}>
       {/* Inbox list */}
-      <div style={{ borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', background: c.card, minHeight: 0 }}>
+      <div style={{ borderRight: isMobile ? 'none' : `1px solid ${c.border}`, display: showList ? 'flex' : 'none', flexDirection: 'column', background: c.card, minHeight: 0 }}>
         <div style={{ padding: '14px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Ticket size={15} style={{ color: c.brand }} />
@@ -191,7 +193,7 @@ export default function AdminTicketsPage({ c, isDark }) {
 
       {/* Chat panel */}
       {selected ? (
-        <div style={{ display: 'flex', flexDirection: 'column', background: isDark ? '#15161A' : '#f8f8f7', minHeight: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', background: isDark ? '#15161A' : '#f8f8f7', minHeight: 0, gridColumn: isMobile ? '1' : 'auto' }}>
           {/* Chat header */}
           <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: c.card }}>
             <div style={{ flex: 1, minWidth: 0 }}>

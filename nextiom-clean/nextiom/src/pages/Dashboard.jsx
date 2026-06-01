@@ -84,6 +84,7 @@ function Dashboard({ onLogout }) {
   const [products, setProducts] = useState([]);
   const [licenses, setLicenses] = useState([]);
   const [emailLogs, setEmailLogs] = useState([]);
+  const [emailRequests, setEmailRequests] = useState([]);
   const [stats, setStats] = useState({ totalCustomers: 0, totalDomains: 0, activeMemberships: 0, expiringSoon: 0, expired: 0 });
   const [requests, setRequests] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -92,6 +93,11 @@ function Dashboard({ onLogout }) {
   const [activeEmailsCount, setActiveEmailsCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1024px)').matches;
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
@@ -137,6 +143,28 @@ function Dashboard({ onLogout }) {
   const { toast } = useToast();
   const { signOut } = useAuth();
 
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)');
+    const handleChange = (event) => {
+      setIsMobile(event.matches);
+      if (!event.matches) setIsMobileSidebarOpen(false);
+    };
+
+    handleChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', handleChange);
+      return () => media.removeEventListener('change', handleChange);
+    }
+
+    media.addListener(handleChange);
+    return () => media.removeListener(handleChange);
+  }, []);
+
+  const navigateTo = (tabId) => {
+    setActive(tabId);
+    setIsMobileSidebarOpen(false);
+  };
+
   const c = isDark
     ? { bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', card: '#1C1E24', panel2: '#22252C', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
     : { bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', card: '#fff', panel2: '#f5f5f5', hover: '#f5f5f5', brand: '#e87b35' };
@@ -171,6 +199,7 @@ function Dashboard({ onLogout }) {
       setUnreadTicketCount(utc);
       setCustomers(cus || []); setProducts(prd || []); setLicenses(lic || []);
       setStats(sts || {}); setEmailLogs(lgs || []);
+      setEmailRequests(emailReqs || []);
       const domainReqRows = (domReq || []).map(r => ({
         ...r,
         source: 'domain',
@@ -311,19 +340,19 @@ function Dashboard({ onLogout }) {
   const renderContent = () => {
     if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div>;
     switch (active) {
-      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={setActive} onViewCustomer={cu => { setSelectedCustomer(cu); setActive('customerProfile'); }} onConfirmCustomer={handleConfirmCustomer} onRejectCustomer={handleRejectCustomer} c={c} isDark={isDark} />;
+      case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={navigateTo} onViewCustomer={cu => { setSelectedCustomer(cu); navigateTo('customerProfile'); }} onConfirmCustomer={handleConfirmCustomer} onRejectCustomer={handleRejectCustomer} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
-      case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => setActive('overview')} isDark={isDark} /> : null;
-      case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={setActive} c={c} isDark={isDark} />;
+      case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} /> : null;
+      case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={navigateTo} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} isDark={isDark} />;
       case 'domains': return <AdminDomainManagement isDark={isDark} />;
       case 'approvedHostings': return <AdminDomainManagement isDark={isDark} />;
-      case 'hosting': return <AdminHostingManagement isDark={isDark} />;
+      case 'hosting': return <AdminHostingManagement isDark={isDark} isMobile={isMobile} />;
       case 'hostingRequests': return <AdminHostingRequestManagement isDark={isDark} />;
       case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;
       case 'products': return <ProductList products={products} onUpdate={loadData} isDark={isDark} c={c} />;
-      case 'notifications': return <AdminNotificationManagement isDark={isDark} />;
-      case 'logs': return <AdminTicketsPage c={c} isDark={isDark} />;
+      case 'notifications': return <AdminNotificationManagement isDark={isDark} isMobile={isMobile} />;
+      case 'logs': return <AdminTicketsPage c={c} isDark={isDark} isMobile={isMobile} />;
       case 'invoices': {
         const goList = () => { setEditInvoiceId(null); setInvoiceView('list'); };
         if (invoiceView === 'new') return <NewInvoicePage c={c} isDark={isDark} onBack={goList} />;
@@ -342,8 +371,9 @@ function Dashboard({ onLogout }) {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: c.bg, color: c.text, fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <div style={{ width: sidebarOpen ? 240 : 80, background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.2s', zIndex: 10 }}>
+    <div style={{ display: 'flex', height: '100dvh', background: c.bg, color: c.text, fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden', position: 'relative' }}>
+      {!isMobile && (
+      <div style={{ width: sidebarOpen ? 240 : 80, background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.2s', zIndex: 10, flexShrink: 0 }}>
         <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
@@ -368,7 +398,9 @@ function Dashboard({ onLogout }) {
               if (isItem.id === 'logs') { badge = unreadTicketCount; badgeColor = c.brand; }
               else if (isItem.id === 'domainsRequests') { badge = pendingRequests.filter(r => r.source === 'domain').length; }
               else if (isItem.id === 'hostingRequests') { badge = pendingRequests.filter(r => r.source === 'hosting').length; }
-              else if (isItem.id === 'emailRequests') { /* email pending count from requests — adminNotifs based */ badge = adminNotifsForDropdown.filter(n => n.type === 'email_request' && !readNotifIds.includes('notif_' + n.id)).length; }
+              else if (isItem.id === 'emailRequests') {
+                badge = (emailRequests || []).filter(e => String(e.status || '').toLowerCase() === 'pending').length;
+              }
             }
             if (isItem.badgeType === 'green') {
               badgeColor = '#16a34a';
@@ -400,16 +432,79 @@ function Dashboard({ onLogout }) {
           </div>
         </div>
       </div>
+      )}
+
+      {isMobile && isMobileSidebarOpen && (
+        <>
+          <div
+            onClick={() => setIsMobileSidebarOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 29 }}
+          />
+          <div style={{ position: 'fixed', inset: '0 auto 0 0', width: 288, maxWidth: '88vw', background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', zIndex: 30, boxShadow: '8px 0 28px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding: '20px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>NEXTIOM</div>
+                <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>
+              </div>
+              <button onClick={() => setIsMobileSidebarOpen(false)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', display: 'flex', padding: 2 }}>
+                <ChevronLeft size={16} />
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
+              {NAV.map((item, i) => {
+                if (item.section === 'divider') return <div key={`mdiv-${i}`} style={{ height: 12 }} />;
+                if (item.section === 'header') return <div key={`mh-${i}`} style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
+                let badge = 0;
+                let dot = false;
+                let badgeColor = c.brand;
+                if (item.badgeType === 'orange' || item.id === 'logs') {
+                  if (item.id === 'logs') { badge = unreadTicketCount; badgeColor = c.brand; }
+                  else if (item.id === 'domainsRequests') { badge = pendingRequests.filter(r => r.source === 'domain').length; }
+                  else if (item.id === 'hostingRequests') { badge = pendingRequests.filter(r => r.source === 'hosting').length; }
+                  else if (item.id === 'emailRequests') { badge = (emailRequests || []).filter(e => String(e.status || '').toLowerCase() === 'pending').length; }
+                }
+                if (item.badgeType === 'green') {
+                  badgeColor = '#16a34a';
+                  if (item.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && String(r.status).toLowerCase() === 'approved').length; }
+                  else if (item.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && String(r.status || '').toLowerCase() === 'approved').length; }
+                  else if (item.id === 'approvedEmailsActive') { badge = activeEmailsCount; }
+                }
+                if (item.id === 'invoices') {
+                  dot = allAdminNotifs.filter(n => n.type === 'payment_submitted' && !readNotifIds.includes('notif_' + n.id)).length > 0;
+                }
+                return <NavItem key={item.id} item={item} active={active} setActive={navigateTo} open={true} c={c} badge={badge} badgeColor={badgeColor} dot={dot} onSelectMobile={() => setIsMobileSidebarOpen(false)} />;
+              })}
+            </div>
+            <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: c.bg, borderRadius: 8 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>A</div>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Admin</div>
+                  <div style={{ fontSize: 11, color: c.subText, textOverflow: 'ellipsis', overflow: 'hidden' }}>info@nextiom.com</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button onClick={() => setIsSettingsOpen(true)} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
+                  <Settings size={16} />
+                </button>
+                <button onClick={handleLogout} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.brand, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} className={isDark ? 'dashboard-dark' : ''}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '24px 32px', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: c.text, cursor: 'pointer', padding: 0, display: 'flex' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: isMobile ? '12px 16px' : '24px 32px', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderBottom: isMobile ? `1px solid ${c.border}` : 'none', background: isMobile ? c.sidebar : 'transparent' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button onClick={() => (isMobile ? setIsMobileSidebarOpen(true) : setSidebarOpen(!sidebarOpen))} style={{ background: 'none', border: 'none', color: c.text, cursor: 'pointer', padding: 0, display: 'flex' }}>
               <Menu size={20} />
             </button>
-            <div style={{ fontSize: 20, fontWeight: 600 }}>{NAV.find(n => n.id === active)?.label || 'Dashboard'}</div>
+            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{NAV.find(n => n.id === active)?.label || 'Dashboard'}</div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
             <button onClick={() => setIsDark(!isDark)} style={{ background: c.card, border: `1px solid ${c.border}`, color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer' }}>
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
@@ -493,19 +588,19 @@ function Dashboard({ onLogout }) {
                 </div>
               )}
             </div>
-            <div onClick={() => setActive('adminProfile')} style={{ background: c.brand, width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', cursor: 'pointer' }} title="Admin Profile">A</div>
+            <div onClick={() => navigateTo('adminProfile')} style={{ background: c.brand, width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', cursor: 'pointer', flexShrink: 0 }} title="Admin Profile">A</div>
             {active === 'products' && (
-              <button onClick={() => setIsAddProductOpen(true)} style={{ background: c.brand, color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                <Plus size={16} /> Product
+              <button onClick={() => setIsAddProductOpen(true)} style={{ background: c.brand, color: '#fff', border: 'none', padding: isMobile ? '8px 10px' : '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <Plus size={16} />{!isMobile && ' Product'}
               </button>
             )}
-            <button onClick={() => setIsAddCustomerOpen(true)} style={{ background: c.sidebar, color: c.text, border: `1px solid ${c.border}`, padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <Plus size={16} /> Add Customer
+            <button onClick={() => setIsAddCustomerOpen(true)} style={{ background: c.sidebar, color: c.text, border: `1px solid ${c.border}`, padding: isMobile ? '8px 10px' : '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <Plus size={16} />{!isMobile && ' Add Customer'}
             </button>
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 32px 32px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0 16px 20px' : '0 32px 32px' }}>
           {renderContent()}
         </div>
       </div>
@@ -517,12 +612,12 @@ function Dashboard({ onLogout }) {
   );
 }
 
-function NavItem({ item, active, setActive, open, c, badge = 0, badgeColor, dot = false }) {
+function NavItem({ item, active, setActive, open, c, badge = 0, badgeColor, dot = false, onSelectMobile }) {
   const isActive = active === item.id;
   const color = isActive ? c.text : c.subText;
   const bc = badgeColor || c.brand;
   return (
-    <button onClick={() => setActive(item.id)} style={{
+    <button onClick={() => { setActive(item.id); if (onSelectMobile) onSelectMobile(); }} style={{
       display: 'flex', alignItems: 'center', justifyContent: open ? 'flex-start' : 'center', gap: 12, padding: open ? '10px 12px' : '10px 0', width: '100%', border: 'none',
       background: isActive ? c.hover : 'transparent', borderRadius: 8, cursor: 'pointer',
       borderLeft: isActive ? `3px solid ${c.brand}` : '3px solid transparent', marginBottom: 4, transition: 'all 0.1s'
@@ -550,7 +645,7 @@ function MiniSparkline({ value, color }) {
   return <svg width={W} height={H} style={{ display: 'block' }}><polyline points={coords} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, onViewCustomer, onConfirmCustomer, onRejectCustomer, c, isDark }) {
+function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, onViewCustomer, onConfirmCustomer, onRejectCustomer, c, isDark, isMobile = false }) {
   const approvedDomains = requests.filter(r => r.source === 'domain' && String(r.status || '').toLowerCase() === 'approved').length;
   const pendingCustomers = customers.filter(cu => String(cu.status || '').toLowerCase() === 'pending');
   const initials = name => (name || '?').split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
@@ -569,7 +664,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
         <p style={{ fontSize: 14, color: c.subText }}>Here's what's happening with your portal today.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
         {statCards.map(s => (
           <div key={s.label} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -587,7 +682,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16 }}>
         <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start', flexShrink: 0 }}>
             <div>
@@ -596,8 +691,8 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
             </div>
             <button onClick={() => onNavigate('customers')} style={{ color: c.brand, background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>View all →</button>
           </div>
-          <div style={{ overflowY: 'auto', maxHeight: 320, marginTop: 8 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: 320, marginTop: 8 }}>
+            <table style={{ width: '100%', minWidth: isMobile ? 620 : '100%', borderCollapse: 'collapse' }}>
               <thead style={{ position: 'sticky', top: 0, background: c.card, zIndex: 1 }}>
                 <tr style={{ color: c.subText, fontSize: 11, letterSpacing: '0.05em' }}>
                   <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Customer</th>
@@ -704,6 +799,7 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
 }
 
 function AdminProfileContent({ c, isDark }) {
+  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
   return (
     <div style={{ maxWidth: 600 }}>
       <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 24 }}>
@@ -714,7 +810,7 @@ function AdminProfileContent({ c, isDark }) {
             <div style={{ fontSize: 13, color: c.subText }}>Super Administrator</div>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
           {[{ label: 'Email', value: 'info@nextiom.com' }, { label: 'Role', value: 'Super Admin' }, { label: 'Portal', value: 'Nextiom Admin' }, { label: 'Status', value: 'Active' }].map(f => (
             <div key={f.label}>
               <div style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
@@ -727,7 +823,7 @@ function AdminProfileContent({ c, isDark }) {
   );
 }
 
-function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark }) {
+function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark, isMobile = false }) {
   const pendingReqs = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
   const recentCustomers = customers.filter(c => c.status === 'pending').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -747,7 +843,7 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <button onClick={() => onNavigate('overview')} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '6px 8px', borderRadius: 8, display: 'flex', alignItems: 'center', fontSize: 13 }}>← Back</button>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: c.text }}>All Notifications</h2>
@@ -762,7 +858,7 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
         </div>
         {allItems.length === 0 && <div style={{ padding: 32, textAlign: 'center', color: c.subText, fontSize: 13 }}>No notifications</div>}
         {allItems.map((item, i) => (
-          <div key={item.id + i} onClick={() => { if (item.type === 'request') onNavigate(item.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); else if (item.type === 'customer') onNavigate('customers'); }} style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 14, cursor: item.type !== 'notification' ? 'pointer' : 'default', transition: 'background 0.1s' }} onMouseEnter={e => e.currentTarget.style.background = c.hover} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+          <div key={item.id + i} onClick={() => { if (item.type === 'request') onNavigate(item.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); else if (item.type === 'customer') onNavigate('customers'); }} style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 14, cursor: item.type !== 'notification' ? 'pointer' : 'default', transition: 'background 0.1s', flexWrap: isMobile ? 'wrap' : 'nowrap' }} onMouseEnter={e => e.currentTarget.style.background = c.hover} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
             <div style={{ width: 38, height: 38, borderRadius: '50%', background: typeColor(item.type) + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Bell size={16} color={typeColor(item.type)} />
             </div>

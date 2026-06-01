@@ -20,6 +20,10 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
   const [showAssignOptions, setShowAssignOptions] = useState(false);
   const [assignTargetType, setAssignTargetType] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 900px)').matches;
+  });
   const { toast } = useToast();
 
   const c = isDark
@@ -58,6 +62,18 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => { loadCustomers(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    onChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
   }, []);
 
   const loadCustomers = async () => {
@@ -122,7 +138,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ position: 'relative', width: 280 }}>
+        <div style={{ position: 'relative', width: isMobile ? '100%' : 280 }}>
           <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
           <input
             style={{ width: '100%', paddingLeft: 32, paddingRight: 12, paddingTop: 9, paddingBottom: 9, border: `1.5px solid ${c.border}`, borderRadius: 10, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
@@ -135,7 +151,8 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
 
       <div style={cardS}>
         <SectionHeader title="Customers" accent={c.brand} />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th style={thS}>Name</th>
@@ -165,6 +182,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
             {filteredCustomers.length === 0 && <tr><td colSpan={5} style={emptyS}>No customers found</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Assign Options Dialog */}

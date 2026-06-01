@@ -174,7 +174,7 @@ function DarkCalendar({ invoiceDates, calFilter, onDayClick, onMonthClick, c, is
   );
 }
 
-function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose }) {
+function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMobile = false }) {
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
@@ -190,7 +190,7 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', zIndex: 200 }} />
-      <div style={{ position: 'fixed', top: 0, right: 0, height: '100vh', width: 640, maxWidth: '95vw', background: c.card, borderLeft: `1px solid ${c.border}`, boxShadow: '-4px 0 32px rgba(0,0,0,0.3)', zIndex: 201, display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'slideIn 0.2s ease' }}>
+      <div style={{ position: 'fixed', top: 0, right: 0, height: '100vh', width: isMobile ? '100vw' : 640, maxWidth: '100vw', background: c.card, borderLeft: `1px solid ${c.border}`, boxShadow: '-4px 0 32px rgba(0,0,0,0.3)', zIndex: 201, display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'slideIn 0.2s ease' }}>
         <style>{`@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
         {/* Drawer header */}
         <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -226,7 +226,7 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose }) {
             </div>
 
             {/* Bill to + dates */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 20, borderBottom: '1.5px solid #e0ddd8' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 20, borderBottom: '1.5px solid #e0ddd8' }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#888', marginBottom: 6 }}>Billed To</div>
                 <div style={{ fontWeight: 700, fontSize: 14 }}>{invoice.client_name}</div>
@@ -327,7 +327,7 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose }) {
   );
 }
 
-function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged }) {
+function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile = false }) {
   const [payment, setPayment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reply, setReply] = useState('');
@@ -358,7 +358,7 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged }) {
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 300 }} />
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 720, maxWidth: '95vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: isMobile ? '96vw' : 720, maxWidth: '96vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
         <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Clock size={18} style={{ color: c.brand }} />
@@ -380,7 +380,7 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged }) {
                   <div style={{ fontSize: 13, color: c.text, lineHeight: 1.55 }}>{payment.admin_reason}</div>
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 18 }}>
                 <div>
                   <div style={lbl}>Status</div>
                   <div style={val}>
@@ -448,7 +448,7 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged }) {
   );
 }
 
-function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted }) {
+function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, isMobile = false }) {
   const [txn, setTxn] = useState('');
   const [amount, setAmount] = useState(String(invoice.total ?? ''));
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
@@ -490,7 +490,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted }
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 300 }} />
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 880, maxWidth: '95vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: isMobile ? '96vw' : 880, maxWidth: '96vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)' }}>
         <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <CreditCard size={18} style={{ color: c.brand }} />
@@ -499,14 +499,14 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted }
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
         </div>
 
-        <div style={{ padding: 22, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 22 }}>
+        <div style={{ padding: 22, overflowY: 'auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 22 }}>
           {/* Left: form */}
           <div>
             <div style={{ marginBottom: 14 }}>
               <label style={label}>Transaction ID / Reference *</label>
               <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. TXN123456" />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={label}>Paid Amount (LKR) *</label>
                 <input style={inp} type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
@@ -586,6 +586,10 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   const [badgeStyle, setBadgeStyle] = useState('filled');
   const [showTweaks, setShowTweaks] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 900px)').matches;
+  });
 
   const email = user?.email || '';
 
@@ -597,6 +601,18 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [email, refreshKey]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    onChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
 
   const invoiceDates = useMemo(() =>
     invoices.map(inv => parseDateStr(inv.invoice_date)).filter(Boolean), [invoices]);
@@ -681,12 +697,12 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Page header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>Invoices & Billing</h1>
           <p style={{ fontSize: 13, color: c.subText, marginTop: 4 }}>View and download your invoices from Nextiom</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
           <button onClick={() => setRefreshKey(k => k + 1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 13px', border: `1px solid ${c.border}`, background: c.card, color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
             <RefreshCw size={14} /> Refresh
           </button>
@@ -695,7 +711,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
       </div>
 
       {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
         <KpiTile icon={<Receipt size={18} style={{ color: c.brand }} />} label="Total Billed" value={fmtAmt(totalBilled)} sub={`Across ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`} c={c} isDark={isDark} />
         <KpiTile icon={<Wallet size={18} style={{ color: '#f59e0b' }} />} label="Outstanding Balance" value={<span style={{ color: c.brand }}>{fmtAmt(outstanding)}</span>} sub={`${unpaidCount} unpaid`} subColor="#f59e0b" c={c} isDark={isDark} />
         <KpiTile icon={<CheckCircle size={18} style={{ color: '#22c55e' }} />} label="Paid This Year" value={<span style={{ color: '#22c55e' }}>{fmtAmt(paidThisYear)}</span>} sub={`${thisYear} to date`} subColor="#22c55e" c={c} isDark={isDark} />
@@ -703,7 +719,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
       </div>
 
       {/* Two-column body */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 20, alignItems: 'start' }}>
         {/* All Invoices */}
         <div style={cardS}>
           {/* Card header */}
@@ -718,7 +734,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
           {/* Toolbar */}
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {/* Search */}
-            <div style={{ position: 'relative', flex: '0 0 220px' }}>
+            <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : '0 0 220px' }}>
               <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
               <input
                 style={{ width: '100%', paddingLeft: 28, paddingRight: 10, paddingTop: 7, paddingBottom: 7, border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
@@ -755,7 +771,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
           {loading ? (
             <div style={{ padding: 48, textAlign: 'center', color: c.subText }}>Loading invoices…</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thS}>Invoice</th>
@@ -828,11 +845,12 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 )}
               </tbody>
             </table>
+            </div>
           )}
 
           {/* Pagination */}
           {!loading && filtered.length > 0 && (
-            <div style={{ padding: '12px 18px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '12px 18px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <span style={{ fontSize: 12, color: c.subText }}>Showing {a}–{b} of {filtered.length}</span>
               <div style={{ display: 'flex', gap: 4 }}>
                 <button disabled={page === 1} onClick={() => setPage(p => p - 1)} style={{ padding: '4px 8px', border: `1px solid ${c.border}`, borderRadius: 6, background: 'transparent', color: page === 1 ? c.subText : c.text, cursor: page === 1 ? 'default' : 'pointer', opacity: page === 1 ? 0.4 : 1 }}>
@@ -867,7 +885,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
 
       {/* Invoice Drawer */}
       {openInvoice && (
-        <InvoiceDrawer invoice={openInvoice} settings={settings} badgeStyle={badgeStyle} isDark={isDark} c={c} onClose={() => setOpenInvoice(null)} />
+        <InvoiceDrawer invoice={openInvoice} settings={settings} badgeStyle={badgeStyle} isDark={isDark} c={c} onClose={() => setOpenInvoice(null)} isMobile={isMobile} />
       )}
 
       {/* Payment Status Dialog (view + reply) */}
@@ -878,6 +896,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
           c={c}
           onClose={() => setStatusInvoice(null)}
           onChanged={() => setRefreshKey(k => k + 1)}
+          isMobile={isMobile}
         />
       )}
 
@@ -890,12 +909,13 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
           c={c}
           onClose={() => setPayInvoice(null)}
           onSubmitted={() => setRefreshKey(k => k + 1)}
+          isMobile={isMobile}
         />
       )}
 
       {/* Tweaks panel */}
       {showTweaks && (
-        <div style={{ position: 'fixed', bottom: 80, right: 24, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 18, boxShadow: '0 4px 20px rgba(0,0,0,0.2)', zIndex: 300, minWidth: 200 }}>
+        <div style={{ position: 'fixed', bottom: 80, right: isMobile ? 12 : 24, left: isMobile ? 12 : 'auto', background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 18, boxShadow: '0 4px 20px rgba(0,0,0,0.2)', zIndex: 300, minWidth: isMobile ? 'auto' : 200 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: c.subText, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.8 }}>Badge Style</div>
           {['filled', 'outline', 'dot'].map(s => (
             <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer' }}>

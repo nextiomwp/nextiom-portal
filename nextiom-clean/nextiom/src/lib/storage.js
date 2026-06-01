@@ -69,6 +69,85 @@ export const REQUEST_STATUS = {
   COMPLETED: 'Completed'
 };
 
+export const parseHostingPackageSummary = (summary) => {
+  const raw = String(summary || '');
+  const mainPart = raw.split('|')[0]?.trim() || '';
+  const dashIndex = mainPart.indexOf(' - ');
+  const hostingType = dashIndex >= 0 ? mainPart.slice(0, dashIndex).trim() : mainPart;
+  const planName = dashIndex >= 0 ? mainPart.slice(dashIndex + 3).trim() : mainPart;
+
+  const extractField = (label) => {
+    const match = raw.match(new RegExp(`${label}:\\s*([^|;\\n]+)`, 'i'));
+    return match?.[1]?.trim() || '';
+  };
+
+  return {
+    hostingType,
+    planName,
+    billingPeriod: extractField('Billing'),
+    domain: extractField('Domain'),
+    notes: extractField('Notes'),
+  };
+};
+
+const calculateHostingExpiryDate = (billingPeriod, startDate) => {
+  const base = startDate ? new Date(startDate) : new Date();
+  const billing = String(billingPeriod || '').toLowerCase();
+
+  if (billing.includes('yearly') || billing.includes('annual') || billing.includes('12')) {
+    base.setFullYear(base.getFullYear() + 1);
+  } else if (billing.includes('6') || billing.includes('semi')) {
+    base.setMonth(base.getMonth() + 6);
+  } else if (billing.includes('3') || billing.includes('quarter')) {
+    base.setMonth(base.getMonth() + 3);
+  } else if (billing.includes('2') && !billing.includes('month')) {
+    base.setFullYear(base.getFullYear() + 2);
+  } else {
+    base.setMonth(base.getMonth() + 1);
+  }
+
+  return base.toISOString();
+};
+
+const getHostingPlanLimits = async (hostingType, planName) => {
+  if (!hostingType || !planName) return { disk_usage_limit: null, bandwidth_limit: null };
+
+  try {
+    const plans = await getHostingPlans();
+    const plan = (plans || []).find(p => p.hosting_type === hostingType && p.plan_name === planName);
+    return {
+      disk_usage_limit: plan?.storage || null,
+      bandwidth_limit: plan?.bandwidth || null,
+    };
+  } catch {
+    return { disk_usage_limit: null, bandwidth_limit: null };
+  }
+};
+
+export const buildHostingRequestUpdatePayload = async (request, { status, startDate } = {}) => {
+  const parsed = parseHostingPackageSummary(request?.package_type || '');
+  const normalizedStatus = String(status || request?.status || '').toLowerCase();
+  const isApproved = ['approved', 'completed'].includes(normalizedStatus);
+  const startIso = isApproved ? (startDate ? new Date(startDate).toISOString() : new Date().toISOString()) : undefined;
+  const limits = isApproved
+    ? await getHostingPlanLimits(request?.hosting_type || parsed.hostingType, request?.plan_name || parsed.planName)
+    : { disk_usage_limit: null, bandwidth_limit: null };
+
+  return {
+    status: normalizedStatus,
+    updated_at: new Date().toISOString(),
+    ...(isApproved ? { start_date: startIso } : {}),
+    hosting_type: request?.hosting_type || parsed.hostingType || null,
+    plan_name: request?.plan_name || parsed.planName || null,
+    billing_period: request?.billing_period || parsed.billingPeriod || null,
+    domain: request?.domain || request?.domain_name || parsed.domain || null,
+    notes: request?.notes || parsed.notes || null,
+    expiry_date: request?.expiry_date || (isApproved && (request?.billing_period || parsed.billingPeriod) ? calculateHostingExpiryDate(request?.billing_period || parsed.billingPeriod, startIso) : null),
+    disk_usage_limit: request?.disk_usage_limit || limits.disk_usage_limit || null,
+    bandwidth_limit: request?.bandwidth_limit || limits.bandwidth_limit || null,
+  };
+};
+
 export const REQUEST_TYPE = {
   REGISTRATION: 'Registration',
   RENEWAL: 'Renewal',
@@ -1198,6 +1277,19 @@ export const assignHostingToCustomer = async (data) => {
   const diskLimit = diskUsageLimit && diskUsageLimit.trim() ? diskUsageLimit.trim() : null;
   const bwLimit = bandwidthLimit && bandwidthLimit.trim() ? bandwidthLimit.trim() : null;
 
+  // If admin didn't override allocated resources, pull defaults from hosting plans
+  let finalDiskLimit = diskLimit;
+  let finalBwLimit = bwLimit;
+  if (!finalDiskLimit || !finalBwLimit) {
+    try {
+      const planLimits = await getHostingPlanLimits(hostingType, planName);
+      finalDiskLimit = finalDiskLimit || planLimits.disk_usage_limit || null;
+      finalBwLimit = finalBwLimit || planLimits.bandwidth_limit || null;
+    } catch (e) {
+      // ignore and leave limits as-is
+    }
+  }
+
   const { data: record, error } = await supabase
     .from('hosting_requests')
     .insert([{
@@ -1211,8 +1303,8 @@ export const assignHostingToCustomer = async (data) => {
       expiry_date: expiryDate,
       notes: notes || null,
       price: price || null,
-      disk_usage_limit: diskLimit,
-      bandwidth_limit: bwLimit,
+      disk_usage_limit: finalDiskLimit,
+      bandwidth_limit: finalBwLimit,
       created_at: new Date().toISOString(),
       start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
     }])

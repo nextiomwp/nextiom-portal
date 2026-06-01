@@ -26,7 +26,7 @@ function DeleteModal({ open, onCancel, onConfirm, loading }) {
 function AdminRequestManagement({ isDark = true }) {
   const [requests, setRequests] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState(REQUEST_STATUS.PENDING);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
@@ -87,7 +87,7 @@ function AdminRequestManagement({ isDark = true }) {
 
   const handleStatusUpdate = async (id, newStatus) => {
     const req = requests.find(r => r.id === id);
-    const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
+    const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase();
     await updateDomainRequest(id, {
       status: String(newStatus).toLowerCase(),
       updated_at: new Date().toISOString(),
@@ -130,18 +130,26 @@ function AdminRequestManagement({ isDark = true }) {
   };
 
   const getCustomerName = (req) => req.customers?.name || customers.find(cu => cu.id === req.customer_id)?.name || 'Unknown';
-  const isPending = (status) => String(status || '').toLowerCase() === 'pending';
-  const fmtStatus = (status) => { if (!status) return 'Unknown'; const n = String(status).toLowerCase(); return n.charAt(0).toUpperCase() + n.slice(1); };
+  const normalizeRequestStatus = (status) => {
+    const s = String(status || '').toLowerCase();
+    return s === 'completed' ? 'approved' : s;
+  };
+  const isPending = (status) => normalizeRequestStatus(status) === 'pending';
+  const fmtStatus = (status) => {
+    const normalized = normalizeRequestStatus(status);
+    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : 'Unknown';
+  };
 
-  const allStatuses = ['All', REQUEST_STATUS.PENDING, REQUEST_STATUS.COMPLETED, REQUEST_STATUS.REJECTED];
-  const filtered = requests.filter(r => statusFilter === 'All' || String(r.status || '').toLowerCase() === String(statusFilter || '').toLowerCase());
+  // Only show Pending and Rejected — approved items go to Active Domains section
+  const allStatuses = [REQUEST_STATUS.PENDING, REQUEST_STATUS.REJECTED];
+  const filtered = requests.filter(r => normalizeRequestStatus(r.status) === normalizeRequestStatus(statusFilter));
 
   return (
     <div>
       <DeleteModal open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
 
       {/* Status filter tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4, width: 'fit-content', overflowX: 'auto', maxWidth: '100%' }}>
         {allStatuses.map(s => (
           <button key={s} onClick={() => setStatusFilter(s)} style={{
             padding: '7px 16px', fontSize: 13, fontWeight: 500, borderRadius: 9, border: 'none', cursor: 'pointer', transition: 'all 0.15s', textTransform: 'capitalize',
@@ -155,7 +163,7 @@ function AdminRequestManagement({ isDark = true }) {
       <div style={cardS}>
         <SectionHeader title="Domain Requests" accent="#ba7517" />
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', minWidth: 920, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={thS}>Type</th>
@@ -187,7 +195,7 @@ function AdminRequestManagement({ isDark = true }) {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                       {isPending(req.status) && (
                         <>
-                          <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}><CheckCircle size={12} /> Approve</Btn>
+                          <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.APPROVED)}><CheckCircle size={12} /> Approve</Btn>
                           <Btn color="#ef4444" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}><XCircle size={12} /> Reject</Btn>
                         </>
                       )}

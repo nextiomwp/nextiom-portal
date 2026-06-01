@@ -44,7 +44,7 @@ const ModalBox = ({ children, wide, c }) => (
   </motion.div>
 );
 
-function AdminHostingManagement({ isDark = true }) {
+function AdminHostingManagement({ isDark = true, isMobile = false }) {
   const [plans, setPlans] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
@@ -176,7 +176,7 @@ function AdminHostingManagement({ isDark = true }) {
           <option value="All">All Types</option>
           {allHostingTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
-        <button onClick={openAdd} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 9, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+        <button onClick={openAdd} style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 9, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}>
           <Plus size={14} /> New Package
         </button>
       </div>
@@ -187,7 +187,7 @@ function AdminHostingManagement({ isDark = true }) {
           No hosting plans yet. Click "+ New Package" to add one.
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 16 }}>
           {groupedTypes.map(type => {
             const typePlans = filtered.filter(p => p.hosting_type === type);
             return (
@@ -206,7 +206,8 @@ function AdminHostingManagement({ isDark = true }) {
                     <Plus size={11} /> Add Plan
                   </button>
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse' }}>
                   <thead>
                     <tr>
                       <th style={{ ...thS, padding: '9px 12px' }}>Plan</th>
@@ -241,6 +242,7 @@ function AdminHostingManagement({ isDark = true }) {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
             );
           })}

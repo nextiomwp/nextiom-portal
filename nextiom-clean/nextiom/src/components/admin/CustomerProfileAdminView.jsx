@@ -14,6 +14,7 @@ import {
   getLicenses,
   updateLicense,
   deleteLicense,
+  buildHostingRequestUpdatePayload,
 } from '@/lib/storage';
 import { format } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
@@ -29,6 +30,10 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [licenses, setLicenses] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 900px)').matches;
+  });
   const { toast } = useToast();
 
   const loadAll = async () => {
@@ -46,6 +51,18 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   };
 
   useEffect(() => { loadAll(); }, [customer?.id]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    onChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
 
   if (!customerData) return null;
 
@@ -82,7 +99,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       : hostingRequests.find(r => r.id === id);
     const isApproved = String(status).toLowerCase() === 'approved';
     if (type === 'domain') await updateDomainRequest(id, { status, updated_at: new Date().toISOString(), start_date: isApproved ? new Date().toISOString() : undefined });
-    else await updateHostingRequest(id, { status, updated_at: new Date().toISOString(), start_date: isApproved ? new Date().toISOString() : undefined });
+    else {
+      const requestUpdates = await buildHostingRequestUpdatePayload(req, {
+        status,
+        startDate: isApproved ? new Date().toISOString() : undefined,
+      });
+      await updateHostingRequest(id, requestUpdates);
+    }
     const label = type === 'domain' ? (req?.domain_name || 'Domain') : (parsePackage(req?.package_type || '').name || 'Hosting');
     addNotification({ customer_id: null, type: 'request_updated', title: `${type === 'domain' ? 'Domain' : 'Hosting'} Request Updated — ${label}`, message: `Admin set ${label} request to "${status}" for ${customerData.name}.` }).catch(() => {});
     await loadAll();
@@ -240,7 +263,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
             <button onClick={handleSendPasswordReset} disabled={isSendingReset} title="Send password reset email to this customer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '9px 16px', borderRadius: 9, border: `1.5px solid ${c.brand}`,
@@ -291,7 +314,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       </div>
 
       {/* Row 1: Active Domains | Hosting Packages */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16, marginBottom: 16 }}>
         <div style={{ ...cardS, marginBottom: 0 }}>
           <SectionHeader title="Active Domains" accent="#378ADD" />
           <div style={{ overflowX: 'auto' }}>
@@ -367,7 +390,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       </div>
 
       {/* Row 2: Pending Domain Requests | Pending Hosting Requests */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16, marginBottom: 16 }}>
         <div style={{ ...cardS, marginBottom: 0 }}>
           <SectionHeader title="Pending Domain Requests" accent="#ba7517" />
           <div style={{ overflowX: 'auto' }}>

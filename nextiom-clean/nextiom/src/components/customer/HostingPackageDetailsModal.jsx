@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Server, HardDrive, Wifi, Mail, Database, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { HOSTING_STATUS, REQUEST_STATUS, getHostingRequests, getHostingActivityLog } from '@/lib/storage';
+import { HOSTING_STATUS, REQUEST_STATUS, getHostingRequests, getHostingActivityLog, getHostingPlans } from '@/lib/storage';
 
 function statusBadgeStyle(status, isDark) {
   const s = String(status || '').toLowerCase();
@@ -15,6 +15,7 @@ function statusBadgeStyle(status, isDark) {
 
 function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = {} }) {
   const [requests, setRequests] = React.useState([]);
+  const [planDefaults, setPlanDefaults] = React.useState({ disk: '', bw: '' });
 
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
@@ -31,27 +32,70 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
     return match?.[1]?.trim() || null;
   };
 
+  const normalizeHostingKey = (value) => {
+    const str = String(value || '').split('|')[0].trim().toLowerCase();
+    return str.replace(/\s+/g, ' ').trim();
+  };
+
+  const parsePackageLabel = (raw) => {
+    const mainPart = String(raw || '').split('|')[0]?.trim() || '';
+    const dashIndex = mainPart.indexOf(' - ');
+    return {
+      hostingType: dashIndex >= 0 ? mainPart.slice(0, dashIndex).trim() : mainPart,
+      planName: dashIndex >= 0 ? mainPart.slice(dashIndex + 3).trim() : mainPart,
+    };
+  };
+
   const requestMeta = React.useMemo(() => {
     const raw = pkg?.package_type || pkg?.package_name || pkg?.packageName || pkg?.notes || '';
+    const parsed = parsePackageLabel(raw);
     return {
-      plan: raw.split('|')[0]?.trim() || raw || 'Hosting Request',
+      hostingType: pkg?.hosting_type || parsed.hostingType || 'Hosting',
+      plan: pkg?.plan_name || parsed.planName || raw || 'Hosting Request',
       billing_period: parseRequestField(raw, 'Billing') || pkg?.billing_period || '-',
       domain: pkg?.domain || pkg?.domain_name || parseRequestField(raw, 'Domain') || 'No domain',
       notes: pkg?.notes || parseRequestField(raw, 'Notes') || 'None',
+      expiryDate: pkg?.expiry_date || pkg?.expiryDate || null,
+      price: pkg?.price || null,
     };
   }, [pkg]);
 
   React.useEffect(() => {
     if (!pkg) return;
+    if (Array.isArray(pkg.relatedRequests) && pkg.relatedRequests.length > 0) {
+      setRequests(pkg.relatedRequests);
+      return;
+    }
+    if (pkg.linkedRequest) {
+      setRequests([pkg.linkedRequest]);
+      return;
+    }
     getHostingRequests().then(reqs => {
+      const pKey = normalizeHostingKey(pkg.package_type || pkg.package_name || pkg.packageName || '');
       const filtered = (reqs || []).filter(r => {
         if (r.package_id && pkg.id) return r.package_id === pkg.id;
-        const rPkg = r.package_name || r.package_type || r.packageName;
-        const pPkg = pkg.package_name || pkg.package_type || pkg.packageName;
-        return r.customer_id === pkg.customer_id && rPkg === pPkg;
+        if (r.customer_id !== pkg.customer_id) return false;
+        const rKey = normalizeHostingKey(r.package_name || r.package_type || r.packageName || '');
+        if (rKey && pKey && rKey === pKey) return true;
+        const rPlan = String(r.plan_name || r.package_name || r.package_type || '').trim().toLowerCase();
+        const pPlan = String(pkg.plan_name || pkg.package_name || pkg.package_type || pkg.packageName || '').trim().toLowerCase();
+        return rPlan && pPlan && rPlan === pPlan;
       });
       setRequests(filtered);
     });
+  }, [pkg]);
+
+  React.useEffect(() => {
+    if (!pkg) return;
+    const hostingType = pkg.hosting_type || (pkg.package_type || pkg.package_name || pkg.packageName || '').split('|')[0]?.split(' - ')[0]?.trim();
+    const planName = pkg.plan_name || (pkg.package_type || pkg.package_name || pkg.packageName || '').split('|')[0]?.split(' - ')[1]?.trim() || (pkg.package_type || pkg.package_name || pkg.packageName || '').split('|')[0]?.trim();
+    if (!hostingType || !planName) return;
+    getHostingPlans().then(plans => {
+      const found = (plans || []).find(p => String(p.hosting_type || '').toLowerCase() === String(hostingType || '').toLowerCase() && String(p.plan_name || '').toLowerCase() === String(planName || '').toLowerCase());
+      if (found) {
+        setPlanDefaults({ disk: found.storage || '', bw: found.bandwidth || '' });
+      }
+    }).catch(() => {});
   }, [pkg]);
 
   if (!isOpen || !pkg) return null;
@@ -90,7 +134,9 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
               <p style={{ color: text, fontWeight: 700, fontSize: 16, marginBottom: 2 }}>
                 {requestMeta.plan || pkg.package_name || pkg.package_type || 'Hosting Package'}
               </p>
-              <p style={{ color: subText, fontSize: 12 }}>{requestMeta.domain}</p>
+              <p style={{ color: subText, fontSize: 12 }}>
+                {requestMeta.domain !== 'No domain' ? requestMeta.domain : requestMeta.billing_period || 'No domain'}
+              </p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -108,9 +154,13 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
           {/* Plan + Billing */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Hosting Type</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.hostingType}</p>
+            </div>
+            <div style={infoPanel}>
               <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Plan Details</p>
               <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.plan}</p>
-              {pkg.type && <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>{pkg.type}</p>}
+              {(pkg.type || pkg.plan_name) && <p style={{ color: subText, fontSize: 12, marginTop: 2 }}>{pkg.type || pkg.plan_name}</p>}
             </div>
             <div style={infoPanel}>
               <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Start Date</p>
@@ -123,6 +173,20 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
                 Next Invoice: {(pkg.expiry_date || pkg.expiryDate) ? new Date(pkg.expiry_date || pkg.expiryDate).toLocaleDateString() : 'N/A'}
               </p>
             </div>
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Domain</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.domain}</p>
+            </div>
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Expiry</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>
+                {requestMeta.expiryDate ? new Date(requestMeta.expiryDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}
+              </p>
+            </div>
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Price</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.price ? `LKR ${requestMeta.price}` : 'N/A'}</p>
+            </div>
           </div>
 
           {/* Usage */}
@@ -130,16 +194,15 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
             <p style={{ color: text, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Resource Usage</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { Icon: HardDrive, label: 'Disk Usage', value: `${pkg.usage?.diskUsage || 0} GB`, limit: pkg.disk_usage_limit || pkg.planDisk || '' },
-                { Icon: Wifi, label: 'Bandwidth', value: `${pkg.usage?.bandwidthUsage || 0} GB`, limit: pkg.bandwidth_limit || pkg.planBw || '' },
-                { Icon: Mail, label: 'Email Accounts', value: pkg.usage?.emailAccounts || 0, limit: '' },
-                { Icon: Database, label: 'Databases', value: pkg.usage?.databases || 0, limit: '' },
-              ].map(({ Icon, label, value, limit }) => (
+                { Icon: HardDrive, label: 'Disk Usage', value: pkg.usage?.diskUsage ? `${pkg.usage.diskUsage} GB` : (pkg.disk_usage_limit || planDefaults.disk || 'N/A') },
+                { Icon: Wifi, label: 'Bandwidth', value: pkg.usage?.bandwidthUsage ? `${pkg.usage.bandwidthUsage} GB` : (pkg.bandwidth_limit || planDefaults.bw || 'N/A') },
+                { Icon: Mail, label: 'Email Accounts', value: pkg.usage?.emailAccounts || 0 },
+                { Icon: Database, label: 'Databases', value: pkg.usage?.databases || 0 },
+              ].map(({ Icon, label, value }) => (
                 <div key={label} style={{ ...infoPanel, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '14px 10px' }}>
                   <Icon style={{ width: 18, height: 18, color: subText, marginBottom: 6 }} />
                   <p style={{ color: text, fontWeight: 800, fontSize: 16 }}>{value}</p>
                   <p style={{ color: subText, fontSize: 10, marginTop: 2 }}>{label}</p>
-                  {limit ? <p style={{ color: subText, fontSize: 9, marginTop: 4, opacity: 0.6 }}>Limit: {limit}</p> : null}
                 </div>
               ))}
             </div>

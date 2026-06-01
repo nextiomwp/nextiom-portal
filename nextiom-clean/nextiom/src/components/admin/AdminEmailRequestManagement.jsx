@@ -27,7 +27,7 @@ function DeleteModal({ open, onCancel, onConfirm, loading }) {
 function AdminEmailRequestManagement({ isDark = true }) {
   const [requests, setRequests] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState(REQUEST_STATUS.PENDING);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
@@ -88,10 +88,10 @@ function AdminEmailRequestManagement({ isDark = true }) {
 
   const handleStatusUpdate = async (id, newStatus) => {
     const req = requests.find(r => r.id === id);
-    const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
+    const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase();
     await updateEmailRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString(), start_date: isApproved ? new Date().toISOString() : undefined });
     if (req?.customer_id) {
-      const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase() || String(newStatus).toLowerCase() === 'approved';
+      const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase();
       await addNotification({
         customer_id: req.customer_id,
         type: isApproved ? 'update' : 'expiration',
@@ -128,11 +128,19 @@ function AdminEmailRequestManagement({ isDark = true }) {
   };
 
   const getCustomerName = (req) => req.customers?.name || customers.find(cu => cu.id === req.customer_id)?.name || 'Unknown';
-  const isPending = (status) => String(status || '').toLowerCase() === 'pending';
-  const fmtStatus = (status) => { if (!status) return 'Unknown'; const n = String(status).toLowerCase(); return n.charAt(0).toUpperCase() + n.slice(1); };
+  const normalizeRequestStatus = (status) => {
+    const s = String(status || '').toLowerCase();
+    return s === 'completed' ? 'approved' : s;
+  };
+  const isPending = (status) => normalizeRequestStatus(status) === 'pending';
+  const fmtStatus = (status) => {
+    const normalized = normalizeRequestStatus(status);
+    return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : 'Unknown';
+  };
 
-  const allStatuses = ['All', REQUEST_STATUS.PENDING, REQUEST_STATUS.COMPLETED, REQUEST_STATUS.REJECTED];
-  const filtered = requests.filter(r => statusFilter === 'All' || String(r.status || '').toLowerCase() === String(statusFilter || '').toLowerCase());
+  // Only show Pending and Rejected — approved items go to Active Emails section
+  const allStatuses = [REQUEST_STATUS.PENDING, REQUEST_STATUS.REJECTED];
+  const filtered = requests.filter(r => normalizeRequestStatus(r.status) === normalizeRequestStatus(statusFilter));
 
   return (
     <div>
@@ -185,7 +193,7 @@ function AdminEmailRequestManagement({ isDark = true }) {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                       {isPending(req.status) && (
                         <>
-                          <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.COMPLETED)}><CheckCircle size={12} /> Approve</Btn>
+                          <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.APPROVED)}><CheckCircle size={12} /> Approve</Btn>
                           <Btn color="#ef4444" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}><XCircle size={12} /> Reject</Btn>
                         </>
                       )}

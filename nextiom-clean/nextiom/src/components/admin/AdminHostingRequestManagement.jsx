@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, CheckCircle, XCircle, User, Package, Trash2, AlertTriangle } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { getHostingRequests, updateHostingRequest, deleteHostingRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
+import { getHostingRequests, updateHostingRequest, deleteHostingRequest, REQUEST_STATUS, getCustomers, addNotification, buildHostingRequestUpdatePayload } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 
@@ -39,10 +39,14 @@ function AdminHostingRequestManagement({ isDark = true }) {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminReply, setAdminReply] = useState('');
   const [rejectReason, setRejectReason] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState(REQUEST_STATUS.PENDING);
   const [loading, setLoading] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 900px)').matches;
+  });
   const { toast } = useToast();
 
   const c = isDark
@@ -66,10 +70,11 @@ function AdminHostingRequestManagement({ isDark = true }) {
         : s === 'completed' ? { bg: '#dcfce7', color: '#15803d', dot: '#22c55e' }
         : s === 'pending' ? { bg: '#fff7ed', color: '#c2410c', dot: '#f97316' }
         : { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' };
+    const displayStatus = s === 'completed' ? 'Approved' : status || '-';
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: col.bg, color: col.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: col.dot, flexShrink: 0 }} />
-        {status || '-'}
+        {displayStatus}
       </span>
     );
   };
@@ -95,6 +100,18 @@ function AdminHostingRequestManagement({ isDark = true }) {
 
   useEffect(() => { loadData(); }, []);
 
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    onChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
+
   const loadData = async () => {
     const [reqs, custs] = await Promise.all([getHostingRequests(), getCustomers()]);
     setRequests(reqs || []);
@@ -109,11 +126,13 @@ function AdminHostingRequestManagement({ isDark = true }) {
     }
     setLoading(true);
     try {
+      const requestUpdates = await buildHostingRequestUpdatePayload(selectedRequest, {
+        status,
+        startDate: isApproved ? new Date().toISOString() : undefined,
+      });
       await updateHostingRequest(selectedRequest.id, {
-        status: String(status).toLowerCase(),
+        ...requestUpdates,
         admin_reply: status === REQUEST_STATUS.REJECTED ? rejectReason : adminReply,
-        updated_at: new Date().toISOString(),
-        start_date: isApproved ? new Date().toISOString() : undefined,
       });
       if (selectedRequest.customer_id) {
         const isApproved = String(status).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase() || String(status).toLowerCase() === REQUEST_STATUS.COMPLETED.toLowerCase();
@@ -162,16 +181,20 @@ function AdminHostingRequestManagement({ isDark = true }) {
   };
 
   const getCustomerName = (id) => customers.find(cu => cu.id === id)?.name || 'Unknown';
-  const isPending = (status) => String(status || '').toLowerCase() === 'pending';
-
-  const allStatuses = ['All', REQUEST_STATUS.PENDING, REQUEST_STATUS.APPROVED, REQUEST_STATUS.COMPLETED, REQUEST_STATUS.REJECTED];
-  const filteredRequests = requests.filter(r => statusFilter === 'All' || String(r.status || '').toLowerCase() === String(statusFilter || '').toLowerCase());
+  const normalizeRequestStatus = (status) => {
+    const s = String(status || '').toLowerCase();
+    return s === 'completed' ? 'approved' : s;
+  };
+  const isPending = (status) => normalizeRequestStatus(status) === 'pending';
+  // Only show Pending and Rejected — approved items go to Active Hosting section
+  const allStatuses = [REQUEST_STATUS.PENDING, REQUEST_STATUS.REJECTED];
+  const filteredRequests = requests.filter(r => normalizeRequestStatus(r.status) === normalizeRequestStatus(statusFilter));
 
   return (
     <div>
       <DeleteModal open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
 
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4, width: 'fit-content', overflowX: 'auto', maxWidth: '100%' }}>
         {allStatuses.map(s => (
           <button key={s} onClick={() => setStatusFilter(s)} style={{
             padding: '7px 16px', fontSize: 13, fontWeight: 500, borderRadius: 9, border: 'none', cursor: 'pointer', transition: 'all 0.15s', textTransform: 'capitalize',
@@ -184,7 +207,8 @@ function AdminHostingRequestManagement({ isDark = true }) {
 
       <div style={cardS}>
         <SectionHeader title="Hosting Requests" accent="#8b5cf6" />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th style={thS}>Request Type</th>
@@ -222,6 +246,7 @@ function AdminHostingRequestManagement({ isDark = true }) {
             {filteredRequests.length === 0 && <tr><td colSpan={5} style={emptyS}>No requests found</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       <Dialog open={!!selectedRequest} onOpenChange={() => { setSelectedRequest(null); setAdminReply(''); setRejectReason(''); }}>
@@ -233,7 +258,7 @@ function AdminHostingRequestManagement({ isDark = true }) {
           </div>
           {selectedRequest && (
             <div style={{ padding: '20px 24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
                 <div style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                   <User size={16} color={c.subText} style={{ marginTop: 2, flexShrink: 0 }} />
                   <div>
@@ -260,7 +285,7 @@ function AdminHostingRequestManagement({ isDark = true }) {
                 {(() => {
                   const { plan, billing, domain, notes } = parsePkg(selectedRequest.package_type);
                   return (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
                       {[['Plan', plan], ['Billing', billing], ['Domain', domain], ['Notes', notes]].map(([label, value]) => (
                         <div key={label} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 8, padding: '10px 12px' }}>
                           <p style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{label}</p>

@@ -148,6 +148,10 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
     recentActivity: [],
     isLoading: true,
   });
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 768px)').matches;
+  });
 
   const brand = c.brand || '#E87B35';
   const border = c.border || '#ebebeb';
@@ -160,6 +164,18 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
   const memberSince = user?.memberSince
     ? new Date(user.memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '—';
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 768px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    onChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -333,7 +349,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             <LineChart data={data.chartData} c={c} isDark={isDark} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, paddingTop: 12, borderTop: `1px solid ${border}` }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, paddingTop: 12, borderTop: `1px solid ${border}` }}>
             {[
               { label: 'Total Orders', value: data.totalOrders, valueColor: text },
               {

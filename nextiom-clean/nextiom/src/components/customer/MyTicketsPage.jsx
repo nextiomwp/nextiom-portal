@@ -32,12 +32,28 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   const [msgLoading, setMsgLoading] = useState(false);
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 900px)').matches;
+  });
   const chatEndRef = useRef(null);
   const { toast } = useToast();
 
   const customerId = user?.id;
 
   useEffect(() => { if (customerId) load(); }, [customerId]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    onChange(media);
+    if (media.addEventListener) {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+    media.addListener(onChange);
+    return () => media.removeListener(onChange);
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -93,14 +109,16 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     boxShadow: isDark ? '0 2px 16px rgba(0,0,0,0.25)' : '0 2px 16px rgba(0,0,0,0.06)',
   };
 
+  const showList = !isMobile || !selected;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>My Tickets</h1>
           <p style={{ fontSize: 13, color: c.subText, marginTop: 4 }}>Track and communicate with our support team</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
           <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', border: `1px solid ${c.border}`, background: c.card, color: c.subText, borderRadius: 9, cursor: 'pointer', fontSize: 13 }}>
             <RefreshCw size={13} /> Refresh
           </button>
@@ -126,15 +144,15 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: selected ? '340px 1fr' : '1fr', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : (selected ? '340px 1fr' : '1fr'), gap: 16, alignItems: 'start' }}>
           {/* Ticket list */}
-          <div style={cardS}>
+          <div style={{ ...cardS, display: showList ? 'block' : 'none' }}>
             <div style={{ padding: '13px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 8, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
               <Ticket size={14} style={{ color: c.brand }} />
               <span style={{ fontWeight: 700, fontSize: 13, color: c.text }}>All Tickets</span>
               <span style={{ fontSize: 11, color: c.subText, background: c.hover, borderRadius: 10, padding: '1px 7px' }}>{tickets.length}</span>
             </div>
-            <div style={{ overflowY: 'auto', maxHeight: selected ? 'calc(100vh - 260px)' : 'auto' }}>
+            <div style={{ overflowY: 'auto', maxHeight: isMobile ? 'none' : (selected ? 'calc(100vh - 260px)' : 'auto') }}>
               {tickets.map(ticket => {
                 const adminReplied = hasAdminReply(ticket);
                 const isOpen = ticket.status === 'open';
@@ -189,7 +207,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
 
           {/* Chat panel */}
           {selected && (
-            <div style={{ ...cardS, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 240px)', minHeight: 400 }}>
+            <div style={{ ...cardS, display: 'flex', flexDirection: 'column', height: isMobile ? 'auto' : 'calc(100vh - 240px)', minHeight: 400 }}>
               {/* Header */}
               <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', flexShrink: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>

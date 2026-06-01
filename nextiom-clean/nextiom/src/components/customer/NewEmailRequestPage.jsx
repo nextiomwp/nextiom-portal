@@ -67,6 +67,16 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         created_at: new Date().toISOString(),
       }]);
 
+      // Also notify admin (customer_id null) so admins see incoming email requests in admin notifications
+      await supabase.from('notifications').insert([{
+        customer_id: null,
+        type: 'email_request',
+        title: `Email Request — ${email}`,
+        message: `Customer ID ${customerId} requested email ${email} (${period} Year${period !== '1' ? 's' : ''})${notes ? ` - Notes: ${notes}` : ''}`,
+        read_status: false,
+        created_at: new Date().toISOString(),
+      }]);
+
       
       setSubmitted(true);
       toast({ title: 'Request Submitted!', description: 'Admin has been notified.' });

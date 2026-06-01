@@ -34,6 +34,8 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
   const panel2 = c.panel2 || '#f5f5f5';
   const hover = c.hover || '#f5f5f5';
 
+  const normalizeHostingKey = (value) => String(value || '').split('|')[0].trim().toLowerCase();
+
   useEffect(() => { loadPackages(); }, [user]);
 
   const billingMonths = (billing) => {
@@ -62,8 +64,12 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
 
   const parseHostingRequest = (request) => {
     const raw = request.package_type || request.notes || '';
+    const plan = raw.split('|')[0]?.trim() || raw || 'Hosting Request';
+    const packageParts = plan.split(' - ');
     return {
-      plan: raw.split('|')[0]?.trim() || raw || 'Hosting Request',
+      plan,
+      hosting_type: request.hosting_type || packageParts[0]?.trim() || '',
+      plan_name: request.plan_name || packageParts[1]?.trim() || packageParts[0]?.trim() || '',
       billing_period: parseRequestField(raw, 'Billing'),
       domain: request.domain || request.domain_name || parseRequestField(raw, 'Domain'),
       notes: parseRequestField(raw, 'Notes') || 'None',
@@ -80,9 +86,44 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
       const data = await getCustomerHostingPackages(customerId);
       const reqs = await getCustomerHostingRequests(customerId);
 
+      const requestIndex = new Map();
+      (Array.isArray(reqs) ? reqs : []).forEach(req => {
+        const key = `${req.customer_id || customerId}:${normalizeHostingKey(req.package_name || req.package_type || req.packageName)}`;
+        if (!key) return;
+        requestIndex.set(key, req);
+      });
+
+      const linkedRequestIds = new Set();
+
+      const enrichedPackages = (Array.isArray(data) ? data : []).map(pkg => {
+        const key = `${pkg.customer_id || customerId}:${normalizeHostingKey(pkg.package_name || pkg.package_type || pkg.packageName)}`;
+        const linkedRequest = requestIndex.get(key) || null;
+        if (linkedRequest) linkedRequestIds.add(linkedRequest.id);
+        const parsed = linkedRequest ? parseHostingRequest(linkedRequest) : parseHostingRequest(pkg);
+
+        return {
+          ...pkg,
+          package_type: pkg.package_type || linkedRequest?.package_type || parsed.plan,
+          packageName: pkg.packageName || pkg.package_name || parsed.plan,
+          package_name: pkg.package_name || pkg.packageName || parsed.plan,
+          hosting_type: pkg.hosting_type || linkedRequest?.hosting_type || parsed.hosting_type,
+          plan_name: pkg.plan_name || linkedRequest?.plan_name || parsed.plan_name,
+          billing_period: pkg.billing_period || linkedRequest?.billing_period || parsed.billing_period,
+          domain: pkg.domain || linkedRequest?.domain || parsed.domain || 'N/A',
+          notes: pkg.notes || linkedRequest?.notes || parsed.notes,
+          start_date: pkg.start_date || linkedRequest?.start_date || linkedRequest?.updated_at || pkg.created_at,
+          expiry_date: pkg.expiry_date || linkedRequest?.expiry_date || null,
+          disk_usage_limit: pkg.disk_usage_limit || linkedRequest?.disk_usage_limit || null,
+          bandwidth_limit: pkg.bandwidth_limit || linkedRequest?.bandwidth_limit || null,
+          relatedRequests: linkedRequest ? [linkedRequest] : [],
+          linkedRequestId: linkedRequest?.id || null,
+          isRequest: false,
+        };
+      });
+
       const combined = [
-        ...(Array.isArray(data) ? data : []),
-        ...(Array.isArray(reqs) ? reqs : []).map(r => {
+        ...enrichedPackages,
+        ...(Array.isArray(reqs) ? reqs : []).filter(r => !linkedRequestIds.has(r.id)).map(r => {
           const parsed = parseHostingRequest(r);
           return {
             ...r,
@@ -90,10 +131,16 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
             package_type: parsed.plan,
             packageName: parsed.plan,
             plan: parsed.plan,
+            hosting_type: parsed.hosting_type,
+            plan_name: parsed.plan_name,
             billing_period: parsed.billing_period,
             status: String(r.status || '').toLowerCase() === 'pending' ? 'Pending Setup' : r.status,
             domain: parsed.domain || 'N/A',
             notes: parsed.notes,
+            start_date: r.start_date || r.updated_at || r.created_at,
+            expiry_date: r.expiry_date || null,
+            disk_usage_limit: r.disk_usage_limit || null,
+            bandwidth_limit: r.bandwidth_limit || null,
             isRequest: true,
           };
         }),

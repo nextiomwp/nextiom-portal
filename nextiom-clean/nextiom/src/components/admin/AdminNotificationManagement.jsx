@@ -26,7 +26,7 @@ const TEMPLATES = [
   },
 ];
 
-function AdminNotificationManagement({ isDark = true }) {
+function AdminNotificationManagement({ isDark = true, isMobile = false }) {
   const [formData, setFormData] = useState({
     recipientId: 'all',
     type: 'announcement',
@@ -75,7 +75,7 @@ function AdminNotificationManagement({ isDark = true }) {
   };
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'stretch' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: isMobile ? 16 : 24, alignItems: 'stretch' }}>
 
       {/* Send Announcement */}
       <div style={{ ...cardS, display: 'flex', flexDirection: 'column' }}>
