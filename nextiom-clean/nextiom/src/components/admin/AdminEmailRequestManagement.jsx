@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, AlertTriangle, Key, User as UserIcon, Loader2 } from 'lucide-react';
 import { getEmailRequests, updateEmailRequest, deleteEmailRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -23,6 +23,79 @@ function DeleteModal({ open, onCancel, onConfirm, loading }) {
   );
 }
 
+function ApproveEmailDialog({ open, request, onClose, onConfirm, saving }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  React.useEffect(() => {
+    if (open) {
+      setUsername(request?.email || '');
+      setPassword('');
+    }
+  }, [open, request]);
+
+  if (!open || !request) return null;
+
+  const c = { text: '#fff', subText: '#a0a0a0', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', brand: '#e87b35', input: '#22252C' };
+  const inpS = { width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.input, color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
+  const labelS = { fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 480, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
+        <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(22,163,74,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle size={16} color="#16a34a" />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: c.text }}>Approve & Set Credentials</div>
+            <div style={{ fontSize: 11, color: c.subText }}>{request.email}</div>
+          </div>
+        </div>
+        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 13, color: c.subText, margin: 0 }}>Enter the email login credentials the customer will use to access this email account.</p>
+          <div>
+            <label style={labelS}>Username</label>
+            <div style={{ position: 'relative' }}>
+              <UserIcon size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+              <input
+                style={{ ...inpS, paddingLeft: 28 }}
+                placeholder="e.g. info@domain.com"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+            </div>
+          </div>
+          <div>
+            <label style={labelS}>Password</label>
+            <div style={{ position: 'relative' }}>
+              <Key size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+              <input
+                style={{ ...inpS, paddingLeft: 28 }}
+                type="text"
+                placeholder="Enter password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+          <button
+            onClick={() => onConfirm(username, password)}
+            disabled={saving || !password.trim()}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving || !password.trim() ? 'not-allowed' : 'pointer', opacity: saving || !password.trim() ? 0.7 : 1 }}
+          >
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            {saving ? 'Approving…' : 'Approve'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function AdminEmailRequestManagement({ isDark = true }) {
   const [requests, setRequests] = useState([]);
@@ -30,6 +103,8 @@ function AdminEmailRequestManagement({ isDark = true }) {
   const [statusFilter, setStatusFilter] = useState(REQUEST_STATUS.PENDING);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [approveTarget, setApproveTarget] = useState(null);
+  const [approveSaving, setApproveSaving] = useState(false);
   const { toast } = useToast();
 
   const c = isDark
@@ -89,9 +164,12 @@ function AdminEmailRequestManagement({ isDark = true }) {
   const handleStatusUpdate = async (id, newStatus) => {
     const req = requests.find(r => r.id === id);
     const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase();
+    if (isApproved) {
+      setApproveTarget(req);
+      return;
+    }
     await updateEmailRequest(id, { status: String(newStatus).toLowerCase(), updated_at: new Date().toISOString(), start_date: isApproved ? new Date().toISOString() : undefined });
     if (req?.customer_id) {
-      const isApproved = String(newStatus).toLowerCase() === REQUEST_STATUS.APPROVED.toLowerCase();
       await addNotification({
         customer_id: req.customer_id,
         type: isApproved ? 'update' : 'expiration',
@@ -101,6 +179,35 @@ function AdminEmailRequestManagement({ isDark = true }) {
     }
     toast({ title: 'Request Updated', description: `Request marked as ${newStatus}` });
     loadData();
+  };
+
+  const handleApproveConfirm = async (username, password) => {
+    if (!approveTarget) return;
+    setApproveSaving(true);
+    try {
+      await updateEmailRequest(approveTarget.id, {
+        status: REQUEST_STATUS.APPROVED.toLowerCase(),
+        email_username: username.trim() || null,
+        email_password: password.trim() || null,
+        start_date: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      if (approveTarget?.customer_id) {
+        await addNotification({
+          customer_id: approveTarget.customer_id,
+          type: 'update',
+          title: `Email Request Approved — ${approveTarget.email}`,
+          message: `Your email request for ${approveTarget.email} has been approved. You can view login credentials from the My Emails page.`
+        }).catch(() => { });
+      }
+      toast({ title: 'Approved', description: `Email approved with credentials set.` });
+      setApproveTarget(null);
+      loadData();
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to approve email', variant: 'destructive' });
+    } finally {
+      setApproveSaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -145,6 +252,7 @@ function AdminEmailRequestManagement({ isDark = true }) {
   return (
     <div>
       <DeleteModal open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
+      <ApproveEmailDialog open={!!approveTarget} request={approveTarget} onClose={() => setApproveTarget(null)} onConfirm={handleApproveConfirm} saving={approveSaving} />
 
       {/* Status filter tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 12, padding: 4, width: 'fit-content' }}>

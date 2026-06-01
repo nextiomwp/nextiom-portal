@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Mail, Loader2, Check, DollarSign } from 'lucide-react';
+import { X, Mail, Loader2, Check, DollarSign, Key, User as UserIcon } from 'lucide-react';
 import { assignEmailToCustomer } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -11,6 +11,8 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
   const [multiYearPct, setMultiYearPct] = useState('');
   const [notes, setNotes] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [emailUsername, setEmailUsername] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -69,11 +71,14 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
         notes: notes.trim() || null,
         price: finalPrice,
         startDate,
+        emailUsername: emailUsername.trim() || null,
+        emailPassword: emailPassword.trim() || null,
       });
 
       toast({ title: 'Email Assigned', description: `${fullEmail} assigned to ${customer.name}` });
       setEmailName(''); setExtension('.com'); setRegPeriod('1');
       setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
+      setEmailUsername(''); setEmailPassword('');
       onSuccess?.();
       onClose();
     } catch (err) {
@@ -207,6 +212,45 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
               onFocus={e => e.target.style.borderColor = brand}
               onBlur={e => e.target.style.borderColor = border}
             />
+          </div>
+
+          {/* Credentials */}
+          <div style={{ borderTop: `1px solid ${border}`, paddingTop: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
+              <Key size={12} style={{ display: 'inline', marginRight: 5, verticalAlign: 'middle' }} />
+              Email Login Credentials
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelS}>Username</label>
+                <div style={{ position: 'relative' }}>
+                  <UserIcon size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
+                  <input
+                    style={{ ...inpS, paddingLeft: 28 }}
+                    placeholder="e.g. info@domain.com"
+                    value={emailUsername}
+                    onChange={e => setEmailUsername(e.target.value)}
+                    onFocus={e => e.target.style.borderColor = brand}
+                    onBlur={e => e.target.style.borderColor = border}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={labelS}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <Key size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
+                  <input
+                    style={{ ...inpS, paddingLeft: 28 }}
+                    type="text"
+                    placeholder="Enter password"
+                    value={emailPassword}
+                    onChange={e => setEmailPassword(e.target.value)}
+                    onFocus={e => e.target.style.borderColor = brand}
+                    onBlur={e => e.target.style.borderColor = border}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Notes */}

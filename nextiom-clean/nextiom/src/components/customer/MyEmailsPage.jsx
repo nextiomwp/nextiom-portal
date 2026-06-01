@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Loader2, Mail, Eye, X } from 'lucide-react';
+import { Search, Loader2, Mail, Eye, X, Lock, Key } from 'lucide-react';
 import { getCustomerEmailRequests, updateEmailRequest, resolveCustomerId } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
@@ -49,6 +49,7 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
   };
 
   const [viewEmail, setViewEmail] = useState(null);
+  const [showCredentials, setShowCredentials] = useState(null);
 
   const handleAutoRenew = async (id, current) => {
     try {
@@ -157,9 +158,18 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                       />
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                      <button onClick={() => setViewEmail(email)} style={{ padding: '6px 12px', background: brandLight, color: brand, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Eye size={12} /> View
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => setShowCredentials(email)}
+                          style={{ padding: '6px 10px', background: email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3') : (isDark ? 'rgba(148,163,184,0.1)' : '#f1f5f9'), color: email.email_username && email.email_password ? '#ca8a04' : subText, border: `1px solid ${email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.25)' : '#fde68a') : border}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                          title="View login credentials"
+                        >
+                          <Lock size={12} />
+                        </button>
+                        <button onClick={() => setViewEmail(email)} style={{ padding: '6px 12px', background: brandLight, color: brand, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Eye size={12} /> View
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -206,6 +216,46 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
               ))}
             </div>
             <button onClick={() => setViewEmail(null)} style={{ width: '100%', marginTop: 20, padding: '10px', borderRadius: 9, border: `1px solid ${border}`, background: 'transparent', color: subText, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Credentials modal */}
+      {showCredentials && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: isDark ? '#1C1E24' : '#fff', border: `1px solid ${border}`, borderRadius: 16, padding: 28, maxWidth: 420, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Lock size={18} color="#ca8a04" />
+                <span style={{ fontWeight: 700, fontSize: 16, color: text }}>Login Credentials</span>
+              </div>
+              <button onClick={() => setShowCredentials(null)} style={{ background: 'none', border: 'none', color: subText, cursor: 'pointer', padding: 4 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: subText, marginBottom: 4 }}>Email Account</div>
+              <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${border}`, borderRadius: 8, padding: '9px 12px', color: text, fontSize: 13 }}>{showCredentials.email}</div>
+            </div>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 11, color: subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Key size={12} /> Username
+                </div>
+                <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${border}`, borderRadius: 8, padding: '9px 12px', color: text, fontSize: 13, fontFamily: 'monospace', fontWeight: 600 }}>{showCredentials.email_username || <span style={{ color: subText, fontStyle: 'italic' }}>Not set</span>}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Key size={12} /> Password
+                </div>
+                <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${border}`, borderRadius: 8, padding: '9px 12px', color: text, fontSize: 13, fontFamily: 'monospace', fontWeight: 600 }}>{showCredentials.email_password || <span style={{ color: subText, fontStyle: 'italic' }}>Not set</span>}</div>
+              </div>
+            </div>
+            <p style={{ fontSize: 11, color: subText, marginTop: 16, padding: '8px 12px', background: isDark ? 'rgba(234,179,8,0.1)' : '#fef9c3', borderRadius: 8 }}>
+              <Lock size={10} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+              Keep these credentials secure. Do not share them with others.
+            </p>
+            <button onClick={() => setShowCredentials(null)} style={{ width: '100%', marginTop: 16, padding: '10px', borderRadius: 9, border: `1px solid ${border}`, background: 'transparent', color: subText, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
           </div>
         </div>
       )}

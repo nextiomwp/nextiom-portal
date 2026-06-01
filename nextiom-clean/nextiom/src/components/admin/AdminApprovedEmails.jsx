@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server } from 'lucide-react';
+import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server, Key, User as UserIcon } from 'lucide-react';
 import { getEmailRequests, updateEmailRequest, deleteEmailRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -134,6 +134,8 @@ function AdminApprovedEmails({ isDark = true }) {
       expiry_date: h.expiry_date ? h.expiry_date.split('T')[0] : '',
       admin_reply: h.admin_reply || '',
       package_type: h.package_type || '',
+      email_username: h.email_username || '',
+      email_password: h.email_password || '',
     });
   };
 
@@ -147,6 +149,8 @@ function AdminApprovedEmails({ isDark = true }) {
         status: editForm.status,
         expiry_date: editForm.expiry_date ? new Date(editForm.expiry_date).toISOString() : null,
         admin_reply: editForm.admin_reply,
+        email_username: editForm.email_username || null,
+        email_password: editForm.email_password || null,
       });
       const label = `${editForm.email_type} — ${editForm.plan_name}`;
       addNotification({ customer_id: null, type: 'request_updated', title: `Email Updated — ${label}`, message: `Admin updated email record for ${label} (status: ${editForm.status}).` }).catch(() => { });
@@ -332,8 +336,29 @@ function AdminApprovedEmails({ isDark = true }) {
                   <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Expiry Date</label>
                   <input style={inpS} type="date" value={editForm.expiry_date} onChange={e => setEditForm(f => ({ ...f, expiry_date: e.target.value }))} />
                 </div>
-              </div>
-              <div>
+            </div>
+            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Key size={12} /> Email Login Credentials
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Username</label>
+                    <div style={{ position: 'relative' }}>
+                      <UserIcon size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+                      <input style={{ ...inpS, paddingLeft: 28 }} value={editForm.email_username} onChange={e => setEditForm(f => ({ ...f, email_username: e.target.value }))} placeholder="e.g. info@domain.com" />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Password</label>
+                    <div style={{ position: 'relative' }}>
+                      <Key size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+                      <input style={{ ...inpS, paddingLeft: 28 }} value={editForm.email_password} onChange={e => setEditForm(f => ({ ...f, email_password: e.target.value }))} placeholder="Enter password" />
+                    </div>
+                  </div>
+                </div>
+            </div>
+            <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Email Name Details (read-only)</label>
                 <div style={{ ...inpS, opacity: 0.6, cursor: 'default', wordBreak: 'break-all', minHeight: 40 }}>{editForm.package_type || '—'}</div>
               </div>
