@@ -92,6 +92,13 @@ function getActiveLabel(activeTab) {
   return 'Dashboard';
 }
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour >= 20) return 'Good night';
+  if (hour >= 16) return 'Good evening';
+  if (hour >= 12) return 'Good afternoon';
+  return 'Good morning';
+}
 
 const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'support_tickets', 'products', 'profile', 'notifications'];
 
@@ -395,7 +402,9 @@ function CustomerDashboard() {
           }}
         >
           <div className="pl-8 lg:pl-0 font-semibold" style={{ color: c.text }}>
-            {getActiveLabel(activeTab)}
+            {activeTab === 'dashboard'
+              ? `${getGreeting()}, ${customerProfile?.name || user?.email || 'Customer'}`
+              : getActiveLabel(activeTab)}
           </div>
 
           <div className="flex items-center gap-3">
