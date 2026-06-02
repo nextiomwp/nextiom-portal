@@ -23,7 +23,7 @@ function Login({ onLoginSuccess }) {
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const [loginStatusMsg, setLoginStatusMsg] = useState(null); // 'pending' | 'rejected' | null
-  const [logoUrl, setLogoUrl] = useState('');
+  const [logoUrl, setLogoUrl] = useState('/NEXTIOM.png');
 
   const { signIn, user, role } = useAuth();
   const { toast } = useToast();
@@ -53,7 +53,7 @@ function Login({ onLoginSuccess }) {
         const settings = await getPublicInvoiceSettings();
         if (settings?.logo_url) {
           const resolved = await resolveLogoUrl(settings.logo_url);
-          setLogoUrl(resolved);
+          setLogoUrl(resolved || '/NEXTIOM.png');
         }
       } catch (err) {
         console.error('Failed to load invoice logo:', err);
