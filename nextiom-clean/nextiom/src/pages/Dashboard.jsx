@@ -569,7 +569,12 @@ function Dashboard({ onLogout }) {
                         const isPayment = n.type === 'payment_submitted';
                         return (
                           <div key={'notif' + (n.id || i)} style={rowStyle}
-                            onClick={() => { markNotifRead(item.key); setActive(isPayment ? 'invoices' : 'adminNotifications'); setIsNotificationsOpen(false); }}>
+                            onClick={() => {
+                              markNotifRead(item.key);
+                              const isEmailRequest = n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email request') || String(n.title || '').toLowerCase().includes('email');
+                              setActive(isEmailRequest ? 'emailRequests' : isPayment ? 'invoices' : 'adminNotifications');
+                              setIsNotificationsOpen(false);
+                            }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               {dot}
                               <span style={titleStyle}>{n.title || 'Notification'}</span>

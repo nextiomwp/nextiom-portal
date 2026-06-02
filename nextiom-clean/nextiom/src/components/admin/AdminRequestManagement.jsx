@@ -171,6 +171,7 @@ function AdminRequestManagement({ isDark = true }) {
                 <th style={thS}>Customer</th>
                 <th style={thS}>Date</th>
                 <th style={thS}>Status</th>
+                <th style={thS}>Auto Renew</th>
                 <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -191,6 +192,9 @@ function AdminRequestManagement({ isDark = true }) {
                     </div>
                   </td>
                   <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={fmtStatus(req.status)} /></td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ color: req.auto_renew ? '#16a34a' : c.subText, fontWeight: 600, fontSize: 12 }}>{req.auto_renew ? 'Enabled' : 'Disabled'}</span>
+                  </td>
                   <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                       {isPending(req.status) && (
@@ -204,7 +208,7 @@ function AdminRequestManagement({ isDark = true }) {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={6} style={emptyS}>No domain requests found</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={7} style={emptyS}>No domain requests found</td></tr>}
             </tbody>
           </table>
         </div>

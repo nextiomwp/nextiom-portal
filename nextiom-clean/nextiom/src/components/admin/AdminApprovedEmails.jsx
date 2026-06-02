@@ -126,14 +126,12 @@ function AdminApprovedEmails({ isDark = true }) {
 
   const openEdit = (h) => {
     setEditItem(h);
-    const parsed = parseEmailNameType(h.package_type);
     setEditForm({
-      email_type: h.email_type || parsed.emailType || '',
-      plan_name: h.plan_name || parsed.planName || '',
+      email: h.email || '',
+      url: h.url || '',
       status: h.status || 'approved',
       expiry_date: h.expiry_date ? h.expiry_date.split('T')[0] : '',
       admin_reply: h.admin_reply || '',
-      package_type: h.package_type || '',
       email_username: h.email_username || '',
       email_password: h.email_password || '',
     });
@@ -144,15 +142,15 @@ function AdminApprovedEmails({ isDark = true }) {
     setSaving(true);
     try {
       await updateEmailRequest(editItem.id, {
-        email_type: editForm.email_type,
-        plan_name: editForm.plan_name,
+        email: editForm.email,
+        url: editForm.url || null,
         status: editForm.status,
         expiry_date: editForm.expiry_date ? new Date(editForm.expiry_date).toISOString() : null,
         admin_reply: editForm.admin_reply,
         email_username: editForm.email_username || null,
         email_password: editForm.email_password || null,
       });
-      const label = `${editForm.email_type} — ${editForm.plan_name}`;
+      const label = editForm.email || 'Email record';
       addNotification({ customer_id: null, type: 'request_updated', title: `Email Updated — ${label}`, message: `Admin updated email record for ${label} (status: ${editForm.status}).` }).catch(() => { });
       toast({ title: 'Email Updated', description: 'Changes saved successfully.' });
       setEditItem(null);
@@ -255,6 +253,7 @@ function AdminApprovedEmails({ isDark = true }) {
               <th style={thS}>Status</th>
               <th style={thS}>Start Date</th>
               <th style={thS}>Expiry</th>
+              <th style={thS}>Auto Renew</th>
               <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
@@ -286,6 +285,9 @@ function AdminApprovedEmails({ isDark = true }) {
                       </div>
                     ) : <span style={{ color: c.subText }}>—</span>}
                   </td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ color: h.auto_renew ? '#16a34a' : c.subText, fontWeight: 600, fontSize: 12 }}>{h.auto_renew ? 'Enabled' : 'Disabled'}</span>
+                  </td>
                   <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                       <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
@@ -296,7 +298,7 @@ function AdminApprovedEmails({ isDark = true }) {
                 </tr>
               );
             })}
-            {filteredEmails.length === 0 && <tr><td colSpan={6} style={emptyS}>No approved emails found</td></tr>}
+            {filteredEmails.length === 0 && <tr><td colSpan={7} style={emptyS}>No approved emails found</td></tr>}
           </tbody>
         </table>
       </div>
@@ -315,12 +317,12 @@ function AdminApprovedEmails({ isDark = true }) {
             <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Email Type</label>
-                  <input style={inpS} value={editForm.email_type} onChange={e => setEditForm(f => ({ ...f, email_type: e.target.value }))} placeholder="e.g. VPS Email" />
+                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Email Address</label>
+                  <input style={inpS} value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} placeholder="user@example.com" />
                 </div>
                 <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Plan</label>
-                  <input style={inpS} value={editForm.plan_name} onChange={e => setEditForm(f => ({ ...f, plan_name: e.target.value }))} placeholder="e.g. VPS2" />
+                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Login URL</label>
+                  <input style={inpS} value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="https://mail.example.com" />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -358,10 +360,6 @@ function AdminApprovedEmails({ isDark = true }) {
                   </div>
                 </div>
             </div>
-            <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Email Name Details (read-only)</label>
-                <div style={{ ...inpS, opacity: 0.6, cursor: 'default', wordBreak: 'break-all', minHeight: 40 }}>{editForm.package_type || '—'}</div>
-              </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Admin Reply / Notes</label>
                 <textarea style={{ ...inpS, resize: 'vertical', minHeight: 80 }} value={editForm.admin_reply} onChange={e => setEditForm(f => ({ ...f, admin_reply: e.target.value }))} />

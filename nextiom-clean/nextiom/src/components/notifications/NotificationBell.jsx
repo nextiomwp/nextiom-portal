@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CheckCircle, X, Mail, AlertCircle, ShoppingBag, Info, Receipt } from 'lucide-react';
+import { Bell, X, Mail, AlertCircle, ShoppingBag, Info, Receipt } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -128,21 +128,6 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleMarkAsRead = async (e, notification) => {
-    e.stopPropagation();
-    if (notification.virtual) {
-      const { readVirtIds } = getReadState();
-      localStorage.setItem('cust_notif_read_virt', JSON.stringify([...new Set([...readVirtIds, notification.id])]));
-      setRecentNotifications(prev =>
-        prev.map(n => n.id === notification.id ? { ...n, read_status: true } : n)
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-      return;
-    }
-    await markAsRead(notification.id);
-    loadNotifications();
-  };
-
   const handleMarkAllRead = async () => {
     const now = new Date().toISOString();
     localStorage.setItem('cust_notif_mark_all_at', now);
@@ -165,13 +150,29 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     if (type === 'announcement') return null;
     if (type === 'product_assigned' || title.includes('product')) return 'products';
     if (type === 'invoice' || type.startsWith('payment_') || title.includes('invoice') || title.includes('payment')) return 'invoices';
+    if (type === 'email_request' || type.startsWith('email') || title.includes('email request') || title.includes('email')) return 'emails_my';
     if (title.includes('domain')) return 'domains_my';
     if (title.includes('hosting')) return 'hosting_my';
     if (type === 'ticket' || title.includes('ticket')) return 'support_tickets';
     return null;
   };
 
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
+    // Mark as read
+    if (!notification.read_status) {
+      if (notification.virtual) {
+        const { readVirtIds } = getReadState();
+        localStorage.setItem('cust_notif_read_virt', JSON.stringify([...new Set([...readVirtIds, notification.id])]));
+        setRecentNotifications(prev =>
+          prev.map(n => n.id === notification.id ? { ...n, read_status: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } else {
+        await markAsRead(notification.id);
+      }
+    }
+    
+    // Navigate to target page
     const target = getNavTarget(notification);
     setIsOpen(false);
     if (target && onNavigate) onNavigate(target);
@@ -284,7 +285,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
                     return (
                       <div
                         key={notification.id}
-                        className="px-4 py-3 relative group transition-colors cursor-pointer"
+                        className="px-4 py-3 transition-colors cursor-pointer"
                         style={{
                           borderBottom: `1px solid ${border}`,
                           backgroundColor: !isRead
@@ -320,16 +321,6 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
                               {notification.message}
                             </p>
                           </div>
-                          {!isRead && (
-                            <button
-                              onClick={e => handleMarkAsRead(e, notification)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                              style={{ color: brand }}
-                              title="Mark as read"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                       </div>
                     );

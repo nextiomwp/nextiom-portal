@@ -11,6 +11,7 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
   const [extension, setExtension] = useState('.com');
   const [period, setPeriod] = useState('1');
   const [notes, setNotes] = useState('');
+  const [autoRenew, setAutoRenew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
@@ -64,6 +65,7 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         status: 'pending',
         registration_period: parseInt(period),
         expiry_date: expiryDate.toISOString(),
+        auto_renew: autoRenew,
         notes: notes || null,
         created_at: new Date().toISOString(),
       }]).select().single();
@@ -238,6 +240,11 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
             onFocus={e => e.target.style.borderColor = brand}
             onBlur={e => e.target.style.borderColor = borderStrong}
           />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: `1px solid ${borderStrong}`, borderRadius: 10, background: panel2 }}>
+          <input type="checkbox" id="email_auto_renew" checked={autoRenew} onChange={e => setAutoRenew(e.target.checked)} style={{ width: 16, height: 16, accentColor: brand }} />
+          <label htmlFor="email_auto_renew" style={{ fontSize: 13, color: text, cursor: 'pointer' }}>Enable Auto Renewal</label>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>

@@ -24,6 +24,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
   const [domainOption, setDomainOption] = useState('new');
   const [domainName, setDomainName] = useState('');
   const [notes, setNotes] = useState('');
+  const [autoRenew, setAutoRenew] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
@@ -88,7 +89,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
 
       const { data: inserted, error: hostingError } = await supabase
         .from('hosting_requests')
-        .insert([{ customer_id: customerId, package_type: requestSummary, status: 'pending', created_at: new Date().toISOString() }])
+        .insert([{ customer_id: customerId, package_type: requestSummary, status: 'pending', auto_renew: autoRenew, created_at: new Date().toISOString() }])
         .select();
 
       if (hostingError) throw new Error(hostingError?.message || 'Failed to create hosting request');
@@ -253,6 +254,10 @@ function NewHostingOrderPage({ onSuccess, user, isDark = false, c = {} }) {
                   <option value="Yearly">Yearly (Save 20%)</option>
                   <option value="2 Years">2 Years (Save 30%)</option>
                 </select>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: `1px solid ${borderStrong}`, borderRadius: 10, background: panel2 }}>
+                <input type="checkbox" id="hosting_auto_renew" checked={autoRenew} onChange={e => setAutoRenew(e.target.checked)} style={{ width: 16, height: 16, accentColor: brand }} />
+                <label htmlFor="hosting_auto_renew" style={{ fontSize: 13, color: text, cursor: 'pointer' }}>Enable Auto Renewal</label>
               </div>
               <div>
                 <label style={labelStyle}>Domain Name</label>

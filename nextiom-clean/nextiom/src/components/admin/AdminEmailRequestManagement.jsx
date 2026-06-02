@@ -26,11 +26,13 @@ function DeleteModal({ open, onCancel, onConfirm, loading }) {
 function ApproveEmailDialog({ open, request, onClose, onConfirm, saving }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loginUrl, setLoginUrl] = useState('');
 
   React.useEffect(() => {
     if (open) {
       setUsername(request?.email || '');
       setPassword('');
+      setLoginUrl(request?.url || '');
     }
   }, [open, request]);
 
@@ -79,11 +81,20 @@ function ApproveEmailDialog({ open, request, onClose, onConfirm, saving }) {
               />
             </div>
           </div>
+          <div>
+            <label style={labelS}>Login URL</label>
+            <input
+              style={inpS}
+              placeholder="https://mail.example.com"
+              value={loginUrl}
+              onChange={e => setLoginUrl(e.target.value)}
+            />
+          </div>
         </div>
         <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
           <button
-            onClick={() => onConfirm(username, password)}
+            onClick={() => onConfirm(username, password, loginUrl)}
             disabled={saving || !password.trim()}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 8, border: 'none', background: '#16a34a', color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving || !password.trim() ? 'not-allowed' : 'pointer', opacity: saving || !password.trim() ? 0.7 : 1 }}
           >
@@ -181,7 +192,7 @@ function AdminEmailRequestManagement({ isDark = true }) {
     loadData();
   };
 
-  const handleApproveConfirm = async (username, password) => {
+  const handleApproveConfirm = async (username, password, loginUrl) => {
     if (!approveTarget) return;
     setApproveSaving(true);
     try {
@@ -189,6 +200,7 @@ function AdminEmailRequestManagement({ isDark = true }) {
         status: REQUEST_STATUS.APPROVED.toLowerCase(),
         email_username: username.trim() || null,
         email_password: password.trim() || null,
+        url: loginUrl.trim() || null,
         start_date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });

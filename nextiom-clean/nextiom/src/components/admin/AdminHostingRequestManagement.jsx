@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, CheckCircle, XCircle, User, Package, Trash2, AlertTriangle } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
 import { getHostingRequests, updateHostingRequest, deleteHostingRequest, REQUEST_STATUS, getCustomers, addNotification, buildHostingRequestUpdatePayload } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
@@ -31,6 +31,16 @@ const parsePkg = (packageType) => {
   const domain = parts.find(p => p.startsWith('Domain:'))?.replace('Domain:', '').trim() || '-';
   const notes = parts.find(p => p.startsWith('Notes:'))?.replace('Notes:', '').trim() || '-';
   return { plan, billing, domain, notes };
+};
+
+const parseJsonField = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 };
 
 function AdminHostingRequestManagement({ isDark = true }) {
@@ -186,6 +196,35 @@ function AdminHostingRequestManagement({ isDark = true }) {
     return s === 'completed' ? 'approved' : s;
   };
   const isPending = (status) => normalizeRequestStatus(status) === 'pending';
+  const selectedCustomer = selectedRequest ? (selectedRequest.customers || customers.find(cu => cu.id === selectedRequest.customer_id) || null) : null;
+  const requestFooterContent = selectedRequest && isPending(selectedRequest.status) ? (
+    <section style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 14, padding: 18, marginTop: 12 }}>
+      <div style={{ marginBottom: 12, fontWeight: 700, color: c.text }}>Admin Reply / Rejection Reason</div>
+      <textarea
+        rows={4}
+        placeholder="Reply or rejection reason..."
+        value={rejectReason || adminReply}
+        onChange={e => { setAdminReply(e.target.value); setRejectReason(e.target.value); }}
+        style={{ width: '100%', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, color: c.text, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+      />
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16, flexWrap: 'wrap' }}>
+        <button
+          disabled={loading}
+          onClick={() => handleAction(REQUEST_STATUS.REJECTED)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10, border: '1.5px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'inherit' }}
+        >
+          <XCircle size={16} /> Reject Request
+        </button>
+        <button
+          disabled={loading}
+          onClick={() => handleAction(REQUEST_STATUS.APPROVED)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderRadius: 10, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'inherit' }}
+        >
+          <CheckCircle size={16} /> {loading ? 'Processing…' : 'Approve'}
+        </button>
+      </div>
+    </section>
+  ) : null;
   // Only show Pending and Rejected — approved items go to Active Hosting section
   const allStatuses = [REQUEST_STATUS.PENDING, REQUEST_STATUS.REJECTED];
   const filteredRequests = requests.filter(r => normalizeRequestStatus(r.status) === normalizeRequestStatus(statusFilter));
@@ -249,86 +288,15 @@ function AdminHostingRequestManagement({ isDark = true }) {
         </div>
       </div>
 
-      <Dialog open={!!selectedRequest} onOpenChange={() => { setSelectedRequest(null); setAdminReply(''); setRejectReason(''); }}>
-        <DialogContent style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, maxWidth: 580, padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '20px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 3, height: 20, borderRadius: 2, background: '#8b5cf6', flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Request Details</span>
-            <StatusBadge status={selectedRequest?.status} />
-          </div>
-          {selectedRequest && (
-            <div style={{ padding: '20px 24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <div style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <User size={16} color={c.subText} style={{ marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Customer</p>
-                    <p style={{ fontWeight: 600, fontSize: 13, color: c.text }}>{selectedRequest.customers?.name || getCustomerName(selectedRequest.customer_id)}</p>
-                    <p style={{ fontSize: 11, color: c.subText, marginTop: 2 }}>{selectedRequest.customers?.email || ''}</p>
-                  </div>
-                </div>
-                <div style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <Package size={16} color={c.subText} style={{ marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Submitted</p>
-                    <p style={{ fontWeight: 600, fontSize: 13, color: c.text, textTransform: 'capitalize' }}>{selectedRequest.status || '-'}</p>
-                    <p style={{ fontSize: 11, color: c.subText, marginTop: 2 }}>{selectedRequest.created_at ? format(new Date(selectedRequest.created_at), 'MMM dd, yyyy HH:mm') : '-'}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ background: c.panel, border: `1px solid ${c.border}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${c.border}` }}>
-                  <FileText size={14} color={c.subText} />
-                  <span style={{ fontWeight: 700, fontSize: 13, color: c.text }}>Request Information</span>
-                </div>
-                {(() => {
-                  const { plan, billing, domain, notes } = parsePkg(selectedRequest.package_type);
-                  return (
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10 }}>
-                      {[['Plan', plan], ['Billing', billing], ['Domain', domain], ['Notes', notes]].map(([label, value]) => (
-                        <div key={label} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 8, padding: '10px 12px' }}>
-                          <p style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>{label}</p>
-                          <p style={{ fontWeight: 500, fontSize: 13, color: c.text }}>{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {isPending(selectedRequest.status) && (
-                <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
-                  <p style={{ fontWeight: 600, fontSize: 13, color: c.text, marginBottom: 10 }}>Admin Reply / Rejection Reason</p>
-                  <textarea
-                    rows={3}
-                    placeholder="Reply or rejection reason..."
-                    value={rejectReason || adminReply}
-                    onChange={e => { setAdminReply(e.target.value); setRejectReason(e.target.value); }}
-                    style={{ width: '100%', padding: '9px 12px', background: c.panel, border: `1px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 13, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
-                  />
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 14 }}>
-                    <button
-                      disabled={loading}
-                      onClick={() => handleAction(REQUEST_STATUS.REJECTED)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 18px', borderRadius: 9, border: '1.5px solid #ef4444', background: 'transparent', color: '#ef4444', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'inherit' }}
-                    >
-                      <XCircle size={15} /> Reject Request
-                    </button>
-                    <button
-                      disabled={loading}
-                      onClick={() => handleAction(REQUEST_STATUS.APPROVED)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 20px', borderRadius: 9, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, fontFamily: 'inherit' }}
-                    >
-                      <CheckCircle size={15} /> {loading ? 'Processing…' : 'Approve'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <AssignHostingDialog
+        open={!!selectedRequest}
+        onClose={() => { setSelectedRequest(null); setAdminReply(''); setRejectReason(''); }}
+        customer={selectedCustomer}
+        request={selectedRequest}
+        c={c}
+        onSuccess={() => { setSelectedRequest(null); setAdminReply(''); setRejectReason(''); loadData(); }}
+        footerContent={requestFooterContent}
+      />
     </div>
   );
 }

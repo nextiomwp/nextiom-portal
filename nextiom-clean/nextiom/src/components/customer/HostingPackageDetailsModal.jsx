@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Server, HardDrive, Wifi, Mail, Database, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { X, Server, HardDrive, Wifi, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { HOSTING_STATUS, REQUEST_STATUS, getHostingRequests, getHostingActivityLog, getHostingPlans } from '@/lib/storage';
 
 function statusBadgeStyle(status, isDark) {
@@ -45,6 +45,41 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
       planName: dashIndex >= 0 ? mainPart.slice(dashIndex + 3).trim() : mainPart,
     };
   };
+
+  const parseJsonField = (value) => {
+    if (!value) return null;
+    if (typeof value === 'object') return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  };
+
+  const cpanelInfo = React.useMemo(() => parseJsonField(pkg?.cpanel) || {}, [pkg?.cpanel]);
+  const ftpInfo = React.useMemo(() => parseJsonField(pkg?.ftp) || {}, [pkg?.ftp]);
+  const additionalCredentials = React.useMemo(() => {
+    const raw = pkg?.additional_credentials;
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    return parseJsonField(raw) || [];
+  }, [pkg?.additional_credentials]);
+
+  const isAutoRenew = Boolean(pkg?.auto_renew ?? pkg?.autoRenew);
+  const renewalPrice = React.useMemo(() => {
+    const raw = pkg?.next_renewal_price ?? pkg?.nextRenewalPrice;
+    if (raw != null && raw !== '') return Number(raw);
+    const price = pkg?.price ?? pkg?.first_price ?? null;
+    const percentage = pkg?.renewal_percentage ?? pkg?.renewalPercentage;
+    if (isAutoRenew && price != null && percentage != null && percentage !== '') {
+      const p = parseFloat(price);
+      const pct = parseFloat(percentage);
+      if (!Number.isNaN(p) && !Number.isNaN(pct)) {
+        return Number((p * (1 + pct / 100)).toFixed(2));
+      }
+    }
+    return null;
+  }, [pkg, isAutoRenew]);
 
   const requestMeta = React.useMemo(() => {
     const raw = pkg?.package_type || pkg?.package_name || pkg?.packageName || pkg?.notes || '';
@@ -184,20 +219,28 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
               </p>
             </div>
             <div style={infoPanel}>
-              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Price</p>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{isAutoRenew ? 'Price (1st payment)' : 'Price'}</p>
               <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.price ? `LKR ${requestMeta.price}` : 'N/A'}</p>
+            </div>
+            {isAutoRenew && renewalPrice != null && (
+              <div style={infoPanel}>
+                <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Renewal Price</p>
+                <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{`LKR ${renewalPrice}`}</p>
+              </div>
+            )}
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Auto Renew</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{isAutoRenew ? 'Enabled' : 'Disabled'}</p>
             </div>
           </div>
 
           {/* Usage */}
           <div>
             <p style={{ color: text, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Resource Usage</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-3">
               {[
                 { Icon: HardDrive, label: 'Disk Usage', value: pkg.usage?.diskUsage ? `${pkg.usage.diskUsage} GB` : (pkg.disk_usage_limit || planDefaults.disk || 'N/A') },
                 { Icon: Wifi, label: 'Bandwidth', value: pkg.usage?.bandwidthUsage ? `${pkg.usage.bandwidthUsage} GB` : (pkg.bandwidth_limit || planDefaults.bw || 'N/A') },
-                { Icon: Mail, label: 'Email Accounts', value: pkg.usage?.emailAccounts || 0 },
-                { Icon: Database, label: 'Databases', value: pkg.usage?.databases || 0 },
               ].map(({ Icon, label, value }) => (
                 <div key={label} style={{ ...infoPanel, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '14px 10px' }}>
                   <Icon style={{ width: 18, height: 18, color: subText, marginBottom: 6 }} />
@@ -213,6 +256,87 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
             <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Customer Notes</p>
             <p style={{ color: text, fontSize: 13 }}>{requestMeta.notes}</p>
           </div>
+
+          {pkg.customer_message && (
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Message from Admin</p>
+              <p style={{ color: text, fontSize: 13 }}>{pkg.customer_message}</p>
+            </div>
+          )}
+
+          {pkg.show_hosting_access !== false && (cpanelInfo.url || cpanelInfo.username || cpanelInfo.password || cpanelInfo.notes) && (
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Control Panel Access</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                {cpanelInfo.url && (
+                  <div>
+                    <p style={{ color: subText, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>URL</p>
+                    <p style={{ color: text, fontSize: 13, wordBreak: 'break-all' }}>{cpanelInfo.url}</p>
+                  </div>
+                )}
+                {cpanelInfo.username && (
+                  <div>
+                    <p style={{ color: subText, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Username</p>
+                    <p style={{ color: text, fontSize: 13 }}>{cpanelInfo.username}</p>
+                  </div>
+                )}
+                {cpanelInfo.password && (
+                  <div>
+                    <p style={{ color: subText, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Password</p>
+                    <p style={{ color: text, fontSize: 13 }}>{cpanelInfo.password}</p>
+                  </div>
+                )}
+                {cpanelInfo.notes && (
+                  <div>
+                    <p style={{ color: subText, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Notes</p>
+                    <p style={{ color: text, fontSize: 13 }}>{cpanelInfo.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {pkg.show_ftp_access !== false && (ftpInfo.host || ftpInfo.username || ftpInfo.password) && (
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>FTP Access</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+                {ftpInfo.host && (
+                  <div>
+                    <p style={{ color: subText, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Host</p>
+                    <p style={{ color: text, fontSize: 13 }}>{ftpInfo.host}</p>
+                  </div>
+                )}
+                {ftpInfo.username && (
+                  <div>
+                    <p style={{ color: subText, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Username</p>
+                    <p style={{ color: text, fontSize: 13 }}>{ftpInfo.username}</p>
+                  </div>
+                )}
+                {ftpInfo.password && (
+                  <div>
+                    <p style={{ color: subText, fontSize: 11, fontWeight: 700, marginBottom: 4 }}>Password</p>
+                    <p style={{ color: text, fontSize: 13 }}>{ftpInfo.password}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {pkg.show_additional_credentials !== false && additionalCredentials.length > 0 && (
+            <div style={infoPanel}>
+              <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Additional Credentials</p>
+              <div style={{ display: 'grid', gap: 12 }}>
+                {additionalCredentials.map((cred, idx) => (
+                  <div key={idx} style={{ padding: 12, border: `1px solid ${border}`, borderRadius: 12, background: isDark ? '#16181d' : '#fff' }}>
+                    <p style={{ color: text, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>{cred.type || `Credential ${idx + 1}`}</p>
+                    {cred.url && <p style={{ color: subText, fontSize: 12, marginBottom: 4 }}>URL: <span style={{ color: text }}>{cred.url}</span></p>}
+                    {cred.username && <p style={{ color: subText, fontSize: 12, marginBottom: 4 }}>Username: <span style={{ color: text }}>{cred.username}</span></p>}
+                    {cred.password && <p style={{ color: subText, fontSize: 12 }}>Password: <span style={{ color: text }}>{cred.password}</span></p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Recent Requests */}
           <div>

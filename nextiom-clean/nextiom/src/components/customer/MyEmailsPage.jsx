@@ -237,6 +237,16 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
               <div style={{ fontSize: 11, color: subText, marginBottom: 4 }}>Email Account</div>
               <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${border}`, borderRadius: 8, padding: '9px 12px', color: text, fontSize: 13 }}>{showCredentials.email}</div>
             </div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: subText, marginBottom: 4, fontWeight: 600, textTransform: 'uppercase' }}>Login URL</div>
+              <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${border}`, borderRadius: 8, padding: '9px 12px', fontSize: 13, wordBreak: 'break-all' }}>
+                {showCredentials.url ? (
+                  <a href={showCredentials.url} target="_blank" rel="noopener noreferrer" style={{ color: brand, textDecoration: 'underline' }}>{showCredentials.url}</a>
+                ) : (
+                  <span style={{ color: subText, fontStyle: 'italic' }}>Not provided</span>
+                )}
+              </div>
+            </div>
             <div style={{ display: 'grid', gap: 14 }}>
               <div>
                 <div style={{ fontSize: 11, color: subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>

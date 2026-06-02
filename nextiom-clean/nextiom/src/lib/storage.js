@@ -145,6 +145,17 @@ export const buildHostingRequestUpdatePayload = async (request, { status, startD
     expiry_date: request?.expiry_date || (isApproved && (request?.billing_period || parsed.billingPeriod) ? calculateHostingExpiryDate(request?.billing_period || parsed.billingPeriod, startIso) : null),
     disk_usage_limit: request?.disk_usage_limit || limits.disk_usage_limit || null,
     bandwidth_limit: request?.bandwidth_limit || limits.bandwidth_limit || null,
+    cpanel: request?.cpanel || request?.cpanel || null,
+    ftp: request?.ftp || request?.ftp || null,
+    additional_credentials: request?.additional_credentials || request?.additionalCredentials || null,
+    customer_message: request?.customer_message || request?.customerMessage || null,
+    show_hosting_access: request?.show_hosting_access ?? request?.showHostingAccess ?? true,
+    show_ftp_access: request?.show_ftp_access ?? request?.showFTPAccess ?? true,
+    show_additional_credentials: request?.show_additional_credentials ?? request?.showAdditionalCredentials ?? true,
+    send_email_notification: request?.send_email_notification ?? request?.sendEmailNotification ?? true,
+    auto_renew: request?.auto_renew ?? request?.autoRenew ?? false,
+    renewal_percentage: request?.renewal_percentage ?? request?.renewalPercentage ?? null,
+    next_renewal_price: request?.next_renewal_price ?? request?.nextRenewalPrice ?? null,
   };
 };
 
@@ -797,6 +808,7 @@ export const addDomainRequest = async (requestData) => {
       customer_id: requestData.customerId,
       domain_name: requestData.details?.domain,
       status: 'pending',
+      auto_renew: requestData.details?.auto_renew ?? false,
       created_at: new Date().toISOString()
     }])
     .select()
@@ -831,7 +843,20 @@ export const addHostingRequest = async (requestData) => {
       customer_id: requestData.customerId,
       package_type: requestSummary,
       status: 'pending',
-      created_at: new Date().toISOString()
+      billing_period: requestData.details?.billing || null,
+      domain: requestData.details?.domain || null,
+      notes: requestData.details?.notes || null,
+      cpanel: requestData.details?.cpanel || null,
+      ftp: requestData.details?.ftp || null,
+      additional_credentials: requestData.details?.additional_credentials || requestData.details?.additionalCredentials || null,
+      customer_message: requestData.details?.customer_message || requestData.details?.customerMessage || null,
+      show_hosting_access: requestData.details?.show_hosting_access ?? requestData.details?.showHostingAccess ?? true,
+      show_ftp_access: requestData.details?.show_ftp_access ?? requestData.details?.showFTPAccess ?? true,
+      show_additional_credentials: requestData.details?.show_additional_credentials ?? requestData.details?.showAdditionalCredentials ?? true,
+      send_email_notification: requestData.details?.send_email_notification ?? requestData.details?.sendEmailNotification ?? true,
+      auto_renew: requestData.details?.auto_renew ?? false,
+      created_at: new Date().toISOString(),
+      start_date: new Date().toISOString(),
     }])
     .select()
     .single();
@@ -840,7 +865,6 @@ export const addHostingRequest = async (requestData) => {
     handleSupabaseError(error, 'addHostingRequest');
   }
 
-  // Notify admin
   await supabase.from('notifications').insert([{
     type: 'hosting_request',
     title: 'New Hosting Request',
@@ -1258,7 +1282,29 @@ export const assignDomainToCustomer = async (data) => {
 };
 
 export const assignHostingToCustomer = async (data) => {
-  const { customerId, hostingType, planName, billingPeriod, domain, notes, price, startDate, diskUsageLimit, bandwidthLimit } = data;
+  const {
+    customerId,
+    hostingType,
+    planName,
+    billingPeriod,
+    domain,
+    notes,
+    price,
+    autoRenew,
+    renewalPercentage,
+    nextRenewalPrice,
+    startDate,
+    diskUsageLimit,
+    bandwidthLimit,
+    cpanel,
+    ftp,
+    additionalCredentials,
+    customerMessage,
+    showHostingAccess,
+    showFTPAccess,
+    showAdditionalCredentials,
+    sendEmailNotification,
+  } = data;
   const packageSummary = `${hostingType} - ${planName} | Billing: ${billingPeriod} | Domain: ${domain || 'N/A'} | Notes: ${notes || 'None'}`;
 
   // Calculate expiry based on billing period
@@ -1305,6 +1351,17 @@ export const assignHostingToCustomer = async (data) => {
       price: price || null,
       disk_usage_limit: finalDiskLimit,
       bandwidth_limit: finalBwLimit,
+      cpanel: cpanel || null,
+      ftp: ftp || null,
+      additional_credentials: additionalCredentials || null,
+      customer_message: customerMessage || null,
+      show_hosting_access: showHostingAccess ?? true,
+      show_ftp_access: showFTPAccess ?? true,
+      show_additional_credentials: showAdditionalCredentials ?? true,
+      send_email_notification: sendEmailNotification ?? true,
+      auto_renew: autoRenew ?? false,
+      renewal_percentage: renewalPercentage || null,
+      next_renewal_price: nextRenewalPrice || null,
       created_at: new Date().toISOString(),
       start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
     }])
@@ -1318,7 +1375,7 @@ export const assignHostingToCustomer = async (data) => {
     customer_id: customerId,
     type: 'update',
     title: 'Hosting Package Assigned',
-    message: `Hosting package "${hostingType} - ${planName}" (${billingPeriod}) has been assigned to your account.`,
+    message: customerMessage ? customerMessage : `Hosting package "${hostingType} - ${planName}" (${billingPeriod}) has been assigned to your account.`,
     read_status: false,
   }]);
 

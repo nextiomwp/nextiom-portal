@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Loader2, Check, DollarSign, HardDrive, Wifi } from 'lucide-react';
-import { assignHostingToCustomer, getHostingPlans } from '@/lib/storage';
+import { assignHostingToCustomer, getHostingPlans, updateHostingRequest, parseHostingPackageSummary } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
-function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
+const parseJson = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const buildPackageSummary = ({ hostingType, planName, billingPeriod, domain, notes }) =>
+  `${hostingType} - ${planName} | Billing: ${billingPeriod} | Domain: ${domain || 'N/A'} | Notes: ${notes || 'None'}`;
+
+function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, footerContent }) {
   const [plans, setPlans] = useState([]);
   const [hostingType, setHostingType] = useState('');
   const [planName, setPlanName] = useState('');
@@ -15,9 +28,27 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [diskUsageLimit, setDiskUsageLimit] = useState('');
   const [bandwidthLimit, setBandwidthLimit] = useState('');
-  const [overrideAllocated, setOverrideAllocated] = useState(false);
+  const [enableResourceOverride, setEnableResourceOverride] = useState(false);
+  const [cpanelUrl, setCpanelUrl] = useState('');
+  const [cpanelUsername, setCpanelUsername] = useState('');
+  const [cpanelPassword, setCpanelPassword] = useState('');
+  const [cpanelNotes, setCpanelNotes] = useState('');
+  const [ftpHost, setFtpHost] = useState('');
+  const [ftpUsername, setFtpUsername] = useState('');
+  const [ftpPassword, setFtpPassword] = useState('');
+  const [additionalCredentials, setAdditionalCredentials] = useState([]);
+  const [autoRenew, setAutoRenew] = useState(false);
+  const [renewalPercentage, setRenewalPercentage] = useState('');
+  const [nextRenewalPrice, setNextRenewalPrice] = useState('');
+  const [customerMessage, setCustomerMessage] = useState('Your hosting account has been activated successfully. Login details are available above. Please keep your credentials secure.');
+  const [showHostingAccess, setShowHostingAccess] = useState(true);
+  const [showFTPAccess, setShowFTPAccess] = useState(true);
+  const [showAdditionalCredentials, setShowAdditionalCredentials] = useState(true);
+  const [sendEmailNotification, setSendEmailNotification] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const isRequestMode = !!request;
+
 
   useEffect(() => {
     if (open) {
@@ -25,51 +56,147 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    if (request) {
+      const parsed = parseHostingPackageSummary(request.package_type || '');
+      const cpanelInfo = parseJson(request.cpanel) || {};
+      const ftpInfo = parseJson(request.ftp) || {};
+      const creds = Array.isArray(request.additional_credentials)
+        ? request.additional_credentials
+        : parseJson(request.additional_credentials) || [];
+
+      setHostingType(request.hosting_type || parsed.hostingType || '');
+      setPlanName(request.plan_name || parsed.planName || '');
+      setBillingPeriod(request.billing_period || parsed.billingPeriod || 'Monthly');
+      setDomain(request.domain || parsed.domain || '');
+      setPrice(request.price != null ? String(request.price) : '');
+      setNotes(request.notes || parsed.notes || '');
+      setStartDate(request.start_date ? new Date(request.start_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+      setDiskUsageLimit(request.disk_usage_limit || '');
+      setBandwidthLimit(request.bandwidth_limit || '');
+      setEnableResourceOverride(Boolean(request.disk_usage_limit || request.bandwidth_limit));
+      setCpanelUrl(cpanelInfo.url || '');
+      setCpanelUsername(cpanelInfo.username || '');
+      setCpanelPassword(cpanelInfo.password || '');
+      setCpanelNotes(cpanelInfo.notes || '');
+      setFtpHost(ftpInfo.host || '');
+      setFtpUsername(ftpInfo.username || '');
+      setFtpPassword(ftpInfo.password || '');
+      setAdditionalCredentials(creds);
+      setAutoRenew(request.auto_renew ?? request.autoRenew ?? false);
+      setRenewalPercentage(request.renewal_percentage ?? request.renewalPercentage ?? '');
+      setNextRenewalPrice(request.next_renewal_price ?? request.nextRenewalPrice ?? '');
+      setCustomerMessage(request.customer_message ?? request.customerMessage ?? 'Your hosting account has been activated successfully. Login details are available above. Please keep your credentials secure.');
+      setShowHostingAccess(request.show_hosting_access ?? request.showHostingAccess ?? true);
+      setShowFTPAccess(request.show_ftp_access ?? request.showFTPAccess ?? true);
+      setShowAdditionalCredentials(request.show_additional_credentials ?? request.showAdditionalCredentials ?? true);
+      setSendEmailNotification(request.send_email_notification ?? request.sendEmailNotification ?? true);
+    } else {
+      setHostingType('');
+      setPlanName('');
+      setBillingPeriod('Monthly');
+      setDomain('');
+      setPrice('');
+      setNotes('');
+      setStartDate(new Date().toISOString().split('T')[0]);
+      setDiskUsageLimit('');
+      setBandwidthLimit('');
+      setEnableResourceOverride(false);
+      setCpanelUrl('');
+      setCpanelUsername('');
+      setCpanelPassword('');
+      setCpanelNotes('');
+      setFtpHost('');
+      setFtpUsername('');
+      setFtpPassword('');
+      setAdditionalCredentials([]);
+      setAutoRenew(false);
+      setRenewalPercentage('');
+      setNextRenewalPrice('');
+      setCustomerMessage('Your hosting account has been activated successfully. Login details are available above. Please keep your credentials secure.');
+      setShowHostingAccess(true);
+      setShowFTPAccess(true);
+      setShowAdditionalCredentials(true);
+      setSendEmailNotification(true);
+    }
+  }, [open, request]);
+
+  // Calculate next renewal price when autoRenew is enabled and price/percentage changes
+  useEffect(() => {
+    if (autoRenew && price && renewalPercentage) {
+      const p = parseFloat(price) || 0;
+      const perc = parseFloat(renewalPercentage) || 0;
+      const calculated = p * (1 + perc / 100);
+      setNextRenewalPrice(calculated.toFixed(2));
+    } else if (!autoRenew) {
+      setNextRenewalPrice('');
+    }
+  }, [autoRenew, price, renewalPercentage]);
+
   if (!open) return null;
 
-  const text = '#111827';
-  const subText = '#6b7280';
-  const brand = c.brand || '#e87b35';
-  const input = '#f8fafc';
-  const border = 'rgba(15,23,42,0.12)';
-  // Input field classes: fixed height and tighter line-height for consistent vertical alignment
-  const fieldClass = 'w-full mt-1.5 px-3 py-2 h-10 leading-tight rounded-xl outline-none transition-all bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35]';
-
-  // Label styles: use flex centering so icon + text align vertically
+  // Detect dark mode from the theme object's bg color
+  const isDark = c?.bg && (c.bg.includes('#15') || c.bg.includes('#1') || c.bg.includes('15161'));
+  
+  // Use exact admin theme values or sensible defaults
+  const text = c?.text || (isDark ? '#fff' : '#1a1a1a');
+  const subText = c?.subText || (isDark ? '#a0a0a0' : '#888');
+  const brand = c?.brand || '#e87b35';
+  const border = c?.border || (isDark ? 'rgba(255,255,255,0.06)' : '#ebebeb');
+  const bgColor = c?.card || (isDark ? '#1C1E24' : '#fff');
+  const sectionBg = isDark ? '#2a2d35' : '#f8f8f7';
+  const inputBg = isDark ? '#1a1d24' : '#f5f5f5';
+  const inputBorder = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+  const fieldClass = 'w-full mt-1.5 px-3 py-2 h-10 leading-tight rounded-xl outline-none transition-all border focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35]';
+  const fieldStyle = {
+    background: inputBg,
+    color: text,
+    border: `1px solid ${inputBorder}`,
+    boxSizing: 'border-box',
+  };
+  const disabledFieldStyle = {
+    ...fieldStyle,
+    background: isDark ? '#11161d' : '#e7e9ee',
+    color: isDark ? '#64748b' : '#6b7280',
+    cursor: 'not-allowed',
+  };
+  const textareaStyle = {
+    ...fieldStyle,
+    minHeight: 90,
+    resize: 'vertical',
+  };
+  const sectionStyle = {
+    padding: 18,
+    border: `1px solid ${border}`,
+    borderRadius: 18,
+    background: sectionBg,
+  };
   const labelS = {
     fontSize: 12, fontWeight: 600, color: subText,
     textTransform: 'uppercase', letterSpacing: 0.8,
     display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8
   };
 
-  // Get unique hosting types from plans
   const hostingTypes = [...new Set(plans.map(p => p.hosting_type))];
-  const selectedPlans = hostingType
-    ? plans.filter(p => p.hosting_type === hostingType && p.is_active !== false)
-    : [];
-
-  // Derive default disk/bandwidth from the selected plan
-  const selectedPlan = !planName || !hostingType
-    ? null
-    : plans.find(p => p.hosting_type === hostingType && p.plan_name === planName) || null;
-
+  if (isRequestMode && hostingType && !hostingTypes.includes(hostingType)) {
+    hostingTypes.unshift(hostingType);
+  }
+  const selectedPlans = hostingType ? plans.filter(p => p.hosting_type === hostingType && p.is_active !== false) : [];
+  if (isRequestMode && hostingType && planName && !selectedPlans.find(p => p.plan_name === planName)) {
+    selectedPlans.unshift({ id: 'requested-plan', hosting_type: hostingType, plan_name: planName, storage: diskUsageLimit, bandwidth: bandwidthLimit });
+  }
+  const selectedPlan = !planName || !hostingType ? null : plans.find(p => p.hosting_type === hostingType && p.plan_name === planName) || selectedPlans[0] || null;
   const planDisk = selectedPlan?.storage || '';
   const planBw = selectedPlan?.bandwidth || '';
 
-  // Auto-update override fields when plan changes (if not manually overridden)
   const handlePlanChange = (val) => {
     setPlanName(val);
     const plan = plans.find(p => p.hosting_type === hostingType && p.plan_name === val);
-    if (plan) {
-      if (!overrideAllocated) {
-        setDiskUsageLimit(plan.storage || '');
-        setBandwidthLimit(plan.bandwidth || '');
-      }
-    } else {
-      if (!overrideAllocated) {
-        setDiskUsageLimit('');
-        setBandwidthLimit('');
-      }
+    if (plan && !enableResourceOverride) {
+      setDiskUsageLimit(plan.storage || '');
+      setBandwidthLimit(plan.bandwidth || '');
     }
   };
 
@@ -86,28 +213,73 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
     setSaving(true);
     try {
       const finalPrice = parseFloat(price) > 0 ? parseFloat(price) : null;
-      await assignHostingToCustomer({
-        customerId: customer.id,
-        hostingType,
-        planName,
-        billingPeriod,
+      const payload = {
+        package_type: buildPackageSummary({ hostingType, planName, billingPeriod, domain, notes }),
+        hosting_type: hostingType,
+        plan_name: planName,
+        billing_period: billingPeriod,
         domain: domain.trim() || null,
         notes: notes.trim() || null,
         price: finalPrice,
-        startDate,
-        diskUsageLimit: overrideAllocated ? diskUsageLimit : '',
-        bandwidthLimit: overrideAllocated ? bandwidthLimit : '',
-      });
+        start_date: startDate ? new Date(startDate).toISOString() : null,
+        disk_usage_limit: enableResourceOverride ? diskUsageLimit.trim() || null : null,
+        bandwidth_limit: enableResourceOverride ? bandwidthLimit.trim() || null : null,
+        cpanel: {
+          url: cpanelUrl.trim() || null,
+          username: cpanelUsername.trim() || null,
+          password: cpanelPassword.trim() || null,
+          notes: cpanelNotes.trim() || null,
+        },
+        ftp: {
+          host: ftpHost.trim() || null,
+          username: ftpUsername.trim() || null,
+          password: ftpPassword.trim() || null,
+        },
+        auto_renew: autoRenew,
+        renewal_percentage: parseFloat(renewalPercentage) > 0 ? parseFloat(renewalPercentage) : null,
+        next_renewal_price: parseFloat(nextRenewalPrice) > 0 ? parseFloat(nextRenewalPrice) : null,
+        additional_credentials: additionalCredentials.filter(cred => cred.type || cred.url || cred.username || cred.password),
+        customer_message: customerMessage.trim(),
+        show_hosting_access: showHostingAccess,
+        show_ftp_access: showFTPAccess,
+        show_additional_credentials: showAdditionalCredentials,
+        send_email_notification: sendEmailNotification,
+      };
 
-      toast({ title: 'Hosting Assigned', description: `${hostingType} - ${planName} assigned to ${customer.name}` });
-      setHostingType(''); setPlanName(''); setBillingPeriod('Monthly');
-      setDomain(''); setPrice(''); setNotes('');
-      setDiskUsageLimit(''); setBandwidthLimit(''); setOverrideAllocated(false);
-      setStartDate(new Date().toISOString().split('T')[0]);
+      if (isRequestMode) {
+        await updateHostingRequest(request.id, payload);
+        toast({ title: 'Request Updated', description: `${hostingType} - ${planName} request updated for ${customer?.name || 'customer'}` });
+      } else {
+        await assignHostingToCustomer({
+          customerId: customer.id,
+          hostingType,
+          planName,
+          billingPeriod,
+          domain: domain.trim() || null,
+          notes: notes.trim() || null,
+          price: finalPrice,
+          startDate,
+          diskUsageLimit: enableResourceOverride ? diskUsageLimit.trim() || null : null,
+          bandwidthLimit: enableResourceOverride ? bandwidthLimit.trim() || null : null,
+          cpanel: payload.cpanel,
+          ftp: payload.ftp,
+          autoRenew,
+          renewalPercentage: payload.renewal_percentage,
+          nextRenewalPrice: payload.next_renewal_price,
+          additionalCredentials: payload.additional_credentials,
+          customerMessage: payload.customer_message,
+          showHostingAccess: payload.show_hosting_access,
+          showFTPAccess: payload.show_ftp_access,
+          showAdditionalCredentials: payload.show_additional_credentials,
+          sendEmailNotification: payload.send_email_notification,
+        });
+        toast({ title: 'Hosting Assigned', description: `${hostingType} - ${planName} assigned to ${customer.name}` });
+      }
+
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast({ title: 'Error', description: err?.message || 'Failed to assign hosting', variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || (isRequestMode ? 'Failed to update request' : 'Failed to assign hosting'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -115,202 +287,255 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess }) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose?.(); }}>
-      <DialogContent className="max-w-3xl bg-white border-slate-200 text-slate-900 max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" style={{ background: bgColor, color: text, display: 'flex', flexDirection: 'column' }}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-slate-900">
+          <DialogTitle className="flex items-center gap-3" style={{ color: text }}>
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
               <Server size={16} />
             </span>
             <span>
-              Assign Hosting
-              <div className="mt-1 text-xs font-normal text-slate-500">{customer?.name} — {customer?.email}</div>
+              {isRequestMode ? 'Review Hosting Request' : 'Assign Hosting'}
+              <div className="mt-1 text-xs font-normal" style={{ color: subText }}>{customer?.name} — {customer?.email}</div>
             </span>
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Assign a hosting package, billing period, and resource limits to the selected customer.
+            Assign a hosting package, billing period, control panel and FTP credentials, and additional access details.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[calc(90vh-132px)] overflow-y-auto pr-1">
-          {/* Hosting Type */}
-          <div>
-            <label style={labelS}>Hosting Type *</label>
-            <select
-              className={fieldClass}
-              value={hostingType}
-              onChange={e => { setHostingType(e.target.value); setPlanName(''); }}
-            >
-              <option value="">Select hosting type…</option>
-              {hostingTypes.map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+        <div className="flex-1 overflow-y-auto pr-1 space-y-4" style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', minHeight: 0 }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label style={labelS}>Hosting Type *</label>
+              <select className={fieldClass} style={fieldStyle} value={hostingType} onChange={e => { setHostingType(e.target.value); setPlanName(''); }} disabled={isRequestMode}>
+                <option value="">Select hosting type…</option>
+                {hostingTypes.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelS}>Plan *</label>
+              <select className={fieldClass} style={fieldStyle} value={planName} onChange={e => handlePlanChange(e.target.value)} disabled={isRequestMode || !hostingType}>
+                <option value="">{hostingType ? 'Select a plan…' : 'Choose a type first…'}</option>
+                {selectedPlans.map(p => (
+                  <option key={p.id} value={p.plan_name}>
+                    {p.plan_name}{p.storage ? ` (${p.storage}` : ''}{p.storage && p.bandwidth ? ' / ' : ''}{p.bandwidth ? `${p.bandwidth})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 12 }}>
+                <label style={labelS}>Override plan disk & bandwidth limits</label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12, color: subText, fontWeight: 600 }}>
+                  <input type="checkbox" checked={enableResourceOverride} onChange={e => setEnableResourceOverride(e.target.checked)} style={{ accentColor: brand }} />
+                  Enable custom values
+                </label>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <label style={labelS}>Disk Usage Limit</label>
+                  <input className={fieldClass} style={enableResourceOverride ? fieldStyle : disabledFieldStyle} type="text" placeholder={planDisk ? `Plan default: ${planDisk}` : 'e.g. 100 GB'} value={diskUsageLimit} onChange={e => setDiskUsageLimit(e.target.value)} disabled={!enableResourceOverride} />
+                </div>
+                <div>
+                  <label style={labelS}>Bandwidth Limit</label>
+                  <input className={fieldClass} style={enableResourceOverride ? fieldStyle : disabledFieldStyle} type="text" placeholder={planBw ? `Plan default: ${planBw}` : 'e.g. 1 TB'} value={bandwidthLimit} onChange={e => setBandwidthLimit(e.target.value)} disabled={!enableResourceOverride} />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label style={labelS}>Billing Period</label>
+              <select className={fieldClass} style={fieldStyle} value={billingPeriod} onChange={e => setBillingPeriod(e.target.value)} disabled={isRequestMode}>
+                {['Monthly', 'Quarterly (3mo)', 'Semi-Annual (6mo)', 'Yearly', '2 Years'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelS}>Start Date</label>
+              <input className={fieldClass} style={fieldStyle} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </div>
           </div>
 
-          {/* Plan */}
-          <div>
-            <label style={labelS}>Plan *</label>
-            <select
-              className={fieldClass}
-              value={planName}
-              onChange={e => handlePlanChange(e.target.value)}
-              disabled={!hostingType}
-            >
-              <option value="">{hostingType ? 'Select a plan…' : 'Choose a type first…'}</option>
-              {selectedPlans.map(p => (
-                <option key={p.id} value={p.plan_name}>
-                  {p.plan_name}{p.storage ? ` (${p.storage}` : ''}{p.storage && p.bandwidth ? ' / ' : ''}{p.bandwidth ? `${p.bandwidth})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Billing Period */}
-          <div>
-            <label style={labelS}>Billing Period</label>
-            <select
-              className={fieldClass}
-              value={billingPeriod}
-              onChange={e => setBillingPeriod(e.target.value)}
-            >
-              {['Monthly', 'Quarterly (3mo)', 'Semi-Annual (6mo)', 'Yearly', '2 Years'].map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Start Date */}
-          <div>
-            <label style={labelS}>Start Date</label>
-            <input
-              className={fieldClass}
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-            />
-          </div>
-
-          {/* Domain + Price */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label style={labelS}>Domain (optional)</label>
-              <input
-                className={fieldClass}
-                placeholder="e.g. example.com"
-                value={domain}
-                onChange={e => setDomain(e.target.value)}
-              />
+              <input className={fieldClass} style={fieldStyle} value={domain} onChange={e => setDomain(e.target.value)} placeholder="e.g. example.com" disabled={isRequestMode} />
             </div>
             <div>
-              <label style={labelS}>Price (LKR, optional)</label>
-              <div style={{ position: 'relative' }}>
-                <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
-                <input
-                  className={`${fieldClass} pl-8`}
-                  type="number" min="0" step="0.01"
-                  placeholder="0.00"
-                  value={price}
-                  onChange={e => setPrice(e.target.value)}
-                />
+              <label style={labelS}>Auto Renew</label>
+              <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: text, cursor: isRequestMode ? 'not-allowed' : 'pointer', padding: '6px 14px', borderRadius: 10, border: `1.5px solid ${autoRenew ? brand : border}`, background: autoRenew ? `${brand}15` : 'transparent', fontWeight: autoRenew ? 600 : 400 }}>
+                  <input type="radio" name="autoRenew" checked={autoRenew} onChange={() => !isRequestMode && setAutoRenew(true)} style={{ accentColor: brand }} disabled={isRequestMode} />
+                  YES
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: text, cursor: isRequestMode ? 'not-allowed' : 'pointer', padding: '6px 14px', borderRadius: 10, border: `1.5px solid ${!autoRenew ? brand : border}`, background: !autoRenew ? `${brand}15` : 'transparent', fontWeight: !autoRenew ? 600 : 400 }}>
+                  <input type="radio" name="autoRenew" checked={!autoRenew} onChange={() => !isRequestMode && setAutoRenew(false)} style={{ accentColor: brand }} disabled={isRequestMode} />
+                  NO
+                </label>
               </div>
             </div>
           </div>
 
-          {/* Disk Usage + Bandwidth Override (Optional) */}
-          <div>
-            <label style={{ ...labelS, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input
-                type="checkbox"
-                checked={overrideAllocated}
-                onChange={e => {
-                  setOverrideAllocated(e.target.checked);
-                  if (!e.target.checked) {
-                    // Reset to plan defaults
-                    const plan = plans.find(p => p.hosting_type === hostingType && p.plan_name === planName);
-                    setDiskUsageLimit(plan?.storage || '');
-                    setBandwidthLimit(plan?.bandwidth || '');
-                  }
-                }}
-                style={{ accentColor: brand }}
-              />
-              Override Allocated Resources (optional)
-            </label>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            <div>
-              <label style={labelS}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <HardDrive size={12} /> Disk Usage Limit
+          {autoRenew && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label style={labelS}>Renewal Percentage (%)</label>
+                <input className={fieldClass} style={fieldStyle} type="number" min="0" max="100" step="0.1" placeholder="e.g. 10" value={renewalPercentage} onChange={e => setRenewalPercentage(e.target.value)} />
+              </div>
+              <div>
+                <label style={labelS}>Price (LKR, optional)</label>
+                <div style={{ position: 'relative' }}>
+                  <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
+                  <input className={`${fieldClass} pl-8`} style={fieldStyle} type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
                 </div>
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  className={`${fieldClass} pr-10 ${overrideAllocated ? '' : 'opacity-70'}`}
-                  placeholder={planDisk || 'e.g. 50GB'}
-                  value={diskUsageLimit}
-                  onChange={e => { setDiskUsageLimit(e.target.value); setOverrideAllocated(true); }}
-                />
-                {!overrideAllocated && planDisk && (
-                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: subText, background: '#fff', padding: '0 4px' }}>
-                    plan: {planDisk}
-                  </span>
+              </div>
+              <div>
+                <label style={labelS}>Next Renewal Price (LKR)</label>
+                <div style={{ position: 'relative' }}>
+                  <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
+                  <input className={`${fieldClass} pl-8`} style={{ ...disabledFieldStyle }} type="text" readOnly value={nextRenewalPrice ? `LKR ${parseFloat(nextRenewalPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'} />
+                </div>
+                {price && renewalPercentage && nextRenewalPrice && (
+                  <div style={{ fontSize: 11, color: subText, marginTop: 4, textAlign: 'right' }}>
+                    = {parseFloat(price).toLocaleString(undefined, { minimumFractionDigits: 2 })} + ({renewalPercentage}%)
+                  </div>
                 )}
               </div>
             </div>
-            <div>
-              <label style={labelS}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Wifi size={12} /> Bandwidth Limit
-                </div>
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  className={`${fieldClass} pr-10 ${overrideAllocated ? '' : 'opacity-70'}`}
-                  placeholder={planBw || 'e.g. 500GB'}
-                  value={bandwidthLimit}
-                  onChange={e => { setBandwidthLimit(e.target.value); setOverrideAllocated(true); }}
-                />
-                {!overrideAllocated && planBw && (
-                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: subText, background: '#fff', padding: '0 4px' }}>
-                    plan: {planBw}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+          )}
 
-          {/* Notes */}
-          <div>
-            <label style={labelS}>Notes / Comments</label>
-            <textarea
-              className={`${fieldClass} min-h-[72px] resize-y`}
-              placeholder="Internal notes about this hosting assignment..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-            />
-          </div>
+          {!autoRenew && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label style={labelS}>Price (LKR, optional)</label>
+                <div style={{ position: 'relative' }}>
+                  <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
+                  <input className={`${fieldClass} pl-8`} style={fieldStyle} type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <section style={sectionStyle}>
+            <div style={{ marginBottom: 12, fontWeight: 700, color: text }}>Hosting / Control Panel Access</div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div>
+                <label style={labelS}>Login URL</label>
+                <input className={fieldClass} style={fieldStyle} value={cpanelUrl} onChange={e => setCpanelUrl(e.target.value)} placeholder="https://cpanel.example.com" />
+              </div>
+              <div>
+                <label style={labelS}>Username</label>
+                <input className={fieldClass} style={fieldStyle} value={cpanelUsername} onChange={e => setCpanelUsername(e.target.value)} placeholder="cpanel_user" />
+              </div>
+              <div>
+                <label style={labelS}>Password</label>
+                <input className={fieldClass} style={fieldStyle} type="password" value={cpanelPassword} onChange={e => setCpanelPassword(e.target.value)} placeholder="********" />
+              </div>
+              <div className="lg:col-span-3">
+                <label style={labelS}>Notes (optional)</label>
+                <textarea className={`${fieldClass} min-h-[90px] resize-y`} style={textareaStyle} value={cpanelNotes} onChange={e => setCpanelNotes(e.target.value)} placeholder="Main cPanel access for managing hosting account." />
+              </div>
+            </div>
+          </section>
+
+          <section style={sectionStyle}>
+            <div style={{ marginBottom: 12, fontWeight: 700, color: text }}>FTP Access</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label style={labelS}>FTP Host</label>
+                <input className={fieldClass} style={fieldStyle} value={ftpHost} onChange={e => setFtpHost(e.target.value)} placeholder="ftp.example.com" />
+              </div>
+              <div>
+                <label style={labelS}>FTP Username</label>
+                <input className={fieldClass} style={fieldStyle} value={ftpUsername} onChange={e => setFtpUsername(e.target.value)} placeholder="ftp_user" />
+              </div>
+              <div>
+                <label style={labelS}>FTP Password</label>
+                <input className={fieldClass} style={fieldStyle} type="password" value={ftpPassword} onChange={e => setFtpPassword(e.target.value)} placeholder="********" />
+              </div>
+            </div>
+          </section>
+
+          <section style={sectionStyle}>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontWeight: 700, color: text }}>Additional Credentials (Optional)</div>
+              <button type="button" onClick={() => setAdditionalCredentials(prev => [...prev, { type: '', url: '', username: '', password: '' }])} style={{ border: `1px solid ${border}`, background: bgColor, color: text, borderRadius: 10, padding: '8px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                + Add Credential
+              </button>
+            </div>
+            {additionalCredentials.length > 0 ? additionalCredentials.map((cred, idx) => (
+              <div key={idx} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginBottom: 12, padding: 14, border: `1px solid ${border}`, borderRadius: 14, background: inputBg }}>
+                <div>
+                  <label style={labelS}>Credential Type</label>
+                  <input className={fieldClass} style={fieldStyle} value={cred.type} onChange={e => {
+                    const next = [...additionalCredentials];
+                    next[idx] = { ...next[idx], type: e.target.value };
+                    setAdditionalCredentials(next);
+                  }} placeholder="WordPress Admin" />
+                </div>
+                <div>
+                  <label style={labelS}>URL / Host</label>
+                  <input className={fieldClass} style={fieldStyle} value={cred.url} onChange={e => {
+                    const next = [...additionalCredentials];
+                    next[idx] = { ...next[idx], url: e.target.value };
+                    setAdditionalCredentials(next);
+                  }} placeholder="https://example.com/wp-admin" />
+                </div>
+                <div>
+                  <label style={labelS}>Username</label>
+                  <input className={fieldClass} style={fieldStyle} value={cred.username} onChange={e => {
+                    const next = [...additionalCredentials];
+                    next[idx] = { ...next[idx], username: e.target.value };
+                    setAdditionalCredentials(next);
+                  }} placeholder="wp_admin" />
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <label style={labelS}>Password</label>
+                  <input className={fieldClass} style={fieldStyle} type="password" value={cred.password} onChange={e => {
+                    const next = [...additionalCredentials];
+                    next[idx] = { ...next[idx], password: e.target.value };
+                    setAdditionalCredentials(next);
+                  }} placeholder="********" />
+                  <button type="button" onClick={() => setAdditionalCredentials(prev => prev.filter((_, index) => index !== idx))} style={{ position: 'absolute', right: 10, top: 36, border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>
+                    ×
+                  </button>
+                </div>
+              </div>
+            )) : (
+              <p style={{ color: subText, fontSize: 13 }}>Add additional login details for plugins, admin panels, or service portals.</p>
+            )}
+          </section>
+
+          <section style={sectionStyle}>
+            <div style={{ marginBottom: 12, fontWeight: 700, color: text }}>Customer Message</div>
+            <textarea className={`${fieldClass} min-h-[110px] resize-y`} style={textareaStyle} value={customerMessage} onChange={e => setCustomerMessage(e.target.value)} placeholder="This message will be visible to the customer." />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ color: subText, fontSize: 12 }}>{customerMessage.length}/500</span>
+            </div>
+          </section>
+
+          <section style={sectionStyle}>
+            <div style={{ marginBottom: 12, fontWeight: 700, color: text }}>Visibility Settings</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { label: 'Show Hosting Access', checked: showHostingAccess, setter: setShowHostingAccess },
+                { label: 'Show FTP Access', checked: showFTPAccess, setter: setShowFTPAccess },
+                { label: 'Show Additional Credentials', checked: showAdditionalCredentials, setter: setShowAdditionalCredentials },
+                { label: 'Send Email Notification to Customer', checked: sendEmailNotification, setter: setSendEmailNotification },
+              ].map(item => (
+                <label key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 10, background: bgColor, padding: '11px 14px', borderRadius: 12, border: `1px solid ${border}`, color: text, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={item.checked} onChange={() => item.setter(prev => !prev)} style={{ accentColor: brand }} />
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</span>
+                </label>
+              ))}
+            </div>
+          </section>
+          {footerContent}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding: '16px 24px', borderTop: `1px solid ${border}`,
-          display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0
-        }}>
-          <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 20px', borderRadius: 8, border: 'none',
-              background: brand, color: '#fff', fontSize: 13, fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1
-            }}
-          >
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, flexShrink: 0, marginTop: 'auto' }}>
+          <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleSubmit} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 8, border: 'none', background: brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {saving ? 'Assigning…' : 'Assign Hosting'}
+            {saving ? (isRequestMode ? 'Updating…' : 'Assigning…') : (isRequestMode ? 'Update Request' : 'Assign Hosting')}
           </button>
         </div>
       </DialogContent>

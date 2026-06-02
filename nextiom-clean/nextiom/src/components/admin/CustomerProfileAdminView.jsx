@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound, Package, Edit, RefreshCw, Infinity } from 'lucide-react';
+import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound, Package, Edit, RefreshCw, Infinity, Lock, Key, X } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import {
   getCustomerById,
   updateCustomer,
   getCustomerDomainRequests,
   getCustomerHostingRequests,
+  getCustomerEmailRequests,
   updateDomainRequest,
   updateHostingRequest,
+  updateEmailRequest,
   deleteDomainRequest,
   deleteHostingRequest,
+  deleteEmailRequest,
   addNotification,
   getLicenses,
   updateLicense,
@@ -27,6 +30,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [customerData, setCustomerData] = useState(customer || null);
   const [domainRequests, setDomainRequests] = useState([]);
   const [hostingRequests, setHostingRequests] = useState([]);
+  const [emailRequests, setEmailRequests] = useState([]);
   const [licenses, setLicenses] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
@@ -35,18 +39,21 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
     return window.matchMedia('(max-width: 900px)').matches;
   });
   const { toast } = useToast();
+  const [showEmailCreds, setShowEmailCreds] = useState(null);
 
   const loadAll = async () => {
     if (!customer?.id) return;
-    const [fullCustomer, domReqs, hostReqs, lics] = await Promise.all([
+    const [fullCustomer, domReqs, hostReqs, emailReqs, lics] = await Promise.all([
       getCustomerById(customer.id),
       getCustomerDomainRequests(customer.id),
       getCustomerHostingRequests(customer.id),
+      getCustomerEmailRequests(customer.id),
       getLicenses(customer.id),
     ]);
     setCustomerData(fullCustomer || customer);
     setDomainRequests(domReqs || []);
     setHostingRequests(hostReqs || []);
+    setEmailRequests(emailReqs || []);
     setLicenses(lics || []);
   };
 
@@ -71,8 +78,10 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
 
   const approvedDomains = domainRequests.filter(r => isApproved(r.status));
   const approvedHosting = hostingRequests.filter(r => isApproved(r.status));
+  const approvedEmails = emailRequests.filter(r => isApproved(r.status));
   const pendingDomainReqs = domainRequests.filter(r => isPending(r.status));
   const pendingHostingReqs = hostingRequests.filter(r => isPending(r.status));
+  const pendingEmailReqs = emailRequests.filter(r => isPending(r.status));
 
   const parsePackage = (packageType) => {
     const parts = (packageType || '').split(' | ');
@@ -135,6 +144,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       message = daysLeft !== null
         ? `Your domain "${item.domain_name}" will expire in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Please renew promptly to avoid service disruption.`
         : `Please renew your domain "${item.domain_name}" to ensure continued service.`;
+    } else if (type === 'email') {
+      title = `Email Renewal Reminder — ${item.email}`;
+      message = daysLeft !== null
+        ? `Your email "${item.email}" will expire in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}. Please renew promptly to avoid service disruption.`
+        : `Please renew your email "${item.email}" to ensure continued service.`;
     } else {
       const { name } = parsePackage(item.package_type);
       title = `Hosting Renewal Reminder — ${name}`;
@@ -142,6 +156,30 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
     }
     await addNotification({ customer_id: customerData.id, type: 'expiration', title, message });
     toast({ title: 'Notification Sent', description: 'Expiry reminder sent to customer.' });
+  };
+
+  const emailUpdateRequestStatus = async (id, status) => {
+    const req = emailRequests.find(r => r.id === id);
+    const isApproved = String(status).toLowerCase() === 'approved';
+    await updateEmailRequest(id, {
+      status: String(status).toLowerCase(),
+      updated_at: new Date().toISOString(),
+      start_date: isApproved ? new Date().toISOString() : undefined,
+    });
+    const label = req?.email || 'Email';
+    addNotification({ customer_id: null, type: 'request_updated', title: `Email Request Updated — ${label}`, message: `Admin set ${label} request to "${status}" for ${customerData.name}.` }).catch(() => {});
+    await loadAll();
+    toast({ title: 'Updated', description: `Request marked as ${status}.` });
+  };
+
+  const deleteEmailItem = async (id) => {
+    if (!confirm('Delete this email request? This cannot be undone.')) return;
+    const req = emailRequests.find(r => r.id === id);
+    await deleteEmailRequest(id);
+    const label = req?.email || 'Email';
+    addNotification({ customer_id: null, type: 'delete', title: `Email Request Deleted — ${label}`, message: `Admin deleted email request for ${customerData.name} (${label}).` }).catch(() => {});
+    await loadAll();
+    toast({ title: 'Deleted', description: 'Email request removed.' });
   };
 
   const handleSendPasswordReset = async () => {
@@ -458,6 +496,87 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
         </div>
       </div>
 
+      {/* Row 3: Approved Emails | Pending Email Requests */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16, marginBottom: 16 }}>
+        <div style={{ ...cardS, marginBottom: 0 }}>
+          <SectionHeader title="Approved Emails" accent="#378ADD" />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thS}>Email</th>
+                  <th style={thS}>Status</th>
+                  <th style={thS}>Start Date</th>
+                  <th style={thS}>Expiry</th>
+                  <th style={thS}>Credentials</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {approvedEmails.map((e, i) => (
+                  <tr key={e.id}>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600, color: isDark ? '#86efac' : '#15803d', fontSize: 12 }}>{e.email || '-'}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={e.status} /></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText, fontSize: 12 }}>{e.start_date ? format(new Date(e.start_date), 'MMM dd, yy') : e.created_at ? format(new Date(e.created_at), 'MMM dd, yy') : '—'}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: e.expiry_date ? c.text : c.subText, fontSize: 12 }}>{e.expiry_date ? format(new Date(e.expiry_date), 'MMM dd, yy') : '—'}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}>
+                      {(e.email_username || e.email_password) ? (
+                        <button
+                          onClick={() => setShowEmailCreds(e)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, border: `1px solid ${c.border}`, background: isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3', color: '#ca8a04', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <Lock size={11} /> View
+                        </button>
+                      ) : (
+                        <span style={{ color: c.subText, fontSize: 11, fontStyle: 'italic' }}>Not set</span>
+                      )}
+                    </td>
+                    <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <Btn color={c.brand} onClick={() => sendExpiryReminder('email', e)}><Bell size={11} /></Btn>
+                        <Btn color="#ef4444" onClick={() => deleteEmailItem(e.id)}><Trash2 size={11} /></Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {approvedEmails.length === 0 && <tr><td colSpan={6} style={emptyS}>No approved emails</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style={{ ...cardS, marginBottom: 0 }}>
+          <SectionHeader title="Pending Email Requests" accent="#ba7517" />
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 620, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={thS}>Email</th>
+                  <th style={thS}>Status</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingEmailReqs.map((r, i) => (
+                  <tr key={r.id}>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb', fontSize: 12 }}>{r.email || '-'}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={r.status} /></td>
+                    <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                        <Btn color="#16a34a" filled onClick={() => emailUpdateRequestStatus(r.id, 'approved')}>✓</Btn>
+                        <Btn color="#dc2626" onClick={() => emailUpdateRequestStatus(r.id, 'rejected')}>✗</Btn>
+                        <Btn color={c.subText} onClick={() => deleteEmailItem(r.id)}><Trash2 size={11} /></Btn>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pendingEmailReqs.length === 0 && <tr><td colSpan={3} style={emptyS}>No pending requests</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       {/* Assigned Products */}
       <div style={{ ...cardS, marginBottom: 0 }}>
         <SectionHeader title="Assigned Products" accent="#6366f1" />
@@ -530,6 +649,54 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
           </table>
         </div>
       </div>
+
+      {/* Email Credentials Modal */}
+      {showEmailCreds && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={() => setShowEmailCreds(null)}>
+          <div style={{ background: c.card, border: `1px solid ${c.borderStrong || c.border}`, borderRadius: 16, maxWidth: 420, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Lock size={16} color="#ca8a04" />
+                <span style={{ fontWeight: 700, fontSize: 15, color: c.text }}>Email Credentials</span>
+              </div>
+              <button onClick={() => setShowEmailCreds(null)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', display: 'flex' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Email Account</div>
+                <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 8, padding: '9px 12px', color: c.text, fontSize: 13 }}>{showEmailCreds.email}</div>
+              </div>
+              {showEmailCreds.url && (
+                <div>
+                  <div style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>Login URL</div>
+                  <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 8, padding: '9px 12px', fontSize: 13, wordBreak: 'break-all' }}>
+                    <a href={showEmailCreds.url} target="_blank" rel="noopener noreferrer" style={{ color: c.brand, textDecoration: 'underline' }}>{showEmailCreds.url}</a>
+                  </div>
+                </div>
+              )}
+              <div>
+                <div style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Key size={12} /> Username
+                </div>
+                <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 8, padding: '9px 12px', color: c.text, fontSize: 13, fontFamily: 'monospace', fontWeight: 600 }}>{showEmailCreds.email_username || <span style={{ color: c.subText, fontStyle: 'italic' }}>Not set</span>}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Key size={12} /> Password
+                </div>
+                <div style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 8, padding: '9px 12px', color: c.text, fontSize: 13, fontFamily: 'monospace', fontWeight: 600 }}>{showEmailCreds.email_password || <span style={{ color: c.subText, fontStyle: 'italic' }}>Not set</span>}</div>
+              </div>
+              <p style={{ fontSize: 11, color: c.subText, marginTop: 8, padding: '8px 12px', background: isDark ? 'rgba(234,179,8,0.1)' : '#fef9c3', borderRadius: 8 }}>
+                <Lock size={10} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                Keep these credentials secure. Do not share them with others.
+              </p>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}` }}>
+              <button onClick={() => setShowEmailCreds(null)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
