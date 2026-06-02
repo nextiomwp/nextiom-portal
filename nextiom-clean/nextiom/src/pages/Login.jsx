@@ -11,6 +11,8 @@ import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
 import { cn } from '@/lib/utils';
 import { useNavigate, Link } from 'react-router-dom';
 
+const DEFAULT_LOGO = '/NEXTIOM.png';
+
 function Login({ onLoginSuccess }) {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [email, setEmail] = useState('');
@@ -23,7 +25,7 @@ function Login({ onLoginSuccess }) {
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const [loginStatusMsg, setLoginStatusMsg] = useState(null); // 'pending' | 'rejected' | null
-  const [logoUrl, setLogoUrl] = useState('/NEXTIOM.png');
+  const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO);
 
   const { signIn, user, role } = useAuth();
   const { toast } = useToast();
@@ -185,6 +187,7 @@ function Login({ onLoginSuccess }) {
       <Helmet>
         <title>{showAdminLogin ? "Admin Portal" : "Login"} - Nextiom</title>
         <meta name="description" content="Sign in to your Nextiom account" />
+        <link rel="preload" href={DEFAULT_LOGO} as="image" />
       </Helmet>
 
       <div className={cn(
@@ -289,19 +292,14 @@ function Login({ onLoginSuccess }) {
               className="w-full max-w-[400px] space-y-8"
             >
               <div className="flex flex-col items-center">
-                {logoUrl ? (
-                  <img 
-                    src={logoUrl}
-                    alt="Nextiom"
-                    className="h-10 w-auto object-contain mb-8"
-                  />
-                ) : (
-                  <img 
-                    src="https://horizons-cdn.hostinger.com/147148b5-9ad3-49b5-a69f-decad9e9a152/c4356b200db1f138597a66d14c006177.jpg"
-                    alt="Nextiom"
-                    className="h-10 w-auto object-contain mb-8"
-                  />
-                )}
+                <img
+                  src={logoUrl}
+                  alt="Nextiom"
+                  loading="eager"
+                  decoding="sync"
+                  fetchPriority="high"
+                  className="h-10 w-auto object-contain mb-8"
+                />
                 <div className="text-center space-y-2">
                   <h1 className="text-2xl font-bold text-[#1a1a1a]">Sign in to your account</h1>
                   <p className="text-slate-500 text-sm">Welcome back! Please enter your details.</p>
