@@ -215,7 +215,14 @@ function Dashboard({ onLogout }) {
         detailsLabel: r.package_name || '-'
       }));
 
-      const allReq = [...domainReqRows, ...hostingReqRows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const emailReqRows = (emailReqs || []).map(r => ({
+        ...r,
+        source: 'email',
+        reqType: 'Email request',
+        n: r.customers?.name || 'Unknown',
+        detailsLabel: r.email || '-'
+      }));
+      const allReq = [...domainReqRows, ...hostingReqRows, ...emailReqRows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       const pendingReqRows = allReq.filter(r => String(r.status || '').toLowerCase() === 'pending');
 
       setRequests(allReq);
