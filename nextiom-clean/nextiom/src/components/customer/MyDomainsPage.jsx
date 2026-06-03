@@ -33,7 +33,7 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
   const panel2 = c.panel2 || '#f5f5f5';
   const hover = c.hover || '#f5f5f5';
 
-  useEffect(() => { loadDomains(); }, [user]);
+  useEffect(() => { loadDomains(); }, [user?.id, user?.email]);
 
   const loadDomains = async () => {
     if (!user?.id) return;

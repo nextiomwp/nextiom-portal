@@ -43,7 +43,7 @@ function MyServicesPage({ user, isDark = false, c = {} }) {
       }
     };
     loadServices();
-  }, [user]);
+  }, [user?.id, user?.email]);
 
   const filteredServices = services.filter(s =>
     (s.name || '').toLowerCase().includes(searchTerm.toLowerCase())

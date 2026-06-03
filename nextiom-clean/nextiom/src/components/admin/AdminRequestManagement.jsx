@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Trash2, AlertTriangle, FileText, X, Loader2 } from 'lucide-react';
 import { getDomainRequests, updateDomainRequest, deleteDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
+import { supabase } from '@/lib/customSupabaseClient';
 
 function DeleteModal({ open, onCancel, onConfirm, loading }) {
   if (!open) return null;
@@ -29,6 +30,8 @@ function AdminRequestManagement({ isDark = true }) {
   const [statusFilter, setStatusFilter] = useState(REQUEST_STATUS.PENDING);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [documentUrl, setDocumentUrl] = useState(null);
+  const [docLoading, setDocLoading] = useState(null);
   const { toast } = useToast();
 
   const c = isDark
@@ -46,10 +49,10 @@ function AdminRequestManagement({ isDark = true }) {
     const col = isDark
       ? s === 'approved' || s === 'completed' ? { bg: '#1a3020', color: '#4ade80', dot: '#4ade80' }
         : s === 'pending' ? { bg: '#3b2508', color: '#fb923c', dot: '#fb923c' }
-        : { bg: '#3a1515', color: '#f87171', dot: '#f87171' }
+          : { bg: '#3a1515', color: '#f87171', dot: '#f87171' }
       : s === 'approved' || s === 'completed' ? { bg: '#dcfce7', color: '#15803d', dot: '#22c55e' }
         : s === 'pending' ? { bg: '#fff7ed', color: '#c2410c', dot: '#f97316' }
-        : { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' };
+          : { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' };
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: col.bg, color: col.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: col.dot, flexShrink: 0 }} />
@@ -99,7 +102,7 @@ function AdminRequestManagement({ isDark = true }) {
         type: isApproved ? 'update' : 'expiration',
         title: isApproved ? `Domain Request Approved — ${req.domain_name}` : `Domain Request Rejected — ${req.domain_name}`,
         message: isApproved ? `Your domain request for ${req.domain_name} has been approved.` : `Your domain request for ${req.domain_name} has been declined.`
-      }).catch(() => {});
+      }).catch(() => { });
     }
     toast({ title: 'Request Updated', description: `Request marked as ${newStatus}` });
     loadData();
@@ -118,7 +121,7 @@ function AdminRequestManagement({ isDark = true }) {
         type: 'delete',
         title: `Domain Request Deleted — ${domainName}`,
         message: `Admin permanently deleted a domain request for ${custName} (${domainName}).`,
-      }).catch(() => {});
+      }).catch(() => { });
       toast({ title: 'Deleted', description: 'Domain request deleted.' });
       loadData();
     } catch {
@@ -138,6 +141,38 @@ function AdminRequestManagement({ isDark = true }) {
   const fmtStatus = (status) => {
     const normalized = normalizeRequestStatus(status);
     return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : 'Unknown';
+  };
+
+  const handleViewDocument = async (docPath, reqId) => {
+    if (!docPath) return;
+    setDocLoading(reqId);
+    try {
+      const { data, error } = await supabase.storage
+        .from('request-documents')
+        .createSignedUrl(docPath, 3600);
+
+      if (!error && data?.signedUrl) {
+        setDocumentUrl(data.signedUrl);
+        return;
+      }
+
+      // createSignedUrl failed
+      if (error) {
+        const msg = error.message || '';
+        if (msg.includes('not found') || error.statusCode === '404' || error.status === 404) {
+          toast({ title: 'File Not Found', description: 'The document could not be found in storage. It may have been deleted.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Cannot Open Document', description: 'Failed to generate a secure link. Please ensure you are logged in as admin.', variant: 'destructive' });
+        }
+      } else {
+        toast({ title: 'Cannot Open Document', description: 'Failed to generate document URL.', variant: 'destructive' });
+      }
+    } catch (err) {
+      console.error('handleViewDocument error:', err);
+      toast({ title: 'Error', description: 'Failed to load document.', variant: 'destructive' });
+    } finally {
+      setDocLoading(null);
+    }
   };
 
   // Only show Pending and Rejected — approved items go to Active Domains section
@@ -197,6 +232,11 @@ function AdminRequestManagement({ isDark = true }) {
                   </td>
                   <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                      {req.document_url && (
+                        <Btn color="#8B5CF6" onClick={() => handleViewDocument(req.document_url, req.id)} title="View attached document">
+                          {docLoading === req.id ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} Document
+                        </Btn>
+                      )}
                       {isPending(req.status) && (
                         <>
                           <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.APPROVED)}><CheckCircle size={12} /> Approve</Btn>
@@ -213,6 +253,34 @@ function AdminRequestManagement({ isDark = true }) {
           </table>
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      {documentUrl && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setDocumentUrl(null)}>
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, maxWidth: 800, width: '90vw', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: c.text, fontWeight: 700, fontSize: 14 }}>Attached Document</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a href={documentUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 14px', borderRadius: 8, background: c.brand, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>Download</a>
+                <button onClick={() => setDocumentUrl(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex' }}><X size={18} /></button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+              {documentUrl.match(/\.(jpg|jpeg|png|gif|bmp|svg|webp)$/i) ? (
+                <img src={documentUrl} alt="Document" style={{ maxWidth: '100%', maxHeight: '100%', display: 'block', margin: '0 auto', borderRadius: 8 }} />
+              ) : documentUrl.match(/\.(pdf)$/i) ? (
+                <iframe src={documentUrl} style={{ width: '100%', height: '70vh', border: 'none', borderRadius: 8 }} title="Document" />
+              ) : (
+                <div style={{ textAlign: 'center', padding: 40 }}>
+                  <FileText size={48} style={{ color: c.subText, marginBottom: 16 }} />
+                  <p style={{ color: c.subText, fontSize: 14, marginBottom: 16 }}>This file type cannot be previewed directly.</p>
+                  <a href={documentUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '10px 20px', borderRadius: 8, background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>Download File</a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

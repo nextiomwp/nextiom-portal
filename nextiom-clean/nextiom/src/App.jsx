@@ -13,6 +13,8 @@ import { initializeDemoData } from '@/lib/storage';
 import InvoicePrintPage from '@/pages/invoices/InvoicePrintPage';
 import ActivityLogPrintPage from '@/pages/ActivityLogPrintPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
+import ImpersonationDashboard from '@/pages/impersonation/ImpersonationDashboard';
+import ImpersonationGuard from '@/utils/impersonationGuard';
 
 function App() {
   
@@ -57,6 +59,17 @@ function App() {
                    <Dashboard />
                 </ProtectedRoute>
               } 
+            />
+
+            <Route
+              path="/admin/impersonate/:customerId"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ImpersonationGuard>
+                    <ImpersonationDashboard />
+                  </ImpersonationGuard>
+                </ProtectedRoute>
+              }
             />
             
             <Route 

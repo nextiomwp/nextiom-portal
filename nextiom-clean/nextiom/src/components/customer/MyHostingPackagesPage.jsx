@@ -36,7 +36,7 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
 
   const normalizeHostingKey = (value) => String(value || '').split('|')[0].trim().toLowerCase();
 
-  useEffect(() => { loadPackages(); }, [user]);
+  useEffect(() => { loadPackages(); }, [user?.id, user?.email]);
 
   const billingMonths = (billing) => {
     const b = String(billing || '').toLowerCase();

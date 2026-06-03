@@ -12,6 +12,8 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
   const [period, setPeriod] = useState('1');
   const [notes, setNotes] = useState('');
   const [autoRenew, setAutoRenew] = useState(false);
+  const [documentFile, setDocumentFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
@@ -54,6 +56,23 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
       });
       if (!customerId) throw new Error('Customer profile not found');
 
+      // Upload document if provided
+      let documentUrl = null;
+      if (documentFile) {
+        setUploading(true);
+        const fileExt = documentFile.name.split('.').pop();
+        const fileName = `domain_${Date.now()}.${fileExt}`;
+        const filePath = `domain/${customerId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('request-documents')
+          .upload(filePath, documentFile);
+
+        if (uploadError) throw new Error(uploadError.message || 'Failed to upload document');
+        documentUrl = filePath;
+        setUploading(false);
+      }
+
       const today = new Date();
       const expiryDate = new Date(today);
       expiryDate.setFullYear(today.getFullYear() + parseInt(period));
@@ -66,6 +85,7 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         expiry_date: expiryDate.toISOString(),
         auto_renew: autoRenew,
         notes: notes || null,
+        document_url: documentUrl,
         created_at: new Date().toISOString(),
       }]).select().single();
 
@@ -75,7 +95,7 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
       await supabase.from('notifications').insert([{
         type: 'domain_request',
         title: 'New Domain Request',
-        message: `Domain registration requested: ${domainName}${extension} (${period} Year${period !== '1' ? 's' : ''})${notes ? ` - Notes: ${notes}` : ''}`,
+        message: `Domain registration requested: ${domainName}${extension} (${period} Year${period !== '1' ? 's' : ''})${notes ? ` - Notes: ${notes}` : ''}${documentUrl ? ' - Document attached' : ''}`,
         customer_id: customerId,
         is_read: false,
         created_at: new Date().toISOString(),
@@ -88,9 +108,11 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
       toast({ title: 'Error', description: err?.message || 'Failed to submit. Please try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
+      setUploading(false);
     }
   };
 
+  // ... rest of the component remains the same
   const sectionCard = {
     background: isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)',
     border: `1px solid ${border}`,
@@ -122,7 +144,7 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         </p>
         <div style={{ display: 'flex', gap: 10 }}>
           <button
-            onClick={() => { setSubmitted(false); setDomainName(''); setNotes(''); }}
+            onClick={() => { setSubmitted(false); setDomainName(''); setNotes(''); setDocumentFile(null); }}
             style={{
               padding: '10px 20px', borderRadius: 10,
               background: 'transparent', color: subText,
@@ -208,12 +230,18 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
             <label style={labelStyle}>Documents (Optional)</label>
             <input
               type="file"
+              onChange={e => setDocumentFile(e.target.files[0] || null)}
               style={{
                 ...inputStyle,
                 padding: '8px 12px',
                 cursor: 'pointer',
               }}
             />
+            {documentFile && (
+              <p style={{ fontSize: 11, color: brand, marginTop: 4 }}>
+                {documentFile.name} ({(documentFile.size / 1024).toFixed(1)} KB)
+              </p>
+            )}
           </div>
         </div>
 
@@ -237,16 +265,16 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploading}
             style={{
               padding: '11px 28px', borderRadius: 10, background: brand, color: '#fff',
-              fontWeight: 700, fontSize: 14, border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1, transition: 'background 0.15s',
+              fontWeight: 700, fontSize: 14, border: 'none', cursor: loading || uploading ? 'not-allowed' : 'pointer',
+              opacity: loading || uploading ? 0.7 : 1, transition: 'background 0.15s',
             }}
-            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#d4692a'; }}
+            onMouseEnter={e => { if (!loading && !uploading) e.currentTarget.style.background = '#d4692a'; }}
             onMouseLeave={e => e.currentTarget.style.background = brand}
           >
-            {loading ? 'Submitting…' : 'Submit Domain Request'}
+            {uploading ? 'Uploading document…' : loading ? 'Submitting…' : 'Submit Domain Request'}
           </button>
         </div>
       </form>

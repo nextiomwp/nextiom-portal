@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Plus, Eye, Loader2 } from 'lucide-react';
+import { Search, Edit, Trash2, Plus, Eye, Loader2, MonitorSmartphone } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getCustomers, deleteCustomer, addNotification } from '@/lib/storage';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
@@ -10,6 +10,7 @@ import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
 import AssignEmailDialog from '@/components/dialogs/AssignEmailDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import CustomerProfileAdminView from './CustomerProfileAdminView';
+import { useNavigate } from 'react-router-dom';
 
 function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
   const [customers, setCustomers] = useState([]);
@@ -25,6 +26,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
     return window.matchMedia('(max-width: 900px)').matches;
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const c = isDark
     ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
@@ -101,6 +103,55 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
     }
   };
 
+  const handleLoginAsCustomer = async (customer) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const adminToken = session?.access_token;
+
+      if (!adminToken) {
+        toast({ title: 'Error', description: 'No admin session found', variant: 'destructive' });
+        return;
+      }
+
+      if (!customer.user_id) {
+        toast({ title: 'Error', description: 'Customer account has no linked user ID', variant: 'destructive' });
+        return;
+      }
+
+      // Store admin token and customer info in sessionStorage
+      sessionStorage.setItem('impersonation_token', 'impersonating');
+      sessionStorage.setItem('impersonated_user', JSON.stringify({
+        id: customer.user_id,
+        customer_id: customer.id,
+        email: customer.email,
+        name: customer.name,
+      }));
+      sessionStorage.setItem('original_admin_token', adminToken);
+
+      // Log to impersonation_logs table directly via supabase
+      try {
+        await supabase.from('impersonation_logs').insert({
+          admin_id: session.user.id,
+          target_user_id: customer.user_id,
+          action: 'start',
+          started_at: new Date().toISOString(),
+        });
+      } catch (logErr) {
+        console.warn('Could not log impersonation start:', logErr);
+        // Continue anyway — logging is non-critical
+      }
+
+      toast({
+        title: 'Impersonation Started',
+        description: `You are now viewing as ${customer.name}`,
+      });
+
+      navigate(`/admin/impersonate/${customer.id}`);
+    } catch (err) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const handleAssignSelect = (assignType) => {
     setAssignTargetType(assignType);
     setShowAssignOptions(false);
@@ -172,6 +223,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
                 <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                     <Btn color="#378ADD" onClick={() => setSelectedCustomer(customer)} title="View profile"><Eye size={12} /> View</Btn>
+                    <Btn color="#8B5CF6" onClick={() => handleLoginAsCustomer(customer)} title="Login as this customer"><MonitorSmartphone size={12} /> Login as</Btn>
                     <Btn color={c.subText} onClick={() => setEditingCustomer(customer)} title="Edit"><Edit size={12} /> Edit</Btn>
                     <Btn color="#16a34a" onClick={() => { setAssigningCustomer(customer); setShowAssignOptions(true); }} title="Assign product/service"><Plus size={12} /> Assign</Btn>
                     <Btn color="#ef4444" onClick={() => handleDelete(customer.id)} title="Delete"><Trash2 size={12} /> Delete</Btn>
