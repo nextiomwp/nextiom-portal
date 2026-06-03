@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Trash2, Printer, Save, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import {
-  Invoice, InvoiceItem, InvoiceSettings,
-  calcTotal, fmtLKR, todayISO, dueDateISO,
+  Invoice, InvoiceCurrency, InvoiceItem, InvoiceSettings,
+  calcTotal, fmtCurrency, todayISO, dueDateISO,
   generateInvoiceNo, getInvoiceSettings,
   createInvoice, updateInvoice,
 } from '@/lib/invoices'
@@ -28,6 +28,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [invoiceDate, setInvoiceDate] = useState(todayISO())
   const [dueDate, setDueDate] = useState(dueDateISO())
   const [status, setStatus] = useState<Invoice['status']>('unpaid')
+  const [currency, setCurrency] = useState<InvoiceCurrency>('LKR')
   const [clientName, setClientName] = useState('')
   const [clientCompany, setClientCompany] = useState('')
   const [clientPhone, setClientPhone] = useState('')
@@ -77,6 +78,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         setInvoiceDate(existing.invoice_date)
         setDueDate(existing.due_date)
         setStatus(existing.status)
+        setCurrency(existing.currency ?? 'LKR')
         setClientName(existing.client_name)
         setClientCompany(existing.client_company ?? '')
         setClientPhone(existing.client_phone ?? '')
@@ -109,7 +111,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     setSaving(true)
     const validItems = items.filter(i => i.description.trim())
     const invoiceData: Invoice = {
-      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: dueDate, status,
+      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: dueDate, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress, notes, total,
     }
@@ -128,7 +130,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
               customer_id: customer.id,
               type: 'invoice',
               title: `New invoice — ${invoiceNo}`,
-              message: `You have a new invoice of ${fmtLKR(total)} due by ${dueDate}. Please check your Invoices section.`,
+              message: `You have a new invoice of ${fmtCurrency(total, currency)} due by ${dueDate}. Please check your Invoices section.`,
             }).catch(() => {})
           }
         }
@@ -141,7 +143,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const handlePrint = () => {
     if (!clientName.trim()) { toast({ title: 'Fill in client name before printing', variant: 'destructive' }); return }
     localStorage.setItem('nxt_invoice_print', JSON.stringify({
-      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: dueDate, status,
+      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: dueDate, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress,
       items: items.filter(i => i.description.trim()), notes, total, settings,
@@ -254,7 +256,32 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
 
         {/* Right column — line items */}
         <div style={card}>
-          <p style={secTitle}>Line items</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+            <p style={{ ...secTitle, marginBottom: 0 }}>Line items</p>
+            <div style={{ display: 'flex', padding: 3, border: `1px solid ${c.border}`, borderRadius: 8, background: isDark ? '#1C1E24' : '#f8fafc' }}>
+              {(['LKR', 'USD'] as InvoiceCurrency[]).map(cur => (
+                <button
+                  key={cur}
+                  type="button"
+                  onClick={() => setCurrency(cur)}
+                  style={{
+                    minWidth: 48,
+                    padding: '6px 10px',
+                    border: 'none',
+                    borderRadius: 6,
+                    background: currency === cur ? c.brand : 'transparent',
+                    color: currency === cur ? '#fff' : c.subText,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {cur}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 100px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             <span>Description</span><span>Qty</span><span>Unit price</span>
@@ -267,7 +294,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                 <input style={inp} placeholder="Service or product" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
                 <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
                 <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-                <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text }}>{fmtLKR(item.qty * item.unit_price)}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text }}>{fmtCurrency(item.qty * item.unit_price, currency)}</div>
                 <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
                   <Trash2 size={13} />
                 </button>
@@ -282,13 +309,13 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
           {/* Totals */}
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${c.border}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText, marginBottom: 4 }}>
-              <span>Subtotal</span><span style={{ fontFamily: 'monospace' }}>{fmtLKR(total)}</span>
+              <span>Subtotal</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: `1px solid ${c.border}`, paddingTop: 8, color: c.brand }}>
-              <span>Grand total</span><span style={{ fontFamily: 'monospace' }}>{fmtLKR(total)}</span>
+              <span>Grand total</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500, marginTop: 4, color: c.text }}>
-              <span>Due total</span><span style={{ fontFamily: 'monospace' }}>{fmtLKR(total)}</span>
+              <span>Due total</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
             </div>
           </div>
 
@@ -297,7 +324,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${c.border}` }}>
               <p style={{ ...secTitle, marginBottom: 6 }}>Payment method</p>
               <div style={{ fontSize: 12, color: c.subText, lineHeight: 1.9 }}>
-                <div>Bank Transfer (LKR)</div>
+                <div>Bank Transfer ({currency})</div>
                 <div>Name: {settings.account_name}</div>
                 <div>Account: {settings.account_no}</div>
                 <div>Bank: {settings.bank_name} · {settings.bank_branch}</div>

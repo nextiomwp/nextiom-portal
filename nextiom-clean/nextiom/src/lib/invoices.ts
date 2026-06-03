@@ -17,6 +17,7 @@ export interface InvoiceItem {
 }
 
 export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted'
+export type InvoiceCurrency = 'LKR' | 'USD'
 
 export interface Invoice {
   id?: string
@@ -32,6 +33,7 @@ export interface Invoice {
   client_address: string
   notes: string
   total: number
+  currency?: InvoiceCurrency
   created_at?: string
   items?: InvoiceItem[]
 }
@@ -60,6 +62,13 @@ export function calcTotal(items: InvoiceItem[]): number {
 
 export function fmtLKR(amount: number): string {
   return 'LKR ' + amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+export function fmtCurrency(amount: number, currency: InvoiceCurrency = 'LKR'): string {
+  if (currency === 'USD') {
+    return 'USD ' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+  return fmtLKR(amount)
 }
 
 export function todayISO(): string {
@@ -394,7 +403,7 @@ export async function submitInvoicePayment(
     customer_id: null,
     type: 'payment_submitted',
     title: `Payment Submitted: ${invoice.invoice_no}`,
-    message: `${invoice.client_name} submitted ${fmtLKR(payment.paid_amount)} for invoice ${invoice.invoice_no} (Ref: ${payment.transaction_id}).`,
+    message: `${invoice.client_name} submitted ${fmtCurrency(payment.paid_amount, invoice.currency)} for invoice ${invoice.invoice_no} (Ref: ${payment.transaction_id}).`,
   })
 }
 

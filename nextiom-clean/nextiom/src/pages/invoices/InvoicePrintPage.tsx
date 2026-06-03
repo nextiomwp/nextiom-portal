@@ -3,7 +3,7 @@
 // It reads print data from sessionStorage set by InvoiceForm
 
 import { useEffect, useState } from 'react'
-import { fmtLKR, resolveLogoUrl } from '@/lib/invoices'
+import { fmtCurrency, InvoiceCurrency, resolveLogoUrl } from '@/lib/invoices'
 
 function formatPrintDate(value?: string) {
   if (!value) return ''
@@ -39,6 +39,8 @@ export default function InvoicePrintPage() {
 
   const { invoice_no, invoice_date, due_date, client_name, client_company,
           client_phone, client_email, client_address, items, notes, total, settings: s } = data
+  const currency: InvoiceCurrency = data.currency === 'USD' ? 'USD' : 'LKR'
+  const paymentImage = currency === 'USD' ? '/NEXTIOM_USD.png' : '/NEXTIOM_LKR.jpeg'
   const printInvoiceDate = formatPrintDate(invoice_date)
   const printDueDate = formatPrintDate(due_date)
 
@@ -127,7 +129,7 @@ export default function InvoicePrintPage() {
             </div>
             <div style={{ background: '#fff7ed', borderRadius: 12, padding: '16px 24px', textAlign: 'right', flexShrink: 0, border: '1px solid #fed7aa' }}>
               <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>Grand total</div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em' }}>{fmtLKR(total)}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em' }}>{fmtCurrency(total, currency)}</div>
             </div>
           </div>
 
@@ -145,8 +147,8 @@ export default function InvoicePrintPage() {
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '11px 10px', fontSize: 13 }}>{item.description}</td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{item.qty}</td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtLKR(item.unit_price)}</td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{fmtLKR(item.qty * item.unit_price)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.unit_price, currency)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{fmtCurrency(item.qty * item.unit_price, currency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -155,19 +157,19 @@ export default function InvoicePrintPage() {
           {/* Totals */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginBottom: 32 }}>
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-              <span>INV total cost</span><span>{fmtLKR(total)}</span>
+              <span>INV total cost</span><span>{fmtCurrency(total, currency)}</span>
             </div>
             <div style={{ display: 'flex', gap: 56, fontSize: 16, fontWeight: 700, borderTop: '2px solid #111', paddingTop: 8, marginTop: 4 }}>
-              <span>Due total</span><span>{fmtLKR(total)}</span>
+              <span>Due total</span><span>{fmtCurrency(total, currency)}</span>
             </div>
           </div>
 
           {/* Footer */}
-          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 }}>
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18 }}>
             {s?.bank_name && (
-              <div>
+              <div style={{ flex: '1 1 0', minWidth: 0 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', marginBottom: 5 }}>Payment method</div>
-                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>Bank Transfer (LKR)</div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>Bank Transfer ({currency})</div>
                 <div style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.9 }}>
                   <div>Name: {s.account_name}</div>
                   <div>Account number: {s.account_no}</div>
@@ -180,9 +182,19 @@ export default function InvoicePrintPage() {
                 )}
               </div>
             )}
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <img
+              src={paymentImage}
+              alt={`${currency} payment details`}
+              style={{ display: 'block', width: 150, height: 'auto', objectFit: 'contain', marginTop: 2, flexShrink: 0 }}
+            />
+            <div style={{ textAlign: 'right', flexShrink: 0, width: 220 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#E8650A' }}>Thank you for your business!</div>
               {s?.company_name && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{s.company_name}</div>}
+              <img
+                src="/signature.png"
+                alt="Signature"
+                style={{ display: 'block', width: 200, height: 'auto', margin: '8px 0 0 auto', objectFit: 'contain' }}
+              />
             </div>
           </div>
 

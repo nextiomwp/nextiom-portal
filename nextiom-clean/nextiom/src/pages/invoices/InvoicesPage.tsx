@@ -1,13 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Invoice, InvoicePayment, getInvoices, deleteInvoice, fmtLKR, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo } from '@/lib/invoices'
+import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: 'Paid',    color: '#22c55e', bg: 'rgba(34,197,94,0.13)' },
   unpaid:  { label: 'Unpaid',  color: '#f59e0b', bg: 'rgba(245,158,11,0.13)' },
   overdue: { label: 'Overdue', color: '#ef4444', bg: 'rgba(239,68,68,0.13)' },
   payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.13)' },
+}
+
+function invoiceCurrency(invoice: Invoice): InvoiceCurrency {
+  return invoice.currency === 'USD' ? 'USD' : 'LKR'
+}
+
+function formatCurrencyBreakdown(invoices: Invoice[]) {
+  const totals = invoices.reduce<Record<InvoiceCurrency, number>>((acc, inv) => {
+    acc[invoiceCurrency(inv)] += inv.total || 0
+    return acc
+  }, { LKR: 0, USD: 0 })
+  return (['LKR', 'USD'] as InvoiceCurrency[])
+    .filter(cur => totals[cur] > 0)
+    .map(cur => fmtCurrency(totals[cur], cur))
+    .join(' / ') || fmtCurrency(0, 'LKR')
 }
 
 function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
@@ -86,11 +101,11 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
                   <div style={lbl}>Transaction ID / Reference</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
                   <div style={lbl}>Paid Amount</div>
-                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const, fontWeight: 700, color: c.brand }}>{fmtLKR(payment.paid_amount)}</div>
+                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const, fontWeight: 700, color: c.brand }}>{fmtCurrency(payment.paid_amount, invoiceCurrency(invoice))}</div>
                   <div style={lbl}>Payment Date</div>
                   <div style={val}>{payment.payment_date}</div>
                   <div style={lbl}>Invoice Total</div>
-                  <div style={val}>{fmtLKR(invoice.total)}</div>
+                  <div style={val}>{fmtCurrency(invoice.total, invoiceCurrency(invoice))}</div>
                   {payment.notes && (<><div style={lbl}>Customer Notes</div><div style={val}>{payment.notes}</div></>)}
                   <div style={lbl}>Submitted</div>
                   <div style={val}>{payment.created_at ? new Date(payment.created_at).toLocaleString() : '—'}</div>
@@ -307,9 +322,9 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
     return arr
   }, [invoices, search, statusFilter, calFilter, sortDir])
 
-  const totalBilled = invoices.reduce((s, i) => s + i.total, 0)
-  const totalPaid = invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.total, 0)
-  const totalOverdue = invoices.filter(i => i.status === 'overdue').reduce((s, i) => s + i.total, 0)
+  const totalBilled = formatCurrencyBreakdown(invoices)
+  const totalPaid = formatCurrencyBreakdown(invoices.filter(i => i.status === 'paid'))
+  const totalOverdue = formatCurrencyBreakdown(invoices.filter(i => i.status === 'overdue'))
 
   async function handleDelete() {
     if (!deleteId) return
@@ -329,9 +344,9 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
   }
   const metrics = [
     { label: 'Total Invoices', value: String(invoices.length), Icon: FileText,   color: c.text },
-    { label: 'Total Billed',   value: fmtLKR(totalBilled),    Icon: TrendingUp,  color: '#378ADD' },
-    { label: 'Collected',      value: fmtLKR(totalPaid),       Icon: CheckCircle, color: '#639922' },
-    { label: 'Overdue',        value: fmtLKR(totalOverdue),    Icon: AlertCircle, color: '#ef4444' },
+    { label: 'Total Billed',   value: totalBilled,    Icon: TrendingUp,  color: '#378ADD' },
+    { label: 'Collected',      value: totalPaid,       Icon: CheckCircle, color: '#639922' },
+    { label: 'Overdue',        value: totalOverdue,    Icon: AlertCircle, color: '#ef4444' },
   ]
 
   const handleDayClick = (year: number | null, month?: number, day?: number) => {
@@ -444,7 +459,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                       <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</div>
                       {inv.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_company}</div>}
                     </div>
-                    <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtLKR(inv.total)}</span>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(inv.total, invoiceCurrency(inv))}</span>
                     <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
                     <div style={{ display: 'flex', gap: 2 }}>
