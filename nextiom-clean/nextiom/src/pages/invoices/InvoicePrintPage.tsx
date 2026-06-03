@@ -5,6 +5,11 @@
 import { useEffect, useState } from 'react'
 import { fmtLKR, resolveLogoUrl } from '@/lib/invoices'
 
+function formatPrintDate(value?: string) {
+  if (!value) return ''
+  return value.split('T')[0]
+}
+
 export default function InvoicePrintPage() {
   const [data, setData] = useState<any>(null)
   const [logoUrl, setLogoUrl] = useState('')
@@ -34,6 +39,8 @@ export default function InvoicePrintPage() {
 
   const { invoice_no, invoice_date, due_date, client_name, client_company,
           client_phone, client_email, client_address, items, notes, total, settings: s } = data
+  const printInvoiceDate = formatPrintDate(invoice_date)
+  const printDueDate = formatPrintDate(due_date)
 
   return (
     <>
@@ -98,8 +105,8 @@ export default function InvoicePrintPage() {
               <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.04em', color: '#111' }}>INVOICE</div>
               <div style={{ fontSize: 12, color: '#6b7280', marginTop: 10, lineHeight: 2 }}>
                 <div><strong style={{ color: '#111' }}>No.</strong> {invoice_no}</div>
-                <div><strong style={{ color: '#111' }}>Date:</strong> {invoice_date}</div>
-                {due_date && <div><strong style={{ color: '#111' }}>Due:</strong> {due_date}</div>}
+                <div><strong style={{ color: '#111' }}>Date:</strong> {printInvoiceDate}</div>
+                {printDueDate && <div><strong style={{ color: '#111' }}>Due:</strong> {printDueDate}</div>}
               </div>
             </div>
           </div>
