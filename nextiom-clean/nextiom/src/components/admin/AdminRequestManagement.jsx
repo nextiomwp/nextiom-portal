@@ -3,7 +3,7 @@ import { CheckCircle, XCircle, Trash2, AlertTriangle, FileText, X, Loader2 } fro
 import { getDomainRequests, updateDomainRequest, deleteDomainRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
-import { supabase } from '@/lib/customSupabaseClient';
+import { getAdminRequestDocumentUrl } from '@/lib/requestDocuments';
 
 function DeleteModal({ open, onCancel, onConfirm, loading }) {
   if (!open) return null;
@@ -147,29 +147,16 @@ function AdminRequestManagement({ isDark = true }) {
     if (!docPath) return;
     setDocLoading(reqId);
     try {
-      const { data, error } = await supabase.storage
-        .from('request-documents')
-        .createSignedUrl(docPath, 3600);
-
-      if (!error && data?.signedUrl) {
-        setDocumentUrl(data.signedUrl);
-        return;
-      }
-
-      // createSignedUrl failed
-      if (error) {
-        const msg = error.message || '';
-        if (msg.includes('not found') || error.statusCode === '404' || error.status === 404) {
-          toast({ title: 'File Not Found', description: 'The document could not be found in storage. It may have been deleted.', variant: 'destructive' });
-        } else {
-          toast({ title: 'Cannot Open Document', description: 'Failed to generate a secure link. Please ensure you are logged in as admin.', variant: 'destructive' });
-        }
-      } else {
-        toast({ title: 'Cannot Open Document', description: 'Failed to generate document URL.', variant: 'destructive' });
-      }
+      const signedUrl = await getAdminRequestDocumentUrl(docPath);
+      setDocumentUrl(signedUrl);
     } catch (err) {
       console.error('handleViewDocument error:', err);
-      toast({ title: 'Error', description: 'Failed to load document.', variant: 'destructive' });
+      const msg = err?.message || '';
+      if (msg.includes('not found') || err?.statusCode === '404' || err?.status === 404) {
+        toast({ title: 'File Not Found', description: 'The document could not be found in storage. It may have been deleted.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Cannot Open Document', description: 'Failed to generate a secure document link. Please ensure you are logged in as admin.', variant: 'destructive' });
+      }
     } finally {
       setDocLoading(null);
     }
