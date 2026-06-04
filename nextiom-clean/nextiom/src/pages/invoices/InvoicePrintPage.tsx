@@ -173,7 +173,8 @@ export default function InvoicePrintPage() {
                 <div style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.9 }}>
                   <div>Name: {s.account_name}</div>
                   <div>Account number: {s.account_no}</div>
-                  <div>Bank: {s.bank_name} · Branch: {s.bank_branch}</div>
+                  <div>Bank: {s.bank_name} </div>
+                  <div> Branch: {s.bank_branch}</div>
                 </div>
                 {s.account_name && (
                   <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
