@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -42,9 +43,11 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         auth: { persistSession: false },
       });
 
+      const passwordHash = bcrypt.hashSync(formData.password, 10);
+
       const { data: authData, error: createError } = await tempClient.auth.admin.createUser({
         email: formData.email,
-        password: formData.password,
+        password_hash: passwordHash,
         email_confirm: true,
         user_metadata: { full_name: formData.name },
       });
