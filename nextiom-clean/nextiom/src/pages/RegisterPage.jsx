@@ -31,7 +31,7 @@ function RegisterPage() {
 
   const validateForm = () => {
     const newErrors = {};
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
     if (!formData.fullName.trim()) newErrors.fullName = "Full name is required";
     if (!formData.phone.trim()) newErrors.phone = "Phone number is required";
     if (!formData.email.trim()) newErrors.email = "Email is required";
