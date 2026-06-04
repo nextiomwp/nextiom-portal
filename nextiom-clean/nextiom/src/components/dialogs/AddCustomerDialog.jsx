@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { addNotification } from '@/lib/storage';
 
 const SUPABASE_URL = 'https://fewhvlsqkbsmqbrqclya.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZld2h2bHNxa2JzbXFicnFjbHlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxMDIyODEsImV4cCI6MjA4NTY3ODI4MX0.3_rloCyJNjU3e2CxqKnsBy8vhmTSkTG2SqOPMN3evSM';
+const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZld2h2bHNxa2JzbXFicnFjbHlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDEwMjI4MSwiZXhwIjoyMDg1Njc4MjgxfQ.O7JlivddOXH2oElVnJ8LWzdDbpL-X4OP8GGdK_UYlhM';
 
 const EMPTY = { name: '', email: '', phone: '', company: '', country: '', password: '', confirmPassword: '', domains: [''] };
 
@@ -38,25 +38,19 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
 
     setLoading(true);
     try {
-      // Use an isolated client (persistSession: false) so admin session is not disrupted
-      const tempClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: false, autoRefreshToken: false, storageKey: 'tmp_add_customer' },
+      const tempClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false },
       });
 
-      // Do NOT write `role` into user_metadata — that field is user-writable.
-      // New accounts default to 'customer' on read; admins are promoted by
-      // setting app_metadata.role server-side (Dashboard / service_role API).
-      const { data: authData, error: authError } = await tempClient.auth.signUp({
+      const { data: authData, error: createError } = await tempClient.auth.admin.createUser({
         email: formData.email,
         password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: { full_name: formData.name },
-        },
+        email_confirm: true,
+        user_metadata: { full_name: formData.name },
       });
 
-      if (authError) {
-        toast({ title: 'Auth Error', description: authError.message, variant: 'destructive' });
+      if (createError) {
+        toast({ title: 'Error', description: createError.message, variant: 'destructive' });
         return;
       }
 
@@ -66,21 +60,44 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         return;
       }
 
-      // Use tempClient (authenticated as new user) so RLS auth.uid() = user_id passes
-      const { error: dbError } = await tempClient.from('customers').insert([{
-        user_id: userId,
-        email: formData.email,
-        name: formData.name,
-        phone: formData.phone,
-        company: formData.company || null,
-        country: formData.country,
-        status: 'active',
-        created_at: new Date().toISOString(),
-      }]);
+      const { data: customerRecord, error: dbError } = await tempClient
+        .from('customers')
+        .insert({
+          user_id: userId,
+          email: formData.email,
+          name: formData.name,
+          phone: formData.phone,
+          company: formData.company || null,
+          country: formData.country,
+          status: 'active',
+          created_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
 
       if (dbError) {
+        await tempClient.auth.admin.deleteUser(userId).catch(() => {});
         toast({ title: 'DB Error', description: dbError.message, variant: 'destructive' });
         return;
+      }
+
+      const customerId = customerRecord?.id;
+
+      if (customerId && formData.domains && formData.domains.length > 0) {
+        const validDomains = formData.domains.filter(d => d.trim());
+        if (validDomains.length > 0) {
+          const domainRecords = validDomains.map(domainName => ({
+            customer_id: customerId,
+            domain_name: domainName.trim(),
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          }));
+
+          const { error: domainError } = await tempClient.from('domain_requests').insert(domainRecords);
+          if (domainError) {
+            console.error('Failed to insert domain requests:', domainError);
+          }
+        }
       }
 
       addNotification({ customer_id: null, type: 'customer_added', title: `Customer Added — ${formData.name}`, message: `Admin created new customer account: ${formData.name} (${formData.email}).` }).catch(() => {});
