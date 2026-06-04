@@ -40,7 +40,7 @@ export default function InvoicePrintPage() {
   const { invoice_no, invoice_date, due_date, client_name, client_company,
           client_phone, client_email, client_address, items, notes, total, settings: s } = data
   const currency: InvoiceCurrency = data.currency === 'USD' ? 'USD' : 'LKR'
-  const paymentImage = currency === 'USD' ? '/NEXTIOM_USD.png' : '/NEXTIOM_LKR.jpeg'
+  const paymentImage = currency === 'USD' ? '/NEXTIOM_USD.png' : '/NEXTIOM_LKR.png'
   const printInvoiceDate = formatPrintDate(invoice_date)
   const printDueDate = formatPrintDate(due_date)
 
