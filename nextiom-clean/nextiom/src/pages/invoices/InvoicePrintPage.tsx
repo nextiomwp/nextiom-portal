@@ -184,7 +184,7 @@ export default function InvoicePrintPage() {
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 16 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: '#4b5563', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#111', textAlign: 'center' }}>
                 Scan and Pay with {currency === 'USD' ? 'PayPal' : 'LankaQR'}
               </div>
               <img
