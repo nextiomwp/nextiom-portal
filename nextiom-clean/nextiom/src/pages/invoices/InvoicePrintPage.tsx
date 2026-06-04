@@ -182,11 +182,16 @@ export default function InvoicePrintPage() {
                 )}
               </div>
             )}
-            <img
-              src={paymentImage}
-              alt={`${currency} payment details`}
-              style={{ display: 'block', width: 150, height: 'auto', objectFit: 'contain', marginTop: 2, flexShrink: 0 }}
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#4b5563', textAlign: 'center' }}>
+                Scan and Pay with {currency === 'USD' ? 'PayPal' : 'LankaQR'}
+              </div>
+              <img
+                src={paymentImage}
+                alt={`${currency} payment details`}
+                style={{ display: 'block', width: 140, height: 'auto', objectFit: 'contain' }}
+              />
+            </div>
             <div style={{ textAlign: 'right', flexShrink: 0, width: 220 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#E8650A' }}>Thank you for your business!</div>
               {s?.company_name && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{s.company_name}</div>}
