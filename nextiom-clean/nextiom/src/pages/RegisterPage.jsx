@@ -73,15 +73,30 @@ function RegisterPage() {
       if (error) {
         setOtpError('Wrong OTP. Please try again.');
       } else {
-        const { error: profileErr } = await supabase.from('customers').upsert([{
-          user_id: data.user.id,
-          email: formData.email,
-          name: formData.fullName,
-          phone: formData.phone,
-          status: 'active',
-          created_at: new Date().toISOString()
-        }], { onConflict: 'user_id' });
-        if (!profileErr) {
+        const { error: profileErr } = await supabase
+          .from('customers')
+          .update({ status: 'active', name: formData.fullName, phone: formData.phone })
+          .eq('user_id', data.user.id);
+
+        if (profileErr) {
+          console.error('Failed to activate customer profile:', profileErr);
+          const { error: insertErr } = await supabase.from('customers').insert([{
+            user_id: data.user.id,
+            email: formData.email,
+            name: formData.fullName,
+            phone: formData.phone,
+            status: 'active',
+            created_at: new Date().toISOString()
+          }]);
+          if (insertErr) {
+            console.error('Fallback insert also failed:', insertErr);
+            toast({
+              variant: 'destructive',
+              title: 'Profile Setup Failed',
+              description: 'Account created but profile could not be saved. Contact support.'
+            });
+          }
+        } else {
           addNotification({
             customer_id: null,
             type: 'new_registration',
@@ -108,7 +123,7 @@ function RegisterPage() {
 
   const logo = (
     <img
-      src="https://horizons-cdn.hostinger.com/147148b5-9ad3-49b5-a69f-decad9e9a152/c4356b200db1f138597a66d14c006177.jpg"
+      src="/nextiomLogo.png"
       alt="Nextiom" className="h-10 w-auto object-contain mx-auto mb-6"
     />
   );

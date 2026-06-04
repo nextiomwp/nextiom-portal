@@ -244,6 +244,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                       color: isAdmin ? '#fff' : c.text,
                       fontSize: 13,
                       lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
                       border: isAdmin ? 'none' : `1px solid ${c.border}`,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                     }}>
