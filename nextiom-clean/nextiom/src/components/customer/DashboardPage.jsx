@@ -199,7 +199,8 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             .limit(5),
           supabase.from('invoices')
             .select('total')
-            .eq('status', 'paid'),
+            .eq('status', 'paid')
+            .eq('user_id', user.user_id),
         ]);
 
         const domains = domainRes.data || [];
