@@ -1,39 +1,36 @@
 import React, { useState } from 'react';
-import { Send, Ticket, CheckCircle, ChevronRight, Lightbulb } from 'lucide-react';
+import {
+  Send, Ticket, CheckCircle, ChevronRight, AlertCircle, LockKeyhole, Globe, Mail,
+  ArrowLeftRight, CreditCard, BriefcaseBusiness, Package, Paintbrush, Puzzle,
+  Phone, Headphones, ReceiptText, CircleX, Info,
+} from 'lucide-react';
 import { createTicket, addTicketMessage, addNotification, assertPortalActionsAllowed } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
-const SUGGESTIONS = [
-  {
-    label: 'Hosting Down',
-    subject: 'My hosting / website is down',
-    message: 'My website is currently not loading or accessible. The issue started around [time]. Please investigate and restore service as soon as possible.\n\nAffected domain/URL: \nError message (if any): ',
-  },
-  {
-    label: 'cPanel Credentials',
-    subject: 'Request for cPanel login credentials',
-    message: 'I need my cPanel login credentials for the following hosting package:\n\nDomain: \nHosting plan: \n\nPlease send the credentials to my registered email or provide them securely.',
-  },
-  {
-    label: 'Domain Transfer',
-    subject: 'Domain transfer request',
-    message: 'I would like to initiate a transfer for the following domain:\n\nDomain name: \nTransfer to (registrar): \nAdditional notes: ',
-  },
-  {
-    label: 'DNS Change',
-    subject: 'DNS record update request',
-    message: 'I need to update the DNS records for my domain. Please make the following changes:\n\nDomain: \nRecord type (A / CNAME / MX / TXT): \nName: \nValue/Points to: \nTTL (if applicable): ',
-  },
-  {
-    label: 'SSL Issue',
-    subject: 'SSL certificate issue on my domain',
-    message: 'My website is showing an SSL/HTTPS error. Details:\n\nDomain: \nBrowser error message: \nWhen did it start: \n\nPlease check and renew/fix the SSL certificate.',
-  },
-  {
-    label: 'Billing Query',
-    subject: 'Billing / invoice query',
-    message: 'I have a question regarding a charge or invoice on my account:\n\nInvoice/reference number (if available): \nAmount in question: \nQuestion or concern: ',
-  },
+const QUICK_ACTION_ROWS = [
+  [
+    { label: 'Hosting', icon: AlertCircle, color: '#facc15', width: 82 },
+    { label: 'WordPress', monogram: 'W', color: '#3b82f6', width: 96 },
+    { label: 'SSL', icon: LockKeyhole, color: '#facc15', width: 72 },
+    { label: 'Domain', icon: Globe, color: '#3b82f6', width: 82 },
+    { label: 'Email', icon: Mail, color: '#c026d3', width: 76 },
+    { label: 'Migration', icon: ArrowLeftRight, color: '#3b82f6', width: 94 },
+    { label: 'Payment Gateway', icon: CreditCard, color: '#22c55e', width: 132 },
+    { label: 'Business Registration', icon: BriefcaseBusiness, color: '#f59e0b', width: 164 },
+  ],
+  [
+    { label: 'Products', icon: Package, color: '#c026d3', width: 122 },
+    { label: 'Theme', icon: Paintbrush, color: '#14b8a6', width: 114 },
+    { label: 'Plugin', icon: Puzzle, color: '#3b82f6', width: 112 },
+    { label: 'Virtual Number', icon: Phone, color: '#22c55e', width: 150 },
+    { label: 'Technical Support', icon: Headphones, color: '#14b8a6', width: 168 },
+  ],
+  [
+    { label: 'Service Request', icon: Headphones, color: '#f97316', width: 158 },
+    { label: 'Refund Request', icon: ReceiptText, color: '#f43f5e', width: 158 },
+    { label: 'Cancelations', icon: CircleX, color: '#ef4444', width: 146 },
+    { label: 'Other / General', icon: Info, color: '#facc15', width: 160 },
+  ],
 ];
 
 export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
@@ -76,9 +73,15 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
     boxShadow: isDark ? '0 2px 16px rgba(0,0,0,0.25)' : '0 2px 16px rgba(0,0,0,0.06)',
   };
 
-  const applySuggestion = (s) => {
-    setSubject(s.subject);
-    setMessage(s.message);
+  const buildActionTemplate = (label) => ({
+    subject: `${label} support request`,
+    message: `I need help with ${label}.\n\nPlease include details below:`,
+  });
+
+  const applyAction = (action) => {
+    const template = buildActionTemplate(action.label);
+    setSubject(template.subject);
+    setMessage(template.message);
   };
 
   async function handleSubmit(e) {
@@ -137,48 +140,188 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1320, margin: '0 auto' }}>
+      <style>{`
+        .ticket-quick-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .ticket-create-layout {
+          display: flex;
+          align-items: flex-start;
+          gap: 20px;
+        }
+        .ticket-actions-card {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .ticket-form-card {
+          flex: 0 0 430px;
+          max-width: 430px;
+        }
+        .ticket-quick-action-row {
+          display: flex;
+          justify-content: flex-start;
+          gap: 6px;
+        }
+        .ticket-quick-action-button {
+          min-width: 0;
+          border-radius: 8px;
+          font-family: inherit;
+          cursor: pointer;
+          transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+        }
+        .ticket-quick-action-button:hover {
+          transform: translateY(-1px);
+        }
+        .ticket-quick-action-button.top {
+          min-height: 82px;
+          padding: 10px 5px 9px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+        }
+        .ticket-quick-action-button.middle,
+        .ticket-quick-action-button.bottom {
+          min-height: 62px;
+          padding: 10px 11px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 10px;
+        }
+        .ticket-quick-action-button.middle {
+          flex: 0 0 auto;
+        }
+        .ticket-quick-action-button.bottom {
+          flex: 0 0 auto;
+        }
+        .ticket-quick-action-label {
+          color: inherit;
+          font-size: 11.5px;
+          font-weight: 750;
+          line-height: 1.18;
+          text-align: center;
+          overflow-wrap: normal;
+          white-space: nowrap;
+        }
+        @media (max-width: 1220px) {
+          .ticket-create-layout {
+            flex-direction: column;
+          }
+          .ticket-actions-card,
+          .ticket-form-card {
+            width: 100%;
+            max-width: none;
+            flex-basis: auto;
+          }
+        }
+        @media (max-width: 760px) {
+          .ticket-quick-actions {
+            gap: 12px;
+          }
+          .ticket-quick-action-row {
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+          .ticket-quick-action-button.top,
+          .ticket-quick-action-button.middle,
+          .ticket-quick-action-button.bottom {
+            flex: 1 1 calc(50% - 10px);
+            max-width: none;
+            min-height: 92px;
+            padding: 16px 14px;
+            flex-direction: row;
+            gap: 12px;
+          }
+          .ticket-quick-action-label {
+            font-size: 13.5px;
+            text-align: left;
+            white-space: normal;
+          }
+        }
+        @media (max-width: 460px) {
+          .ticket-quick-action-button.top,
+          .ticket-quick-action-button.middle,
+          .ticket-quick-action-button.bottom {
+            flex-basis: 100%;
+          }
+        }
+      `}</style>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>Create Support Ticket</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>Create Ticket</h1>
         <p style={{ fontSize: 13, color: c.subText, marginTop: 4 }}>Describe your issue and our team will get back to you</p>
       </div>
 
-      {/* Suggestion chips */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <Lightbulb size={13} style={{ color: c.brand }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            Quick Suggestions
-          </span>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {SUGGESTIONS.map(s => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => applySuggestion(s)}
-              style={{
-                padding: '6px 13px',
-                border: `1.5px solid ${subject === s.subject ? c.brand : c.border}`,
-                borderRadius: 20,
-                background: subject === s.subject
-                  ? (isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.08)')
-                  : 'transparent',
-                color: subject === s.subject ? c.brand : c.subText,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                transition: 'all 0.15s',
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="ticket-create-layout">
+        <div className="ticket-actions-card" style={{ ...cardS, padding: 18 }}>
+          <div style={{ borderBottom: `1px solid ${c.border}`, paddingBottom: 14, marginBottom: 18 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              Quick Actions
+            </span>
+          </div>
+          <div className="ticket-quick-actions">
+            {QUICK_ACTION_ROWS.map((row, rowIndex) => (
+              <div key={rowIndex} className="ticket-quick-action-row">
+                {row.map(action => {
+                  const Icon = action.icon;
+                  const actionSubject = buildActionTemplate(action.label).subject;
+                  const active = subject === actionSubject;
 
-      <div style={cardS}>
+                  return (
+                    <button
+                      key={action.label}
+                      type="button"
+                      onClick={() => applyAction(action)}
+                      className={`ticket-quick-action-button ${rowIndex === 0 ? 'top' : rowIndex === 1 ? 'middle' : 'bottom'}`}
+                      style={{
+                        flexBasis: action.width,
+                        border: `1.5px solid ${active ? action.color : c.borderStrong || c.border}`,
+                        background: active
+                          ? (isDark ? `${action.color}1f` : `${action.color}12`)
+                          : (isDark ? 'rgba(255,255,255,0.015)' : c.panel2),
+                        color: c.text,
+                        boxShadow: active ? `0 0 0 1px ${action.color}22` : 'none',
+                      }}
+                      aria-pressed={active}
+                    >
+                      <span style={{ width: rowIndex === 0 ? 26 : 24, height: rowIndex === 0 ? 26 : 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {Icon ? (
+                          <Icon size={rowIndex === 0 ? 24 : 22} strokeWidth={2.1} style={{ color: action.color }} />
+                        ) : (
+                          <span
+                            style={{
+                              width: rowIndex === 0 ? 24 : 22,
+                              height: rowIndex === 0 ? 24 : 22,
+                              border: `2px solid ${action.color}`,
+                              borderRadius: '50%',
+                              color: action.color,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: rowIndex === 0 ? 16 : 14,
+                              fontWeight: 800,
+                              lineHeight: 1,
+                              fontFamily: 'Georgia, serif',
+                            }}
+                          >
+                            {action.monogram}
+                          </span>
+                        )}
+                      </span>
+                      <span className="ticket-quick-action-label">{action.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+      <div className="ticket-form-card" style={cardS}>
         <div style={{ padding: '14px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ width: 3, height: 18, borderRadius: 2, background: c.brand }} />
           <Ticket size={15} style={{ color: c.brand }} />
@@ -239,6 +382,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
             <Send size={15} /> {sending ? 'Submitting…' : 'Submit Ticket'}
           </button>
         </form>
+      </div>
       </div>
     </div>
   );
