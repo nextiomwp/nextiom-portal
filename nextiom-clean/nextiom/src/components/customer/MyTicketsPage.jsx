@@ -83,7 +83,11 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   }
 
   useEffect(() => {
-    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!chatEndRef.current) return;
+    const timer = setTimeout(() => {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages]);
 
   useEffect(() => {
@@ -520,7 +524,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                             {isEdited && (
                               <span style={{ fontSize: 10, color: isMe ? 'rgba(255,255,255,0.5)' : c.subText, fontStyle: 'italic' }}>Edited</span>
                             )}
-                            {isMe && (
+                            {isMe && selected.status !== 'closed' && (
                               <button onClick={() => handleEditMessage(msg)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 6 }} title="Edit message">
                                 <Edit3 size={14} />
                               </button>

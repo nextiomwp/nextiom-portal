@@ -63,7 +63,11 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   }
 
   useEffect(() => {
-    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!chatEndRef.current) return;
+    const timer = setTimeout(() => {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages]);
 
   useEffect(() => {
