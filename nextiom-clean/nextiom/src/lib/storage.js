@@ -1029,7 +1029,12 @@ export const DEFAULT_PORTAL_SETTINGS = {
   customerActionsEnabled: false,
   customerActionsStartDate: '',
   customerActionsEndDate: '',
-  customerActionsNote: ''
+  customerActionsNote: '',
+  maintenanceMode: false,
+  maintenanceMessage: '',
+  maintenanceExpectedDowntime: '',
+  maintenanceStartDate: '',
+  maintenanceEndDate: '',
 };
 
 const PORTAL_SETTINGS_STORAGE_KEY = 'portal_settings';
@@ -1040,6 +1045,11 @@ const toPortalSettingsRecord = (settings = {}) => ({
   customer_actions_start_date: settings.customerActionsStartDate || null,
   customer_actions_end_date: settings.customerActionsEndDate || null,
   customer_actions_note: settings.customerActionsNote || '',
+  maintenance_mode: !!settings.maintenanceMode,
+  maintenance_message: settings.maintenanceMessage || '',
+  maintenance_expected_downtime: settings.maintenanceExpectedDowntime || '',
+  maintenance_start_date: settings.maintenanceStartDate || null,
+  maintenance_end_date: settings.maintenanceEndDate || null,
 });
 
 const fromPortalSettingsRecord = (record = {}) => ({
@@ -1048,6 +1058,11 @@ const fromPortalSettingsRecord = (record = {}) => ({
   customerActionsStartDate: record.customer_actions_start_date ?? record.customerActionsStartDate ?? '',
   customerActionsEndDate: record.customer_actions_end_date ?? record.customerActionsEndDate ?? '',
   customerActionsNote: record.customer_actions_note ?? record.customerActionsNote ?? '',
+  maintenanceMode: !!(record.maintenance_mode ?? record.maintenanceMode),
+  maintenanceMessage: record.maintenance_message ?? record.maintenanceMessage ?? '',
+  maintenanceExpectedDowntime: record.maintenance_expected_downtime ?? record.maintenanceExpectedDowntime ?? '',
+  maintenanceStartDate: record.maintenance_start_date ?? record.maintenanceStartDate ?? '',
+  maintenanceEndDate: record.maintenance_end_date ?? record.maintenanceEndDate ?? '',
 });
 
 export const getSettings = () => {
@@ -1144,6 +1159,55 @@ export const assertPortalActionsAllowed = async () => {
     const error = new Error(block.message);
     error.code = 'PORTAL_ACTIONS_PAUSED';
     throw error;
+  }
+};
+
+// ── Maintenance Mode ──────────────────────────────────────────
+
+export const getMaintenanceStatus = async () => {
+  const settings = await getPortalSettings();
+  return {
+    active: settings.maintenanceMode,
+    message: settings.maintenanceMessage?.trim() || 'The system is currently undergoing scheduled maintenance. Please check back later.',
+    expectedDowntime: settings.maintenanceExpectedDowntime || '',
+  };
+};
+
+export const isMaintenanceActive = async () => {
+  const { active } = await getMaintenanceStatus();
+  return active;
+};
+
+const SUPABASE_EDGE_URL = import.meta.env.VITE_SUPABASE_URL
+  ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-signout-all`
+  : null;
+
+export const signOutAllUsers = async () => {
+  if (!SUPABASE_EDGE_URL) {
+    console.warn('signOutAllUsers: VITE_SUPABASE_URL not set, cannot call edge function');
+    return;
+  }
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      console.warn('signOutAllUsers: no active session');
+      return;
+    }
+    const response = await fetch(SUPABASE_EDGE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('signOutAllUsers error:', err);
+    throw err;
   }
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, Loader2, ShieldCheck, X, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, ShieldCheck, X, Eye, EyeOff, CheckCircle, TriangleAlert, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
 import { cn } from '@/lib/utils';
+import { getMaintenanceStatus } from '@/lib/storage';
 import { useNavigate, Link } from 'react-router-dom';
 
 const DEFAULT_LOGO = '/NEXTIOM.png';
@@ -25,6 +26,7 @@ function Login({ onLoginSuccess }) {
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const [loginStatusMsg, setLoginStatusMsg] = useState(null); // 'pending' | 'rejected' | null
+  const [maintenance, setMaintenance] = useState(null); // null | { active, message, expectedDowntime }
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO);
 
   const { signIn, user, role } = useAuth();
@@ -64,6 +66,22 @@ function Login({ onLoginSuccess }) {
     loadLogo();
   }, []);
 
+  // Check maintenance mode
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const status = await getMaintenanceStatus();
+        if (mounted && status.active) {
+          setMaintenance(status);
+        }
+      } catch (err) {
+        console.error('Failed to check maintenance status:', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'a' || e.key === 'A')) {
@@ -79,6 +97,7 @@ function Login({ onLoginSuccess }) {
     const msg = typeof error === 'string' ? error : error?.message || '';
     if (msg === 'ACCOUNT_PENDING') return 'PENDING';
     if (msg === 'ACCOUNT_REJECTED') return 'REJECTED';
+    if (msg === 'MAINTENANCE_MODE') return 'MAINTENANCE_MODE';
     if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
       return 'Invalid email or password. Please try again.';
     }
@@ -93,6 +112,14 @@ function Login({ onLoginSuccess }) {
 
   const handleCustomerLogin = async (e) => {
     e.preventDefault();
+    if (maintenance?.active) {
+      toast({
+        title: 'Under Maintenance',
+        description: 'The portal is currently under maintenance. Please try again later.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setIsLoading(true);
     setLoginStatusMsg(null);
 
@@ -104,6 +131,13 @@ function Login({ onLoginSuccess }) {
         setLoginStatusMsg('pending');
       } else if (msg === 'REJECTED') {
         setLoginStatusMsg('rejected');
+      } else if (msg === 'MAINTENANCE_MODE') {
+        const maintMsg = error.maintenanceMessage || 'The system is currently undergoing maintenance.';
+        toast({
+          title: "Under Maintenance",
+          description: maintMsg,
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "Login Failed",
@@ -305,6 +339,22 @@ function Login({ onLoginSuccess }) {
                   <p className="text-slate-500 text-sm">Welcome back! Please enter your details.</p>
                 </div>
               </div>
+
+              {maintenance?.active && (
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 mb-6 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <TriangleAlert className="w-5 h-5 text-orange-600 flex-shrink-0" />
+                    <p className="text-sm font-bold text-orange-800">Under Maintenance</p>
+                  </div>
+                  <p className="text-sm text-orange-700">{maintenance.message}</p>
+                  {maintenance.expectedDowntime && (
+                    <div className="flex items-center gap-1.5 text-xs text-orange-600 font-medium">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Expected downtime: {maintenance.expectedDowntime}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <form onSubmit={handleCustomerLogin} className="space-y-6">
                 <div className="space-y-4">

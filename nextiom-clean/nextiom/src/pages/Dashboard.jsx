@@ -27,6 +27,7 @@ import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, 
 
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
+import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
 
 const NAV = [
   { id: 'overview', label: 'Dashboard', icon: Home, section: 'top' },
@@ -50,6 +51,7 @@ const NAV = [
   { section: 'header', label: 'BILLING' },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { section: 'header', label: 'SYSTEM' },
+  { id: 'maintenance', label: 'Maintenance', icon: Shield },
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
   // { id: 'adminManagement', label: 'Admin Management', icon: Shield },
   // { id: 'systemSettings', label: 'System Settings', icon: Settings },
@@ -367,6 +369,7 @@ function Dashboard({ onLogout }) {
         if (invoiceView === 'settings') return <InvoiceSettingsPage c={c} isDark={isDark} onBack={goList} />;
         return <InvoicesPage c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
       }
+      case 'maintenance': return <MaintenanceModePage isDark={isDark} />;
       case 'activityLog': return <AdminActivityLogPage isDark={isDark} />;
       case 'emailRequests': return <AdminEmailRequestManagement isDark={isDark} />;
       case 'approvedEmailsActive': return <AdminApprovedEmails isDark={isDark} />;

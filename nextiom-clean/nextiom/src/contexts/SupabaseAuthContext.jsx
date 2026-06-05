@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { getCustomerByEmail, getUserProfile, addNotification } from '@/lib/storage';
+import { getCustomerByEmail, getUserProfile, addNotification, getMaintenanceStatus } from '@/lib/storage';
 
 const AuthContext = createContext(undefined);
 
@@ -106,6 +106,17 @@ export const AuthProvider = ({ children }) => {
     // Anyone who isn't an admin is treated as a customer (default role).
     const signedInRole = data.user?.app_metadata?.role || 'customer';
     if (signedInRole !== 'admin') {
+      // Check if maintenance mode is active
+      try {
+        const { active, message } = await getMaintenanceStatus();
+        if (active) {
+          await supabase.auth.signOut();
+          setLoading(false);
+          return { error: { message: 'MAINTENANCE_MODE', maintenanceMessage: message } };
+        }
+      } catch (e) {
+        console.error('Failed to check maintenance status during login:', e);
+      }
       const { data: profile } = await supabase
         .from('customers')
         .select('status')

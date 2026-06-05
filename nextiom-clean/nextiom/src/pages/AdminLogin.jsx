@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ShieldCheck, Loader2 } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, Loader2, TriangleAlert, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { cn } from '@/lib/utils';
+import { getMaintenanceStatus } from '@/lib/storage';
 import { useNavigate, Link } from 'react-router-dom';
 
 function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [maintenance, setMaintenance] = useState(null);
   const { signIn, user, role } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -22,6 +24,22 @@ function AdminLogin() {
       navigate('/admin-dashboard');
     }
   }, [user, role, navigate]);
+
+  // Check maintenance mode
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const status = await getMaintenanceStatus();
+        if (mounted && status.active) {
+          setMaintenance(status);
+        }
+      } catch (err) {
+        console.error('Failed to check maintenance status:', err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -76,6 +94,23 @@ function AdminLogin() {
               </div>
               <h1 className="text-2xl font-bold text-[#1a1a1a]">Admin Portal</h1>
             </div>
+
+            {maintenance?.active && (
+              <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 space-y-1 mb-4">
+                <div className="flex items-center gap-2">
+                  <TriangleAlert className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                  <p className="text-xs font-bold text-orange-800">Maintenance Mode Active</p>
+                </div>
+                <p className="text-xs text-orange-700">{maintenance.message}</p>
+                {maintenance.expectedDowntime && (
+                  <div className="flex items-center gap-1 text-xs text-orange-600">
+                    <Clock className="w-3 h-3" />
+                    <span>Expected downtime: {maintenance.expectedDowntime}</span>
+                  </div>
+                )}
+                <p className="text-xs text-orange-600 font-medium mt-1">Only administrators can log in during maintenance.</p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">

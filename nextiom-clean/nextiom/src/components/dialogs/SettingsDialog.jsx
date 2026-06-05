@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, Mail, BellRing, ShieldAlert, CalendarRange, MessageSquareText } from 'lucide-react';
+import { Settings, Save, Mail, BellRing } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,18 +7,12 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import {
   DEFAULT_APP_SETTINGS,
-  DEFAULT_PORTAL_SETTINGS,
-  getCustomers,
   getSettings,
   saveSettings,
-  getPortalSettings,
-  savePortalSettings,
-  getPortalActionBlock,
-  addNotification,
 } from '@/lib/storage';
 
 function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
-  const [settings, setSettings] = useState({ ...DEFAULT_APP_SETTINGS, ...DEFAULT_PORTAL_SETTINGS });
+  const [settings, setSettings] = useState({ ...DEFAULT_APP_SETTINGS });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -30,21 +24,16 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
     (async () => {
       setLoading(true);
       try {
-        const [localSettings, portalSettings] = await Promise.all([
-          Promise.resolve(getSettings()),
-          getPortalSettings(),
-        ]);
+        const localSettings = await Promise.resolve(getSettings());
         if (mounted) {
           setSettings({
             ...DEFAULT_APP_SETTINGS,
-            ...DEFAULT_PORTAL_SETTINGS,
             ...localSettings,
-            ...portalSettings,
           });
         }
       } catch {
         if (mounted) {
-          setSettings({ ...DEFAULT_APP_SETTINGS, ...DEFAULT_PORTAL_SETTINGS });
+          setSettings({ ...DEFAULT_APP_SETTINGS });
         }
       } finally {
         if (mounted) setLoading(false);
@@ -56,26 +45,10 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
     };
   }, [open]);
 
-  const portalPreview = getPortalActionBlock(settings);
-
-  const formatPortalPauseMessage = () => {
-    const start = settings.customerActionsStartDate ? new Date(settings.customerActionsStartDate) : null;
-    const end = settings.customerActionsEndDate ? new Date(settings.customerActionsEndDate) : null;
-    const startLabel = start && !Number.isNaN(start.getTime()) ? start.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-    const endLabel = end && !Number.isNaN(end.getTime()) ? end.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-    const schedule = startLabel || endLabel
-      ? ` (${startLabel ? `starts ${startLabel}` : ''}${startLabel && endLabel ? ', ' : ''}${endLabel ? `ends ${endLabel}` : ''})`
-      : '';
-    return `${settings.customerActionsNote?.trim() || 'Customer requests and payments are temporarily paused by the administrator.'}${schedule}`;
-  };
-
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
 
-    const results = { app: null, portal: null };
-
-    // Save app (email reminders) — validate independently
     try {
       if (settings.emailRemindersEnabled && !settings.adminEmail?.trim()) {
         throw new Error('Admin email is required when reminders are enabled.');
@@ -85,87 +58,19 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
         reminderDaysBefore: settings.reminderDaysBefore,
         adminEmail: settings.adminEmail,
       });
-      results.app = { ok: true };
+
+      toast({
+        title: 'Settings Saved',
+        description: 'Email reminder preferences have been updated.',
+      });
+      onUpdate?.();
+      onOpenChange(false);
     } catch (err) {
-      results.app = { ok: false, error: err };
       toast({
         title: 'Email Reminders',
         description: err?.message || 'Failed to save email reminder settings.',
         variant: 'destructive',
       });
-    }
-
-    // Save portal settings independently
-    try {
-      await savePortalSettings({
-        customerActionsEnabled: settings.customerActionsEnabled,
-        customerActionsStartDate: settings.customerActionsStartDate,
-        customerActionsEndDate: settings.customerActionsEndDate,
-        customerActionsNote: settings.customerActionsNote,
-      });
-
-      if (settings.customerActionsEnabled) {
-        const customers = await getCustomers().catch(() => []);
-        const message = formatPortalPauseMessage();
-        await Promise.all((customers || []).map((customer) => {
-          if (!customer?.id) return Promise.resolve();
-          return addNotification({
-            customer_id: customer.id,
-            type: 'portal_pause',
-            title: 'Customer Portal Pause',
-            message,
-          }).catch(() => {});
-        }));
-
-        // Log to admin activity log
-        await addNotification({
-          customer_id: null,
-          type: 'portal_pause',
-          title: 'Customer Portal Pause Enabled',
-          message: message,
-        }).catch(() => {});
-      } else {
-        // Also log when disabled
-        await addNotification({
-          customer_id: null,
-          type: 'portal_pause',
-          title: 'Customer Portal Pause Disabled',
-          message: 'The administrator has disabled the customer portal pause.',
-        }).catch(() => {});
-      }
-
-      results.portal = { ok: true };
-    } catch (err) {
-      results.portal = { ok: false, error: err };
-      toast({
-        title: 'Portal Settings',
-        description: err?.message || 'Failed to save portal settings.',
-        variant: 'destructive',
-      });
-    }
-
-    // Summary
-    if (results.app?.ok && results.portal?.ok) {
-      toast({
-        title: 'Settings Saved',
-        description: 'Customer portal controls and reminder preferences have been updated.',
-      });
-      onUpdate?.();
-      onOpenChange(false);
-    } else if (results.app?.ok && !results.portal?.ok) {
-      toast({
-        title: 'Partial Save',
-        description: 'Email reminder settings saved, but portal settings could not be saved.',
-        variant: 'warning',
-      });
-    } else if (!results.app?.ok && results.portal?.ok) {
-      toast({
-        title: 'Partial Save',
-        description: 'Portal settings saved, but email reminder settings could not be saved.',
-        variant: 'warning',
-      });
-      onUpdate?.();
-      onOpenChange(false);
     }
 
     setSaving(false);
@@ -183,10 +88,6 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
     fieldBorder: '#e2e8f0',
     fieldText: '#0f172a',
     mutedCard: 'rgba(248,250,252,0.92)',
-    warningCard: 'rgba(255,247,237,0.95)',
-    warningBorder: 'rgba(251,146,60,0.24)',
-    warningText: '#9a3412',
-    accent: '#e87b35',
   };
   const darkTheme = {
     shell: '#1C1E24',
@@ -199,10 +100,6 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
     fieldBorder: 'rgba(255,255,255,0.10)',
     fieldText: '#ffffff',
     mutedCard: 'rgba(255,255,255,0.03)',
-    warningCard: 'rgba(232,123,53,0.10)',
-    warningBorder: 'rgba(232,123,53,0.22)',
-    warningText: '#ffd7c2',
-    accent: '#e87b35',
   };
   const ui = isDark ? darkTheme : theme;
 
@@ -217,7 +114,7 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
             System Settings
           </DialogTitle>
           <DialogDescription style={{ color: ui.subText }}>
-            Configure automated email reminders and pause customer requests or payments when needed.
+            Configure automated email reminder preferences for the portal.
           </DialogDescription>
         </DialogHeader>
 
@@ -275,90 +172,6 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
                 />
               </div>
             </div>
-          </div>
-
-          <div style={{ border: `1px solid ${ui.warningBorder}`, background: ui.warningCard, borderRadius: 20, padding: 16 }} className="space-y-4">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-[#e87b35]" />
-              <h3 className="text-sm font-semibold" style={{ color: ui.text }}>Customer Portal Pause</h3>
-            </div>
-
-            <div style={{ background: ui.card, border: `1px solid ${ui.warningBorder}`, borderRadius: 16, padding: '12px 16px' }} className="flex items-center justify-between">
-              <div className="space-y-0.5 pr-4">
-                <Label htmlFor="portalLock" className="text-base font-medium" style={{ color: ui.text }}>Pause requests and payments</Label>
-                <p className="text-xs" style={{ color: ui.subText }}>Customers can still sign in and view their portal, but they cannot submit requests or payments.</p>
-              </div>
-              <Switch
-                id="portalLock"
-                checked={settings.customerActionsEnabled}
-                onCheckedChange={(checked) => setSettings((current) => ({ ...current, customerActionsEnabled: checked }))}
-              />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="portalStart" className="flex items-center gap-2" style={{ color: ui.text }}>
-                  <CalendarRange className="w-4 h-4 text-slate-500" />
-                  Start Date
-                </Label>
-                <input
-                  id="portalStart"
-                  type="date"
-                  value={settings.customerActionsStartDate}
-                  onChange={(e) => setSettings((current) => ({ ...current, customerActionsStartDate: e.target.value }))}
-                  className={field}
-                  style={{ background: ui.fieldBg, borderColor: ui.fieldBorder, color: ui.fieldText }}
-                  disabled={!settings.customerActionsEnabled}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="portalEnd" className="flex items-center gap-2" style={{ color: ui.text }}>
-                  <CalendarRange className="w-4 h-4 text-slate-500" />
-                  End Date <span className="text-xs font-normal text-slate-400">(optional)</span>
-                </Label>
-                <input
-                  id="portalEnd"
-                  type="date"
-                  value={settings.customerActionsEndDate}
-                  onChange={(e) => setSettings((current) => ({ ...current, customerActionsEndDate: e.target.value }))}
-                  className={field}
-                  style={{ background: ui.fieldBg, borderColor: ui.fieldBorder, color: ui.fieldText }}
-                  disabled={!settings.customerActionsEnabled}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="portalNote" className="flex items-center gap-2" style={{ color: ui.text }}>
-                <MessageSquareText className="w-4 h-4 text-slate-500" />
-                Customer Message
-              </Label>
-              <textarea
-                id="portalNote"
-                value={settings.customerActionsNote}
-                onChange={(e) => setSettings((current) => ({ ...current, customerActionsNote: e.target.value }))}
-                className={`${field} min-h-[110px] resize-y`}
-                style={{ background: ui.fieldBg, borderColor: ui.fieldBorder, color: ui.fieldText }}
-                placeholder="Write the message customers should see when they try to submit a request or payment."
-                disabled={!settings.customerActionsEnabled}
-              />
-              <p className="text-xs" style={{ color: ui.subText }}>Leave the end date blank if you want to turn the pause off manually later.</p>
-            </div>
-
-            {settings.customerActionsEnabled && (
-              <div style={{ border: `1px solid ${ui.warningBorder}`, background: ui.mutedCard, borderRadius: 16, padding: '12px 16px', color: ui.text }}>
-                <div className="font-semibold mb-1" style={{ color: ui.accent }}>Preview</div>
-                <div style={{ color: ui.text }}>{portalPreview?.message || 'Customer requests and payments are temporarily paused.'}</div>
-                {(portalPreview?.startDate || portalPreview?.endDate) && (
-                  <div className="mt-2 text-xs" style={{ color: ui.subText }}>
-                    {portalPreview.startDate ? `Starts: ${portalPreview.startDate}` : ''}
-                    {portalPreview.startDate && portalPreview.endDate ? ' • ' : ''}
-                    {portalPreview.endDate ? `Ends: ${portalPreview.endDate}` : ''}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">

@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { AUTH_ERRORS } from '@/lib/authErrors';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
+import { getMaintenanceStatus } from '@/lib/storage';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading, authError, signOut } = useAuth();
@@ -20,7 +21,18 @@ function ProtectedRoute({ children, allowedRoles }) {
         try {
           const userRole = user.app_metadata?.role || 'customer';
           if (userRole !== 'admin') {
-             const { data, error } = await supabase
+            // Check maintenance mode
+            try {
+              const { active, message } = await getMaintenanceStatus();
+              if (active) {
+                setAccessError(message || 'The system is currently undergoing maintenance. Please check back later.');
+                setAccessCheckLoading(false);
+                return;
+              }
+            } catch (e) {
+              console.error('Maintenance check error', e);
+            }
+            const { data, error } = await supabase
                .from('customers')
                .select('status')
                .eq('user_id', user.id)
