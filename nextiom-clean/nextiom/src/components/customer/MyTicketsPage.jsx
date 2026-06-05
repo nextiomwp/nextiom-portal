@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, RefreshCw, MessageSquare, ChevronRight, Clock, CheckCircle, X, Edit3, Link2 } from 'lucide-react';
+import { Ticket, Send, RefreshCw, MessageSquare, CheckCircle, X, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2 } from 'lucide-react';
 import { getTicketsByCustomer, getTicketMessages, addTicketMessage, addNotification, editTicketMessage } from '@/lib/storage';
 import LinkPreviewCard from '@/components/shared/LinkPreviewCard';
 import { extractUrls } from '@/lib/linkPreview';
@@ -36,7 +36,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   const [sending, setSending] = useState(false);
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editText, setEditText] = useState('');
-  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
   const [isMobile, setIsMobile] = useState(() => {
@@ -45,6 +45,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   });
   const chatEndRef = useRef(null);
   const replyRef = useRef(null);
+  const selRef = useRef({ start: 0, end: 0 });
   const { toast } = useToast();
 
   const customerId = user?.id;
@@ -85,6 +86,16 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setShowLinkModal(false);
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   async function handleSend() {
     if (!reply.trim() || !selected) return;
     setSending(true);
@@ -92,6 +103,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
       const msg = await addTicketMessage(selected.id, 'customer', reply.trim());
       setMessages(m => [...m, msg]);
       setReply('');
+      if (replyRef.current) { replyRef.current.style.height = ''; }
       await addNotification({
         customer_id: null,
         type: 'ticket',
@@ -123,7 +135,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
 
   function handleInsertLink() {
     if (!linkUrl.trim() || !linkText.trim()) return;
-    const insertion = `\n\n[${linkText.trim()}](${linkUrl.trim()})`;
+    const insertion = `[${linkText.trim()}](${linkUrl.trim()})`;
     const textarea = replyRef.current;
     if (textarea) {
       const start = textarea.selectionStart;
@@ -140,25 +152,112 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     }
     setLinkUrl('');
     setLinkText('');
-    setShowLinkDialog(false);
+    setShowLinkModal(false);
   }
 
-  function renderMessageText(text, isOnBrand) {
+  async function handlePasteFromClipboard() {
+    try {
+      const perm = await navigator.permissions.query({ name: 'clipboard-read' });
+      if (perm.state === 'denied') {
+        const ta = replyRef.current;
+        if (ta) ta.focus();
+        toast({ title: 'Clipboard access blocked', description: 'Press Ctrl+V (Cmd+V) to paste, or type manually', variant: 'default' });
+        return;
+      }
+    } catch {}
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const textarea = replyRef.current;
+        if (textarea) {
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const before = reply.slice(0, start);
+          const after = reply.slice(end);
+          setReply(before + text + after);
+          setTimeout(() => {
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + text.length;
+          }, 0);
+        } else {
+          setReply(r => r + text);
+        }
+      }
+    } catch {
+      const ta = replyRef.current;
+      if (ta) ta.focus();
+      toast({ title: 'Clipboard access blocked', description: 'Press Ctrl+V (Cmd+V) to paste, or type manually', variant: 'default' });
+    }
+  }
+
+  function applyFormat(type) {
+    const textarea = replyRef.current;
+    if (!textarea) return;
+    const { start: selStart, end: selEnd } = selRef.current;
+    const selected = reply.slice(selStart, selEnd);
+    const before = reply.slice(0, selStart);
+    const after = reply.slice(selEnd);
+    let insertion, cursorOffset;
+    switch (type) {
+      case 'bold':
+        if (selected) { insertion = `**${selected}**`; cursorOffset = selStart + insertion.length; }
+        else { insertion = '**bold text**'; cursorOffset = selStart + 2; }
+        break;
+      case 'italic':
+        if (selected) { insertion = `*${selected}*`; cursorOffset = selStart + insertion.length; }
+        else { insertion = '*italic text*'; cursorOffset = selStart + 1; }
+        break;
+      case 'underline':
+        if (selected) { insertion = `<u>${selected}</u>`; cursorOffset = selStart + insertion.length; }
+        else { insertion = '<u>underlined text</u>'; cursorOffset = selStart + 3; }
+        break;
+      case 'quote':
+        if (selected) { insertion = selected.split('\n').map(l => `> ${l}`).join('\n'); cursorOffset = selStart + insertion.length; }
+        else { insertion = '> quote'; cursorOffset = selStart + insertion.length; }
+        break;
+      case 'code':
+        if (selected) {
+          if (selected.includes('\n')) { insertion = '```\n' + selected + '\n```'; cursorOffset = selStart + insertion.length - 4; }
+          else { insertion = '`' + selected + '`'; cursorOffset = selStart + insertion.length; }
+        } else { insertion = '`code`'; cursorOffset = selStart + 1; }
+        break;
+      default: return;
+    }
+    setReply(before + insertion + after);
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = cursorOffset;
+    }, 0);
+  }
+
+  function renderInline(text, isOnBrand) {
     const parts = [];
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const regex = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|<u>(.+?)<\/u>|\[(.+?)\]\((.+?)\)/g;
     let lastIdx = 0;
     let match;
-    while ((match = linkRegex.exec(text)) !== null) {
+    while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIdx) {
         parts.push(<span key={`t${lastIdx}`} style={{ wordBreak: 'break-word' }}>{text.slice(lastIdx, match.index)}</span>);
       }
-      parts.push(
-        <a key={`l${match.index}`} href={match[2]} target="_blank" rel="noopener noreferrer"
-           style={{ color: isOnBrand ? '#b3d9ff' : '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}>
-          {match[1]}
-        </a>
-      );
-      lastIdx = match.index + match[0].length;
+      if (match[1]) {
+        parts.push(<strong key={`b${match.index}`} style={{ fontWeight: 700 }}><em style={{ fontStyle: 'italic' }}>{renderInline(match[1], isOnBrand)}</em></strong>);
+      } else if (match[2]) {
+        parts.push(<strong key={`b${match.index}`} style={{ fontWeight: 700 }}>{renderInline(match[2], isOnBrand)}</strong>);
+      } else if (match[3]) {
+        parts.push(<em key={`i${match.index}`} style={{ fontStyle: 'italic' }}>{renderInline(match[3], isOnBrand)}</em>);
+      } else if (match[4]) {
+        parts.push(<code key={`c${match.index}`} style={{ background: isOnBrand ? 'rgba(255,255,255,0.12)' : c.hover, padding: '1px 5px', borderRadius: 4, fontSize: 12, fontFamily: "'Fira Code', monospace" }}>{match[4]}</code>);
+      } else if (match[5]) {
+        parts.push(<u key={`u${match.index}`} style={{ textDecoration: 'underline' }}>{renderInline(match[5], isOnBrand)}</u>);
+      } else if (match[6]) {
+        parts.push(
+          <a key={`l${match.index}`} href={match[7]} target="_blank" rel="noopener noreferrer"
+             style={{ color: isOnBrand ? '#b3d9ff' : '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}>
+            {renderInline(match[6], isOnBrand)}
+          </a>
+        );
+      }
+      lastIdx = regex.lastIndex;
     }
     if (lastIdx < text.length) {
       parts.push(<span key={`t${lastIdx}`} style={{ wordBreak: 'break-word' }}>{text.slice(lastIdx)}</span>);
@@ -166,11 +265,77 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     return parts.length > 0 ? parts : text;
   }
 
+  function renderMessageText(text, isOnBrand) {
+    if (!text) return text;
+    const lines = text.split('\n');
+    const out = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (trimmed.startsWith('> ')) {
+        out.push(
+          <div key={`q${i}`} style={{ borderLeft: `3px solid ${isOnBrand ? 'rgba(255,255,255,0.35)' : c.brand}`, paddingLeft: 10, margin: '4px 0', color: isOnBrand ? 'rgba(255,255,255,0.8)' : c.subText, fontStyle: 'italic' }}>
+            {renderInline(trimmed.slice(2), isOnBrand)}
+          </div>
+        );
+      } else if (trimmed.startsWith('- ')) {
+        out.push(
+          <div key={`ul${i}`} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', margin: '2px 0' }}>
+            <span style={{ flexShrink: 0, color: isOnBrand ? 'rgba(255,255,255,0.7)' : c.subText }}>•</span>
+            <span>{renderInline(trimmed.slice(2), isOnBrand)}</span>
+          </div>
+        );
+      } else if (/^\d+\.\s/.test(trimmed)) {
+        const num = trimmed.match(/^(\d+)\.\s(.*)/);
+        out.push(
+          <div key={`ol${i}`} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', margin: '2px 0' }}>
+            <span style={{ flexShrink: 0, color: c.subText, fontSize: 12, minWidth: 18, textAlign: 'right' }}>{num[1]}.</span>
+            <span>{renderInline(num[2], isOnBrand)}</span>
+          </div>
+        );
+      } else {
+        if (line === '') {
+          out.push(<div key={`l${i}`} style={i > 0 ? { marginTop: 4 } : undefined}><br/></div>);
+        } else {
+          const inline = renderInline(line, isOnBrand);
+          out.push(<div key={`l${i}`} style={i > 0 ? { marginTop: 4 } : undefined}>{inline}</div>);
+        }
+      }
+    }
+    return out;
+  }
+
   const inp = {
     outline: 'none',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
   };
+
+  function saveSel() {
+    const ta = replyRef.current;
+    if (ta) selRef.current = { start: ta.selectionStart, end: ta.selectionEnd };
+  }
+
+  const tbBtn = (Icon, title, onClick) => (
+    <button
+      key={title}
+      onMouseDown={e => { e.preventDefault(); onClick(); }}
+      title={title}
+      onMouseEnter={e => { e.currentTarget.style.background = c.hover; e.currentTarget.style.color = c.text; }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = c.subText; }}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 30, height: 30, border: 'none', borderRadius: 6,
+        background: 'transparent', color: c.subText,
+        cursor: 'pointer', fontFamily: 'inherit',
+        transition: 'all 0.12s',
+      }}
+    >
+      <Icon size={15} />
+    </button>
+  );
+
+  const tbd = <div style={{ width: 1, height: 18, background: c.border, margin: '0 4px' }} />;
 
   const cardS = {
     background: c.card,
@@ -307,24 +472,23 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                   const isEdited = !!msg.edited_at;
                   return (
                     <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                      <div style={{ maxWidth: '72%', minWidth: 0 }}>
+                      <div style={{ maxWidth: '72%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                         <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isMe ? 'right' : 'left' }}>
                           {isMe ? 'You' : 'Support Team'} · {fmtTime(msg.created_at)}
                         </div>
                         <div style={{
                           padding: '10px 14px',
                           borderRadius: isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                          background: isMe ? c.brand : c.card,
-                          color: isMe ? '#fff' : c.text,
+                          background: isMe ? '#1E1E24' : c.card,
+                          color: isMe ? '#e8e8e8' : c.text,
                           fontSize: 13,
                           lineHeight: 1.5,
                           whiteSpace: 'pre-wrap',
                           wordBreak: 'break-word',
                           overflowWrap: 'break-word',
-                          border: isMe ? 'none' : `1px solid ${c.border}`,
+                          border: isMe ? `1px solid ${c.brand}` : `1px solid ${c.border}`,
                           boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                           position: 'relative',
-                          overflow: 'hidden',
                           minWidth: 0,
                         }}>
                           {isEditing ? (
@@ -377,49 +541,101 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                     This ticket is closed. Contact support to reopen.
                   </div>
                 ) : (
-                  <>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, display: 'flex', gap: 0, alignItems: 'flex-end', minWidth: 200 }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0 }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 2, padding: '6px 8px',
+                        border: `1.5px solid ${c.border}`, borderBottom: 'none',
+                        borderRadius: '10px 10px 0 0',
+                        background: isDark ? '#22252C' : '#f5f5f5',
+                        flexWrap: 'wrap',
+                      }}>
+                        {tbBtn(Bold, 'Bold', () => applyFormat('bold'))}
+                        {tbBtn(Italic, 'Italic', () => applyFormat('italic'))}
+                        {tbBtn(Underline, 'Underline', () => applyFormat('underline'))}
+                        {tbd}
+                        {tbBtn(TextQuote, 'Quote', () => applyFormat('quote'))}
+                        {tbBtn(Code2, 'Code', () => applyFormat('code'))}
+                        {tbd}
+                        {tbBtn(Link2, 'Insert Link', () => {
+                          const sel = selRef.current;
+                          if (sel.start !== sel.end) {
+                            setLinkText(reply.slice(sel.start, sel.end));
+                          }
+                          setShowLinkModal(true);
+                        })}
+                        {tbBtn(Clipboard, 'Paste from Clipboard', handlePasteFromClipboard)}
+                      </div>
+                      <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: '0 0 10px 10px', borderTop: 'none', background: isDark ? '#22252C' : '#f5f5f5' }}>
                         <textarea
                           ref={replyRef}
                           value={reply}
                           onChange={e => setReply(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                          onMouseUp={saveSel} onKeyUp={saveSel}
                           placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
-                          rows={Math.max(2, reply.split('\n').length)}
-                          style={{ ...inp, flex: 1, padding: '10px 12px', border: `1.5px solid ${c.border}`, borderRadius: '10px 0 0 10px', borderRight: 'none', background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, resize: 'vertical', width: '100%', minWidth: 0, maxHeight: 400, overflowY: 'auto' }}
+                          rows={Math.min(Math.max(3, reply.split('\n').length), 20)}
+                          style={{ ...inp, flex: 1, padding: '10px 12px', border: 'none', background: 'transparent', color: c.text, fontSize: 13, resize: 'vertical', minWidth: 0, maxHeight: 500, overflowY: 'auto', outline: 'none' }}
                         />
-                        <button
-                          onClick={() => { setShowLinkDialog(true); setLinkUrl(''); setLinkText(''); }}
-                          title="Insert link"
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 10px', border: `1.5px solid ${c.border}`, borderRadius: '0 10px 10px 0', background: isDark ? '#22252C' : '#f5f5f5', color: c.subText, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', flexShrink: 0 }}
-                        >
-                          <Link2 size={14} />
-                        </button>
                       </div>
-                      <button
-                        onClick={handleSend}
-                        disabled={sending || !reply.trim()}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: c.brand, color: '#fff', border: 'none', borderRadius: 10, cursor: sending || !reply.trim() ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: sending || !reply.trim() ? 0.6 : 1, fontFamily: 'inherit', flexShrink: 0 }}
-                      >
-                        <Send size={14} /> Send
-                      </button>
                     </div>
-                    {showLinkDialog && (
-                      <div style={{ marginTop: 8, padding: 10, background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://example.com" style={{ ...inp, padding: '8px 10px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
-                        <input value={linkText} onChange={e => setLinkText(e.target.value)} placeholder="Display text" style={{ ...inp, padding: '8px 10px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
-                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                          <button onClick={() => setShowLinkDialog(false)} style={{ padding: '6px 12px', border: `1px solid ${c.border}`, borderRadius: 6, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
-                          <button onClick={handleInsertLink} disabled={!linkUrl.trim() || !linkText.trim()} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: c.brand, color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Insert</button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                    <button
+                      onClick={handleSend}
+                      disabled={sending || !reply.trim()}
+                      style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: sending || !reply.trim() ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: sending || !reply.trim() ? 0.6 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      <Send size={14} /> Submit
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {showLinkModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: 24 }}
+          onClick={() => setShowLinkModal(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, width: '100%', maxWidth: 420, boxShadow: '0 16px 48px rgba(0,0,0,0.3)', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${c.border}` }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: c.text }}>Insert Link</span>
+              <button onClick={() => setShowLinkModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 6 }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: c.subText, marginBottom: 4 }}>URL</label>
+                <input
+                  value={linkUrl}
+                  onChange={e => setLinkUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  autoFocus
+                  style={{ ...inp, width: '100%', padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: c.subText, marginBottom: 4 }}>Display Text</label>
+                <input
+                  value={linkText}
+                  onChange={e => setLinkText(e.target.value)}
+                  placeholder="Click here to visit"
+                  style={{ ...inp, width: '100%', padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, boxSizing: 'border-box' }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleInsertLink(); }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
+              <button onClick={() => setShowLinkModal(false)} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={handleInsertLink} disabled={!linkUrl.trim() || !linkText.trim()} style={{ padding: '8px 16px', border: 'none', borderRadius: 8, background: c.brand, color: '#fff', cursor: !linkUrl.trim() || !linkText.trim() ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', opacity: !linkUrl.trim() || !linkText.trim() ? 0.6 : 1 }}>Insert</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

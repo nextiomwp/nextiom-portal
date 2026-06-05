@@ -18,7 +18,7 @@ export default function LinkPreviewCard({ url, isOnBrand, c }) {
 
   if (!preview) {
     return (
-      <div style={{ marginTop: 6, padding: '8px 12px', borderRadius: 8, background: isOnBrand ? 'rgba(255,255,255,0.1)' : c.hover, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: isOnBrand ? 'rgba(255,255,255,0.6)' : c.subText }}>
+      <div style={{ marginTop: 6, padding: '8px 12px', borderRadius: 8, background: isOnBrand ? 'rgba(255,255,255,0.1)' : c.hover, display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: isOnBrand ? 'rgba(255,255,255,0.6)' : c.subText, maxWidth: 420, width: 'fit-content' }}>
         <style>{spinKeyframes}</style>
         <div style={{ width: 12, height: 12, borderRadius: '50%', border: `2px solid ${c.subText}`, borderTopColor: 'transparent', animation: 'lpspin 0.6s linear infinite', flexShrink: 0 }} />
         Loading preview…
@@ -31,7 +31,7 @@ export default function LinkPreviewCard({ url, isOnBrand, c }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      style={{ textDecoration: 'none', display: 'block', marginTop: 6 }}
+      style={{ textDecoration: 'none', display: 'inline-block', marginTop: 6, maxWidth: '100%' }}
     >
       <div style={{
         display: 'flex',
@@ -41,7 +41,7 @@ export default function LinkPreviewCard({ url, isOnBrand, c }) {
         background: isOnBrand ? 'rgba(255,255,255,0.08)' : c.card,
         cursor: 'pointer',
         transition: 'background 0.15s',
-        maxWidth: '100%',
+        maxWidth: 420,
         minWidth: 0,
       }}
         onMouseEnter={e => { e.currentTarget.style.background = isOnBrand ? 'rgba(255,255,255,0.14)' : c.hover; }}
