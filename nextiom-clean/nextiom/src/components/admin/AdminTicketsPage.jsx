@@ -184,7 +184,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     let match;
     while ((match = linkRegex.exec(text)) !== null) {
       if (match.index > lastIdx) {
-        parts.push(<span key={`t${lastIdx}`}>{text.slice(lastIdx, match.index)}</span>);
+        parts.push(<span key={`t${lastIdx}`} style={{ wordBreak: 'break-word' }}>{text.slice(lastIdx, match.index)}</span>);
       }
       parts.push(
         <a key={`l${match.index}`} href={match[2]} target="_blank" rel="noopener noreferrer"
@@ -195,7 +195,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       lastIdx = match.index + match[0].length;
     }
     if (lastIdx < text.length) {
-      parts.push(<span key={`t${lastIdx}`}>{text.slice(lastIdx)}</span>);
+      parts.push(<span key={`t${lastIdx}`} style={{ wordBreak: 'break-word' }}>{text.slice(lastIdx)}</span>);
     }
     return parts.length > 0 ? parts : text;
   }
@@ -317,57 +317,65 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
               const isEdited = !!msg.edited_at;
               return (
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
-                  <div style={{ maxWidth: 'min(860px, 82%)' }}>
+                  <div style={{ maxWidth: 'min(860px, 82%)', minWidth: 0 }}>
                     <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isAdmin ? 'right' : 'left' }}>
                       {isAdmin ? 'You (Admin)' : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
                     </div>
                     <div style={{
-                      padding: '10px 14px',
+                      padding: isEditing ? '10px 12px' : '10px 14px',
                       borderRadius: isAdmin ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                       background: isAdmin ? c.brand : c.card,
                       color: isAdmin ? '#fff' : c.text,
                       fontSize: 13,
                       lineHeight: 1.5,
                       whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
                       border: isAdmin ? 'none' : `1px solid ${c.border}`,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
                       position: 'relative',
+                      overflow: 'hidden',
+                      minWidth: 0,
                     }}>
                       {isEditing ? (
-                        <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', gap: 8, flexDirection: 'column', minWidth: 0 }}>
                           <textarea
                             value={editText}
                             onChange={e => setEditText(e.target.value)}
                             rows={3}
-                            style={{ padding: '8px 10px', border: `1px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 13, resize: 'vertical', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }}
+                            style={{ padding: '8px 10px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 13, resize: 'vertical', width: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }}
                           />
-                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                            <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '4px 10px', border: `1px solid ${c.border}`, borderRadius: 6, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>Cancel</button>
-                            <button onClick={handleSaveEdit} disabled={!editText.trim()} style={{ padding: '4px 10px', border: 'none', borderRadius: 6, background: c.brand, color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.6 }}>Save</button>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                            <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '6px 14px', border: `1px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
+                            <button onClick={handleSaveEdit} disabled={!editText.trim()} style={{ padding: '6px 14px', border: 'none', borderRadius: 8, background: c.brand, color: '#fff', cursor: editText.trim() ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.5 }}>Save</button>
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <div>{renderMessageText(msg.message, isAdmin)}</div>
-                          {extractUrls(msg.message).map(u => (
-                            <LinkPreviewCard key={u} url={u} isOnBrand={isAdmin} c={c} />
-                          ))}
-                        </>
+                        <div style={{ minWidth: 0 }}>{renderMessageText(msg.message, isAdmin)}</div>
                       )}
                     </div>
-                    {isEdited && !isEditing && (
-                      <div style={{ fontSize: 10, color: isAdmin ? 'rgba(255,255,255,0.5)' : c.subText, marginTop: 2, fontStyle: 'italic', textAlign: isAdmin ? 'right' : 'left' }}>
-                        Edited
+                    {!isEditing && extractUrls(msg.message).length > 0 && (
+                      <div style={{ marginTop: 4 }}>
+                        {extractUrls(msg.message).map(u => (
+                          <LinkPreviewCard key={u} url={u} isOnBrand={isAdmin} c={c} />
+                        ))}
                       </div>
                     )}
-                    {isAdmin && !isEditing && (
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
-                        <button onClick={() => handleEditMessage(msg)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 4 }} title="Edit message">
-                          <Edit3 size={14} />
-                        </button>
-                        <button onClick={() => handleDeleteMessage(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef444480', display: 'flex', padding: 4, borderRadius: 4 }} title="Delete message">
-                          <Trash2 size={14} />
-                        </button>
+                    {(isEdited || isAdmin) && !isEditing && (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: isAdmin ? 'flex-end' : 'flex-start', marginTop: 3, flexWrap: 'wrap' }}>
+                        {isEdited && (
+                          <span style={{ fontSize: 10, color: isAdmin ? 'rgba(255,255,255,0.5)' : c.subText, fontStyle: 'italic' }}>Edited</span>
+                        )}
+                        {isAdmin && (
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            <button onClick={() => handleEditMessage(msg)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 6 }} title="Edit message">
+                              <Edit3 size={14} />
+                            </button>
+                            <button onClick={() => handleDeleteMessage(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef444490', display: 'flex', padding: 4, borderRadius: 6 }} title="Delete message">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
