@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
-import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, deleteTicket, addNotification } from '@/lib/storage';
+import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2, Edit3, Link2 } from 'lucide-react';
+import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, deleteTicket, addNotification, editTicketMessage, deleteTicketMessage } from '@/lib/storage';
+import LinkPreviewCard from '@/components/shared/LinkPreviewCard';
+import { extractUrls } from '@/lib/linkPreview';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -29,7 +31,13 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const [msgLoading, setMsgLoading] = useState(false);
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
+  const [editingMsgId, setEditingMsgId] = useState(null);
+  const [editText, setEditText] = useState('');
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkText, setLinkText] = useState('');
   const chatEndRef = useRef(null);
+  const replyRef = useRef(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -118,8 +126,82 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     } catch { toast({ title: 'Failed to delete ticket', variant: 'destructive' }); }
   }
 
+  async function handleEditMessage(msg) {
+    setEditingMsgId(msg.id);
+    setEditText(msg.message);
+  }
+
+  async function handleSaveEdit() {
+    if (!editText.trim() || !editingMsgId) return;
+    try {
+      const updated = await editTicketMessage(editingMsgId, editText.trim());
+      setMessages(m => m.map(msg => msg.id === editingMsgId ? updated : msg));
+      setEditingMsgId(null);
+      setEditText('');
+      toast({ title: 'Message edited' });
+    } catch {
+      toast({ title: 'Failed to edit message', variant: 'destructive' });
+    }
+  }
+
+  async function handleDeleteMessage(msgId) {
+    if (!window.confirm('Delete this message?')) return;
+    try {
+      await deleteTicketMessage(msgId);
+      setMessages(m => m.filter(msg => msg.id !== msgId));
+      toast({ title: 'Message deleted' });
+    } catch {
+      toast({ title: 'Failed to delete message', variant: 'destructive' });
+    }
+  }
+
+  function handleInsertLink() {
+    if (!linkUrl.trim() || !linkText.trim()) return;
+    const insertion = `\n\n[${linkText.trim()}](${linkUrl.trim()})`;
+    const textarea = replyRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const before = reply.slice(0, start);
+      const after = reply.slice(end);
+      setReply(before + insertion + after);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + insertion.length;
+      }, 0);
+    } else {
+      setReply(r => r + (r ? '\n' : '') + insertion);
+    }
+    setLinkUrl('');
+    setLinkText('');
+    setShowLinkDialog(false);
+  }
+
+  function renderMessageText(text, isOnBrand) {
+    const parts = [];
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let lastIdx = 0;
+    let match;
+    while ((match = linkRegex.exec(text)) !== null) {
+      if (match.index > lastIdx) {
+        parts.push(<span key={`t${lastIdx}`}>{text.slice(lastIdx, match.index)}</span>);
+      }
+      parts.push(
+        <a key={`l${match.index}`} href={match[2]} target="_blank" rel="noopener noreferrer"
+           style={{ color: isOnBrand ? '#b3d9ff' : '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}>
+          {match[1]}
+        </a>
+      );
+      lastIdx = match.index + match[0].length;
+    }
+    if (lastIdx < text.length) {
+      parts.push(<span key={`t${lastIdx}`}>{text.slice(lastIdx)}</span>);
+    }
+    return parts.length > 0 ? parts : text;
+  }
+
   function isUnread(ticket) {
-    return !(ticket.ticket_messages || []).some(m => m.sender_role === 'admin');
+    return !(ticket.ticket_messages || []).filter(m => !m.is_deleted).some(m => m.sender_role === 'admin');
   }
 
   const inp = { outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
@@ -231,8 +313,10 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
               <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>No messages yet.</div>
             ) : messages.map(msg => {
               const isAdmin = msg.sender_role === 'admin';
+              const isEditing = editingMsgId === msg.id;
+              const isEdited = !!msg.edited_at;
               return (
-                <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start' }}>
+                <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: 'min(860px, 82%)' }}>
                     <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isAdmin ? 'right' : 'left' }}>
                       {isAdmin ? 'You (Admin)' : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
@@ -247,9 +331,45 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                       whiteSpace: 'pre-wrap',
                       border: isAdmin ? 'none' : `1px solid ${c.border}`,
                       boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                      position: 'relative',
                     }}>
-                      {msg.message}
+                      {isEditing ? (
+                        <div style={{ display: 'flex', gap: 6, flexDirection: 'column' }}>
+                          <textarea
+                            value={editText}
+                            onChange={e => setEditText(e.target.value)}
+                            rows={3}
+                            style={{ padding: '8px 10px', border: `1px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 13, resize: 'vertical', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }}
+                          />
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '4px 10px', border: `1px solid ${c.border}`, borderRadius: 6, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>Cancel</button>
+                            <button onClick={handleSaveEdit} disabled={!editText.trim()} style={{ padding: '4px 10px', border: 'none', borderRadius: 6, background: c.brand, color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.6 }}>Save</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div>{renderMessageText(msg.message, isAdmin)}</div>
+                          {extractUrls(msg.message).map(u => (
+                            <LinkPreviewCard key={u} url={u} isOnBrand={isAdmin} c={c} />
+                          ))}
+                        </>
+                      )}
                     </div>
+                    {isEdited && !isEditing && (
+                      <div style={{ fontSize: 10, color: isAdmin ? 'rgba(255,255,255,0.5)' : c.subText, marginTop: 2, fontStyle: 'italic', textAlign: isAdmin ? 'right' : 'left' }}>
+                        Edited
+                      </div>
+                    )}
+                    {isAdmin && !isEditing && (
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', marginTop: 2 }}>
+                        <button onClick={() => handleEditMessage(msg)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 4 }} title="Edit message">
+                          <Edit3 size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteMessage(msg.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef444480', display: 'flex', padding: 4, borderRadius: 4 }} title="Delete message">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -264,23 +384,45 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                 This ticket is closed. Click <strong>Reopen Ticket</strong> above to resume the conversation.
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
-                <textarea
-                  value={reply}
-                  onChange={e => setReply(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  placeholder="Type a reply… (Enter to send)"
-                  rows={2}
-                  style={{ ...inp, flex: 1, padding: '10px 12px', border: `1.5px solid ${c.border}`, borderRadius: 10, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, resize: 'none', width: '100%' }}
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={sending || !reply.trim()}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: c.brand, color: '#fff', border: 'none', borderRadius: 10, cursor: sending || !reply.trim() ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: sending || !reply.trim() ? 0.6 : 1, fontFamily: 'inherit', flexShrink: 0 }}
-                >
-                  <Send size={14} /> Send
-                </button>
-              </div>
+              <>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, display: 'flex', gap: 0, alignItems: 'flex-end', minWidth: 200 }}>
+                    <textarea
+                      ref={replyRef}
+                      value={reply}
+                      onChange={e => setReply(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                      placeholder="Type a reply… (Enter to send)"
+                      rows={2}
+                      style={{ ...inp, flex: 1, padding: '10px 12px', border: `1.5px solid ${c.border}`, borderRadius: '10px 0 0 10px', borderRight: 'none', background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, resize: 'none', width: '100%', minWidth: 0 }}
+                    />
+                    <button
+                      onClick={() => { setShowLinkDialog(true); setLinkUrl(''); setLinkText(''); }}
+                      title="Insert link"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 10px', border: `1.5px solid ${c.border}`, borderRadius: '0 10px 10px 0', background: isDark ? '#22252C' : '#f5f5f5', color: c.subText, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', flexShrink: 0 }}
+                    >
+                      <Link2 size={14} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleSend}
+                    disabled={sending || !reply.trim()}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: c.brand, color: '#fff', border: 'none', borderRadius: 10, cursor: sending || !reply.trim() ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: sending || !reply.trim() ? 0.6 : 1, fontFamily: 'inherit', flexShrink: 0 }}
+                  >
+                    <Send size={14} /> Send
+                  </button>
+                </div>
+                {showLinkDialog && (
+                  <div style={{ marginTop: 8, padding: 10, background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="https://example.com" style={{ ...inp, padding: '8px 10px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
+                    <input value={linkText} onChange={e => setLinkText(e.target.value)} placeholder="Display text" style={{ ...inp, padding: '8px 10px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, width: '100%', boxSizing: 'border-box' }} />
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button onClick={() => setShowLinkDialog(false)} style={{ padding: '6px 12px', border: `1px solid ${c.border}`, borderRadius: 6, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
+                      <button onClick={handleInsertLink} disabled={!linkUrl.trim() || !linkText.trim()} style={{ padding: '6px 12px', border: 'none', borderRadius: 6, background: c.brand, color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}>Insert</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
