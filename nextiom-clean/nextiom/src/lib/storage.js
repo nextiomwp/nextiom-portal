@@ -1243,6 +1243,28 @@ export const getAllTickets = async () => {
   return data || [];
 };
 
+export const editTicketMessage = async (messageId, newMessage) => {
+  const { data, error } = await supabase
+    .from('ticket_messages')
+    .update({ message: newMessage, edited_at: new Date().toISOString() })
+    .eq('id', messageId)
+    .select()
+    .single();
+  if (error) handleSupabaseError(error, 'editTicketMessage');
+  return data;
+};
+
+export const deleteTicketMessage = async (messageId) => {
+  const { data, error } = await supabase
+    .from('ticket_messages')
+    .update({ is_deleted: true })
+    .eq('id', messageId)
+    .select()
+    .single();
+  if (error) handleSupabaseError(error, 'deleteTicketMessage');
+  return data;
+};
+
 export const addTicketMessage = async (ticketId, senderRole, message) => {
   const { data, error } = await supabase
     .from('ticket_messages')
@@ -1259,6 +1281,7 @@ export const getTicketMessages = async (ticketId) => {
     .from('ticket_messages')
     .select('*')
     .eq('ticket_id', ticketId)
+    .neq('is_deleted', true)
     .order('created_at', { ascending: true });
   if (error) handleSupabaseError(error, 'getTicketMessages');
   return data || [];
