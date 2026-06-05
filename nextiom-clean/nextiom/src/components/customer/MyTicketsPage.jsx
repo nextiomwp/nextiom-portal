@@ -312,7 +312,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                           {isMe ? 'You' : 'Support Team'} · {fmtTime(msg.created_at)}
                         </div>
                         <div style={{
-                          padding: isEditing ? '10px 12px' : '10px 14px',
+                          padding: '10px 14px',
                           borderRadius: isMe ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                           background: isMe ? c.brand : c.card,
                           color: isMe ? '#fff' : c.text,
@@ -328,16 +328,16 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                           minWidth: 0,
                         }}>
                           {isEditing ? (
-                            <div style={{ display: 'flex', gap: 8, flexDirection: 'column', minWidth: 0 }}>
+                            <div style={{ display: 'flex', gap: 6, flexDirection: 'column', minWidth: 0 }}>
                               <textarea
                                 value={editText}
                                 onChange={e => setEditText(e.target.value)}
-                                rows={3}
-                                style={{ padding: '8px 10px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 13, resize: 'vertical', width: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }}
+                                rows={Math.max(5, editText.split('\n').length)}
+                                style={{ padding: '10px 12px', border: `1px solid ${isMe ? 'rgba(255,255,255,0.25)' : c.border}`, borderRadius: 8, background: isMe ? 'rgba(255,255,255,0.08)' : c.inputBg || '#f9f9f9', color: isMe ? '#fff' : c.text, fontSize: 13, lineHeight: 1.6, resize: 'vertical', width: '100%', minWidth: 0, minHeight: 100, boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }}
                               />
                               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-                                <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '6px 14px', border: `1px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
-                                <button onClick={handleSaveEdit} disabled={!editText.trim()} style={{ padding: '6px 14px', border: 'none', borderRadius: 8, background: c.brand, color: '#fff', cursor: editText.trim() ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.5 }}>Save</button>
+                                <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '5px 12px', border: `1px solid ${isMe ? 'rgba(255,255,255,0.3)' : c.border}`, borderRadius: 6, background: 'transparent', color: isMe ? 'rgba(255,255,255,0.8)' : c.subText, cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>Cancel</button>
+                                <button onClick={handleSaveEdit} disabled={!editText.trim()} style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: isMe ? 'rgba(255,255,255,0.9)' : c.brand, color: isMe ? c.brand : '#fff', cursor: editText.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.5 }}>Save</button>
                               </div>
                             </div>
                           ) : (
@@ -386,8 +386,8 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                           onChange={e => setReply(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                           placeholder="Type a message… (Enter to send, Shift+Enter for new line)"
-                          rows={2}
-                          style={{ ...inp, flex: 1, padding: '10px 12px', border: `1.5px solid ${c.border}`, borderRadius: '10px 0 0 10px', borderRight: 'none', background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, resize: 'none', width: '100%', minWidth: 0 }}
+                          rows={Math.max(2, reply.split('\n').length)}
+                          style={{ ...inp, flex: 1, padding: '10px 12px', border: `1.5px solid ${c.border}`, borderRadius: '10px 0 0 10px', borderRight: 'none', background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 13, resize: 'vertical', width: '100%', minWidth: 0, maxHeight: 400, overflowY: 'auto' }}
                         />
                         <button
                           onClick={() => { setShowLinkDialog(true); setLinkUrl(''); setLinkText(''); }}
