@@ -88,7 +88,14 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
     setLoading(true);
     try {
       let image_url = form.image_url;
-      if (imageFile) image_url = await uploadProductImage(imageFile);
+      if (imageFile) {
+        image_url = await uploadProductImage(imageFile);
+        if (!image_url) {
+          toast({ title: 'Upload Failed', description: 'Image upload returned an empty URL. Please try again.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+      }
       const isDigital = form.category === 'digital';
       const updates = {
         name: form.name.trim(),
@@ -126,7 +133,9 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
       onSuccess();
       onOpenChange(false);
     } catch (err) {
-      toast({ title: 'Error', description: err.message || 'Failed to update product', variant: 'destructive' });
+      console.error('UpdateProduct failed:', err);
+      const code = err?.code ? `[${err.code}] ` : '';
+      toast({ title: 'Error', description: code + (err.message || 'Failed to update product'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -342,11 +351,6 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
                     <input style={input} type="date" value={form.renewal_date || ''}
                       onChange={e => { set('renewal_date', e.target.value); clearErr('renewal_date'); }} />
                     {errors.renewal_date && <p style={errSt}>{errors.renewal_date}</p>}
-                  </div>
-                  <div>
-                    <label style={lbl}>Validity Period (Days)</label>
-                    <input style={input} type="number" min="1" placeholder="365" value={form.renewal_period_days ?? 365}
-                      onChange={e => set('renewal_period_days', e.target.value)} />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div>

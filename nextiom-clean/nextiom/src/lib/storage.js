@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/customSupabaseClient';
 import { handleSupabaseError } from '@/lib/supabaseHelpers';
 
 // --- Constants ---
@@ -323,13 +323,31 @@ export const deleteProduct = async (id) => {
 };
 
 export const uploadProductImage = async (file) => {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData?.session?.access_token) {
+    throw new Error('Authentication required. Please log in again.');
+  }
   const ext = file.name.split('.').pop().toLowerCase();
   const path = `${Date.now()}.${ext}`;
-  const { data, error } = await supabase.storage
-    .from('product-images')
-    .upload(path, file, { upsert: true });
-  if (error) handleSupabaseError(error, 'uploadProductImage');
-  const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
+  const token = sessionData.session.access_token;
+  const response = await fetch(
+    `${supabaseUrl}/storage/v1/object/product-images/${path}`,
+    {
+      method: 'PUT',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': file.type || 'application/octet-stream',
+        'x-upsert': 'true',
+      },
+      body: file,
+    }
+  );
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Upload failed (${response.status}): ${text}`);
+  }
+  const publicUrl = `${supabaseUrl}/storage/v1/object/public/product-images/${path}`;
   return publicUrl;
 };
 

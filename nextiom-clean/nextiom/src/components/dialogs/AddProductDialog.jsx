@@ -15,7 +15,7 @@ const DEFAULT = {
   name: '', type: '', description: '', price: '', category: 'digital',
   download_url: '', license_type: 'one_time',
   license_registration: true, manual_updates: true, automatic_updates: true,
-  renewal_enabled: false, renewal_price: '', renewal_date: '', renewal_period_days: 365,
+  renewal_enabled: false, renewal_price: '', renewal_date: '',
   renewal_percentage: '', yearly_renewal_percentage: '',
   image_url: '',
 };
@@ -53,6 +53,7 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
     if (!form.name.trim()) e.name = 'Product name is required.';
     if (!form.type.trim()) e.type = 'Product type is required.';
     if (!form.price || isNaN(parseFloat(form.price))) e.price = 'Price is required.';
+    if (!imageFile) e.image = 'Product image is required.';
     if (form.category === 'digital') {
       if (!form.download_url.trim()) e.download_url = 'Download URL is required for digital products.';
       else if (!/^https?:\/\/.+/.test(form.download_url.trim())) e.download_url = 'Must be a valid URL (e.g., https://example.com/file.zip)';
@@ -70,7 +71,14 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
     setLoading(true);
     try {
       let image_url = form.image_url;
-      if (imageFile) image_url = await uploadProductImage(imageFile);
+      if (imageFile) {
+        image_url = await uploadProductImage(imageFile);
+        if (!image_url) {
+          toast({ title: 'Upload Failed', description: 'Image upload returned an empty URL. Please try again.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+      }
       const payload = {
         name: form.name.trim(),
         type: form.type.trim(),
@@ -96,7 +104,6 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
           return null;
         })(),
         renewal_date: form.category === 'virtual' ? form.renewal_date || null : null,
-        renewal_period_days: form.category === 'virtual' ? parseInt(form.renewal_period_days) || 365 : null,
       };
       await addProduct(payload);
       addNotification({ customer_id: null, type: 'product_added', title: `Product Added — ${payload.name}`, message: `Admin added a new product: "${payload.name}" (${payload.category || 'digital'}).` }).catch(() => {});
@@ -108,7 +115,10 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
       setImageFile(null);
       setImagePreview('');
     } catch (err) {
-      toast({ title: 'Error', description: err.message || 'Failed to add product', variant: 'destructive' });
+      console.error('AddProduct failed:', err);
+      const code = err?.code ? `[${err.code}] ` : '';
+      const msg = err?.message || err?.error_description || 'Failed to add product';
+      toast({ title: 'Error', description: code + msg, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -177,7 +187,8 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
                   )}
                 </div>
                 <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }}
-                  onChange={e => handleImageChange(e.target.files[0])} />
+                  onChange={e => { handleImageChange(e.target.files[0]); clearErr('image'); }} />
+                {errors.image && <p style={err}>{errors.image}</p>}
               </div>
 
               {/* Name */}
@@ -329,12 +340,6 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
                     <input style={input} type="date" value={form.renewal_date}
                       onChange={e => { set('renewal_date', e.target.value); clearErr('renewal_date'); }} />
                     {errors.renewal_date && <p style={err}>{errors.renewal_date}</p>}
-                  </div>
-
-                  <div>
-                    <label style={lbl}>Validity Period (Days)</label>
-                    <input style={input} type="number" min="1" placeholder="365" value={form.renewal_period_days}
-                      onChange={e => set('renewal_period_days', e.target.value)} />
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>

@@ -383,65 +383,65 @@ function Dashboard({ onLogout }) {
   return (
     <div style={{ display: 'flex', height: '100dvh', background: c.bg, color: c.text, fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden', position: 'relative' }}>
       {!isMobile && (
-      <div style={{ width: sidebarOpen ? 240 : 80, background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.2s', zIndex: 10, flexShrink: 0 }}>
-        <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
-            {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>}
+        <div style={{ width: sidebarOpen ? 240 : 80, background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.2s', zIndex: 10, flexShrink: 0 }}>
+          <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
+              {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>}
+            </div>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', display: 'flex', padding: 2 }}>
+              {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </button>
           </div>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', display: 'flex', padding: 2 }}>
-            {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-          </button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
-          {NAV.map((item, i) => {
-            if (item.section === 'divider') return <div key={`div-${i}`} style={{ height: 12 }} />;
-            if (item.section === 'header') {
-              if (!sidebarOpen) return <div key={`h-${i}`} style={{ height: 4 }} />;
-              return <div key={`h-${i}`} style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
-            }
-            const isItem = item;
-            let badge = 0;
-            let dot = false;
-            let badgeColor = c.brand;
-            if (isItem.badgeType === 'orange' || isItem.id === 'logs') {
-              if (isItem.id === 'logs') { badge = unreadTicketCount; badgeColor = c.brand; }
-              else if (isItem.id === 'domainsRequests') { badge = pendingRequests.filter(r => r.source === 'domain').length; }
-              else if (isItem.id === 'hostingRequests') { badge = pendingRequests.filter(r => r.source === 'hosting').length; }
-              else if (isItem.id === 'emailRequests') {
-                badge = (emailRequests || []).filter(e => String(e.status || '').toLowerCase() === 'pending').length;
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
+            {NAV.map((item, i) => {
+              if (item.section === 'divider') return <div key={`div-${i}`} style={{ height: 12 }} />;
+              if (item.section === 'header') {
+                if (!sidebarOpen) return <div key={`h-${i}`} style={{ height: 4 }} />;
+                return <div key={`h-${i}`} style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
               }
-            }
-            if (isItem.badgeType === 'green') {
-              badgeColor = '#16a34a';
-              if (isItem.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && String(r.status).toLowerCase() === 'approved').length; }
-              else if (isItem.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && String(r.status || '').toLowerCase() === 'approved').length; }
-              else if (isItem.id === 'approvedEmailsActive') { badge = activeEmailsCount; }
-            }
-            if (isItem.id === 'invoices') {
-              dot = allAdminNotifs.filter(n => n.type === 'payment_submitted' && !readNotifIds.includes('notif_' + n.id)).length > 0;
-            }
-            return <NavItem key={isItem.id} item={isItem} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={badge} badgeColor={badgeColor} dot={dot} />;
-          })}
-        </div>
-        <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 12, padding: sidebarOpen ? '12px' : '12px 0', background: c.bg, borderRadius: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>A</div>
-            {sidebarOpen && <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>Admin</div>
-              <div style={{ fontSize: 11, color: c.subText, textOverflow: 'ellipsis', overflow: 'hidden' }}>info@nextiom.com</div>
-            </div>}
+              const isItem = item;
+              let badge = 0;
+              let dot = false;
+              let badgeColor = c.brand;
+              if (isItem.badgeType === 'orange' || isItem.id === 'logs') {
+                if (isItem.id === 'logs') { badge = unreadTicketCount; badgeColor = c.brand; }
+                else if (isItem.id === 'domainsRequests') { badge = pendingRequests.filter(r => r.source === 'domain').length; }
+                else if (isItem.id === 'hostingRequests') { badge = pendingRequests.filter(r => r.source === 'hosting').length; }
+                else if (isItem.id === 'emailRequests') {
+                  badge = (emailRequests || []).filter(e => String(e.status || '').toLowerCase() === 'pending').length;
+                }
+              }
+              if (isItem.badgeType === 'green') {
+                badgeColor = '#16a34a';
+                if (isItem.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && String(r.status).toLowerCase() === 'approved').length; }
+                else if (isItem.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && String(r.status || '').toLowerCase() === 'approved').length; }
+                else if (isItem.id === 'approvedEmailsActive') { badge = activeEmailsCount; }
+              }
+              if (isItem.id === 'invoices') {
+                dot = allAdminNotifs.filter(n => n.type === 'payment_submitted' && !readNotifIds.includes('notif_' + n.id)).length > 0;
+              }
+              return <NavItem key={isItem.id} item={isItem} active={active} setActive={setActive} open={sidebarOpen} c={c} badge={badge} badgeColor={badgeColor} dot={dot} />;
+            })}
           </div>
-          <div style={{ display: 'flex', flexDirection: sidebarOpen ? 'row' : 'column', gap: 8, marginTop: 12 }}>
-            <button onClick={() => setIsSettingsOpen(true)} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
-              <Settings size={16} />
-            </button>
-            <button onClick={handleLogout} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.brand, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
-              <LogOut size={16} />
-            </button>
+          <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 12, padding: sidebarOpen ? '12px' : '12px 0', background: c.bg, borderRadius: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>A</div>
+              {sidebarOpen && <div style={{ overflow: 'hidden' }}>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>Admin</div>
+                <div style={{ fontSize: 11, color: c.subText, textOverflow: 'ellipsis', overflow: 'hidden' }}>info@nextiom.com</div>
+              </div>}
+            </div>
+            <div style={{ display: 'flex', flexDirection: sidebarOpen ? 'row' : 'column', gap: 8, marginTop: 12 }}>
+              <button onClick={() => setIsSettingsOpen(true)} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
+                <Settings size={16} />
+              </button>
+              <button onClick={handleLogout} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.brand, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       )}
 
       {isMobile && isMobileSidebarOpen && (
