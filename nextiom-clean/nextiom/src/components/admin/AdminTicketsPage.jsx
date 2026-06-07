@@ -39,6 +39,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const chatEndRef = useRef(null);
   const replyRef = useRef(null);
   const savedRangeRef = useRef(null);
+  const editRef = useRef(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -327,12 +328,17 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
     document.execCommand('insertText', false, text);
-    const md = htmlToMarkdown(replyRef.current);
-    setReply(md);
+    const target = e.currentTarget;
+    const md = htmlToMarkdown(target);
+    if (target === replyRef.current) {
+      setReply(md);
+    } else {
+      setEditText(md);
+    }
   };
 
-  function applyFormat(type) {
-    const editor = replyRef.current;
+  function applyFormat(type, isEdit = false) {
+    const editor = isEdit ? editRef.current : replyRef.current;
     if (!editor) return;
     
     const selection = window.getSelection();
@@ -447,7 +453,62 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     }
     
     const md = htmlToMarkdown(editor);
-    setReply(md);
+    if (isEdit) {
+      setEditText(md);
+    } else {
+      setReply(md);
+    }
+  }
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function inlineMarkdownToHtml(text) {
+    if (!text) return '';
+    let html = escapeHtml(text);
+    html = html.replace(/`([^`]+?)`/g, '<code>$1</code>');
+    html = html.replace(/\*\*\*([^\*]+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^\*]+?)\*/g, '<em>$1</em>');
+    html = html.replace(/&lt;u&gt;([\s\S]+?)&lt;\/u&gt;/g, '<u>$1</u>');
+    html = html.replace(/\[([^\]]+?)\]\(([^)]+?)\)/g, '<a href="$2" target="_blank">$1</a>');
+    return html;
+  }
+
+  function markdownToHtml(markdown) {
+    if (!markdown) return '';
+    const lines = markdown.split('\n');
+    const processedLines = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      
+      if (trimmed.startsWith('> ')) {
+        const innerHtml = inlineMarkdownToHtml(trimmed.slice(2));
+        processedLines.push(`<blockquote>${innerHtml}</blockquote>`);
+      } else if (trimmed.startsWith('```')) {
+        let codeContent = '';
+        let j = i + 1;
+        while (j < lines.length && !lines[j].trim().startsWith('```')) {
+          codeContent += (codeContent ? '\n' : '') + lines[j];
+          j++;
+        }
+        processedLines.push(`<pre><code>${escapeHtml(codeContent)}</code></pre>`);
+        i = j;
+      } else {
+        const innerHtml = inlineMarkdownToHtml(line);
+        processedLines.push(innerHtml || '<br>');
+      }
+    }
+    
+    return processedLines.join('\n');
   }
 
   function renderDomNode(node, isOnBrand, key = 'r') {
@@ -738,14 +799,58 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                       minWidth: 0,
                     }}>
                       {isEditing ? (
-                        <div style={{ display: 'flex', gap: 6, flexDirection: 'column', minWidth: 0 }}>
-                          <textarea
-                            value={editText}
-                            onChange={e => setEditText(e.target.value)}
-                            rows={Math.max(5, editText.split('\n').length)}
-                            style={{ padding: '10px 12px', border: `1px solid ${isAdmin ? 'rgba(255,255,255,0.25)' : c.border}`, borderRadius: 8, background: isAdmin ? 'rgba(255,255,255,0.08)' : c.inputBg || '#f9f9f9', color: isAdmin ? '#fff' : c.text, fontSize: 13, lineHeight: 1.6, resize: 'vertical', width: '100%', minWidth: 0, minHeight: 100, boxSizing: 'border-box', fontFamily: 'inherit', outline: 'none' }}
-                          />
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0 }}>
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 2, padding: '4px 6px',
+                            border: `1.5px solid ${isAdmin ? 'rgba(255,255,255,0.25)' : c.border}`, borderBottom: 'none',
+                            borderRadius: '8px 8px 0 0',
+                            background: isAdmin ? 'rgba(255,255,255,0.05)' : (isDark ? '#22252C' : '#f5f5f5'),
+                            flexWrap: 'wrap',
+                          }}>
+                            {tbBtn(Bold, 'Bold', () => applyFormat('bold', true))}
+                            {tbBtn(Italic, 'Italic', () => applyFormat('italic', true))}
+                            {tbBtn(Underline, 'Underline', () => applyFormat('underline', true))}
+                            {tbd}
+                            {tbBtn(TextQuote, 'Quote', () => applyFormat('quote', true))}
+                            {tbBtn(Code2, 'Code', () => applyFormat('code', true))}
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            border: `1.5px solid ${isAdmin ? 'rgba(255,255,255,0.25)' : c.border}`,
+                            borderRadius: '0 0 8px 8px',
+                            borderTop: 'none',
+                            background: isAdmin ? 'rgba(255,255,255,0.08)' : (c.inputBg || (isDark ? '#1F222A' : '#ffffff')),
+                            color: isAdmin ? '#fff' : c.text,
+                            minHeight: 100,
+                            outline: 'none',
+                          }}>
+                            <div
+                              ref={editRef}
+                              contentEditable
+                              onInput={e => setEditText(htmlToMarkdown(e.currentTarget))}
+                              onPaste={handlePaste}
+                              className="editor-placeholder"
+                              placeholder="Edit message…"
+                              dangerouslySetInnerHTML={{ __html: markdownToHtml(msg.message) }}
+                              style={{
+                                ...inp,
+                                flex: 1,
+                                padding: '10px 12px',
+                                border: 'none',
+                                background: 'transparent',
+                                color: isAdmin ? '#fff' : c.text,
+                                fontSize: 13,
+                                minWidth: 0,
+                                minHeight: 80,
+                                maxHeight: 300,
+                                overflowY: 'auto',
+                                outline: 'none',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                              }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', marginTop: 6 }}>
                             <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '5px 12px', border: `1px solid ${isAdmin ? 'rgba(255,255,255,0.3)' : c.border}`, borderRadius: 6, background: 'transparent', color: isAdmin ? 'rgba(255,255,255,0.8)' : c.subText, cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>Cancel</button>
                             <button onClick={handleSaveEdit} disabled={!editText.trim()} style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: isAdmin ? 'rgba(255,255,255,0.9)' : c.brand, color: isAdmin ? c.brand : '#fff', cursor: editText.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.5 }}>Save</button>
                           </div>
