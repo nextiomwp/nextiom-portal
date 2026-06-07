@@ -50,10 +50,23 @@ export default function InvoicePrintPage() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'DM Sans', sans-serif; background: #f4f4f0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @page { size: A4; margin: 15mm 15mm 20mm 15mm; }
         @media print {
-          body { background: white; }
+          body { background: white !important; }
           .no-print { display: none !important; }
-          .invoice-wrap { box-shadow: none !important; border-radius: 0 !important; }
+          .print-body { padding: 0 !important; margin: 0 !important; min-height: auto !important; }
+          .invoice-wrap {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            padding: 28px 40px !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            background: white !important;
+            page-break-inside: avoid;
+          }
+          .invoice-wrap > div { margin-bottom: 12px !important; }
+          .invoice-wrap table { margin-bottom: 8px !important; }
         }
       `}</style>
 
@@ -79,7 +92,7 @@ export default function InvoicePrintPage() {
       </div>
 
       {/* Page */}
-      <div style={{ padding: '36px 20px', minHeight: '100vh' }}>
+      <div className="print-body" style={{ padding: '36px 20px', minHeight: '100vh' }}>
         <div className="invoice-wrap" style={{
           maxWidth: 740,
           margin: '0 auto',
