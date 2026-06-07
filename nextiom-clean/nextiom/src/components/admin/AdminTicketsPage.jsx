@@ -38,11 +38,18 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const [linkText, setLinkText] = useState('');
   const chatEndRef = useRef(null);
   const replyRef = useRef(null);
-  const selRef = useRef({ start: 0, end: 0 });
+  const savedRangeRef = useRef(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    setReply('');
+    if (replyRef.current) {
+      replyRef.current.innerHTML = '';
+    }
+  }, [selected?.id]);
 
   async function load() {
     setLoading(true);
@@ -87,7 +94,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       const msg = await addTicketMessage(selected.id, 'admin', reply.trim());
       setMessages(m => [...m, msg]);
       setReply('');
-      if (replyRef.current) { replyRef.current.style.height = ''; }
+      if (replyRef.current) { replyRef.current.innerHTML = ''; }
       // notify customer
       await addNotification({
         customer_id: selected.customer_id,
@@ -155,8 +162,9 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       setEditingMsgId(null);
       setEditText('');
       toast({ title: 'Message edited' });
-    } catch {
-      toast({ title: 'Failed to edit message', variant: 'destructive' });
+    } catch (e) {
+      console.error('Edit message error:', e);
+      toast({ title: 'Failed to edit message', description: e.message, variant: 'destructive' });
     }
   }
 
@@ -173,21 +181,35 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
 
   function handleInsertLink() {
     if (!linkUrl.trim() || !linkText.trim()) return;
-    const insertion = `[${linkText.trim()}](${linkUrl.trim()})`;
-    const textarea = replyRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const before = reply.slice(0, start);
-      const after = reply.slice(end);
-      setReply(before + insertion + after);
-      setTimeout(() => {
-        textarea.focus();
-        textarea.selectionStart = textarea.selectionEnd = start + insertion.length;
-      }, 0);
-    } else {
-      setReply(r => r + (r ? '\n' : '') + insertion);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    if (savedRangeRef.current) {
+      selection.addRange(savedRangeRef.current);
     }
+
+    const a = document.createElement('a');
+    a.href = linkUrl.trim();
+    a.textContent = linkText.trim();
+    a.target = '_blank';
+
+    if (savedRangeRef.current) {
+      savedRangeRef.current.deleteContents();
+      savedRangeRef.current.insertNode(a);
+      
+      const suffixNode = document.createTextNode('\u200B');
+      a.parentNode.insertBefore(suffixNode, a.nextSibling);
+      
+      const range = document.createRange();
+      range.setStart(suffixNode, 1);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else if (replyRef.current) {
+      replyRef.current.appendChild(a);
+    }
+
+    const md = htmlToMarkdown(replyRef.current);
+    setReply(md);
     setLinkUrl('');
     setLinkText('');
     setShowLinkModal(false);
@@ -206,19 +228,25 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
-        const textarea = replyRef.current;
-        if (textarea) {
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const before = reply.slice(0, start);
-          const after = reply.slice(end);
-          setReply(before + text + after);
-          setTimeout(() => {
-            textarea.focus();
-            textarea.selectionStart = textarea.selectionEnd = start + text.length;
-          }, 0);
-        } else {
-          setReply(r => r + text);
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
+          
+          const lines = text.split('\n');
+          const fragment = document.createDocumentFragment();
+          lines.forEach((line, index) => {
+            if (index > 0) fragment.appendChild(document.createElement('br'));
+            fragment.appendChild(document.createTextNode(line));
+          });
+          
+          range.insertNode(fragment);
+          const md = htmlToMarkdown(replyRef.current);
+          setReply(md);
+        } else if (replyRef.current) {
+          replyRef.current.appendChild(document.createTextNode(text));
+          const md = htmlToMarkdown(replyRef.current);
+          setReply(md);
         }
       }
     } catch {
@@ -228,79 +256,286 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     }
   }
 
-  function applyFormat(type) {
-    const textarea = replyRef.current;
-    if (!textarea) return;
-    const { start: selStart, end: selEnd } = selRef.current;
-    const selected = reply.slice(selStart, selEnd);
-    const before = reply.slice(0, selStart);
-    const after = reply.slice(selEnd);
-    let insertion, cursorOffset;
-    switch (type) {
-      case 'bold':
-        if (selected) { insertion = `**${selected}**`; cursorOffset = selStart + insertion.length; }
-        else { insertion = '**bold text**'; cursorOffset = selStart + 2; }
-        break;
-      case 'italic':
-        if (selected) { insertion = `*${selected}*`; cursorOffset = selStart + insertion.length; }
-        else { insertion = '*italic text*'; cursorOffset = selStart + 1; }
-        break;
-      case 'underline':
-        if (selected) { insertion = `<u>${selected}</u>`; cursorOffset = selStart + insertion.length; }
-        else { insertion = '<u>underlined text</u>'; cursorOffset = selStart + 3; }
-        break;
-      case 'quote':
-        if (selected) { insertion = selected.split('\n').map(l => `> ${l}`).join('\n'); cursorOffset = selStart + insertion.length; }
-        else { insertion = '> quote'; cursorOffset = selStart + insertion.length; }
-        break;
-      case 'code':
-        if (selected) {
-          if (selected.includes('\n')) { insertion = '```\n' + selected + '\n```'; cursorOffset = selStart + insertion.length - 4; }
-          else { insertion = '`' + selected + '`'; cursorOffset = selStart + insertion.length; }
-        } else { insertion = '`code`'; cursorOffset = selStart + 1; }
-        break;
-      default: return;
+  function htmlToMarkdown(node) {
+    if (!node) return '';
+    let markdown = '';
+    
+    for (let i = 0; i < node.childNodes.length; i++) {
+      const child = node.childNodes[i];
+      
+      if (child.nodeType === 3) {
+        markdown += child.nodeValue.replace(/\u200B/g, '');
+      } else if (child.nodeType === 1) {
+        const tagName = child.tagName.toLowerCase();
+        
+        let prefix = '';
+        let suffix = '';
+        
+        if (tagName === 'strong' || tagName === 'b' || (child.style && child.style.fontWeight === 'bold')) {
+          prefix = '**';
+          suffix = '**';
+        } else if (tagName === 'em' || tagName === 'i' || (child.style && child.style.fontStyle === 'italic')) {
+          prefix = '*';
+          suffix = '*';
+        } else if (tagName === 'u' || (child.style && child.style.textDecoration === 'underline')) {
+          prefix = '<u>';
+          suffix = '</u>';
+        } else if (tagName === 'code') {
+          const isCodeBlock = child.parentNode && child.parentNode.tagName.toLowerCase() === 'pre';
+          if (isCodeBlock) {
+            markdown += htmlToMarkdown(child);
+            continue;
+          } else {
+            prefix = '`';
+            suffix = '`';
+          }
+        } else if (tagName === 'pre') {
+          prefix = '```\n';
+          suffix = '\n```';
+        } else if (tagName === 'a') {
+          const href = child.getAttribute('href') || '';
+          prefix = '[';
+          suffix = `](${href})`;
+        } else if (tagName === 'blockquote') {
+          const innerMd = htmlToMarkdown(child).trim();
+          markdown += innerMd.split('\n').map(line => `> ${line}`).join('\n') + '\n';
+          continue;
+        } else if (tagName === 'br') {
+          markdown += '\n';
+          continue;
+        } else if (tagName === 'div' || tagName === 'p') {
+          const innerMd = htmlToMarkdown(child);
+          if (innerMd) {
+            if (markdown && !markdown.endsWith('\n')) {
+              markdown += '\n';
+            }
+            markdown += innerMd + '\n';
+          } else {
+            markdown += '\n';
+          }
+          continue;
+        }
+        
+        markdown += prefix + htmlToMarkdown(child) + suffix;
+      }
     }
-    setReply(before + insertion + after);
-    setTimeout(() => {
-      textarea.focus();
-      textarea.selectionStart = textarea.selectionEnd = cursorOffset;
-    }, 0);
+    
+    return markdown;
+  }
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    const md = htmlToMarkdown(replyRef.current);
+    setReply(md);
+  };
+
+  function applyFormat(type) {
+    const editor = replyRef.current;
+    if (!editor) return;
+    
+    const selection = window.getSelection();
+    let range;
+    if (selection.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+      range = selection.getRangeAt(0);
+    } else {
+      editor.focus();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(editor);
+      newRange.collapse(false); // go to the end
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      range = newRange;
+    }
+    const hasSelection = !range.collapsed;
+    
+    if (hasSelection) {
+      const selectedText = range.toString();
+      let element;
+      if (type === 'bold') {
+        element = document.createElement('strong');
+      } else if (type === 'italic') {
+        element = document.createElement('em');
+      } else if (type === 'underline') {
+        element = document.createElement('u');
+      } else if (type === 'quote') {
+        element = document.createElement('blockquote');
+      } else if (type === 'code') {
+        if (selectedText.includes('\n')) {
+          element = document.createElement('pre');
+          const code = document.createElement('code');
+          code.textContent = selectedText;
+          element.appendChild(code);
+        } else {
+          element = document.createElement('code');
+        }
+      }
+      
+      if (element) {
+        if (type === 'code' && selectedText.includes('\n')) {
+          range.deleteContents();
+          range.insertNode(element);
+          
+          const newRange = document.createRange();
+          newRange.setStartAfter(element);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } else if (type === 'quote') {
+          element.textContent = selectedText;
+          range.deleteContents();
+          range.insertNode(element);
+          
+          const newRange = document.createRange();
+          newRange.setStartAfter(element);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } else {
+          // Inline formats: bold, italic, underline, inline code
+          element.appendChild(range.extractContents());
+          range.insertNode(element);
+          
+          const suffixNode = document.createTextNode('\u200B');
+          element.parentNode.insertBefore(suffixNode, element.nextSibling);
+          
+          const newRange = document.createRange();
+          newRange.setStart(suffixNode, 1);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+    } else {
+      let element;
+      if (type === 'bold') {
+        element = document.createElement('strong');
+        element.textContent = 'bold text';
+      } else if (type === 'italic') {
+        element = document.createElement('em');
+        element.textContent = 'italic text';
+      } else if (type === 'underline') {
+        element = document.createElement('u');
+        element.textContent = 'underlined text';
+      } else if (type === 'quote') {
+        element = document.createElement('blockquote');
+        element.textContent = 'quote';
+      } else if (type === 'code') {
+        element = document.createElement('code');
+        element.textContent = 'code';
+      }
+      
+      if (element) {
+        range.insertNode(element);
+        
+        if (type === 'quote') {
+          const newRange = document.createRange();
+          newRange.selectNodeContents(element);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        } else {
+          const suffixNode = document.createTextNode('\u200B');
+          element.parentNode.insertBefore(suffixNode, element.nextSibling);
+          
+          const newRange = document.createRange();
+          newRange.selectNodeContents(element);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+    }
+    
+    const md = htmlToMarkdown(editor);
+    setReply(md);
+  }
+
+  function renderDomNode(node, isOnBrand, key = 'r') {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.nodeValue;
+    }
+    
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const tagName = node.tagName.toLowerCase();
+      const children = Array.from(node.childNodes).map((child, index) => 
+        renderDomNode(child, isOnBrand, `${key}-${index}`)
+      );
+      
+      switch (tagName) {
+        case 'strong':
+        case 'b':
+          return <strong key={key} style={{ fontWeight: 700 }}>{children}</strong>;
+        case 'em':
+        case 'i':
+          return <em key={key} style={{ fontStyle: 'italic' }}>{children}</em>;
+        case 'u':
+          return <u key={key} style={{ textDecoration: 'underline' }}>{children}</u>;
+        case 'code':
+          return (
+            <code key={key} style={{ 
+              background: isOnBrand ? 'rgba(255,255,255,0.12)' : c.hover, 
+              padding: '1px 5px', 
+              borderRadius: 4, 
+              fontSize: 12, 
+              fontFamily: "'Fira Code', monospace" 
+            }}>
+              {children}
+            </code>
+          );
+        case 'blockquote':
+          return (
+            <blockquote key={key} style={{ 
+              borderLeft: `3px solid ${isOnBrand ? 'rgba(255,255,255,0.35)' : c.brand}`, 
+              paddingLeft: 10, 
+              margin: '4px 0', 
+              color: isOnBrand ? 'rgba(255,255,255,0.8)' : c.subText, 
+              fontStyle: 'italic' 
+            }}>
+              {children}
+            </blockquote>
+          );
+        case 'a':
+          const href = node.getAttribute('href') || '';
+          const safeHref = href.trim().toLowerCase().startsWith('javascript:') ? '#' : href;
+          return (
+            <a 
+              key={key} 
+              href={safeHref} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: isOnBrand ? '#b3d9ff' : '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}
+            >
+              {children}
+            </a>
+          );
+        case 'span':
+        case 'div':
+        default:
+          return <span key={key}>{children}</span>;
+      }
+    }
+    return null;
   }
 
   function renderInline(text, isOnBrand) {
-    const parts = [];
-    const regex = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|<u>(.+?)<\/u>|\[(.+?)\]\((.+?)\)/g;
-    let lastIdx = 0;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIdx) {
-        parts.push(<span key={`t${lastIdx}`} style={{ wordBreak: 'break-word' }}>{text.slice(lastIdx, match.index)}</span>);
-      }
-      if (match[1]) {
-        parts.push(<strong key={`b${match.index}`} style={{ fontWeight: 700 }}><em style={{ fontStyle: 'italic' }}>{renderInline(match[1], isOnBrand)}</em></strong>);
-      } else if (match[2]) {
-        parts.push(<strong key={`b${match.index}`} style={{ fontWeight: 700 }}>{renderInline(match[2], isOnBrand)}</strong>);
-      } else if (match[3]) {
-        parts.push(<em key={`i${match.index}`} style={{ fontStyle: 'italic' }}>{renderInline(match[3], isOnBrand)}</em>);
-      } else if (match[4]) {
-        parts.push(<code key={`c${match.index}`} style={{ background: isOnBrand ? 'rgba(255,255,255,0.12)' : c.hover, padding: '1px 5px', borderRadius: 4, fontSize: 12, fontFamily: "'Fira Code', monospace" }}>{match[4]}</code>);
-      } else if (match[5]) {
-        parts.push(<u key={`u${match.index}`} style={{ textDecoration: 'underline' }}>{renderInline(match[5], isOnBrand)}</u>);
-      } else if (match[6]) {
-        parts.push(
-          <a key={`l${match.index}`} href={match[7]} target="_blank" rel="noopener noreferrer"
-             style={{ color: isOnBrand ? '#b3d9ff' : '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}>
-            {renderInline(match[6], isOnBrand)}
-          </a>
-        );
-      }
-      lastIdx = regex.lastIndex;
+    if (!text) return '';
+    let html = text;
+    // Normalize markdown inline syntax to HTML tags
+    html = html.replace(/`([^`]+?)`/g, '<code>$1</code>');
+    html = html.replace(/\*\*\*([^\*]+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*([^\*]+?)\*/g, '<em>$1</em>');
+    html = html.replace(/\[([^\]]+?)\]\(([^)]+?)\)/g, '<a href="$2">$1</a>');
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(`<span>${html}</span>`, 'text/html');
+      const root = doc.body.firstChild || doc.body;
+      return renderDomNode(root, isOnBrand);
+    } catch (e) {
+      console.error(e);
+      return text;
     }
-    if (lastIdx < text.length) {
-      parts.push(<span key={`t${lastIdx}`} style={{ wordBreak: 'break-word' }}>{text.slice(lastIdx)}</span>);
-    }
-    return parts.length > 0 ? parts : text;
   }
 
   function renderMessageText(text, isOnBrand) {
@@ -349,10 +584,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
 
   const inp = { outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
 
-  function saveSel() {
-    const ta = replyRef.current;
-    if (ta) selRef.current = { start: ta.selectionStart, end: ta.selectionEnd };
-  }
+
 
   const tbBtn = (Icon, title, onClick) => (
     <button
@@ -577,24 +809,72 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                     {tbBtn(Code2, 'Code', () => applyFormat('code'))}
                     {tbd}
                     {tbBtn(Link2, 'Insert Link', () => {
-                      const sel = selRef.current;
-                      if (sel.start !== sel.end) {
-                        setLinkText(reply.slice(sel.start, sel.end));
+                      const selection = window.getSelection();
+                      if (selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
+                        savedRangeRef.current = selection.getRangeAt(0);
+                        setLinkText(selection.toString());
+                      } else {
+                        savedRangeRef.current = null;
+                        setLinkText('');
                       }
                       setShowLinkModal(true);
                     })}
                     {tbBtn(Clipboard, 'Paste from Clipboard', handlePasteFromClipboard)}
                   </div>
                   <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: '0 0 10px 10px', borderTop: 'none', background: isDark ? '#22252C' : '#f5f5f5' }}>
-                    <textarea
+                    <style>{`
+                      .editor-placeholder:empty:before {
+                        content: attr(placeholder);
+                        color: ${isDark ? '#6B7280' : '#9CA3AF'};
+                        pointer-events: none;
+                        display: block;
+                      }
+                      .editor-placeholder blockquote {
+                        border-left: 3px solid ${c.brand};
+                        padding-left: 8px;
+                        margin: 4px 0;
+                        font-style: italic;
+                        color: ${isDark ? '#a0a0a0' : '#666'};
+                      }
+                      .editor-placeholder code {
+                        background: ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+                        padding: 1px 4px;
+                        border-radius: 3px;
+                        font-family: monospace;
+                        font-size: 0.9em;
+                      }
+                      .editor-placeholder pre {
+                        background: ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+                        padding: 6px 10px;
+                        border-radius: 4px;
+                        margin: 4px 0;
+                        white-space: pre-wrap;
+                        word-break: break-all;
+                      }
+                    `}</style>
+                    <div
                       ref={replyRef}
-                      value={reply}
-                        onChange={e => setReply(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                        onMouseUp={saveSel} onKeyUp={saveSel}
-                      placeholder="Type a reply… (Enter to send)"
-                      rows={Math.min(Math.max(3, reply.split('\n').length), 20)}
-                      style={{ ...inp, flex: 1, padding: '10px 12px', border: 'none', background: 'transparent', color: c.text, fontSize: 13, resize: 'vertical', minWidth: 0, maxHeight: 500, overflowY: 'auto', outline: 'none' }}
+                      contentEditable
+                      onInput={e => setReply(htmlToMarkdown(e.currentTarget))}
+                      onPaste={handlePaste}
+                      className="editor-placeholder"
+                      placeholder="Type a reply…"
+                      style={{
+                        ...inp,
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: 'none',
+                        background: 'transparent',
+                        color: c.text,
+                        fontSize: 13,
+                        minWidth: 0,
+                        minHeight: 80,
+                        maxHeight: 500,
+                        overflowY: 'auto',
+                        outline: 'none',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
                     />
                   </div>
                 </div>
