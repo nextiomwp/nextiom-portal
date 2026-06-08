@@ -439,9 +439,9 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     if (!text) return '';
     let html = escapeHtml(text);
     html = html.replace(/`([^`]+?)`/g, '<code>$1</code>');
-    html = html.replace(/\*\*\*([^\*]+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*([^\*]+?)\*/g, '<em>$1</em>');
+    html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
     html = html.replace(/&lt;u&gt;([\s\S]+?)&lt;\/u&gt;/g, '<u>$1</u>');
     html = html.replace(/\[([^\]]+?)\]\(([^)]+?)\)/g, '<a href="$2" target="_blank">$1</a>');
     return html;
@@ -549,9 +549,9 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     let html = text;
     // Normalize markdown inline syntax to HTML tags
     html = html.replace(/`([^`]+?)`/g, '<code>$1</code>');
-    html = html.replace(/\*\*\*([^\*]+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*([^\*]+?)\*/g, '<em>$1</em>');
+    html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
     html = html.replace(/\[([^\]]+?)\]\(([^)]+?)\)/g, '<a href="$2">$1</a>');
 
     try {
