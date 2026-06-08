@@ -122,18 +122,11 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
 
 export function ContactDetailsPage({ user, isDark = false, c = {} }) {
   const border = c.border || '#ebebeb';
-  const borderStrong = c.borderStrong || '#d0d0d0';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const brand = c.brand || '#E87B35';
   const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
-  const panel2 = c.panel2 || '#f5f5f5';
   const cardBg = isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)';
-
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
 
   const cardStyle = {
     background: cardBg,
@@ -145,29 +138,6 @@ export function ContactDetailsPage({ user, isDark = false, c = {} }) {
     boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.2)' : '0 2px 16px rgba(0,0,0,0.05)',
   };
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!subject.trim()) { toast({ title: 'Please enter a subject', variant: 'destructive' }); return; }
-    if (!message.trim()) { toast({ title: 'Please enter a message', variant: 'destructive' }); return; }
-
-    setIsSubmitting(true);
-    try {
-      await addNotification({
-        customer_id: user?.id || null,
-        type: 'inquiry',
-        title: `Contact Inquiry: ${subject.trim()}`,
-        message: message.trim(),
-      });
-      toast({ title: 'Message Sent Successfully', description: 'Thank you! We will get back to you shortly.' });
-      setSubject('');
-      setMessage('');
-    } catch (err) {
-      toast({ title: 'Error sending message', description: 'Please try again later.', variant: 'destructive' });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 64 }}>
       {/* Header */}
@@ -176,131 +146,48 @@ export function ContactDetailsPage({ user, isDark = false, c = {} }) {
         <p style={{ color: subText, fontSize: 13, marginTop: 4, margin: 0 }}>Get in touch with us. We are always ready to support you.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Contact Form: 3 columns */}
-        <div className="lg:col-span-3" style={cardStyle}>
-          <h2 style={{ color: text, fontSize: 16, fontWeight: 700, margin: '0 0 6px 0' }}>Send Us a Message</h2>
-          <p style={{ color: subText, fontSize: 12, marginBottom: 20 }}>Have a query or custom requirement? Write to us and our team will reply within 24 hours.</p>
-
-          <form onSubmit={handleSendMessage} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <label style={{ display: 'block', color: text, fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Subject</label>
-              <input
-                type="text"
-                placeholder="How can we help you?"
-                value={subject}
-                onChange={e => setSubject(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: `1px solid ${borderStrong}`,
-                  borderRadius: 10,
-                  background: panel2,
-                  color: text,
-                  fontSize: 13,
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', color: text, fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Message</label>
-              <textarea
-                placeholder="Provide detailed information regarding your inquiry..."
-                value={message}
-                onChange={e => setMessage(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: `1px solid ${borderStrong}`,
-                  borderRadius: 10,
-                  background: panel2,
-                  color: text,
-                  fontSize: 13,
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  boxSizing: 'border-box',
-                  height: 120,
-                  resize: 'none'
-                }}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              style={{
-                background: brand,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 10,
-                padding: '12px 20px',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                transition: 'background 0.15s',
-                alignSelf: 'flex-start',
-                opacity: isSubmitting ? 0.7 : 1
-              }}
-              onMouseEnter={e => { if (!isSubmitting) e.currentTarget.style.background = '#d4692a'; }}
-              onMouseLeave={e => e.currentTarget.style.background = brand}
-            >
-              <Send style={{ width: 14, height: 14 }} />
-              <span>{isSubmitting ? 'Sending...' : 'Send Message'}</span>
-            </button>
-          </form>
-        </div>
-
-        {/* Contact Info Details: 2 columns */}
-        <div className="lg:col-span-2" style={{ ...cardStyle, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <h2 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>Direct Channels</h2>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
-            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Phone style={{ width: 18, height: 18, color: brand }} />
-              </div>
-              <div>
-                <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 2px 0' }}>Phone Support</h3>
-                <p style={{ color: text, fontSize: 14, fontWeight: 800, margin: '0 0 2px 0' }}>+94 70 203 2323</p>
-                <p style={{ color: subText, fontSize: 11, margin: 0 }}>Available Monday – Friday (9:00 AM – 6:00 PM)</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Mail style={{ width: 18, height: 18, color: brand }} />
-              </div>
-              <div>
-                <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 2px 0' }}>Email Address</h3>
-                <p style={{ color: text, fontSize: 14, fontWeight: 800, margin: '0 0 2px 0' }}>info@nextiom.com</p>
-                <p style={{ color: subText, fontSize: 11, margin: 0 }}>We reply to general inquiries within 24 hours</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <MapPin style={{ width: 18, height: 18, color: brand }} />
-              </div>
-              <div>
-                <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 2px 0' }}>Corporate Office</h3>
-                <p style={{ color: text, fontSize: 13, fontWeight: 800, margin: '0 0 2px 0' }}>Niwandama, Ja Ela – 11350</p>
-                <p style={{ color: subText, fontSize: 11, margin: 0 }}>Sri Lanka</p>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Phone Support */}
+        <div style={{ ...cardStyle, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Phone style={{ width: 20, height: 20, color: brand }} />
           </div>
-
-          <div style={{ borderTop: `1px solid ${border}`, paddingTop: 16, marginTop: 16 }}>
-            <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>
-              Need urgent support? Log in to the portal and create a support ticket directly from the **Support** menu.
-            </p>
+          <div>
+            <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: '0 0 4px 0' }}>Phone Support</h3>
+            <p style={{ color: text, fontSize: 15, fontWeight: 800, margin: '0 0 4px 0' }}>+94 70 203 2323</p>
+            <p style={{ color: subText, fontSize: 12, margin: 0, lineHeight: 1.4 }}>Available Monday – Friday (9:00 AM – 6:00 PM)</p>
           </div>
         </div>
+
+        {/* Email Address */}
+        <div style={{ ...cardStyle, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Mail style={{ width: 20, height: 20, color: brand }} />
+          </div>
+          <div>
+            <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: '0 0 4px 0' }}>Email Address</h3>
+            <p style={{ color: text, fontSize: 15, fontWeight: 800, margin: '0 0 4px 0' }}>info@nextiom.com</p>
+            <p style={{ color: subText, fontSize: 12, margin: 0, lineHeight: 1.4 }}>We reply to general inquiries within 24 hours</p>
+          </div>
+        </div>
+
+        {/* Corporate Office */}
+        <div style={{ ...cardStyle, display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <MapPin style={{ width: 20, height: 20, color: brand }} />
+          </div>
+          <div>
+            <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: '0 0 4px 0' }}>Corporate Office</h3>
+            <p style={{ color: text, fontSize: 14, fontWeight: 800, margin: '0 0 4px 0' }}>Niwandama, Ja Ela – 11350</p>
+            <p style={{ color: subText, fontSize: 12, margin: 0, lineHeight: 1.4 }}>Sri Lanka</p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ ...cardStyle, padding: '16px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <p style={{ color: subText, fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+          Need urgent support? Log in to the portal and create a support ticket directly from the <strong>Support</strong> menu.
+        </p>
       </div>
     </div>
   );
