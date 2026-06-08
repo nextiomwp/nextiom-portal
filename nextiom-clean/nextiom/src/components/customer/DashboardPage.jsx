@@ -513,7 +513,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
               </div>
               <div style={{ textAlign: 'center' }}>
                 <p style={{ color: subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600, marginBottom: 2 }}>Call Us Now</p>
-                <p style={{ color: brand, fontSize: 16, fontWeight: 800 }}>+94 77 123 4567</p>
+                <p style={{ color: brand, fontSize: 16, fontWeight: 800 }}>+94 70 203 2323</p>
               </div>
             </div>
           </div>
@@ -593,7 +593,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <Phone style={{ width: 14, height: 14, color: brand, marginTop: 2, flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
-                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}>+94 77 123 4567</p>
+                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}>+94 70 203 2323</p>
                 <p style={{ color: subText, fontSize: 10, margin: 0 }}>Mon – Fri (9:00 AM – 6:00 PM)</p>
               </div>
             </div>
@@ -607,7 +607,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <MapPin style={{ width: 14, height: 14, color: brand, marginTop: 2, flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
-                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}>No. 123, Galle Road, Colombo 03</p>
+                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}>Niwandama, Ja Ela – 11350</p>
                 <p style={{ color: subText, fontSize: 10, margin: 0 }}>Sri Lanka</p>
               </div>
             </div>

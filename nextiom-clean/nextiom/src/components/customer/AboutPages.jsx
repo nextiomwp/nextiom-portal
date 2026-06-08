@@ -253,7 +253,7 @@ export function ContactDetailsPage({ user, isDark = false, c = {} }) {
               </div>
               <div>
                 <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 2px 0' }}>Phone Support</h3>
-                <p style={{ color: text, fontSize: 14, fontWeight: 800, margin: '0 0 2px 0' }}>+94 77 123 4567</p>
+                <p style={{ color: text, fontSize: 14, fontWeight: 800, margin: '0 0 2px 0' }}>+94 70 203 2323</p>
                 <p style={{ color: subText, fontSize: 11, margin: 0 }}>Available Monday – Friday (9:00 AM – 6:00 PM)</p>
               </div>
             </div>
@@ -275,7 +275,7 @@ export function ContactDetailsPage({ user, isDark = false, c = {} }) {
               </div>
               <div>
                 <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 2px 0' }}>Corporate Office</h3>
-                <p style={{ color: text, fontSize: 13, fontWeight: 800, margin: '0 0 2px 0' }}>No. 123, Galle Road, Colombo 03</p>
+                <p style={{ color: text, fontSize: 13, fontWeight: 800, margin: '0 0 2px 0' }}>Niwandama, Ja Ela – 11350</p>
                 <p style={{ color: subText, fontSize: 11, margin: 0 }}>Sri Lanka</p>
               </div>
             </div>
