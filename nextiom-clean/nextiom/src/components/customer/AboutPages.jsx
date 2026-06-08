@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building, Phone, Mail, MapPin, CheckCircle2, Shield, Heart, Users, Sparkles, Send } from 'lucide-react';
+import { Building, Phone, Mail, MapPin, CheckCircle2, Shield, Heart, Users, Sparkles, Send, Code, Wrench, Zap, Search, ArrowUpCircle, ShieldAlert, Smartphone, Palette } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { addNotification } from '@/lib/storage';
 
@@ -114,6 +114,58 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Services Section */}
+      <div style={{ marginTop: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Sparkles style={{ width: 16, height: 16, color: brand }} />
+          </div>
+          <h2 style={{ color: text, fontSize: 18, fontWeight: 800, margin: 0 }}>Our Services</h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+          {[
+            { icon: Code, title: 'Custom Development', desc: 'Tailored web solutions built with cutting-edge tech stacks to meet your exact workflow requirements.' },
+            { icon: Wrench, title: 'WordPress Maintenance', desc: 'Continuous updates, plugin audits, database optimization, and core stability management.' },
+            { icon: Zap, title: 'WordPress Speed', desc: 'Aggressive caching, asset optimization, database pruning, and Core Web Vitals acceleration.' },
+            { icon: Search, title: 'SEO Optimization', desc: 'Strategic keyword targeting, schema markup, technical audit, and organic search engine growth.' },
+            { icon: ArrowUpCircle, title: 'Site Upgrade', desc: 'Seamless migration, modernization of outdated systems, and framework version transitions.' },
+            { icon: ShieldAlert, title: 'Malware Removal', desc: 'Comprehensive exploit auditing, virus cleanup, vulnerability patching, and security hardening.' },
+            { icon: Smartphone, title: 'App Development', desc: 'Native-feeling cross-platform mobile apps for iOS and Android built on robust frameworks.' },
+            { icon: Palette, title: 'Graphic Design', desc: 'High-impact UI/UX branding, vector logo creations, marketing mockups, and corporate media assets.' }
+          ].map((s, idx) => (
+            <div
+              key={idx}
+              style={{
+                ...cardStyle,
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                transition: 'transform 0.2s, border-color 0.2s',
+                cursor: 'default'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.borderColor = brand;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.borderColor = border;
+              }}
+            >
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <s.icon style={{ width: 18, height: 18, color: brand }} />
+              </div>
+              <div>
+                <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: '0 0 6px 0' }}>{s.title}</h3>
+                <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{s.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
