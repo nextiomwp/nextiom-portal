@@ -582,7 +582,8 @@ function Dashboard({ onLogout }) {
                             onClick={() => {
                               markNotifRead(item.key);
                               const isEmailRequest = n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email request') || String(n.title || '').toLowerCase().includes('email');
-                              setActive(isEmailRequest ? 'emailRequests' : isPayment ? 'invoices' : 'adminNotifications');
+                              const isTicket = n.type === 'ticket' || String(n.title || '').toLowerCase().includes('ticket');
+                              setActive(isTicket ? 'logs' : isEmailRequest ? 'emailRequests' : isPayment ? 'invoices' : 'adminNotifications');
                               setIsNotificationsOpen(false);
                             }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
