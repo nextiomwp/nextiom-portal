@@ -5,7 +5,7 @@ import {
   Eye, Download, X, Globe, Server, Shield, Cpu, Calendar,
   CreditCard, Upload, Clock
 } from 'lucide-react';
-import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment, getLatestPaymentByInvoice, resubmitPaymentInfo } from '@/lib/invoices';
+import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment, getLatestPaymentByInvoice, resubmitPaymentInfo, fmtCurrency } from '@/lib/invoices';
 import { assertPortalActionsAllowed } from '@/lib/storage';
 
 const PAGE_SIZE = 6;
@@ -18,8 +18,20 @@ function svcIcon(type, size = 14) {
   return <Server size={size} />;
 }
 
-function fmtAmt(n) {
-  return 'LKR ' + Number(n || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtAmt(n, currency = 'LKR') {
+  return fmtCurrency(n, currency);
+}
+
+function formatCurrencyBreakdown(invoicesList) {
+  const totals = (invoicesList || []).reduce((acc, inv) => {
+    const cur = inv.currency === 'USD' ? 'USD' : 'LKR';
+    acc[cur] += inv.total || 0;
+    return acc;
+  }, { LKR: 0, USD: 0 });
+
+  return ['LKR', 'USD']
+    .map(cur => fmtCurrency(totals[cur], cur))
+    .join(' / ') || fmtCurrency(0, 'LKR');
 }
 
 function parseDateStr(str) {
@@ -268,7 +280,7 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                     <td style={{ padding: '9px 10px', fontSize: 13 }}>{item.description}</td>
                     <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
                     <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-                      {fmtAmt(item.qty * item.unit_price)}
+                      {fmtAmt(item.qty * item.unit_price, invoice.currency)}
                     </td>
                   </tr>
                 ))}
@@ -283,15 +295,15 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
               <div style={{ width: 240 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
                   <span style={{ color: '#888' }}>Subtotal</span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(subtotal)}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(subtotal, invoice.currency)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
                   <span style={{ color: '#888' }}>Tax</span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(tax)}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(tax, invoice.currency)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, borderTop: '2px solid #1a1a1a', paddingTop: 8 }}>
                   <span>Total</span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#e87b35' }}>{fmtAmt(invoice.total ?? subtotal + tax)}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#e87b35' }}>{fmtAmt(invoice.total ?? subtotal + tax, invoice.currency)}</span>
                 </div>
               </div>
             </div>
@@ -393,7 +405,7 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
                   <div style={lbl}>Transaction ID</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' }}>{payment.transaction_id}</div>
                   <div style={lbl}>Paid Amount</div>
-                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: c.brand }}>{fmtAmt(payment.paid_amount)}</div>
+                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: c.brand }}>{fmtAmt(payment.paid_amount, invoice.currency)}</div>
                   <div style={lbl}>Payment Date</div>
                   <div style={val}>{payment.payment_date}</div>
                   {payment.notes && (<><div style={lbl}>Notes</div><div style={{ ...val, whiteSpace: 'pre-wrap' }}>{payment.notes}</div></>)}
@@ -508,7 +520,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
-                <label style={label}>Paid Amount (LKR) *</label>
+                <label style={label}>Paid Amount ({invoice.currency || 'LKR'}) *</label>
                 <input style={inp} type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} />
               </div>
               <div>
@@ -549,7 +561,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
               <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>Invoice Summary</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.text, marginBottom: 4 }}>
                 <span>{invoice.invoice_no}</span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{fmtAmt(invoice.total)}</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{fmtAmt(invoice.total, invoice.currency)}</span>
               </div>
               <div style={{ fontSize: 11, color: c.subText }}>Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
             </div>
@@ -648,13 +660,13 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
 
   useEffect(() => { setPage(1); }, [query, statusFilter, calFilter, sortDir]);
 
-  const totalBilled = invoices.reduce((s, inv) => s + (inv.total || 0), 0);
-  const outstanding = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue').reduce((s, inv) => s + (inv.total || 0), 0);
+  const totalBilled = formatCurrencyBreakdown(invoices);
+  const outstanding = formatCurrencyBreakdown(invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue'));
   const unpaidCount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue').length;
   const thisYear = new Date().getFullYear();
-  const paidThisYear = invoices.filter(inv => inv.status === 'paid' && new Date(inv.invoice_date || 0).getFullYear() === thisYear).reduce((s, inv) => s + (inv.total || 0), 0);
+  const paidThisYear = formatCurrencyBreakdown(invoices.filter(inv => inv.status === 'paid' && new Date(inv.invoice_date || 0).getFullYear() === thisYear));
   const overdueCount = invoices.filter(inv => inv.status === 'overdue').length;
-  const overduePast = invoices.filter(inv => inv.status === 'overdue').reduce((s, inv) => s + (inv.total || 0), 0);
+  const overduePast = formatCurrencyBreakdown(invoices.filter(inv => inv.status === 'overdue'));
 
   const anyFilter = query || statusFilter !== 'all' || calFilter.mode !== 'none';
 
@@ -712,10 +724,10 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
 
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
-        <KpiTile icon={<Receipt size={18} style={{ color: c.brand }} />} label="Total Billed" value={fmtAmt(totalBilled)} sub={`Across ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`} c={c} isDark={isDark} />
-        <KpiTile icon={<Wallet size={18} style={{ color: '#f59e0b' }} />} label="Outstanding Balance" value={<span style={{ color: c.brand }}>{fmtAmt(outstanding)}</span>} sub={`${unpaidCount} unpaid`} subColor="#f59e0b" c={c} isDark={isDark} />
-        <KpiTile icon={<CheckCircle size={18} style={{ color: '#22c55e' }} />} label="Paid This Year" value={<span style={{ color: '#22c55e' }}>{fmtAmt(paidThisYear)}</span>} sub={`${thisYear} to date`} subColor="#22c55e" c={c} isDark={isDark} />
-        <KpiTile icon={<AlertTriangle size={18} style={{ color: '#ef4444' }} />} label="Overdue" value={<span style={{ color: '#ef4444' }}>{overdueCount}</span>} sub={`${fmtAmt(overduePast)} past due`} subColor="#ef4444" c={c} isDark={isDark} />
+        <KpiTile icon={<Receipt size={18} style={{ color: c.brand }} />} label="Total Billed" value={totalBilled} sub={`Across ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`} c={c} isDark={isDark} />
+        <KpiTile icon={<Wallet size={18} style={{ color: '#f59e0b' }} />} label="Outstanding Balance" value={<span style={{ color: c.brand }}>{outstanding}</span>} sub={`${unpaidCount} unpaid`} subColor="#f59e0b" c={c} isDark={isDark} />
+        <KpiTile icon={<CheckCircle size={18} style={{ color: '#22c55e' }} />} label="Paid This Year" value={<span style={{ color: '#22c55e' }}>{paidThisYear}</span>} sub={`${thisYear} to date`} subColor="#22c55e" c={c} isDark={isDark} />
+        <KpiTile icon={<AlertTriangle size={18} style={{ color: '#ef4444' }} />} label="Overdue" value={<span style={{ color: '#ef4444' }}>{overdueCount}</span>} sub={`${overduePast} past due`} subColor="#ef4444" c={c} isDark={isDark} />
       </div>
 
       {/* Two-column body */}
@@ -816,7 +828,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       </td>
                       <td style={tdS}><BadgeComponent status={inv.status} style={badgeStyle} /></td>
                       <td style={{ ...tdS, textAlign: 'right' }}>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13 }}>{fmtAmt(inv.total)}</span>
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13 }}>{fmtAmt(inv.total, inv.currency)}</span>
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>

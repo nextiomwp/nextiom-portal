@@ -142,7 +142,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
     chartData: [],
     totalOrders: 0,
     approvedOrders: 0,
-    totalSpend: 0,
+    totalSpend: 'LKR 0.00 / USD 0.00',
     successRate: 0,
     growth: 0,
     recentActivity: [],
@@ -198,7 +198,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             .order('created_at', { ascending: false })
             .limit(5),
           supabase.from('invoices')
-            .select('total')
+            .select('total, currency')
             .eq('status', 'paid')
             .eq('user_id', user.user_id),
         ]);
@@ -212,7 +212,22 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         );
 
         const invoices = invoiceRes.data || [];
-        const totalSpend = invoices.reduce((sum, i) => sum + (parseFloat(i.total) || 0), 0);
+        const totals = invoices.reduce((acc, inv) => {
+          const cur = inv.currency === 'USD' ? 'USD' : 'LKR';
+          acc[cur] += parseFloat(inv.total) || 0;
+          return acc;
+        }, { LKR: 0, USD: 0 });
+
+        const formatCurrency = (amount, currency) => {
+          if (currency === 'USD') {
+            return 'USD ' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+          return 'LKR ' + amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        const totalSpend = ['LKR', 'USD']
+          .map(cur => formatCurrency(totals[cur], cur))
+          .join(' / ') || formatCurrency(0, 'LKR');
 
         const months = getLast6Months();
         const chartData = months.map(m => ({
@@ -317,7 +332,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           iconBg={isDark ? 'rgba(59,130,246,0.15)' : '#dbeafe'}
           iconColor="#2563eb"
           label="Total Spend"
-          value={`LKR ${data.totalSpend.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          value={data.totalSpend}
           c={c}
           isDark={isDark}
         />
