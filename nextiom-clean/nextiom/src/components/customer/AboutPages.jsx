@@ -31,19 +31,33 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Who We Are */}
+        {/* Left Column: Company Info */}
         <div className="lg:col-span-2" style={cardStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Building style={{ width: 16, height: 16, color: brand }} />
             </div>
-            <h2 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>Who We Are</h2>
+            <h2 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>About NEXTIOM</h2>
           </div>
           <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
-            Nextiom is a premier provider of internet infrastructure and digital enablement solutions. We specialize in high-performance cloud hosting, secure domain registration, professional business email setups, and custom digital services designed to empower modern enterprises.
+            We are perfect in an innovative online marketing solution.
+            We are warmly welcome to you the useful online service website. We are hoping to create the
+            best service and fulfil customer needs, and wants. NEXTIOM is a full service- graphic design, web designing & developing print design, and much more for each of our clients based on their needs and goals.
+          </p>
+          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
+            We believe in the importance of improving the online services, which is why we established
+            NEXTIOM in three years ago. Our credibility and excellent service built satisfaction of 1000+ valued consumers. Just over a year ago, we had insured capacious victory and earned a lot of satisfying potential customers.
+          </p>
+          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
+            NEXTIOM has a great team, and which has uncanny ability to understand what objective customers are trying to achieve in the project. Our team has also worked to develop good imitation by creating proper communication and business ethics. We accept graphic/web design & developing, content marketing, presentation, or every high-impact task around the world.
+          </p>
+          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
+            Want an opportunity to achieve the best and profitable business owner? Are you not aware of
+            how to create the best path with the premium website to your business? NEXTIOM online service is ready to assist you at any time.
           </p>
           <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
-            Since our inception, our mission has been to build robust and scalable digital environments for businesses of all sizes. By combining state-of-the-art server infrastructure with an intuitive customer-focused management portal, we help our clients focus on growth while we handle the complexity of hosting and web management.
+            We plan everything with our clients, and we create it as their performance. Our valued customers who have driven us so far.
+            At nextiom we have a theme, “Our clients are always our top precedence.”
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, borderTop: `1px solid ${border}`, paddingTop: 20 }}>
