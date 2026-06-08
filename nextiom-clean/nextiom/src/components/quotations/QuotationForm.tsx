@@ -15,6 +15,7 @@ function newItem(): QuotationItem {
   return { description: '', qty: 1, unit_price: 0 }
 }
 
+
 interface Props {
   c: any
   isDark: boolean
