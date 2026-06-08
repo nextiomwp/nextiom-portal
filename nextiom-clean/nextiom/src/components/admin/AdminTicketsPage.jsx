@@ -43,6 +43,16 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    quote: false,
+    code: false
+  });
+
+  const isAdmin = true;
+
   useEffect(() => { load(); }, []);
 
   useEffect(() => {
@@ -50,7 +60,14 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     if (replyRef.current) {
       replyRef.current.innerHTML = '';
     }
-  }, [selected?.id]);
+    setActiveFormats({
+      bold: false,
+      italic: false,
+      underline: false,
+      quote: false,
+      code: false
+    });
+  }, [selected?.id, editingMsgId]);
 
   async function load() {
     setLoading(true);
@@ -317,7 +334,12 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
           continue;
         }
         
-        markdown += prefix + htmlToMarkdown(child) + suffix;
+        const innerContent = htmlToMarkdown(child);
+        if (innerContent.replace(/\u200B/g, '').trim()) {
+          markdown += prefix + innerContent + suffix;
+        } else {
+          markdown += innerContent;
+        }
       }
     }
     
@@ -334,6 +356,198 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       setReply(md);
     } else {
       setEditText(md);
+    }
+  };
+
+  const handleSelectionChange = (e) => {
+    const editor = e.currentTarget;
+    const selection = window.getSelection();
+    if (selection.rangeCount) {
+      const range = selection.getRangeAt(0);
+      if (editor.contains(range.commonAncestorContainer)) {
+        let node = range.commonAncestorContainer;
+        if (node.nodeType === 3) {
+          node = node.parentNode;
+        }
+        
+        const formats = {
+          bold: !!(node && (node.closest('strong') || node.closest('b') || (node.style && node.style.fontWeight === 'bold'))),
+          italic: !!(node && (node.closest('em') || node.closest('i') || (node.style && node.style.fontStyle === 'italic'))),
+          underline: !!(node && (node.closest('u') || (node.style && node.style.textDecoration === 'underline'))),
+          quote: !!(node && node.closest('blockquote')),
+          code: !!(node && (node.closest('code') || node.closest('pre'))),
+        };
+        setActiveFormats(formats);
+      }
+    }
+  };
+
+  const handleKeyDown = (e, isEdit = false) => {
+    const editor = isEdit ? editRef.current : replyRef.current;
+    if (!editor) return;
+
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const selection = window.getSelection();
+      if (selection.rangeCount && selection.isCollapsed) {
+        const range = selection.getRangeAt(0);
+        if (editor.contains(range.commonAncestorContainer)) {
+          const formats = activeFormats;
+          
+          let node = range.commonAncestorContainer;
+          if (node.nodeType === 3) {
+            node = node.parentNode;
+          }
+          
+          const hasBold = node && (node.closest('strong') || node.closest('b') || (node.style && node.style.fontWeight === 'bold'));
+          const hasItalic = node && (node.closest('em') || node.closest('i') || (node.style && node.style.fontStyle === 'italic'));
+          const hasUnderline = node && (node.closest('u') || (node.style && node.style.textDecoration === 'underline'));
+          const hasQuote = node && node.closest('blockquote');
+          const hasCode = node && (node.closest('code') || node.closest('pre'));
+          
+          const matchesBold = !!formats.bold === !!hasBold;
+          const matchesItalic = !!formats.italic === !!hasItalic;
+          const matchesUnderline = !!formats.underline === !!hasUnderline;
+          const matchesQuote = !!formats.quote === !!hasQuote;
+          const matchesCode = !!formats.code === !!hasCode;
+          
+          if (matchesBold && matchesItalic && matchesUnderline && matchesQuote && matchesCode) {
+            e.preventDefault();
+            let textNode = range.startContainer;
+            let offset = range.startOffset;
+            
+            if (textNode.nodeType !== 3) {
+              textNode = document.createTextNode(e.key);
+              range.insertNode(textNode);
+              offset = 1;
+            } else {
+              const val = textNode.nodeValue;
+              if (val === '\u200B') {
+                textNode.nodeValue = e.key;
+                offset = 1;
+              } else {
+                textNode.nodeValue = val.slice(0, offset) + e.key + val.slice(offset);
+                offset += 1;
+              }
+            }
+            
+            const newRange = document.createRange();
+            newRange.setStart(textNode, offset);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            
+            const md = htmlToMarkdown(editor);
+            if (isEdit) setEditText(md);
+            else setReply(md);
+            return;
+          }
+          
+          e.preventDefault();
+          range.deleteContents();
+          
+          let topElement = null;
+          let currentElement = null;
+          
+          if (formats.bold) {
+            const el = document.createElement('strong');
+            if (!topElement) topElement = el;
+            else currentElement.appendChild(el);
+            currentElement = el;
+          }
+          if (formats.italic) {
+            const el = document.createElement('em');
+            if (!topElement) topElement = el;
+            else currentElement.appendChild(el);
+            currentElement = el;
+          }
+          if (formats.underline) {
+            const el = document.createElement('u');
+            if (!topElement) topElement = el;
+            else currentElement.appendChild(el);
+            currentElement = el;
+          }
+          if (formats.quote) {
+            const el = document.createElement('blockquote');
+            if (!topElement) topElement = el;
+            else currentElement.appendChild(el);
+            currentElement = el;
+          }
+          if (formats.code) {
+            const el = document.createElement('code');
+            if (!topElement) topElement = el;
+            else currentElement.appendChild(el);
+            currentElement = el;
+          }
+          
+          const textNode = document.createTextNode(e.key);
+          
+          let insertParent = null;
+          let insertSibling = null;
+          
+          const formatsToExit = [];
+          if (hasBold && !formats.bold) formatsToExit.push('bold');
+          if (hasItalic && !formats.italic) formatsToExit.push('italic');
+          if (hasUnderline && !formats.underline) formatsToExit.push('underline');
+          if (hasQuote && !formats.quote) formatsToExit.push('quote');
+          if (hasCode && !formats.code) formatsToExit.push('code');
+          
+          if (formatsToExit.length > 0) {
+            let ancestor = range.startContainer;
+            if (ancestor.nodeType === 3) ancestor = ancestor.parentNode;
+            
+            let exitNode = null;
+            while (ancestor && ancestor !== editor) {
+              const tag = ancestor.tagName?.toLowerCase();
+              const isB = tag === 'strong' || tag === 'b';
+              const isI = tag === 'em' || tag === 'i';
+              const isU = tag === 'u';
+              const isQ = tag === 'blockquote';
+              const isC = tag === 'code';
+              
+              if (
+                (isB && formatsToExit.includes('bold')) ||
+                (isI && formatsToExit.includes('italic')) ||
+                (isU && formatsToExit.includes('underline')) ||
+                (isQ && formatsToExit.includes('quote')) ||
+                (isC && formatsToExit.includes('code'))
+              ) {
+                exitNode = ancestor;
+              }
+              ancestor = ancestor.parentNode;
+            }
+            
+            if (exitNode) {
+              insertParent = exitNode.parentNode;
+              insertSibling = exitNode.nextSibling;
+            }
+          }
+          
+          if (currentElement) {
+            currentElement.appendChild(textNode);
+          }
+          
+          const nodeToInsert = topElement || textNode;
+          if (insertParent) {
+            if (insertSibling) {
+              insertParent.insertBefore(nodeToInsert, insertSibling);
+            } else {
+              insertParent.appendChild(nodeToInsert);
+            }
+          } else {
+            range.insertNode(nodeToInsert);
+          }
+          
+          const newRange = document.createRange();
+          newRange.setStart(textNode, 1);
+          newRange.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+          
+          const md = htmlToMarkdown(editor);
+          if (isEdit) setEditText(md);
+          else setReply(md);
+        }
+      }
     }
   };
 
@@ -357,99 +571,61 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     const hasSelection = !range.collapsed;
     
     if (hasSelection) {
-      const selectedText = range.toString();
-      let element;
-      if (type === 'bold') {
-        element = document.createElement('strong');
-      } else if (type === 'italic') {
-        element = document.createElement('em');
-      } else if (type === 'underline') {
-        element = document.createElement('u');
-      } else if (type === 'quote') {
-        element = document.createElement('blockquote');
-      } else if (type === 'code') {
-        if (selectedText.includes('\n')) {
-          element = document.createElement('pre');
-          const code = document.createElement('code');
-          code.textContent = selectedText;
-          element.appendChild(code);
-        } else {
-          element = document.createElement('code');
-        }
-      }
-      
-      if (element) {
-        if (type === 'code' && selectedText.includes('\n')) {
-          range.deleteContents();
-          range.insertNode(element);
-          
-          const newRange = document.createRange();
-          newRange.setStartAfter(element);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        } else if (type === 'quote') {
-          element.textContent = selectedText;
-          range.deleteContents();
-          range.insertNode(element);
-          
-          const newRange = document.createRange();
-          newRange.setStartAfter(element);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        } else {
-          // Inline formats: bold, italic, underline, inline code
-          element.appendChild(range.extractContents());
-          range.insertNode(element);
-          
-          const suffixNode = document.createTextNode('\u200B');
-          element.parentNode.insertBefore(suffixNode, element.nextSibling);
-          
-          const newRange = document.createRange();
-          newRange.setStart(suffixNode, 1);
-          newRange.collapse(true);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
-        }
-      }
-    } else {
-      let element;
-      if (type === 'bold') {
-        element = document.createElement('strong');
-        element.textContent = 'bold text';
-      } else if (type === 'italic') {
-        element = document.createElement('em');
-        element.textContent = 'italic text';
-      } else if (type === 'underline') {
-        element = document.createElement('u');
-        element.textContent = 'underlined text';
-      } else if (type === 'quote') {
-        element = document.createElement('blockquote');
-        element.textContent = 'quote';
-      } else if (type === 'code') {
-        element = document.createElement('code');
-        element.textContent = 'code';
-      }
-      
-      if (element) {
-        range.insertNode(element);
+      if (type === 'bold' || type === 'italic' || type === 'underline') {
+        document.execCommand(type, false, null);
+      } else {
+        let node = range.commonAncestorContainer;
+        if (node.nodeType === 3) node = node.parentNode;
         
-        if (type === 'quote') {
-          const newRange = document.createRange();
-          newRange.selectNodeContents(element);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
+        const existingNode = type === 'quote' ? node.closest('blockquote') : node.closest('code');
+        if (existingNode) {
+          const parent = existingNode.parentNode;
+          while (existingNode.firstChild) {
+            parent.insertBefore(existingNode.firstChild, existingNode);
+          }
+          existingNode.remove();
         } else {
-          const suffixNode = document.createTextNode('\u200B');
-          element.parentNode.insertBefore(suffixNode, element.nextSibling);
+          const selectedText = range.toString();
+          let element;
+          if (type === 'quote') {
+            element = document.createElement('blockquote');
+            element.textContent = selectedText;
+          } else if (type === 'code') {
+            if (selectedText.includes('\n')) {
+              element = document.createElement('pre');
+              const code = document.createElement('code');
+              code.textContent = selectedText;
+              element.appendChild(code);
+            } else {
+              element = document.createElement('code');
+              element.textContent = selectedText;
+            }
+          }
           
-          const newRange = document.createRange();
-          newRange.selectNodeContents(element);
-          selection.removeAllRanges();
-          selection.addRange(newRange);
+          if (element) {
+            range.deleteContents();
+            range.insertNode(element);
+            
+            const newRange = document.createRange();
+            newRange.selectNodeContents(element);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          }
         }
       }
+      
+      const dummyEvent = { currentTarget: editor };
+      handleSelectionChange(dummyEvent);
+    } else {
+      setActiveFormats(prev => {
+        const next = { ...prev, [type]: !prev[type] };
+        
+        if (type === 'bold' || type === 'italic' || type === 'underline') {
+          document.execCommand(type, false, null);
+        }
+        
+        return next;
+      });
     }
     
     const md = htmlToMarkdown(editor);
@@ -476,7 +652,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    html = html.replace(/&lt;u&gt;([\s\S]+?)&lt;\/u&gt;/g, '<u>$1</u>');
+    html = html.replace(/&lt;u&gt;/g, '<u>').replace(/&lt;\/u&gt;/g, '</u>');
     html = html.replace(/\[([^\]]+?)\]\(([^)]+?)\)/g, '<a href="$2" target="_blank">$1</a>');
     return html;
   }
@@ -647,17 +823,18 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
 
 
 
-  const tbBtn = (Icon, title, onClick) => (
+  const tbBtn = (Icon, title, onClick, active = false) => (
     <button
       key={title}
       onMouseDown={e => { e.preventDefault(); onClick(); }}
       title={title}
-      onMouseEnter={e => { e.currentTarget.style.background = c.hover; e.currentTarget.style.color = c.text; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = c.subText; }}
+      onMouseEnter={e => { e.currentTarget.style.background = active ? (isAdmin ? 'rgba(255,255,255,0.25)' : c.brand) : c.hover; e.currentTarget.style.color = active ? '#fff' : c.text; }}
+      onMouseLeave={e => { e.currentTarget.style.background = active ? (isAdmin ? 'rgba(255,255,255,0.2)' : c.brand) : 'transparent'; e.currentTarget.style.color = active ? '#fff' : c.subText; }}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         width: 30, height: 30, border: 'none', borderRadius: 6,
-        background: 'transparent', color: c.subText,
+        background: active ? (isAdmin ? 'rgba(255,255,255,0.2)' : c.brand) : 'transparent',
+        color: active ? '#fff' : c.subText,
         cursor: 'pointer', fontFamily: 'inherit',
         transition: 'all 0.12s',
       }}
@@ -807,12 +984,12 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                             background: isAdmin ? 'rgba(255,255,255,0.05)' : (isDark ? '#22252C' : '#f5f5f5'),
                             flexWrap: 'wrap',
                           }}>
-                            {tbBtn(Bold, 'Bold', () => applyFormat('bold', true))}
-                            {tbBtn(Italic, 'Italic', () => applyFormat('italic', true))}
-                            {tbBtn(Underline, 'Underline', () => applyFormat('underline', true))}
+                            {tbBtn(Bold, 'Bold', () => applyFormat('bold', true), activeFormats.bold)}
+                            {tbBtn(Italic, 'Italic', () => applyFormat('italic', true), activeFormats.italic)}
+                            {tbBtn(Underline, 'Underline', () => applyFormat('underline', true), activeFormats.underline)}
                             {tbd}
-                            {tbBtn(TextQuote, 'Quote', () => applyFormat('quote', true))}
-                            {tbBtn(Code2, 'Code', () => applyFormat('code', true))}
+                            {tbBtn(TextQuote, 'Quote', () => applyFormat('quote', true), activeFormats.quote)}
+                            {tbBtn(Code2, 'Code', () => applyFormat('code', true), activeFormats.code)}
                           </div>
                           <div style={{
                             display: 'flex',
@@ -829,6 +1006,10 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                               contentEditable
                               onInput={e => setEditText(htmlToMarkdown(e.currentTarget))}
                               onPaste={handlePaste}
+                              onKeyDown={e => handleKeyDown(e, true)}
+                              onKeyUp={handleSelectionChange}
+                              onMouseUp={handleSelectionChange}
+                              onFocus={handleSelectionChange}
                               className="editor-placeholder"
                               placeholder="Edit message…"
                               dangerouslySetInnerHTML={{ __html: markdownToHtml(msg.message) }}
@@ -906,12 +1087,12 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                     background: isDark ? '#22252C' : '#f5f5f5',
                     flexWrap: 'wrap',
                   }}>
-                    {tbBtn(Bold, 'Bold', () => applyFormat('bold'))}
-                    {tbBtn(Italic, 'Italic', () => applyFormat('italic'))}
-                    {tbBtn(Underline, 'Underline', () => applyFormat('underline'))}
+                    {tbBtn(Bold, 'Bold', () => applyFormat('bold'), activeFormats.bold)}
+                    {tbBtn(Italic, 'Italic', () => applyFormat('italic'), activeFormats.italic)}
+                    {tbBtn(Underline, 'Underline', () => applyFormat('underline'), activeFormats.underline)}
                     {tbd}
-                    {tbBtn(TextQuote, 'Quote', () => applyFormat('quote'))}
-                    {tbBtn(Code2, 'Code', () => applyFormat('code'))}
+                    {tbBtn(TextQuote, 'Quote', () => applyFormat('quote'), activeFormats.quote)}
+                    {tbBtn(Code2, 'Code', () => applyFormat('code'), activeFormats.code)}
                     {tbd}
                     {tbBtn(Link2, 'Insert Link', () => {
                       const selection = window.getSelection();
@@ -962,6 +1143,10 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                       contentEditable
                       onInput={e => setReply(htmlToMarkdown(e.currentTarget))}
                       onPaste={handlePaste}
+                      onKeyDown={e => handleKeyDown(e, false)}
+                      onKeyUp={handleSelectionChange}
+                      onMouseUp={handleSelectionChange}
+                      onFocus={handleSelectionChange}
                       className="editor-placeholder"
                       placeholder="Type a reply…"
                       style={{
