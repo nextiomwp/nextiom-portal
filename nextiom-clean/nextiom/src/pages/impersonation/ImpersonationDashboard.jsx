@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LogOut, Clock, AlertTriangle, LayoutDashboard, Globe, Server, Mail,
   ShoppingCart, MessageSquare, Package, User, Loader2, Menu, X,
+  CreditCard, FileText,
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,6 +16,7 @@ import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import MyEmailsPage from '@/components/customer/MyEmailsPage';
 import MyServicesPage from '@/components/customer/MyServicesPage';
 import CustomerInvoicesPage from '@/components/customer/CustomerInvoicesPage';
+import CustomerQuotationsPage from '@/components/customer/CustomerQuotationsPage';
 import MyTicketsPage from '@/components/customer/MyTicketsPage';
 import CreateTicketPage from '@/components/customer/CreateTicketPage';
 import MyProductsPage from '@/components/customer/MyProductsPage';
@@ -58,7 +60,13 @@ const NAV_STRUCTURE = [
     id: 'orders', label: 'Orders', icon: ShoppingCart, type: 'group',
     children: [
       { id: 'services', label: 'My Subscriptions' },
+    ],
+  },
+  {
+    id: 'billing', label: 'Billing', icon: CreditCard, type: 'group',
+    children: [
       { id: 'invoices', label: 'Invoices' },
+      { id: 'quotations', label: 'Quotations' },
     ],
   },
   {
@@ -72,7 +80,7 @@ const NAV_STRUCTURE = [
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
 ];
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'support_tickets', 'products', 'profile'];
+const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'products', 'profile'];
 
 function ImpersonationDashboard() {
   const { customerId } = useParams();
@@ -85,7 +93,7 @@ function ImpersonationDashboard() {
   const [elapsed, setElapsed] = useState('00:00');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mountedTabs, setMountedTabs] = useState(() => new Set(['dashboard']));
-  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'emails', 'orders', 'support']);
+  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'emails', 'orders', 'billing', 'support']);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [startTime] = useState(() => Date.now());
@@ -272,6 +280,7 @@ function ImpersonationDashboard() {
         {mountedTabs.has('emails_my') && wrap('emails_my', <MyEmailsPage user={userProp} {...theme} />)}
         {mountedTabs.has('services') && wrap('services', <MyServicesPage user={userProp} {...theme} />)}
         {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark c={c} />)}
+        {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark c={c} onNavigate={setActiveTab} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => {}} {...theme} />)}

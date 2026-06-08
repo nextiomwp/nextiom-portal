@@ -5,6 +5,7 @@ import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
+  CreditCard, FileText,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -22,6 +23,7 @@ import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import NewHostingOrderPage from '@/components/customer/NewHostingOrderPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import CustomerInvoicesPage from '@/components/customer/CustomerInvoicesPage';
+import CustomerQuotationsPage from '@/components/customer/CustomerQuotationsPage';
 import CreateTicketPage from '@/components/customer/CreateTicketPage';
 import MyTicketsPage from '@/components/customer/MyTicketsPage';
 import PortalRestrictionBanner from '@/components/customer/PortalRestrictionBanner';
@@ -67,7 +69,13 @@ const NAV_STRUCTURE = [
     id: 'orders', label: 'Orders', icon: ShoppingCart, type: 'group',
     children: [
       { id: 'services', label: 'My Subscriptions' },
+    ],
+  },
+  {
+    id: 'billing', label: 'Billing', icon: CreditCard, type: 'group',
+    children: [
       { id: 'invoices', label: 'Invoices' },
+      { id: 'quotations', label: 'Quotations' },
     ],
   },
   {
@@ -100,7 +108,7 @@ function getGreeting() {
   return 'Good morning';
 }
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'support_tickets', 'products', 'profile', 'notifications'];
+const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'products', 'profile', 'notifications'];
 
 function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -113,7 +121,7 @@ function CustomerDashboard() {
     }
   }, [activeTab]);
 
-  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'emails', 'orders', 'support']);
+  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'emails', 'orders', 'billing', 'support']);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('cust_sidebar_collapsed') === 'true'
@@ -309,6 +317,7 @@ function CustomerDashboard() {
         {mountedTabs.has('emails_my') && wrap('emails_my', <MyEmailsPage user={userProp} {...theme} />)}
         {mountedTabs.has('services') && wrap('services', <MyServicesPage user={userProp} {...theme} />)}
         {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => { }} {...theme} />)}

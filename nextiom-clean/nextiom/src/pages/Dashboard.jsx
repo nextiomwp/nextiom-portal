@@ -4,6 +4,8 @@ import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
 import InvoiceSettingsPage from '@/pages/invoices/InvoiceSettingsPage';
+import QuotationsPage from '@/pages/quotations/QuotationsPage';
+import QuotationForm from '@/components/quotations/QuotationForm';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -50,6 +52,7 @@ const NAV = [
   { id: 'approvedEmailsActive', label: 'Active Emails', icon: Mail, badgeType: 'green' },
   { section: 'header', label: 'BILLING' },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
+  { id: 'quotations', label: 'Quotations', icon: FileText },
   { section: 'header', label: 'SYSTEM' },
   { id: 'maintenance', label: 'Maintenance', icon: Shield },
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
@@ -133,12 +136,15 @@ function Dashboard({ onLogout }) {
   const notifRef = useRef(null);
   const [invoiceView, setInvoiceView] = useState('list');
   const [editInvoiceId, setEditInvoiceId] = useState(null);
+  const [quotationView, setQuotationView] = useState('list');
+  const [editQuotationId, setEditQuotationId] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [adminNotifs, setAdminNotifs] = useState([]);
   const [unreadTicketCount, setUnreadTicketCount] = useState(0);
 
   useEffect(() => {
     if (active !== 'invoices') { setInvoiceView('list'); setEditInvoiceId(null); }
+    if (active !== 'quotations') { setQuotationView('list'); setEditQuotationId(null); }
     if (active !== 'customerProfile') setSelectedCustomer(null);
     if (active === 'invoices') markInvoicesRead();
   }, [active]);
@@ -368,6 +374,12 @@ function Dashboard({ onLogout }) {
         if (invoiceView === 'edit' && editInvoiceId) return <EditInvoicePage c={c} isDark={isDark} invoiceId={editInvoiceId} onBack={goList} />;
         if (invoiceView === 'settings') return <InvoiceSettingsPage c={c} isDark={isDark} onBack={goList} />;
         return <InvoicesPage c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
+      }
+      case 'quotations': {
+        const goList = () => { setEditQuotationId(null); setQuotationView('list'); };
+        if (quotationView === 'new') return <QuotationForm c={c} isDark={isDark} onBack={goList} />;
+        if (quotationView === 'edit' && editQuotationId) return <QuotationForm c={c} isDark={isDark} existingId={editQuotationId} onBack={goList} />;
+        return <QuotationsPage c={c} isDark={isDark} onNew={() => setQuotationView('new')} onEdit={id => { setEditQuotationId(id); setQuotationView('edit'); }} />;
       }
       case 'maintenance': return <MaintenanceModePage isDark={isDark} />;
       case 'activityLog': return <AdminActivityLogPage isDark={isDark} />;

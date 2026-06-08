@@ -12,6 +12,7 @@ import { AuthProvider } from '@/contexts/SupabaseAuthContext';
 import { initializeDemoData } from '@/lib/storage';
 import InvoicePrintPage from '@/pages/invoices/InvoicePrintPage';
 import ActivityLogPrintPage from '@/pages/ActivityLogPrintPage';
+import QuotationPrintPage from '@/pages/quotations/QuotationPrintPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import ImpersonationDashboard from '@/pages/impersonation/ImpersonationDashboard';
 import ImpersonationGuard from '@/utils/impersonationGuard';
@@ -38,6 +39,7 @@ function App() {
             <Route path="/admin-login" element={<AdminLogin />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/invoices/print" element={<InvoicePrintPage />} />
+            <Route path="/quotations/print" element={<QuotationPrintPage />} />
             <Route path="/activity-log/print" element={<ActivityLogPrintPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
 
