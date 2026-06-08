@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Globe, Server, Bell, TrendingUp, TrendingDown, ShoppingCart, CheckCircle2, DollarSign, Calendar } from 'lucide-react';
+import { Loader2, Globe, Server, Bell, TrendingUp, TrendingDown, ShoppingCart, CheckCircle2, DollarSign, Calendar, Phone, Mail, MapPin, Building, ChevronRight, Info, ExternalLink } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import NewsAnnouncementsCard from './NewsAnnouncementsCard';
 import RateUsCard from './RateUsCard';
@@ -99,6 +99,7 @@ function ActivityIcon({ type, isDark }) {
   const map = {
     domain: { Icon: Globe, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.2)' : '#ede9fe' },
     hosting: { Icon: Server, color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.2)' : '#cffafe' },
+    email: { Icon: Mail, color: '#e87b35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
     notification: { Icon: Bell, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
   };
   const { Icon, color, bg } = map[type] || map.notification;
@@ -183,13 +184,17 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       const customerId = user.id;
 
       try {
-        const [domainRes, hostingRes, notifRes, invoiceRes] = await Promise.all([
+        const [domainRes, hostingRes, emailRes, notifRes, invoiceRes] = await Promise.all([
           supabase.from('domain_requests')
             .select('id, status, created_at, domain_name')
             .eq('customer_id', customerId)
             .order('created_at', { ascending: false }),
           supabase.from('hosting_requests')
             .select('id, status, created_at, package_type')
+            .eq('customer_id', customerId)
+            .order('created_at', { ascending: false }),
+          supabase.from('email_requests')
+            .select('id, status, created_at, email')
             .eq('customer_id', customerId)
             .order('created_at', { ascending: false }),
           supabase.from('notifications')
@@ -200,12 +205,13 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           supabase.from('invoices')
             .select('total, currency')
             .eq('status', 'paid')
-            .eq('user_id', user.user_id),
+            .eq('client_email', user.email),
         ]);
 
         const domains = domainRes.data || [];
         const hostings = hostingRes.data || [];
-        const allOrders = [...domains, ...hostings];
+        const emails = emailRes.data || [];
+        const allOrders = [...domains, ...hostings, ...emails];
 
         const approved = allOrders.filter(o =>
           ['approved', 'completed', 'active'].includes(String(o.status || '').toLowerCase())
@@ -253,6 +259,14 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             type: 'hosting',
             title: r.package_type?.split('|')[0]?.trim() || 'Hosting Request',
             subtitle: 'Hosting Package',
+            status: r.status,
+            date: r.created_at,
+          })),
+          ...emails.slice(0, 4).map(r => ({
+            id: `e-${r.id}`,
+            type: 'email',
+            title: r.email || 'Email Registration',
+            subtitle: 'Email Request',
             status: r.status,
             date: r.created_at,
           })),
@@ -404,7 +418,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {data.recentActivity.length > 0 ? (
               data.recentActivity.map(item => {
-                const dest = item.type === 'domain' ? 'domains_my' : item.type === 'hosting' ? 'hosting_my' : 'notifications';
+                const dest = item.type === 'domain' ? 'domains_my' : item.type === 'hosting' ? 'hosting_my' : item.type === 'email' ? 'emails_my' : 'notifications';
                 const canNav = !!onNavigate;
                 return (
                 <div
@@ -444,10 +458,281 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
       </div>
 
-      {/* Row 3: News + Rate Us */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
-        <RateUsCard user={user} isDark={isDark} c={c} />
+      {/* Row 3: News + Rate Us + Need Help */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+        <div className="lg:col-span-2">
+          <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
+        </div>
+        <div className="lg:col-span-1">
+          <RateUsCard user={user} isDark={isDark} c={c} />
+        </div>
+        <div className="lg:col-span-1">
+          {/* Need Help Card */}
+          <div style={{
+            ...cardStyle,
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            height: '100%',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Info style={{ width: 15, height: 15, color: brand }} />
+              </div>
+              <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>Need Help?</span>
+            </div>
+            <p style={{ color: subText, fontSize: 13, lineHeight: 1.65, margin: 0 }}>
+              Our support team is here to help
+            </p>
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={() => onNavigate('support_create')}
+                style={{
+                  width: '100%',
+                  padding: '10px 0',
+                  borderRadius: 10,
+                  background: brand,
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#d4692a'}
+                onMouseLeave={e => e.currentTarget.style.background = brand}
+              >
+                Create Support Ticket
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <div style={{ height: 1, flex: 1, background: border }} />
+                <span style={{ color: subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>or</span>
+                <div style={{ height: 1, flex: 1, background: border }} />
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ color: subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600, marginBottom: 2 }}>Call Us Now</p>
+                <p style={{ color: brand, fontSize: 16, fontWeight: 800 }}>+94 77 123 4567</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 4: About Company + Contact + Visit Website + Quick Links */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* About Our Company Card */}
+        <div style={{
+          ...cardStyle,
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Building style={{ width: 15, height: 15, color: brand }} />
+            </div>
+            <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>About Our Company</span>
+          </div>
+          <p style={{ color: subText, fontSize: 12, lineHeight: 1.5, margin: 0 }}>
+            Nextiom is a trusted provider of domain registration, web hosting, email solutions, and digital services.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0' }}>
+            {[
+              'Reliable Infrastructure',
+              '24/7 Customer Support',
+              'Secure & Scalable Solutions'
+            ].map((point, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 style={{ width: 14, height: 14, color: brand, flexShrink: 0 }} />
+                <span style={{ color: text, fontSize: 11, fontWeight: 500 }}>{point}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => onNavigate('about_company')}
+            style={{
+              marginTop: 'auto',
+              padding: '8px 18px',
+              borderRadius: 10,
+              background: 'transparent',
+              color: brand,
+              border: `1px solid ${brand}`,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+              textAlign: 'center'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = brandLight}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            Learn More About Us
+          </button>
+        </div>
+
+        {/* Contact Information Card */}
+        <div style={{
+          ...cardStyle,
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Phone style={{ width: 15, height: 15, color: brand }} />
+            </div>
+            <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>Contact Information</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: '4px 0' }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <Phone style={{ width: 14, height: 14, color: brand, marginTop: 2, flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}>+94 77 123 4567</p>
+                <p style={{ color: subText, fontSize: 10, margin: 0 }}>Mon – Fri (9:00 AM – 6:00 PM)</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <Mail style={{ width: 14, height: 14, color: brand, marginTop: 2, flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}>info@nextiom.com</p>
+                <p style={{ color: subText, fontSize: 10, margin: 0 }}>We reply within 24 hours</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <MapPin style={{ width: 14, height: 14, color: brand, marginTop: 2, flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}>No. 123, Galle Road, Colombo 03</p>
+                <p style={{ color: subText, fontSize: 10, margin: 0 }}>Sri Lanka</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('about_contact')}
+            style={{
+              marginTop: 'auto',
+              padding: '8px 18px',
+              borderRadius: 10,
+              background: 'transparent',
+              color: brand,
+              border: `1px solid ${brand}`,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'background 0.15s',
+              textAlign: 'center'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = brandLight}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            View All Contact Options
+          </button>
+        </div>
+
+        {/* Visit Our Website Card */}
+        <div style={{
+          ...cardStyle,
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Globe style={{ width: 15, height: 15, color: brand }} />
+            </div>
+            <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>Visit Our Website</span>
+          </div>
+          <p style={{ color: subText, fontSize: 12, lineHeight: 1.5, margin: 0 }}>
+            Discover more about our services, company, and latest offers on our official website.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0' }}>
+            {[
+              'Latest Offers & Promotions',
+              'Service Details & Pricing',
+              'Knowledge Base & Guides'
+            ].map((point, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CheckCircle2 style={{ width: 14, height: 14, color: brand, flexShrink: 0 }} />
+                <span style={{ color: text, fontSize: 11, fontWeight: 500 }}>{point}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => window.open('https://nextiom.com', '_blank')}
+            style={{
+              marginTop: 'auto',
+              padding: '8px 18px',
+              borderRadius: 10,
+              background: 'transparent',
+              color: brand,
+              border: `1px solid ${brand}`,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = brandLight}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <span>Visit Website</span>
+            <ExternalLink style={{ width: 12, height: 12 }} />
+          </button>
+        </div>
+
+        {/* Quick Links Card */}
+        <div style={{
+          ...cardStyle,
+          padding: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Globe style={{ width: 15, height: 15, color: brand }} />
+            </div>
+            <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>Quick Links</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+            {[
+              { label: 'My Hosting', dest: 'hosting_my' },
+              { label: 'My Domains', dest: 'domains_my' },
+              { label: 'My Emails', dest: 'emails_my' },
+              { label: 'My Invoices', dest: 'invoices' }
+            ].map((link, idx) => (
+              <div
+                key={idx}
+                onClick={() => onNavigate(link.dest)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '8px 10px',
+                  borderRadius: 10,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = hover}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
+                <span style={{ color: text, fontSize: 12, fontWeight: 600 }}>{link.label}</span>
+                <ChevronRight style={{ width: 14, height: 14, color: subText }} />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

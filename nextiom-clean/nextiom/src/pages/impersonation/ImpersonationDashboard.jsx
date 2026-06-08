@@ -4,13 +4,16 @@ import { motion } from 'framer-motion';
 import {
   LogOut, Clock, AlertTriangle, LayoutDashboard, Globe, Server, Mail,
   ShoppingCart, MessageSquare, Package, User, Loader2, Menu, X,
-  CreditCard, FileText,
+  CreditCard, FileText, Info, BellOff,
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { clearCustomerNotifications } from '@/lib/storage';
 
 // Re-use real customer components
 import DashboardPage from '@/components/customer/DashboardPage';
+import NotificationsPage from '@/components/notifications/NotificationsPage';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import MyDomainsPage from '@/components/customer/MyDomainsPage';
 import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import MyEmailsPage from '@/components/customer/MyEmailsPage';
@@ -25,6 +28,7 @@ import NewHostingOrderPage from '@/components/customer/NewHostingOrderPage';
 import NewDomainRequestPage from '@/components/customer/NewDomainRequestPage';
 import NewEmailRequestPage from '@/components/customer/NewEmailRequestPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
+import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 
 const c = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
@@ -78,9 +82,17 @@ const NAV_STRUCTURE = [
   },
   { id: 'products', label: 'My Products', icon: Package, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
+  {
+    id: 'about', label: 'About Us', icon: Info, type: 'group',
+    children: [
+      { id: 'about_company', label: 'Company Info' },
+      { id: 'about_contact', label: 'Contact Details' },
+      { id: 'about_website', label: 'Our Website' },
+    ],
+  },
 ];
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'products', 'profile'];
+const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
 
 function ImpersonationDashboard() {
   const { customerId } = useParams();
@@ -245,6 +257,21 @@ function ImpersonationDashboard() {
     }
   };
 
+  const handleClearNotifications = async () => {
+    const targetName = customerProfile?.name || impersonatedUser?.name || 'this customer';
+    const targetId = customerProfile?.id || impersonatedUser?.customer_id || customerId;
+    if (!targetId) return;
+
+    if (confirm(`Are you sure you want to clear all notification history for ${targetName}?`)) {
+      try {
+        await clearCustomerNotifications(targetId);
+        toast({ title: 'Notifications Cleared', description: `Successfully cleared notifications for ${targetName}.` });
+      } catch (err) {
+        toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      }
+    }
+  };
+
   const toggleMenu = (menuId) => {
     setExpandedMenus((prev) =>
       prev.includes(menuId) ? prev.filter((id) => id !== menuId) : [...prev, menuId]
@@ -252,6 +279,11 @@ function ImpersonationDashboard() {
   };
 
   const switchTab = (tabId) => {
+    if (tabId === 'about_website') {
+      window.open('https://nextiom.com', '_blank');
+      setIsMobileSidebarOpen(false);
+      return;
+    }
     setActiveTab(tabId);
     setIsMobileSidebarOpen(false);
   };
@@ -259,9 +291,9 @@ function ImpersonationDashboard() {
   // Build user prop expected by customer components (memoize to prevent constant re-renders)
   const userProp = useMemo(() => 
     impersonatedUser && customerProfile
-      ? { id: impersonatedUser.id, email: impersonatedUser.email, name: impersonatedUser.name, ...customerProfile }
+      ? { id: impersonatedUser.id, email: impersonatedUser.email, name: impersonatedUser.name, ...customerProfile, memberSince: customerProfile.created_at }
       : null,
-    [impersonatedUser?.id, impersonatedUser?.email, impersonatedUser?.name, customerProfile?.id]
+    [impersonatedUser?.id, impersonatedUser?.email, impersonatedUser?.name, customerProfile]
   );
 
   if (!impersonatedUser) {
@@ -299,6 +331,9 @@ function ImpersonationDashboard() {
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark c={c} onNavigate={setActiveTab} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => {}} {...theme} />)}
+        {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} {...theme} />)}
+        {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
+        {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}
       </>
     );
   };
@@ -406,6 +441,25 @@ function ImpersonationDashboard() {
           >
             <Clock size={13} /> {elapsed}
           </span>
+          <button
+            onClick={handleClearNotifications}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '4px 14px',
+              borderRadius: 6,
+              background: 'rgba(255,255,255,0.2)',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.4)',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+            title="Clear customer's notification history"
+          >
+            <BellOff size={13} /> Clear Notifs
+          </button>
           <button
             onClick={handleExit}
             style={{
@@ -569,11 +623,22 @@ function ImpersonationDashboard() {
                   ?.label || 'Dashboard'}
           </div>
 
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs"
-            style={{ background: c.brandLight, color: c.brand }}
-          >
-            {(impersonatedUser.name || '?')[0].toUpperCase()}
+          <div className="flex items-center gap-3">
+            {customerProfile?.id && (
+              <NotificationBell
+                userId={customerProfile.id}
+                onViewAll={() => switchTab('notifications')}
+                onNavigate={switchTab}
+                isDark={true}
+                c={c}
+              />
+            )}
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0"
+              style={{ background: c.brandLight, color: c.brand }}
+            >
+              {(impersonatedUser.name || '?')[0].toUpperCase()}
+            </div>
           </div>
         </div>
 

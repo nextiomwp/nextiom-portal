@@ -662,6 +662,17 @@ export const deleteNotification = async (id) => {
   return true;
 };
 
+export const clearCustomerNotifications = async (customerId) => {
+  if (!customerId) return;
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('customer_id', customerId);
+
+  if (error) handleSupabaseError(error, 'clearCustomerNotifications');
+  return true;
+};
+
 // --- User Profile ---
 
 export const getUserProfile = async (userId) => {

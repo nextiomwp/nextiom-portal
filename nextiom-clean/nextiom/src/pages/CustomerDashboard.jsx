@@ -5,7 +5,7 @@ import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
-  CreditCard, FileText,
+  CreditCard, FileText, Info,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -29,6 +29,7 @@ import MyTicketsPage from '@/components/customer/MyTicketsPage';
 import PortalRestrictionBanner from '@/components/customer/PortalRestrictionBanner';
 import { usePortalRestriction } from '@/hooks/usePortalRestriction';
 import { cn } from '@/lib/utils';
+import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 
 const DARK = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
@@ -87,6 +88,14 @@ const NAV_STRUCTURE = [
   },
   { id: 'products', label: 'My Products', icon: Package, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
+  {
+    id: 'about', label: 'About Us', icon: Info, type: 'group',
+    children: [
+      { id: 'about_company', label: 'Company Info' },
+      { id: 'about_contact', label: 'Contact Details' },
+      { id: 'about_website', label: 'Our Website' },
+    ],
+  },
 ];
 
 function getActiveLabel(activeTab) {
@@ -108,7 +117,7 @@ function getGreeting() {
   return 'Good morning';
 }
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'products', 'profile', 'notifications'];
+const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
 
 function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -185,6 +194,11 @@ function CustomerDashboard() {
   };
 
   const navigate = (tabId) => {
+    if (tabId === 'about_website') {
+      window.open('https://nextiom.com', '_blank');
+      setIsMobileSidebarOpen(false);
+      return;
+    }
     setActiveTab(tabId);
     setIsMobileSidebarOpen(false);
   };
@@ -337,6 +351,8 @@ function CustomerDashboard() {
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => { }} {...theme} />)}
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} {...theme} />)}
+        {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
+        {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}
       </>
     );
   };

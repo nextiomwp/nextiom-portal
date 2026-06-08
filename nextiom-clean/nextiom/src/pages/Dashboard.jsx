@@ -769,22 +769,38 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                 <div style={{ fontSize: 16, fontWeight: 600 }}>New requests</div>
                 <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Awaiting your review</div>
               </div>
-              <button onClick={() => onNavigate('hostingRequests')} style={{ color: c.brand, background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 500 }}>View all →</button>
             </div>
             <div style={{ marginTop: 16 }}>
               {requests.slice(0, 4).map((r, i) => {
-                const isHosting = r.source === 'hosting';
                 const col = avatarColor(r.n);
                 const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+                
+                let targetTab = 'domainsRequests';
+                let badgeLabel = 'Domain';
+                let badgeBg = 'rgba(99,153,34,0.15)';
+                let badgeColor = '#639922';
+
+                if (r.source === 'hosting') {
+                  targetTab = 'hostingRequests';
+                  badgeLabel = 'Hosting';
+                  badgeBg = 'rgba(55,138,221,0.15)';
+                  badgeColor = '#5b9aff';
+                } else if (r.source === 'email') {
+                  targetTab = 'emailRequests';
+                  badgeLabel = 'Email';
+                  badgeBg = 'rgba(232,123,53,0.15)';
+                  badgeColor = '#e87b35';
+                }
+
                 return (
-                  <div key={r.id || i} onClick={() => onNavigate(r.source === 'hosting' ? 'hostingRequests' : 'domainsRequests')} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : `1px solid ${c.border}`, cursor: 'pointer' }}>
+                  <div key={r.id || i} onClick={() => onNavigate(targetTab)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i === 0 ? 'none' : `1px solid ${c.border}`, cursor: 'pointer' }}>
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(r.n)}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.n}</div>
                       <div style={{ fontSize: 11, color: c.subText }}>{r.reqType}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <span style={{ background: isHosting ? 'rgba(55,138,221,0.15)' : 'rgba(99,153,34,0.15)', color: isHosting ? '#5b9aff' : '#639922', fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>{isHosting ? 'Hosting' : 'Domain'}</span>
+                      <span style={{ background: badgeBg, color: badgeColor, fontSize: 11, fontWeight: 600, padding: '3px 8px', borderRadius: 6 }}>{badgeLabel}</span>
                       <span style={{ fontSize: 11, color: c.subText, minWidth: 40, textAlign: 'right' }}>{date}</span>
                     </div>
                   </div>

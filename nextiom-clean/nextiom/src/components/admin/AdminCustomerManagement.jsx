@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Plus, Eye, Loader2, MonitorSmartphone } from 'lucide-react';
+import { Search, Edit, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getCustomers, deleteCustomer, addNotification } from '@/lib/storage';
+import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications } from '@/lib/storage';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
 import AssignOptionsDialog from '@/components/dialogs/AssignOptionsDialog';
@@ -97,6 +97,17 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
         addNotification({ customer_id: null, type: 'delete', title: `Customer Deleted — ${customer?.name || 'Unknown'}`, message: `Admin permanently deleted customer account: ${customer?.name || 'Unknown'} (${customer?.email || ''}).` }).catch(() => {});
         toast({ title: 'Customer Deleted' });
         loadCustomers();
+      } catch (err) {
+        toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      }
+    }
+  };
+
+  const handleClearNotifications = async (customer) => {
+    if (confirm(`Are you sure you want to clear all notification history for ${customer.name}?`)) {
+      try {
+        await clearCustomerNotifications(customer.id);
+        toast({ title: 'Notifications Cleared', description: `Successfully cleared notifications for ${customer.name}.` });
       } catch (err) {
         toast({ title: 'Error', description: err.message, variant: 'destructive' });
       }
@@ -226,6 +237,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
                     <Btn color="#8B5CF6" onClick={() => handleLoginAsCustomer(customer)} title="Login as this customer"><MonitorSmartphone size={12} /> Login as</Btn>
                     <Btn color={c.subText} onClick={() => setEditingCustomer(customer)} title="Edit"><Edit size={12} /> Edit</Btn>
                     <Btn color="#16a34a" onClick={() => { setAssigningCustomer(customer); setShowAssignOptions(true); }} title="Assign product/service"><Plus size={12} /> Assign</Btn>
+                    <Btn color="#f59e0b" onClick={() => handleClearNotifications(customer)} title="Clear notification history"><BellOff size={12} /> Clear Notifs</Btn>
                     <Btn color="#ef4444" onClick={() => handleDelete(customer.id)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                   </div>
                 </td>
