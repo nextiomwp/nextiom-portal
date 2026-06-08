@@ -379,6 +379,9 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
   const activeQuotations = useMemo(() => {
     const today = new Date();
     return quotations.filter(q => {
+      const status = q.status || 'active';
+      if (status === 'accepted') return true;
+      if (status === 'declined' || status === 'expired') return false;
       if (!q.valid_until) return true;
       const valid = new Date(q.valid_until + 'T23:59:59');
       return valid >= today;
@@ -388,6 +391,8 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
   const expiredQuotations = useMemo(() => {
     const today = new Date();
     return quotations.filter(q => {
+      const status = q.status || 'active';
+      if (status === 'declined' || status === 'expired') return true;
       if (!q.valid_until) return false;
       const valid = new Date(q.valid_until + 'T23:59:59');
       return valid < today;
@@ -519,12 +524,20 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
                         <td style={style}>{q.valid_until}</td>
                         <td style={{ ...style, fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>{fmtCurrency(q.total, cur)}</td>
                         <td style={style}>
-                          {isExpired ? (
+                          {q.status === 'accepted' ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                              Accepted
+                            </span>
+                          ) : q.status === 'declined' ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                              Declined
+                            </span>
+                          ) : (q.status === 'expired' || ((q.status || 'active') === 'active' && q.valid_until && new Date(q.valid_until + 'T23:59:59') < new Date())) ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#888', background: 'rgba(136,136,136,0.12)', borderRadius: 20, padding: '2px 9px' }}>
                               Expired
                             </span>
                           ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#e87b35', background: 'rgba(232,123,53,0.12)', borderRadius: 20, padding: '2px 9px' }}>
                               Active
                             </span>
                           )}

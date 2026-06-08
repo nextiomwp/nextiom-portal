@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, Calendar, Edit3, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, Eye } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Quotation, getQuotations, getQuotation, deleteQuotation, fmtCurrency } from '@/lib/quotations'
+import { Quotation, getQuotations, getQuotation, deleteQuotation, fmtCurrency, updateQuotationStatus } from '@/lib/quotations'
 import { getPublicInvoiceSettings } from '@/lib/invoices'
 
 function dayKey(d: Date) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
@@ -316,16 +316,16 @@ export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 110px', gap: 8, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 130px 110px', gap: 8, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 <span>Quotation</span><span>Client</span><span>Amount</span>
-                <span style={{ textAlign: 'right' }}>Date</span><span></span>
+                <span style={{ textAlign: 'right' }}>Date</span><span>Status</span><span></span>
               </div>
               {paginated.map(q => {
                 const isExpired = q.valid_until && new Date(q.valid_until + 'T23:59:59') < new Date()
                 return (
                   <div
                     key={q.id}
-                    style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 110px', gap: 8, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
+                    style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 130px 110px', gap: 8, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
                   >
@@ -343,6 +343,40 @@ export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
                       )}
                     </div>
                     <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{q.quotation_date}</span>
+                    <div>
+                      <select
+                        value={q.status || 'active'}
+                        onChange={async (e) => {
+                          const newStatus = e.target.value
+                          try {
+                            await updateQuotationStatus(q.id!, newStatus)
+                            setQuotations(prev => prev.map(item => item.id === q.id ? { ...item, status: newStatus } : item))
+                            toast({ title: 'Quotation status updated' })
+                          } catch {
+                            toast({ title: 'Failed to update status', variant: 'destructive' })
+                          }
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          background: q.status === 'accepted' ? 'rgba(34,197,94,0.15)' : q.status === 'declined' ? 'rgba(239,68,68,0.15)' : q.status === 'expired' ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'rgba(232,123,53,0.15)',
+                          color: q.status === 'accepted' ? '#22c55e' : q.status === 'declined' ? '#ef4444' : q.status === 'expired' ? c.subText : c.brand,
+                          border: 'none',
+                          fontWeight: 700,
+                          borderRadius: 6,
+                          outline: 'none',
+                          width: '100%',
+                          maxWidth: 110,
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <option value="active" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Active</option>
+                        <option value="accepted" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Accepted</option>
+                        <option value="declined" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Declined</option>
+                        <option value="expired" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Expired</option>
+                      </select>
+                    </div>
                     <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
                       <button onClick={() => handlePrint(q)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Preview / PDF">
                         <Eye size={14} />

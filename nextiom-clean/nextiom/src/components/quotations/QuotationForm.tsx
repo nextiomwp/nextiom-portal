@@ -39,6 +39,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
   const [projectTimeline, setProjectTimeline] = useState('14 Working Days')
   const [items, setItems] = useState<QuotationItem[]>([newItem()])
   const [notes, setNotes] = useState('')
+  const [status, setStatus] = useState('active')
   const [allCustomers, setAllCustomers] = useState<any[]>([])
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -95,6 +96,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
         setProjectTimeline(q.project_timeline ?? '14 Working Days')
         setItems(q.items?.length ? q.items : [newItem()])
         setNotes(q.notes ?? '')
+        setStatus(q.status ?? 'active')
       } else {
         const no = await generateQuotationNo()
         setQuotationNo(no)
@@ -123,7 +125,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
       quotation_no: quotationNo, quotation_date: quotationDate, valid_until: validUntil, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress, notes, total,
-      project_timeline: projectTimeline
+      project_timeline: projectTimeline, status
     }
     try {
       if (existing?.id) {
@@ -200,7 +202,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
         </h2>
 
         {/* 1. Header Info */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, marginBottom: 24 }}>
           <div style={fld}>
             <label style={lbl}>Quotation Number</label>
             <input type="text" value={quotationNo} onChange={e => setQuotationNo(e.target.value)} style={inp} />
@@ -218,6 +220,15 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
             <select value={currency} onChange={e => setCurrency(e.target.value as QuotationCurrency)} style={inp}>
               <option value="LKR">LKR (Rs.)</option>
               <option value="USD">USD ($)</option>
+            </select>
+          </div>
+          <div style={fld}>
+            <label style={lbl}>Status</label>
+            <select value={status} onChange={e => setStatus(e.target.value)} style={inp}>
+              <option value="active">Active</option>
+              <option value="accepted">Accepted</option>
+              <option value="declined">Declined</option>
+              <option value="expired">Expired</option>
             </select>
           </div>
         </div>

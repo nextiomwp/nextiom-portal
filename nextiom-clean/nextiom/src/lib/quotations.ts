@@ -33,6 +33,7 @@ export interface Quotation {
   total: number
   currency?: QuotationCurrency
   project_timeline?: string
+  status?: string
   created_at?: string
   items?: QuotationItem[]
 }
@@ -187,4 +188,14 @@ export async function getCustomerQuotations(email: string): Promise<Quotation[]>
   if (error) throw error
   return (data ?? []).map((q: any) => ({ ...q, items: q.quotation_items ?? [] }))
 }
+
+export async function updateQuotationStatus(id: string, status: string): Promise<void> {
+  const { error } = await supabase
+    .from('quotations')
+    .update({ status })
+    .eq('id', id)
+
+  if (error) throw error
+}
+
 
