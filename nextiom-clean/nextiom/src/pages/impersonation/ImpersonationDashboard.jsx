@@ -93,7 +93,7 @@ function ImpersonationDashboard() {
   const [elapsed, setElapsed] = useState('00:00');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mountedTabs, setMountedTabs] = useState(() => new Set(['dashboard']));
-  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'emails', 'orders', 'billing', 'support']);
+  const [expandedMenus, setExpandedMenus] = useState([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [startTime] = useState(() => Date.now());
@@ -133,6 +133,21 @@ function ImpersonationDashboard() {
   useEffect(() => {
     if (KEEP_ALIVE_TABS.includes(activeTab)) {
       setMountedTabs(s => s.has(activeTab) ? s : new Set(s).add(activeTab));
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    // Auto-expand the parent group of the active sub-item
+    const parentGroup = NAV_STRUCTURE.find(item =>
+      item.type === 'group' && item.children.some(child => child.id === activeTab)
+    );
+    if (parentGroup) {
+      setExpandedMenus(prev => {
+        if (!prev.includes(parentGroup.id)) {
+          return [...prev, parentGroup.id];
+        }
+        return prev;
+      });
     }
   }, [activeTab]);
 

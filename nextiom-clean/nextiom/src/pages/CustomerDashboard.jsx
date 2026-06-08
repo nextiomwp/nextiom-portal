@@ -121,7 +121,22 @@ function CustomerDashboard() {
     }
   }, [activeTab]);
 
-  const [expandedMenus, setExpandedMenus] = useState(['hosting', 'domains', 'emails', 'orders', 'billing', 'support']);
+  const [expandedMenus, setExpandedMenus] = useState([]);
+
+  useEffect(() => {
+    // Auto-expand the parent group of the active sub-item
+    const parentGroup = NAV_STRUCTURE.find(item =>
+      item.type === 'group' && item.children.some(child => child.id === activeTab)
+    );
+    if (parentGroup) {
+      setExpandedMenus(prev => {
+        if (!prev.includes(parentGroup.id)) {
+          return [...prev, parentGroup.id];
+        }
+        return prev;
+      });
+    }
+  }, [activeTab]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => localStorage.getItem('cust_sidebar_collapsed') === 'true'
