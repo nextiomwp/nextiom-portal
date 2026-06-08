@@ -34,6 +34,19 @@ function formatCurrencyBreakdown(invoicesList) {
     .join(' / ') || fmtCurrency(0, 'LKR');
 }
 
+function formatOutstandingBreakdown(invoicesList) {
+  const totals = (invoicesList || []).reduce((acc, inv) => {
+    const cur = inv.currency === 'USD' ? 'USD' : 'LKR';
+    const due = (inv.status !== 'paid') ? (inv.total - (inv.paid_amount || 0)) : 0;
+    acc[cur] += due;
+    return acc;
+  }, { LKR: 0, USD: 0 });
+
+  return ['LKR', 'USD']
+    .map(cur => fmtCurrency(totals[cur], cur))
+    .join(' / ') || fmtCurrency(0, 'LKR');
+}
+
 function parseDateStr(str) {
   if (!str) return null;
   const d = new Date(str);
@@ -51,11 +64,12 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
     unpaid: { label: 'Unpaid', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', border: '#f59e0b' },
     overdue: { label: 'Overdue', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: '#ef4444' },
     payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)', border: '#3b82f6' },
+    partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.15)', border: '#a855f7' },
   }[status] || { label: status, color: '#888', bg: 'rgba(136,136,136,0.1)', border: '#888' };
 
   if (badgeStyle === 'dot') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: cfg.color }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: cfg.color, whiteSpace: 'nowrap' }}>
         <span style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
         {cfg.label}
       </span>
@@ -63,13 +77,13 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
   }
   if (badgeStyle === 'outline') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: cfg.color, border: `1px solid ${cfg.border}`, borderRadius: 20, padding: '2px 9px' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: cfg.color, border: `1px solid ${cfg.border}`, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap' }}>
         {cfg.label}
       </span>
     );
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: cfg.color, background: cfg.bg, borderRadius: 20, padding: '2px 9px' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: cfg.color, background: cfg.bg, borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap' }}>
       {cfg.label}
     </span>
   );
@@ -462,7 +476,8 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
 
 function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, isMobile = false }) {
   const [txn, setTxn] = useState('');
-  const [amount, setAmount] = useState(String(invoice.total ?? ''));
+  const remainingAmount = (invoice.total || 0) - (invoice.paid_amount || 0);
+  const [amount, setAmount] = useState(String(remainingAmount > 0 ? remainingAmount : invoice.total ?? ''));
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState(null);
@@ -560,10 +575,18 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
             <div style={{ background: isDark ? 'rgba(232,123,53,0.08)' : 'rgba(232,123,53,0.06)', border: `1px solid ${c.brand}40`, borderRadius: 10, padding: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>Invoice Summary</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.text, marginBottom: 4 }}>
-                <span>{invoice.invoice_no}</span>
+                <span>Invoice Total:</span>
                 <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}>{fmtAmt(invoice.total, invoice.currency)}</span>
               </div>
-              <div style={{ fontSize: 11, color: c.subText }}>Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.text, marginBottom: 4 }}>
+                <span>Paid So Far:</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#22c55e' }}>{fmtAmt(invoice.paid_amount || 0, invoice.currency)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.text, marginBottom: 4, borderTop: `1px dashed ${c.border}`, paddingTop: 4 }}>
+                <span>Remaining Balance:</span>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#ef4444' }}>{fmtAmt(remainingAmount, invoice.currency)}</span>
+              </div>
+              <div style={{ fontSize: 11, color: c.subText, marginTop: 8 }}>Due {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</div>
             </div>
           </div>
         </div>
@@ -661,12 +684,12 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   useEffect(() => { setPage(1); }, [query, statusFilter, calFilter, sortDir]);
 
   const totalBilled = formatCurrencyBreakdown(invoices);
-  const outstanding = formatCurrencyBreakdown(invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue'));
-  const unpaidCount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue').length;
+  const outstanding = formatOutstandingBreakdown(invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid'));
+  const unpaidCount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid').length;
   const thisYear = new Date().getFullYear();
   const paidThisYear = formatCurrencyBreakdown(invoices.filter(inv => inv.status === 'paid' && new Date(inv.invoice_date || 0).getFullYear() === thisYear));
   const overdueCount = invoices.filter(inv => inv.status === 'overdue').length;
-  const overduePast = formatCurrencyBreakdown(invoices.filter(inv => inv.status === 'overdue'));
+  const overduePast = formatOutstandingBreakdown(invoices.filter(inv => inv.status === 'overdue'));
 
   const anyFilter = query || statusFilter !== 'all' || calFilter.mode !== 'none';
 
@@ -698,8 +721,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
     setTimeout(() => el.remove(), 2400);
   };
 
-  const thS = { padding: '11px 16px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.1, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}`, textAlign: 'left' };
-  const tdS = { padding: '13px 16px', borderTop: `1px solid ${c.border}`, fontSize: 13, color: c.text, verticalAlign: 'middle' };
+  const thS = { padding: '11px 10px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}`, textAlign: 'left', whiteSpace: 'nowrap' };
+  const tdS = { padding: '12px 10px', borderTop: `1px solid ${c.border}`, fontSize: 13, color: c.text, verticalAlign: 'middle', whiteSpace: 'nowrap' };
   const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
   const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.25)' : '0 2px 12px rgba(0,0,0,0.06)' };
 
@@ -731,7 +754,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
       </div>
 
       {/* Two-column body */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 280px', gap: 20, alignItems: 'start' }}>
         {/* All Invoices */}
         <div style={cardS}>
           {/* Card header */}
@@ -755,12 +778,11 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 onChange={e => setQuery(e.target.value)}
               />
             </div>
-            {/* Status segmented */}
-            <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: 8, overflow: 'hidden' }}>
-              {['all', 'paid', 'unpaid', 'overdue', 'payment_submitted'].map(s => (
+                  <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: 8, overflow: 'hidden' }}>
+              {['all', 'paid', 'unpaid', 'overdue', 'payment_submitted', 'partially_paid'].map(s => (
                 <button key={s} onClick={() => setStatusFilter(s)}
                   style={{ padding: '6px 12px', border: 'none', borderRight: `1px solid ${c.border}`, background: statusFilter === s ? c.brand : 'transparent', color: statusFilter === s ? '#fff' : c.subText, fontSize: 12, fontWeight: statusFilter === s ? 700 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  {s === 'all' ? 'All' : s === 'payment_submitted' ? 'Pending Review' : s.charAt(0).toUpperCase() + s.slice(1)}
+                  {s === 'all' ? 'All' : s === 'payment_submitted' ? 'Pending Review' : s === 'partially_paid' ? 'Partially Paid' : s.charAt(0).toUpperCase() + s.slice(1)}
                 </button>
               ))}
             </div>
@@ -784,7 +806,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
             <div style={{ padding: 48, textAlign: 'center', color: c.subText }}>Loading invoices…</div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', minWidth: 880, borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', minWidth: isMobile ? 740 : '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thS}>Invoice</th>
@@ -795,7 +817,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                     </span>
                   </th>
                   <th style={thS}>Status</th>
-                  <th style={{ ...thS, textAlign: 'right' }}>Amount</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Total</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Paid</th>
                   <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -830,9 +853,14 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       <td style={{ ...tdS, textAlign: 'right' }}>
                         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13 }}>{fmtAmt(inv.total, inv.currency)}</span>
                       </td>
+                      <td style={{ ...tdS, textAlign: 'right' }}>
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: inv.paid_amount > 0 ? '#22c55e' : c.subText }}>
+                          {fmtAmt(inv.paid_amount || 0, inv.currency)}
+                        </span>
+                      </td>
                       <td style={{ ...tdS, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                          {(inv.status === 'unpaid' || inv.status === 'overdue') && (
+                          {(inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid') && (
                             <button onClick={() => setPayInvoice(inv)} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
                               <CreditCard size={13} /> Pay Invoice
                             </button>
@@ -851,7 +879,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                   );
                 })}
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' }}>
+                  <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' }}>
                     {invoices.length === 0 ? 'No invoices found. Contact support if you believe this is an error.' : 'No invoices match your current filters.'}
                   </td></tr>
                 )}

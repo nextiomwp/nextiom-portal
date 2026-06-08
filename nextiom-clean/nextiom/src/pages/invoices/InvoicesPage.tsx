@@ -8,6 +8,18 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   unpaid:  { label: 'Unpaid',  color: '#f59e0b', bg: 'rgba(245,158,11,0.13)' },
   overdue: { label: 'Overdue', color: '#ef4444', bg: 'rgba(239,68,68,0.13)' },
   payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.13)' },
+  partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.13)' },
+}
+
+function formatCollectedCurrencyBreakdown(invoices: Invoice[]) {
+  const totals = invoices.reduce<Record<InvoiceCurrency, number>>((acc, inv) => {
+    acc[invoiceCurrency(inv)] += inv.paid_amount || 0
+    return acc
+  }, { LKR: 0, USD: 0 })
+  return (['LKR', 'USD'] as InvoiceCurrency[])
+    .filter(cur => totals[cur] > 0)
+    .map(cur => fmtCurrency(totals[cur], cur))
+    .join(' / ') || fmtCurrency(0, 'LKR')
 }
 
 function invoiceCurrency(invoice: Invoice): InvoiceCurrency {
@@ -100,12 +112,16 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
                   <div style={val}>{invoice.client_name} ({invoice.client_email})</div>
                   <div style={lbl}>Transaction ID / Reference</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
-                  <div style={lbl}>Paid Amount</div>
+                  <div style={lbl}>Paid Amount (This Txn)</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const, fontWeight: 700, color: c.brand }}>{fmtCurrency(payment.paid_amount, invoiceCurrency(invoice))}</div>
                   <div style={lbl}>Payment Date</div>
                   <div style={val}>{payment.payment_date}</div>
                   <div style={lbl}>Invoice Total</div>
                   <div style={val}>{fmtCurrency(invoice.total, invoiceCurrency(invoice))}</div>
+                  <div style={lbl}>Total Approved Paid</div>
+                  <div style={val}>{fmtCurrency(invoice.paid_amount || 0, invoiceCurrency(invoice))}</div>
+                  <div style={lbl}>Remaining Balance</div>
+                  <div style={{ ...val, color: '#ef4444', fontWeight: 600 }}>{fmtCurrency(Math.max(0, (invoice.total || 0) - (invoice.paid_amount || 0)), invoiceCurrency(invoice))}</div>
                   {payment.notes && (<><div style={lbl}>Customer Notes</div><div style={val}>{payment.notes}</div></>)}
                   <div style={lbl}>Submitted</div>
                   <div style={val}>{payment.created_at ? new Date(payment.created_at).toLocaleString() : '—'}</div>
@@ -323,7 +339,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
   }, [invoices, search, statusFilter, calFilter, sortDir])
 
   const totalBilled = formatCurrencyBreakdown(invoices)
-  const totalPaid = formatCurrencyBreakdown(invoices.filter(i => i.status === 'paid'))
+  const totalPaid = formatCollectedCurrencyBreakdown(invoices)
   const totalOverdue = formatCurrencyBreakdown(invoices.filter(i => i.status === 'overdue'))
 
   async function handleDelete() {
@@ -412,6 +428,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
               <option value="unpaid">Unpaid</option>
               <option value="overdue">Overdue</option>
               <option value="payment_submitted">Pending Review</option>
+              <option value="partially_paid">Partially Paid</option>
             </select>
             <button
               onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
@@ -441,16 +458,16 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 80px 120px 70px', gap: 8, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                <span>Invoice</span><span>Client</span><span>Amount</span>
-                <span style={{ textAlign: 'right' }}>Date</span><span></span><span></span>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 110px 110px 80px 120px 70px', gap: 8, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <span>Invoice</span><span>Client</span><span>Total</span><span>Paid</span>
+                <span style={{ textAlign: 'right' }}>Date</span><span>Status</span><span></span>
               </div>
               {filtered.map(inv => {
                 const st = STATUS[inv.status] ?? STATUS.unpaid
                 return (
                   <div
                     key={inv.id}
-                    style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 80px 120px 70px', gap: 8, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
+                    style={{ display: 'grid', gridTemplateColumns: '100px 1fr 110px 110px 80px 120px 70px', gap: 8, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
                   >
@@ -460,6 +477,9 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                       {inv.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_company}</div>}
                     </div>
                     <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(inv.total, invoiceCurrency(inv))}</span>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: inv.paid_amount && inv.paid_amount > 0 ? '#22c55e' : c.subText }}>
+                      {fmtCurrency(inv.paid_amount || 0, invoiceCurrency(inv))}
+                    </span>
                     <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
                     <div style={{ display: 'flex', gap: 2 }}>

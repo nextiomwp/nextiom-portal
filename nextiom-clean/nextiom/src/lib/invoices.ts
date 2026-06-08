@@ -16,7 +16,7 @@ export interface InvoiceItem {
   sort_order?: number
 }
 
-export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted'
+export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted' | 'partially_paid'
 export type InvoiceCurrency = 'LKR' | 'USD'
 
 export interface Invoice {
@@ -33,6 +33,7 @@ export interface Invoice {
   client_address: string
   notes: string
   total: number
+  paid_amount?: number
   currency?: InvoiceCurrency
   created_at?: string
   items?: InvoiceItem[]
@@ -431,18 +432,62 @@ export async function getLatestPaymentByInvoice(invoiceId: string): Promise<Invo
 }
 
 export async function approveInvoicePayment(payment: InvoicePayment, invoice: Invoice): Promise<void> {
-  await supabase.from('invoice_payments').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', payment.id)
-  await supabase.from('invoices').update({ status: 'paid' }).eq('id', invoice.id)
+  const { error: pErr } = await supabase
+    .from('invoice_payments')
+    .update({ status: 'approved', updated_at: new Date().toISOString() })
+    .eq('id', payment.id)
+  if (pErr) throw pErr
+
+  const { data: approvedPayments, error: fetchErr } = await supabase
+    .from('invoice_payments')
+    .select('paid_amount')
+    .eq('invoice_id', invoice.id)
+    .eq('status', 'approved')
+  if (fetchErr) throw fetchErr
+
+  const totalPaid = (approvedPayments ?? []).reduce((sum, p) => sum + Number(p.paid_amount || 0), 0)
+  const isFullyPaid = totalPaid >= (invoice.total || 0) - 0.01
+  const newStatus: InvoiceStatus = isFullyPaid ? 'paid' : 'partially_paid'
+
+  const { error: invErr } = await supabase
+    .from('invoices')
+    .update({ status: newStatus, paid_amount: totalPaid })
+    .eq('id', invoice.id)
+  if (invErr) throw invErr
+
+  const cur = invoice.currency || 'LKR'
   await notifyCustomerByEmail(invoice.client_email, {
     type: 'payment_approved',
-    title: `Payment Approved: ${invoice.invoice_no}`,
-    message: `Your payment for invoice ${invoice.invoice_no} has been approved. Thank you!`,
+    title: isFullyPaid ? `Payment Approved: ${invoice.invoice_no}` : `Payment Approved (Installment): ${invoice.invoice_no}`,
+    message: isFullyPaid
+      ? `Your payment for invoice ${invoice.invoice_no} has been approved. Thank you! Your invoice is now fully paid.`
+      : `Your installment payment of ${fmtCurrency(payment.paid_amount, cur)} for invoice ${invoice.invoice_no} has been approved. Total paid: ${fmtCurrency(totalPaid, cur)} of ${fmtCurrency(invoice.total, cur)}.`,
   })
 }
 
 export async function rejectInvoicePayment(payment: InvoicePayment, invoice: Invoice, reason: string): Promise<void> {
-  await supabase.from('invoice_payments').update({ status: 'rejected', admin_reason: reason, updated_at: new Date().toISOString() }).eq('id', payment.id)
-  await supabase.from('invoices').update({ status: 'unpaid' }).eq('id', invoice.id)
+  const { error: pErr } = await supabase
+    .from('invoice_payments')
+    .update({ status: 'rejected', admin_reason: reason, updated_at: new Date().toISOString() })
+    .eq('id', payment.id)
+  if (pErr) throw pErr
+
+  const { data: approvedPayments, error: fetchErr } = await supabase
+    .from('invoice_payments')
+    .select('paid_amount')
+    .eq('invoice_id', invoice.id)
+    .eq('status', 'approved')
+  if (fetchErr) throw fetchErr
+
+  const totalPaid = (approvedPayments ?? []).reduce((sum, p) => sum + Number(p.paid_amount || 0), 0)
+  const newStatus: InvoiceStatus = totalPaid > 0 ? 'partially_paid' : 'unpaid'
+
+  const { error: invErr } = await supabase
+    .from('invoices')
+    .update({ status: newStatus, paid_amount: totalPaid })
+    .eq('id', invoice.id)
+  if (invErr) throw invErr
+
   await notifyCustomerByEmail(invoice.client_email, {
     type: 'payment_rejected',
     title: `Payment Rejected: ${invoice.invoice_no}`,
