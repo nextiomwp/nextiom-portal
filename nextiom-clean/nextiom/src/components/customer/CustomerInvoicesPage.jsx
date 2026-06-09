@@ -430,7 +430,7 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
                   <div style={lbl}>Payment Slip</div>
                   {payment.slip_url ? (
                     <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: 'hidden', background: isDark ? '#22252C' : '#fafafa' }}>
-                      {/\.(png|jpe?g|gif|webp)$/i.test(payment.slip_url) ? (
+                      {/\.(png|jpe?g|gif|webp)(?:\?.*)?$/i.test(payment.slip_url) ? (
                         <img src={payment.slip_url} alt="slip" style={{ width: '100%', display: 'block', maxHeight: 280, objectFit: 'contain' }} />
                       ) : (
                         <div style={{ padding: 20, fontSize: 13, color: c.text }}>Slip uploaded (PDF/other).</div>

@@ -1,7 +1,7 @@
 // src/lib/invoices.ts
 //All Supabase queries for the invoice module
 
-import { supabase } from './customSupabaseClient'
+import { supabase, supabaseUrl as SUPABASE_URL } from './customSupabaseClient'
 import { assertPortalActionsAllowed } from './storage'
 
 // ── Types ────────────────────────────────────────────────────
@@ -348,10 +348,61 @@ export async function uploadPaymentSlip(invoiceId: string, file: File): Promise<
   return path
 }
 
-export async function getPaymentSlipSignedUrl(path: string, expiresInSec = 3600): Promise<string> {
-  // Back-compat: if `path` is already a full URL (legacy public-bucket data),
-  // return it unchanged.
-  if (/^https?:\/\//i.test(path)) return path
+export async function getPaymentSlipSignedUrl(rawPath: string, expiresInSec = 3600): Promise<string> {
+  // Normalise the stored value to a plain storage path.
+  // Legacy rows may contain a full URL (Supabase public/signed URL, or a
+  // local-dev-server URL like http://10.x.x.x:3000/payment-slips/...).
+  // We extract the meaningful path segment in all cases rather than returning
+  // those stale URLs directly — they are either expired or unreachable.
+  let path = rawPath
+
+  if (/^https?:\/\//i.test(rawPath)) {
+    try {
+      const url = new URL(rawPath)
+      const supabaseHost = new URL(SUPABASE_URL).hostname
+
+      if (url.hostname === supabaseHost) {
+        // Genuine Supabase storage URL — strip known prefixes to get the path.
+        // Handles both /object/public/<bucket>/<path> and /object/sign/<bucket>/<path>
+        const m = url.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/[^/]+\/(.+)$/)
+        if (m) {
+          path = m[1]
+        } else {
+          // Cannot parse — return as-is (may still work for public assets).
+          return rawPath
+        }
+      } else {
+        // Non-Supabase URL (localhost, LAN IP, external CDN, etc.).
+        // Try to extract a storage path from the URL pathname.
+        // Pattern: anything after /payment-slips/ or /logos/ etc.
+        const m = url.pathname.match(/\/((?:payment-slips|logos)\/.+)$/)
+        if (m) {
+          path = m[1]
+        } else {
+          // Cannot map to a known storage path; return original and hope for the best.
+          return rawPath
+        }
+      }
+    } catch {
+      // Malformed URL — treat the raw value as a plain path.
+      path = rawPath
+    }
+  }
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user?.app_metadata?.role === 'admin') {
+      const { data, error } = await supabase.functions.invoke('admin-document-link', {
+        body: { path, bucket: 'invoice-assets' }
+      })
+      if (!error && data?.signedUrl) {
+        return data.signedUrl
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to resolve slip URL via Edge Function, falling back to direct storage call:', err)
+  }
+
   const { data, error } = await supabase.storage
     .from('invoice-assets')
     .createSignedUrl(path, expiresInSec)
