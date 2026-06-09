@@ -391,75 +391,8 @@ export async function getPaymentSlipSignedUrl(rawPath: string, expiresInSec = 36
     }
   }
 
-  // 1. Try direct storage client first (works for both admins & owners via RLS)
-  try {
-    const { data, error } = await supabase.storage
-      .from('invoice-assets')
-      .createSignedUrl(path, expiresInSec)
-    if (!error && data?.signedUrl) {
-      return data.signedUrl
-    }
-    if (error) {
-      console.warn('Direct storage client returned error, trying Edge Function fallback:', error)
-    }
-  } catch (directErr) {
-    console.warn('Direct storage client threw error, trying Edge Function fallback:', directErr)
-  }
-
-  // 2. Fallback to Edge function for admin users if direct client failed
-  try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user?.app_metadata?.role === 'admin') {
-      let signedUrl = ''
-      try {
-        const { data, error } = await supabase.functions.invoke('admin-document-link', {
-          body: { path, bucket: 'invoice-assets' }
-        })
-        if (!error && data?.signedUrl) {
-          signedUrl = data.signedUrl
-        } else if (error) {
-          console.warn('supabase.functions.invoke returned error:', error)
-        }
-      } catch (invokeErr) {
-        console.warn('supabase.functions.invoke failed:', invokeErr)
-      }
-
-      // Fallback fallback: direct HTTP fetch to Edge function endpoint
-      if (!signedUrl) {
-        const sessionRes = await supabase.auth.getSession()
-        const token = sessionRes.data?.session?.access_token
-        if (token) {
-          const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-document-link`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_ANON_KEY
-            },
-            body: JSON.stringify({ path, bucket: 'invoice-assets' })
-          })
-          if (res.ok) {
-            const data = await res.json()
-            if (data?.signedUrl) {
-              signedUrl = data.signedUrl
-            }
-          } else {
-            console.warn('Direct edge function fetch response error:', res.status, await res.text())
-          }
-        }
-      }
-
-      if (signedUrl) {
-        return signedUrl
-      }
-      throw new Error('Failed to generate document link via Edge Function fallback')
-    }
-  } catch (err: any) {
-    console.warn('Failed to resolve slip URL via Edge Function:', err)
-    throw err
-  }
-
-  throw new Error('Failed to generate signed URL for payment slip')
+  const { data } = supabase.storage.from('invoice-assets').getPublicUrl(path)
+  return data.publicUrl || ''
 }
 
 async function notifyCustomerByEmail(email: string, notif: { type: string; title: string; message: string }): Promise<void> {

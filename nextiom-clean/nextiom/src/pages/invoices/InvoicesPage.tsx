@@ -93,22 +93,9 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
     finally { setBusy(false) }
   }
 
-  async function downloadSlip() {
-    if (!payment) return
-    // Use the raw storage path (slip_path) to generate a fresh signed URL via
-    // the admin-document-link edge function. Never use slip_url directly — it
-    // may be a bare storage path which React Router would intercept.
-    const rawPath = payment.slip_path || payment.slip_url
-    if (!rawPath) return
-    setSlipLoading(true)
-    try {
-      const signedUrl = await getPaymentSlipSignedUrl(rawPath)
-      window.open(signedUrl, '_blank', 'noopener,noreferrer')
-    } catch (err: any) {
-      toast({ title: 'Could not open slip', description: err?.message || 'Failed to generate a download link. Please try again.', variant: 'destructive' })
-    } finally {
-      setSlipLoading(false)
-    }
+  function downloadSlip() {
+    if (!payment || !payment.slip_url) return
+    window.open(payment.slip_url, '_blank', 'noopener,noreferrer')
   }
 
   const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase' as const, letterSpacing: 0.6, marginBottom: 4 }
