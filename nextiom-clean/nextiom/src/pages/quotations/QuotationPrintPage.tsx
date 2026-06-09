@@ -184,7 +184,7 @@ export default function QuotationPrintPage() {
             </thead>
             <tbody>
               {items.map((item: any, i: number) => (
-                <tr key={i} style={{ borderBottom: '1px solid #e5e7eb', background: i % 2 === 1 ? '#f9fafb' : 'white' }}>
+                <tr key={i} style={{ borderBottom: '1px solid #e5e7eb', background: 'white' }}>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: '#1f2937', fontWeight: 500 }}>{item.description}</td>
                   <td style={{ padding: '12px 14px', textAlign: 'center', fontSize: 13, color: '#4b5563' }}>{item.qty}</td>
                   <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#4b5563' }}>{fmtCurrency(item.unit_price, currency)}</td>
@@ -254,7 +254,7 @@ export default function QuotationPrintPage() {
                       </tr>
                       <tr>
                         <td style={{ padding: '2px 0', fontWeight: 600 }}>Account Number</td>
-                        <td style={{ padding: '2px 8px', fontFamily: 'monospace' }}>: &nbsp; {s.account_no}</td>
+                        <td style={{ padding: '2px 8px' }}>: &nbsp; {s.account_no}</td>
                       </tr>
                       <tr>
                         <td style={{ padding: '2px 0', fontWeight: 600 }}>Bank</td>
