@@ -632,7 +632,25 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
     if (!email) return;
     setLoading(true);
     Promise.all([getCustomerInvoices(email), getPublicInvoiceSettings()])
-      .then(([invs, sett]) => { setInvoices(invs || []); setSettings(sett); })
+      .then(([invs, sett]) => {
+        const getLocalDateString = () => {
+          const d = new Date();
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        };
+        const todayStr = getLocalDateString();
+        const mapped = (invs || []).map(inv => {
+          const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : '';
+          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
+            return { ...inv, status: 'overdue' };
+          }
+          return inv;
+        });
+        setInvoices(mapped);
+        setSettings(sett);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [email, refreshKey]);

@@ -28,7 +28,9 @@ function DomainDetailsModal({ domain, isOpen, onClose, isDark = false, c = {} })
     return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
   };
 
-  const { bg: statusBg, color: statusColor } = statusBadgeStyle(domain.status, isDark);
+  const isExpired = domain.expiry_date && new Date(domain.expiry_date).getTime() < new Date().getTime();
+  const displayStatus = isExpired ? 'EXPIRED' : (domain.status || 'Unknown');
+  const { bg: statusBg, color: statusColor } = statusBadgeStyle(displayStatus, isDark);
 
   const rows = [
     { label: 'Domain Name', value: domain.name || domain.domain_name || 'N/A' },
@@ -64,7 +66,7 @@ function DomainDetailsModal({ domain, isOpen, onClose, isDark = false, c = {} })
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ background: statusBg, color: statusColor, fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 99 }}>
-              {domain.status || 'Unknown'}
+              {displayStatus}
             </span>
             <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: isDark ? 'rgba(255,255,255,0.06)' : '#f5f5f5', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X style={{ width: 16, height: 16, color: subText }} />

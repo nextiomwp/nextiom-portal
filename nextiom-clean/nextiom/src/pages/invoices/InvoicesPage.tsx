@@ -11,6 +11,14 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.13)' },
 }
 
+function getLocalDateString() {
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function formatCollectedCurrencyBreakdown(invoices: Invoice[]) {
   const totals = invoices.reduce<Record<InvoiceCurrency, number>>((acc, inv) => {
     acc[invoiceCurrency(inv)] += inv.paid_amount || 0
@@ -335,7 +343,18 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
 
   async function load() {
     setLoading(true)
-    try { setInvoices(await getInvoices()) }
+    try {
+      const data = await getInvoices()
+      const todayStr = getLocalDateString()
+      const mapped = data.map(inv => {
+        const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : ''
+        if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
+          return { ...inv, status: 'overdue' as const }
+        }
+        return inv
+      })
+      setInvoices(mapped)
+    }
     catch { toast({ title: 'Failed to load invoices', variant: 'destructive' }) }
     finally { setLoading(false) }
   }
@@ -487,16 +506,16 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 110px 110px 80px 120px 70px', gap: 8, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '85px 1fr 100px 100px 85px 85px 115px 75px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 <span>Invoice</span><span>Client</span><span>Total</span><span>Paid</span>
-                <span style={{ textAlign: 'right' }}>Date</span><span>Status</span><span></span>
+                <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
               </div>
               {filtered.map(inv => {
                 const st = STATUS[inv.status] ?? STATUS.unpaid
                 return (
                   <div
                     key={inv.id}
-                    style={{ display: 'grid', gridTemplateColumns: '100px 1fr 110px 110px 80px 120px 70px', gap: 8, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
+                    style={{ display: 'grid', gridTemplateColumns: '85px 1fr 100px 100px 85px 85px 115px 75px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
                   >
@@ -510,6 +529,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                       {fmtCurrency(inv.paid_amount || 0, invoiceCurrency(inv))}
                     </span>
                     <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
+                    <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.due_date ? inv.due_date.substring(0, 10) : '—'}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
                     <div style={{ display: 'flex', gap: 2 }}>
                       {inv.status === 'payment_submitted' && (

@@ -131,7 +131,9 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
             </thead>
             <tbody>
               {filtered.length > 0 ? filtered.map(email => {
-                const { bg, color } = statusStyle(email.status, isDark);
+                const isExpired = email.expiry_date && new Date(email.expiry_date).getTime() < new Date().getTime();
+                const displayStatus = isExpired ? 'EXPIRED' : (email.status || 'Unknown');
+                const { bg, color } = statusStyle(displayStatus, isDark);
                 return (
                   <tr
                     key={email.id}
@@ -142,7 +144,7 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                     <td style={{ padding: '12px 20px', color: text, fontWeight: 600, fontSize: 13 }}>{email.email}</td>
                     <td style={{ padding: '12px 20px' }}>
                       <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
-                        {email.status || 'Unknown'}
+                        {displayStatus}
                       </span>
                     </td>
                     <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
@@ -201,7 +203,7 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
             <div style={{ display: 'grid', gap: 14 }}>
               {[
                 { label: 'Email', value: viewEmail.email },
-                { label: 'Status', value: viewEmail.status },
+                { label: 'Status', value: (viewEmail.expiry_date && new Date(viewEmail.expiry_date).getTime() < new Date().getTime()) ? 'EXPIRED' : viewEmail.status },
                 { label: 'Registration Period', value: viewEmail.registration_period ? `${viewEmail.registration_period} Year(s)` : '—' },
                 { label: 'Start Date', value: viewEmail.start_date ? new Date(viewEmail.start_date).toLocaleDateString() : viewEmail.created_at ? new Date(viewEmail.created_at).toLocaleDateString() : '—' },
                 { label: 'Expiry Date', value: viewEmail.expiry_date ? new Date(viewEmail.expiry_date).toLocaleDateString() : '—' },

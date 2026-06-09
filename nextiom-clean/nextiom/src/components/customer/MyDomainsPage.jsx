@@ -147,7 +147,9 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
             </thead>
             <tbody>
               {filteredDomains.length > 0 ? filteredDomains.map(domain => {
-                const { bg, color } = statusStyle(domain.status, isDark);
+                const isExpired = domain.expiry_date && new Date(domain.expiry_date).getTime() < new Date().getTime();
+                const displayStatus = isExpired ? 'EXPIRED' : (domain.status || 'Unknown');
+                const { bg, color } = statusStyle(displayStatus, isDark);
                 return (
                   <tr
                     key={domain.id}
@@ -158,7 +160,7 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
                     <td style={{ padding: '12px 20px', color: text, fontWeight: 600, fontSize: 13 }}>{domain.name}</td>
                     <td style={{ padding: '12px 20px' }}>
                       <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
-                        {domain.status || 'Unknown'}
+                        {displayStatus}
                       </span>
                     </td>
                     <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
