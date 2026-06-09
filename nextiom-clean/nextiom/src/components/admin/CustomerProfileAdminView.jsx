@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound, Package, Edit, RefreshCw, Infinity, Lock, Key, X } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
+import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
+import AssignDomainDialog from '@/components/dialogs/AssignDomainDialog';
+import AssignEmailDialog from '@/components/dialogs/AssignEmailDialog';
 import {
   getCustomerById,
   updateCustomer,
@@ -40,6 +43,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   });
   const { toast } = useToast();
   const [showEmailCreds, setShowEmailCreds] = useState(null);
+  const [editHostingItem, setEditHostingItem] = useState(null);
+  const [editDomainItem, setEditDomainItem] = useState(null);
+  const [editEmailItem, setEditEmailItem] = useState(null);
 
   const loadAll = async () => {
     if (!customer?.id) return;
@@ -375,8 +381,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: d.expiry_date ? c.text : c.subText, fontSize: 12 }}>{d.expiry_date ? format(new Date(d.expiry_date), 'MMM dd, yy') : '—'}</span></td>
                     <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                        <Btn color={c.brand} onClick={() => sendExpiryReminder('domain', d)}><Bell size={11} /></Btn>
-                        <Btn color="#ef4444" onClick={() => deleteItem('domain', d.id)}><Trash2 size={11} /></Btn>
+                        <Btn color="#378ADD" onClick={() => setEditDomainItem(d)} title="Edit"><Edit size={11} /></Btn>
+                        <Btn color={c.brand} onClick={() => sendExpiryReminder('domain', d)} title="Send expiry notification"><Bell size={11} /></Btn>
+                        <Btn color="#ef4444" onClick={() => deleteItem('domain', d.id)} title="Delete"><Trash2 size={11} /></Btn>
                       </div>
                     </td>
                   </tr>
@@ -413,8 +420,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                       <td style={row}><span style={{ color: expiry ? c.text : c.subText, fontSize: 12 }}>{expiry ? format(expiry, 'MMM dd, yy') : '—'}</span></td>
                       <td style={{ ...row, textAlign: 'right' }}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                          <Btn color={c.brand} onClick={() => sendExpiryReminder('hosting', h)}><Bell size={11} /></Btn>
-                          <Btn color="#ef4444" onClick={() => deleteItem('hosting', h.id)}><Trash2 size={11} /></Btn>
+                          <Btn color="#378ADD" onClick={() => setEditHostingItem(h)} title="Edit"><Edit size={11} /></Btn>
+                          <Btn color={c.brand} onClick={() => sendExpiryReminder('hosting', h)} title="Send expiry notification"><Bell size={11} /></Btn>
+                          <Btn color="#ef4444" onClick={() => deleteItem('hosting', h.id)} title="Delete"><Trash2 size={11} /></Btn>
                         </div>
                       </td>
                     </tr>
@@ -533,8 +541,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     </td>
                     <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                        <Btn color={c.brand} onClick={() => sendExpiryReminder('email', e)}><Bell size={11} /></Btn>
-                        <Btn color="#ef4444" onClick={() => deleteEmailItem(e.id)}><Trash2 size={11} /></Btn>
+                        <Btn color="#378ADD" onClick={() => setEditEmailItem(e)} title="Edit"><Edit size={11} /></Btn>
+                        <Btn color={c.brand} onClick={() => sendExpiryReminder('email', e)} title="Send expiry notification"><Bell size={11} /></Btn>
+                        <Btn color="#ef4444" onClick={() => deleteEmailItem(e.id)} title="Delete"><Trash2 size={11} /></Btn>
                       </div>
                     </td>
                   </tr>
@@ -697,6 +706,57 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
           </div>
         </div>
       )}
+
+      <AssignHostingDialog
+        open={!!editHostingItem}
+        onClose={() => setEditHostingItem(null)}
+        customer={{
+          id: customerData.id,
+          name: customerData.name || 'Customer',
+          email: customerData.email || ''
+        }}
+        request={editHostingItem}
+        c={c}
+        isEditMode={true}
+        onSuccess={() => {
+          setEditHostingItem(null);
+          loadAll();
+        }}
+      />
+
+      <AssignDomainDialog
+        open={!!editDomainItem}
+        onClose={() => setEditDomainItem(null)}
+        customer={{
+          id: customerData.id,
+          name: customerData.name || 'Customer',
+          email: customerData.email || ''
+        }}
+        request={editDomainItem}
+        c={c}
+        isEditMode={true}
+        onSuccess={() => {
+          setEditDomainItem(null);
+          loadAll();
+        }}
+      />
+
+      <AssignEmailDialog
+        open={!!editEmailItem}
+        onClose={() => setEditEmailItem(null)}
+        customer={{
+          id: customerData.id,
+          name: customerData.name || 'Customer',
+          email: customerData.email || ''
+        }}
+        request={editEmailItem}
+        c={c}
+        isEditMode={true}
+        onSuccess={() => {
+          setEditEmailItem(null);
+          loadAll();
+        }}
+      />
     </div>
   );
 }

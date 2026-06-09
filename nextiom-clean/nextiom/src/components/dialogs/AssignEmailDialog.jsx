@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Loader2, Check, DollarSign, Key, User as UserIcon } from 'lucide-react';
-import { assignEmailToCustomer } from '@/lib/storage';
+import { assignEmailToCustomer, updateEmailRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
-function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
+function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isEditMode = false }) {
   const [emailName, setEmailName] = useState('');
   const [extension, setExtension] = useState('.com');
   const [regPeriod, setRegPeriod] = useState('1');
@@ -13,8 +13,45 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [emailUsername, setEmailUsername] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
+  const [url, setUrl] = useState('');
+  const [status, setStatus] = useState('approved');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [adminReply, setAdminReply] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    if (request) {
+      setEmailName(request.email || '');
+      setRegPeriod(request.registration_period ? String(request.registration_period) : '1');
+      setPrice(request.price ? String(request.price) : '');
+      setNotes(request.notes || '');
+      setStartDate(request.start_date ? request.start_date.split('T')[0] : request.created_at ? request.created_at.split('T')[0] : new Date().toISOString().split('T')[0]);
+      setEmailUsername(request.email_username || '');
+      setEmailPassword(request.email_password || '');
+
+      setUrl(request.url || '');
+      setStatus(request.status || 'approved');
+      setExpiryDate(request.expiry_date ? request.expiry_date.split('T')[0] : '');
+      setAdminReply(request.admin_reply || '');
+    } else {
+      setEmailName('');
+      setExtension('.com');
+      setRegPeriod('1');
+      setPrice('');
+      setMultiYearPct('');
+      setNotes('');
+      setStartDate(new Date().toISOString().split('T')[0]);
+      setEmailUsername('');
+      setEmailPassword('');
+
+      setUrl('');
+      setStatus('approved');
+      setExpiryDate('');
+      setAdminReply('');
+    }
+  }, [open, request]);
 
   if (!open) return null;
 
@@ -55,34 +92,53 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
 
   const handleSubmit = async () => {
     if (!emailName.trim()) {
-      toast({ title: 'Error', description: 'Please enter an email name', variant: 'destructive' });
+      toast({ title: 'Error', description: isEditMode ? 'Please enter an email address' : 'Please enter an email name', variant: 'destructive' });
       return;
     }
 
     setSaving(true);
     try {
-      const fullEmail = `${emailName.trim()}${extension}`;
-      const finalPrice = calculatedPrice > 0 ? calculatedPrice : null;
-      await assignEmailToCustomer({
-        customerId: customer.id,
-        email: fullEmail,
-        registrationPeriod: regPeriod,
-        expiryDate: calcExpiry(),
-        notes: notes.trim() || null,
-        price: finalPrice,
-        startDate,
-        emailUsername: emailUsername.trim() || null,
-        emailPassword: emailPassword.trim() || null,
-      });
+      if (isEditMode) {
+        await updateEmailRequest(request.id, {
+          email: emailName.trim(),
+          url: url.trim() || null,
+          status,
+          expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null,
+          admin_reply: adminReply.trim() || null,
+          email_username: emailUsername.trim() || null,
+          email_password: emailPassword.trim() || null,
+          registration_period: regPeriod ? Number(regPeriod) : null,
+          start_date: startDate ? new Date(startDate).toISOString() : null,
+          notes: notes.trim() || null,
+          price: price ? parseFloat(price) : null,
+        });
+        addNotification({ customer_id: null, type: 'request_updated', title: `Email Updated — ${emailName}`, message: `Admin updated email record for ${emailName} (status: ${status}).` }).catch(() => {});
+        toast({ title: 'Email Updated', description: 'Changes saved successfully.' });
+      } else {
+        const fullEmail = `${emailName.trim()}${extension}`;
+        const finalPrice = calculatedPrice > 0 ? calculatedPrice : null;
+        await assignEmailToCustomer({
+          customerId: customer.id,
+          email: fullEmail,
+          registrationPeriod: regPeriod,
+          expiryDate: calcExpiry(),
+          notes: notes.trim() || null,
+          price: finalPrice,
+          startDate,
+          emailUsername: emailUsername.trim() || null,
+          emailPassword: emailPassword.trim() || null,
+          url: url.trim() || null,
+        });
+        toast({ title: 'Email Assigned', description: `${fullEmail} assigned to ${customer.name}` });
+        setEmailName(''); setExtension('.com'); setRegPeriod('1');
+        setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
+        setEmailUsername(''); setEmailPassword(''); setUrl('');
+      }
 
-      toast({ title: 'Email Assigned', description: `${fullEmail} assigned to ${customer.name}` });
-      setEmailName(''); setExtension('.com'); setRegPeriod('1');
-      setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
-      setEmailUsername(''); setEmailPassword('');
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast({ title: 'Error', description: err?.message || 'Failed to assign email', variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || (isEditMode ? 'Failed to update email' : 'Failed to assign email'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -97,8 +153,9 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
         style={{
           background: card, border: `1px solid ${borderStrong}`,
           borderRadius: 16, width: '100%', maxWidth: 520,
+          maxHeight: '90vh', overflowY: 'auto',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
-          overflow: 'hidden'
+          scrollbarWidth: 'thin'
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -112,7 +169,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
               <Mail size={16} color="#fb923c" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: text }}>Assign Email</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: text }}>{isEditMode ? 'Edit Email' : 'Assign Email'}</div>
               <div style={{ fontSize: 11, color: subText }}>{customer?.name} — {customer?.email}</div>
             </div>
           </div>
@@ -123,35 +180,94 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
 
         {/* Form */}
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Email Name + Extension */}
-          <div>
-            <label style={labelS}>Email Name *</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ position: 'relative', flex: 1 }}>
+          {/* Email Name + Extension / Email Address */}
+          {!isEditMode ? (
+            <div>
+              <label style={labelS}>Email Name *</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <Mail size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
+                  <input
+                    style={{ ...inpS, paddingLeft: 30 }}
+                    placeholder="info@"
+                    value={emailName}
+                    onChange={e => setEmailName(e.target.value)}
+                    onFocus={e => e.target.style.borderColor = brand}
+                    onBlur={e => e.target.style.borderColor = border}
+                  />
+                </div>
+                <select
+                  style={{ ...inpS, width: 110, flex: 'none', appearance: 'none' }}
+                  value={extension}
+                  onChange={e => setExtension(e.target.value)}
+                >
+                  {['.com', '.net', '.org', '.io', '.co.uk', '.lk', '.xyz'].map(ext => (
+                    <option key={ext} value={ext}>{ext}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ fontSize: 12, color: subText, marginTop: 4 }}>
+                Full email: <strong style={{ color: text }}>{emailName || '...'}{extension}</strong>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label style={labelS}>Email Address *</label>
+              <div style={{ position: 'relative' }}>
                 <Mail size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
                 <input
                   style={{ ...inpS, paddingLeft: 30 }}
-                  placeholder="info@"
+                  placeholder="user@example.com"
                   value={emailName}
                   onChange={e => setEmailName(e.target.value)}
                   onFocus={e => e.target.style.borderColor = brand}
                   onBlur={e => e.target.style.borderColor = border}
                 />
               </div>
-              <select
-                style={{ ...inpS, width: 110, flex: 'none', appearance: 'none' }}
-                value={extension}
-                onChange={e => setExtension(e.target.value)}
-              >
-                {['.com', '.net', '.org', '.io', '.co.uk', '.lk', '.xyz'].map(ext => (
-                  <option key={ext} value={ext}>{ext}</option>
-                ))}
-              </select>
             </div>
-            <div style={{ fontSize: 12, color: subText, marginTop: 4 }}>
-              Full email: <strong style={{ color: text }}>{emailName || '...'}{extension}</strong>
-            </div>
+          )}
+
+          {/* Login URL */}
+          <div>
+            <label style={labelS}>Login URL</label>
+            <input
+              style={inpS}
+              placeholder="https://mail.example.com"
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              onFocus={e => e.target.style.borderColor = brand}
+              onBlur={e => e.target.style.borderColor = border}
+            />
           </div>
+
+          {/* Status and Expiry Date */}
+          {isEditMode && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelS}>Status</label>
+                <select
+                  style={{ ...inpS, appearance: 'none' }}
+                  value={status}
+                  onChange={e => setStatus(e.target.value)}
+                >
+                  {['pending', 'approved', 'active', 'expired', 'suspended', 'rejected'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelS}>Expiry Date</label>
+                <input
+                  style={inpS}
+                  type="date"
+                  value={expiryDate}
+                  onChange={e => setExpiryDate(e.target.value)}
+                  onFocus={e => e.target.style.borderColor = brand}
+                  onBlur={e => e.target.style.borderColor = border}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Period + Price */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -263,6 +379,18 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
               onChange={e => setNotes(e.target.value)}
             />
           </div>
+
+          {isEditMode && (
+            <div>
+              <label style={labelS}>Admin Reply / Notes</label>
+              <textarea
+                style={{ ...inpS, resize: 'vertical', minHeight: 72 }}
+                placeholder="Admin notes or reply to customer..."
+                value={adminReply}
+                onChange={e => setAdminReply(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -284,7 +412,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
             }}
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {saving ? 'Assigning…' : 'Assign Email'}
+            {saving ? (isEditMode ? 'Saving…' : 'Assigning…') : (isEditMode ? 'Save Changes' : 'Assign Email')}
           </button>
         </div>
       </div>

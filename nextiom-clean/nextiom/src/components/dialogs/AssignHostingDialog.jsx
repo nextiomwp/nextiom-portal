@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Loader2, Check, DollarSign, HardDrive, Wifi } from 'lucide-react';
-import { assignHostingToCustomer, getHostingPlans, updateHostingRequest, parseHostingPackageSummary } from '@/lib/storage';
+import { assignHostingToCustomer, getHostingPlans, updateHostingRequest, parseHostingPackageSummary, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
@@ -17,7 +17,7 @@ const parseJson = (value) => {
 const buildPackageSummary = ({ hostingType, planName, billingPeriod, domain, notes }) =>
   `${hostingType} - ${planName} | Billing: ${billingPeriod} | Domain: ${domain || 'N/A'} | Notes: ${notes || 'None'}`;
 
-function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, footerContent }) {
+function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, footerContent, isEditMode = false }) {
   const [plans, setPlans] = useState([]);
   const [hostingType, setHostingType] = useState('');
   const [planName, setPlanName] = useState('');
@@ -46,6 +46,9 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
   const [showAdditionalCredentials, setShowAdditionalCredentials] = useState(true);
   const [sendEmailNotification, setSendEmailNotification] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState('approved');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [adminReply, setAdminReply] = useState('');
   const { toast } = useToast();
   const isRequestMode = !!request;
 
@@ -93,6 +96,9 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       setShowFTPAccess(request.show_ftp_access ?? request.showFTPAccess ?? true);
       setShowAdditionalCredentials(request.show_additional_credentials ?? request.showAdditionalCredentials ?? true);
       setSendEmailNotification(request.send_email_notification ?? request.sendEmailNotification ?? true);
+      setStatus(request.status || 'approved');
+      setExpiryDate(request.expiry_date ? new Date(request.expiry_date).toISOString().split('T')[0] : '');
+      setAdminReply(request.admin_reply || '');
     } else {
       setHostingType('');
       setPlanName('');
@@ -120,6 +126,9 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       setShowFTPAccess(true);
       setShowAdditionalCredentials(true);
       setSendEmailNotification(true);
+      setStatus('approved');
+      setExpiryDate('');
+      setAdminReply('');
     }
   }, [open, request]);
 
@@ -246,7 +255,21 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
         send_email_notification: sendEmailNotification,
       };
 
-      if (isRequestMode) {
+      if (isEditMode) {
+        payload.status = status;
+        payload.expiry_date = expiryDate ? new Date(expiryDate).toISOString() : null;
+        payload.admin_reply = adminReply;
+
+        await updateHostingRequest(request.id, payload);
+        const label = `${hostingType} — ${planName}`;
+        addNotification({
+          customer_id: null,
+          type: 'request_updated',
+          title: `Hosting Updated — ${label}`,
+          message: `Admin updated hosting record for ${label} (status: ${status}).`
+        }).catch(() => {});
+        toast({ title: 'Hosting Updated', description: 'Changes saved successfully.' });
+      } else if (isRequestMode) {
         await updateHostingRequest(request.id, payload);
         toast({ title: 'Request Updated', description: `${hostingType} - ${planName} request updated for ${customer?.name || 'customer'}` });
       } else {
@@ -279,7 +302,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast({ title: 'Error', description: err?.message || (isRequestMode ? 'Failed to update request' : 'Failed to assign hosting'), variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || (isEditMode ? 'Failed to update hosting' : isRequestMode ? 'Failed to update request' : 'Failed to assign hosting'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -294,12 +317,12 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
               <Server size={16} />
             </span>
             <span>
-              {isRequestMode ? 'Review Hosting Request' : 'Assign Hosting'}
+              {isEditMode ? 'Edit Hosting' : isRequestMode ? 'Review Hosting Request' : 'Assign Hosting'}
               <div className="mt-1 text-xs font-normal" style={{ color: subText }}>{customer?.name} — {customer?.email}</div>
             </span>
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Assign a hosting package, billing period, control panel and FTP credentials, and additional access details.
+            {isEditMode ? 'Edit hosting package, billing details, control panel and FTP credentials, and additional access details.' : 'Assign a hosting package, billing period, control panel and FTP credentials, and additional access details.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -307,14 +330,14 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label style={labelS}>Hosting Type *</label>
-              <select className={fieldClass} style={fieldStyle} value={hostingType} onChange={e => { setHostingType(e.target.value); setPlanName(''); }} disabled={isRequestMode}>
+              <select className={fieldClass} style={fieldStyle} value={hostingType} onChange={e => { setHostingType(e.target.value); setPlanName(''); }} disabled={isRequestMode && !isEditMode}>
                 <option value="">Select hosting type…</option>
                 {hostingTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               <label style={labelS}>Plan *</label>
-              <select className={fieldClass} style={fieldStyle} value={planName} onChange={e => handlePlanChange(e.target.value)} disabled={isRequestMode || !hostingType}>
+              <select className={fieldClass} style={fieldStyle} value={planName} onChange={e => handlePlanChange(e.target.value)} disabled={(isRequestMode && !isEditMode) || !hostingType}>
                 <option value="">{hostingType ? 'Select a plan…' : 'Choose a type first…'}</option>
                 {selectedPlans.map(p => (
                   <option key={p.id} value={p.plan_name}>
@@ -323,6 +346,22 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
                 ))}
               </select>
             </div>
+            {isEditMode && (
+              <>
+                <div>
+                  <label style={labelS}>Status</label>
+                  <select className={fieldClass} style={fieldStyle} value={status} onChange={e => setStatus(e.target.value)}>
+                    {['pending', 'approved', 'active', 'expired', 'suspended', 'rejected'].map(s => (
+                      <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={labelS}>Expiry Date</label>
+                  <input className={fieldClass} style={fieldStyle} type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} />
+                </div>
+              </>
+            )}
             <div className="md:col-span-2">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 12 }}>
                 <label style={labelS}>Override plan disk & bandwidth limits</label>
@@ -342,9 +381,9 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
                 </div>
               </div>
             </div>
-            <div>
+             <div>
               <label style={labelS}>Billing Period</label>
-              <select className={fieldClass} style={fieldStyle} value={billingPeriod} onChange={e => setBillingPeriod(e.target.value)} disabled={isRequestMode}>
+              <select className={fieldClass} style={fieldStyle} value={billingPeriod} onChange={e => setBillingPeriod(e.target.value)} disabled={isRequestMode && !isEditMode}>
                 {['Monthly', 'Quarterly (3mo)', 'Semi-Annual (6mo)', 'Yearly', '2 Years'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
               </select>
             </div>
@@ -357,17 +396,17 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label style={labelS}>Domain (optional)</label>
-              <input className={fieldClass} style={fieldStyle} value={domain} onChange={e => setDomain(e.target.value)} placeholder="e.g. example.com" disabled={isRequestMode} />
+              <input className={fieldClass} style={fieldStyle} value={domain} onChange={e => setDomain(e.target.value)} placeholder="e.g. example.com" disabled={isRequestMode && !isEditMode} />
             </div>
             <div>
               <label style={labelS}>Auto Renew</label>
               <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: text, cursor: isRequestMode ? 'not-allowed' : 'pointer', padding: '6px 14px', borderRadius: 10, border: `1.5px solid ${autoRenew ? brand : border}`, background: autoRenew ? `${brand}15` : 'transparent', fontWeight: autoRenew ? 600 : 400 }}>
-                  <input type="radio" name="autoRenew" checked={autoRenew} onChange={() => !isRequestMode && setAutoRenew(true)} style={{ accentColor: brand }} disabled={isRequestMode} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: text, cursor: (isRequestMode && !isEditMode) ? 'not-allowed' : 'pointer', padding: '6px 14px', borderRadius: 10, border: `1.5px solid ${autoRenew ? brand : border}`, background: autoRenew ? `${brand}15` : 'transparent', fontWeight: autoRenew ? 600 : 400 }}>
+                  <input type="radio" name="autoRenew" checked={autoRenew} onChange={() => !(isRequestMode && !isEditMode) && setAutoRenew(true)} style={{ accentColor: brand }} disabled={isRequestMode && !isEditMode} />
                   YES
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: text, cursor: isRequestMode ? 'not-allowed' : 'pointer', padding: '6px 14px', borderRadius: 10, border: `1.5px solid ${!autoRenew ? brand : border}`, background: !autoRenew ? `${brand}15` : 'transparent', fontWeight: !autoRenew ? 600 : 400 }}>
-                  <input type="radio" name="autoRenew" checked={!autoRenew} onChange={() => !isRequestMode && setAutoRenew(false)} style={{ accentColor: brand }} disabled={isRequestMode} />
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: text, cursor: (isRequestMode && !isEditMode) ? 'not-allowed' : 'pointer', padding: '6px 14px', borderRadius: 10, border: `1.5px solid ${!autoRenew ? brand : border}`, background: !autoRenew ? `${brand}15` : 'transparent', fontWeight: !autoRenew ? 600 : 400 }}>
+                  <input type="radio" name="autoRenew" checked={!autoRenew} onChange={() => !(isRequestMode && !isEditMode) && setAutoRenew(false)} style={{ accentColor: brand }} disabled={isRequestMode && !isEditMode} />
                   NO
                 </label>
               </div>
@@ -504,6 +543,13 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
             )}
           </section>
 
+          {isEditMode && (
+            <section style={sectionStyle}>
+              <div style={{ marginBottom: 12, fontWeight: 700, color: text }}>Admin Reply / Notes</div>
+              <textarea className={`${fieldClass} min-h-[90px] resize-y`} style={textareaStyle} value={adminReply} onChange={e => setAdminReply(e.target.value)} placeholder="Enter admin notes or reply here..." />
+            </section>
+          )}
+
           <section style={sectionStyle}>
             <div style={{ marginBottom: 12, fontWeight: 700, color: text }}>Customer Message</div>
             <textarea className={`${fieldClass} min-h-[110px] resize-y`} style={textareaStyle} value={customerMessage} onChange={e => setCustomerMessage(e.target.value)} placeholder="This message will be visible to the customer." />
@@ -535,7 +581,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${border}`, background: 'transparent', color: text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
           <button onClick={handleSubmit} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 20px', borderRadius: 8, border: 'none', background: brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {saving ? (isRequestMode ? 'Updating…' : 'Assigning…') : (isRequestMode ? 'Update Request' : 'Assign Hosting')}
+            {saving ? (isEditMode ? 'Saving…' : isRequestMode ? 'Updating…' : 'Assigning…') : (isEditMode ? 'Save Changes' : isRequestMode ? 'Update Request' : 'Assign Hosting')}
           </button>
         </div>
       </DialogContent>

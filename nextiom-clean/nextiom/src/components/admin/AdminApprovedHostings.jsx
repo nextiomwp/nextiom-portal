@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server } from 'lucide-react';
 import { getHostingRequests, updateHostingRequest, deleteHostingRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
 
 function parsePackageType(raw) {
   if (!raw) return { hostingType: '—', planName: '—', billing: '—' };
@@ -22,8 +23,6 @@ function AdminApprovedHostings({ isDark = true }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editItem, setEditItem] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const c = isDark
@@ -126,37 +125,6 @@ function AdminApprovedHostings({ isDark = true }) {
 
   const openEdit = (h) => {
     setEditItem(h);
-    const parsed = parsePackageType(h.package_type);
-    setEditForm({
-      hosting_type: h.hosting_type || parsed.hostingType || '',
-      plan_name: h.plan_name || parsed.planName || '',
-      status: h.status || 'approved',
-      expiry_date: h.expiry_date ? h.expiry_date.split('T')[0] : '',
-      admin_reply: h.admin_reply || '',
-      package_type: h.package_type || '',
-    });
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateHostingRequest(editItem.id, {
-        hosting_type: editForm.hosting_type,
-        plan_name: editForm.plan_name,
-        status: editForm.status,
-        expiry_date: editForm.expiry_date ? new Date(editForm.expiry_date).toISOString() : null,
-        admin_reply: editForm.admin_reply,
-      });
-      const label = `${editForm.hosting_type} — ${editForm.plan_name}`;
-      addNotification({ customer_id: null, type: 'request_updated', title: `Hosting Updated — ${label}`, message: `Admin updated hosting record for ${label} (status: ${editForm.status}).` }).catch(() => {});
-      toast({ title: 'Hosting Updated', description: 'Changes saved successfully.' });
-      setEditItem(null);
-      loadData();
-    } catch (e) {
-      toast({ title: 'Error', description: 'Failed to update hosting', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleDelete = async (h) => {
@@ -298,60 +266,22 @@ function AdminApprovedHostings({ isDark = true }) {
         </table>
       </div>
 
-      {/* Edit Modal */}
-      {editItem && (
-        <div style={{ position: 'fixed', inset: 0, background: c.overlay, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setEditItem(null)}>
-          <div style={{ background: c.card, border: `1px solid ${c.borderStrong || c.border}`, borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 3, height: 18, borderRadius: 2, background: '#639922', flexShrink: 0 }} />
-                <span style={{ fontWeight: 700, fontSize: 15, color: c.text }}>Edit Hosting</span>
-              </div>
-              <button onClick={() => setEditItem(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex' }}><X size={18} /></button>
-            </div>
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Hosting Type</label>
-                  <input style={inpS} value={editForm.hosting_type} onChange={e => setEditForm(f => ({ ...f, hosting_type: e.target.value }))} placeholder="e.g. VPS Hosting" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Plan</label>
-                  <input style={inpS} value={editForm.plan_name} onChange={e => setEditForm(f => ({ ...f, plan_name: e.target.value }))} placeholder="e.g. VPS2" />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Status</label>
-                  <select style={{ ...inpS, appearance: 'none' }} value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
-                    {['pending', 'approved', 'active', 'expired', 'suspended', 'rejected'].map(s => (
-                      <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Expiry Date</label>
-                  <input style={inpS} type="date" value={editForm.expiry_date} onChange={e => setEditForm(f => ({ ...f, expiry_date: e.target.value }))} />
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Package Details (read-only)</label>
-                <div style={{ ...inpS, opacity: 0.6, cursor: 'default', wordBreak: 'break-all', minHeight: 40 }}>{editForm.package_type || '—'}</div>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Admin Reply / Notes</label>
-                <textarea style={{ ...inpS, resize: 'vertical', minHeight: 80 }} value={editForm.admin_reply} onChange={e => setEditForm(f => ({ ...f, admin_reply: e.target.value }))} />
-              </div>
-            </div>
-            <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={() => setEditItem(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AssignHostingDialog
+        open={!!editItem}
+        onClose={() => setEditItem(null)}
+        customer={{
+          id: editItem?.customer_id,
+          name: editItem?.customers?.name || 'Customer',
+          email: editItem?.customers?.email || ''
+        }}
+        request={editItem}
+        c={c}
+        isEditMode={true}
+        onSuccess={() => {
+          setEditItem(null);
+          loadData();
+        }}
+      />
     </div>
   );
 }

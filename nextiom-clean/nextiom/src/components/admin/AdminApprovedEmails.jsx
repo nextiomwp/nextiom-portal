@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server, Key, User as UserIcon } from 'lucide-react';
 import { getEmailRequests, updateEmailRequest, deleteEmailRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+import AssignEmailDialog from '@/components/dialogs/AssignEmailDialog';
 
 function parseEmailNameType(raw) {
   if (!raw) return { emailType: '—', planName: '—', billing: '—' };
@@ -22,8 +23,6 @@ function AdminApprovedEmails({ isDark = true }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editItem, setEditItem] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
   const c = isDark
@@ -126,40 +125,6 @@ function AdminApprovedEmails({ isDark = true }) {
 
   const openEdit = (h) => {
     setEditItem(h);
-    setEditForm({
-      email: h.email || '',
-      url: h.url || '',
-      status: h.status || 'approved',
-      expiry_date: h.expiry_date ? h.expiry_date.split('T')[0] : '',
-      admin_reply: h.admin_reply || '',
-      email_username: h.email_username || '',
-      email_password: h.email_password || '',
-    });
-  };
-
-  
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateEmailRequest(editItem.id, {
-        email: editForm.email,
-        url: editForm.url || null,
-        status: editForm.status,
-        expiry_date: editForm.expiry_date ? new Date(editForm.expiry_date).toISOString() : null,
-        admin_reply: editForm.admin_reply,
-        email_username: editForm.email_username || null,
-        email_password: editForm.email_password || null,
-      });
-      const label = editForm.email || 'Email record';
-      addNotification({ customer_id: null, type: 'request_updated', title: `Email Updated — ${label}`, message: `Admin updated email record for ${label} (status: ${editForm.status}).` }).catch(() => { });
-      toast({ title: 'Email Updated', description: 'Changes saved successfully.' });
-      setEditItem(null);
-      loadData();
-    } catch (e) {
-      toast({ title: 'Error', description: 'Failed to update email', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleDelete = async (h) => {
@@ -303,77 +268,22 @@ function AdminApprovedEmails({ isDark = true }) {
         </table>
       </div>
 
-      {/* Edit Modal */}
-      {editItem && (
-        <div style={{ position: 'fixed', inset: 0, background: c.overlay, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setEditItem(null)}>
-          <div style={{ background: c.card, border: `1px solid ${c.borderStrong || c.border}`, borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 3, height: 18, borderRadius: 2, background: '#639922', flexShrink: 0 }} />
-                <span style={{ fontWeight: 700, fontSize: 15, color: c.text }}>Edit Email</span>
-              </div>
-              <button onClick={() => setEditItem(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex' }}><X size={18} /></button>
-            </div>
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Email Address</label>
-                  <input style={inpS} value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} placeholder="user@example.com" />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Login URL</label>
-                  <input style={inpS} value={editForm.url} onChange={e => setEditForm(f => ({ ...f, url: e.target.value }))} placeholder="https://mail.example.com" />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Status</label>
-                  <select style={{ ...inpS, appearance: 'none' }} value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
-                    {['pending', 'approved', 'active', 'expired', 'suspended', 'rejected'].map(s => (
-                      <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Expiry Date</label>
-                  <input style={inpS} type="date" value={editForm.expiry_date} onChange={e => setEditForm(f => ({ ...f, expiry_date: e.target.value }))} />
-                </div>
-            </div>
-            <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <Key size={12} /> Email Login Credentials
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Username</label>
-                    <div style={{ position: 'relative' }}>
-                      <UserIcon size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
-                      <input style={{ ...inpS, paddingLeft: 28 }} value={editForm.email_username} onChange={e => setEditForm(f => ({ ...f, email_username: e.target.value }))} placeholder="e.g. info@domain.com" />
-                    </div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Password</label>
-                    <div style={{ position: 'relative' }}>
-                      <Key size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
-                      <input style={{ ...inpS, paddingLeft: 28 }} value={editForm.email_password} onChange={e => setEditForm(f => ({ ...f, email_password: e.target.value }))} placeholder="Enter password" />
-                    </div>
-                  </div>
-                </div>
-            </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Admin Reply / Notes</label>
-                <textarea style={{ ...inpS, resize: 'vertical', minHeight: 80 }} value={editForm.admin_reply} onChange={e => setEditForm(f => ({ ...f, admin_reply: e.target.value }))} />
-              </div>
-            </div>
-            <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={() => setEditItem(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AssignEmailDialog
+        open={!!editItem}
+        onClose={() => setEditItem(null)}
+        customer={{
+          id: editItem?.customer_id,
+          name: editItem?.customers?.name || 'Customer',
+          email: editItem?.customers?.email || ''
+        }}
+        request={editItem}
+        c={c}
+        isEditMode={true}
+        onSuccess={() => {
+          setEditItem(null);
+          loadData();
+        }}
+      />
     </div>
   );
 }

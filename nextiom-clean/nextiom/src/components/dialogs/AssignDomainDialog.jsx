@@ -1,17 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Globe, Loader2, Check, DollarSign } from 'lucide-react';
-import { assignDomainToCustomer, addNotification } from '@/lib/storage';
+import { assignDomainToCustomer, updateDomainRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
-function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
+function AssignDomainDialog({ open, onClose, customer, c, onSuccess, request, isEditMode = false }) {
   const [domainName, setDomainName] = useState('');
   const [regPeriod, setRegPeriod] = useState('1');
   const [price, setPrice] = useState('');
   const [multiYearPct, setMultiYearPct] = useState('');
   const [notes, setNotes] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [status, setStatus] = useState('approved');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [autoRenew, setAutoRenew] = useState(true);
+  const [adminReply, setAdminReply] = useState('');
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!open) return;
+    if (request) {
+      setDomainName(request.domain_name || '');
+      setRegPeriod(request.registration_period ? String(request.registration_period) : '1');
+      setPrice(request.price ? String(request.price) : '');
+      setNotes(request.notes || '');
+      setStartDate(request.start_date ? request.start_date.split('T')[0] : request.created_at ? request.created_at.split('T')[0] : new Date().toISOString().split('T')[0]);
+      setStatus(request.status || 'approved');
+      setExpiryDate(request.expiry_date ? request.expiry_date.split('T')[0] : '');
+      setAutoRenew(request.auto_renew ?? true);
+      setAdminReply(request.admin_reply || '');
+    } else {
+      setDomainName('');
+      setRegPeriod('1');
+      setPrice('');
+      setMultiYearPct('');
+      setNotes('');
+      setStartDate(new Date().toISOString().split('T')[0]);
+      setStatus('approved');
+      setExpiryDate('');
+      setAutoRenew(true);
+      setAdminReply('');
+    }
+  }, [open, request]);
 
   if (!open) return null;
 
@@ -59,23 +89,39 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
 
     setSaving(true);
     try {
-      const finalPrice = calculatedPrice > 0 ? calculatedPrice : null;
-      await assignDomainToCustomer({
-        customerId: customer.id,
-        domainName: domainName.trim(),
-        registrationPeriod: regPeriod,
-        expiryDate: calcExpiry(),
-        notes: notes.trim() || null,
-        price: finalPrice,
-        startDate,
-      });
+      if (isEditMode) {
+        await updateDomainRequest(request.id, {
+          domain_name: domainName.trim(),
+          status,
+          registration_period: regPeriod ? Number(regPeriod) : null,
+          start_date: startDate ? new Date(startDate).toISOString() : null,
+          expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null,
+          auto_renew: autoRenew,
+          notes: notes.trim() || null,
+          admin_reply: adminReply.trim() || null,
+          price: price ? parseFloat(price) : null,
+        });
+        addNotification({ customer_id: null, type: 'request_updated', title: `Domain Updated — ${domainName}`, message: `Admin updated domain record for ${domainName} (status: ${status}).` }).catch(() => {});
+        toast({ title: 'Domain Updated', description: 'Changes saved successfully.' });
+      } else {
+        const finalPrice = calculatedPrice > 0 ? calculatedPrice : null;
+        await assignDomainToCustomer({
+          customerId: customer.id,
+          domainName: domainName.trim(),
+          registrationPeriod: regPeriod,
+          expiryDate: calcExpiry(),
+          notes: notes.trim() || null,
+          price: finalPrice,
+          startDate,
+        });
+        toast({ title: 'Domain Assigned', description: `${domainName.trim()} assigned to ${customer.name}` });
+        setDomainName(''); setRegPeriod('1'); setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
+      }
 
-      toast({ title: 'Domain Assigned', description: `${domainName.trim()} assigned to ${customer.name}` });
-      setDomainName(''); setRegPeriod('1'); setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
       onSuccess?.();
       onClose();
     } catch (err) {
-      toast({ title: 'Error', description: err?.message || 'Failed to assign domain', variant: 'destructive' });
+      toast({ title: 'Error', description: err?.message || (isEditMode ? 'Failed to update domain' : 'Failed to assign domain'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -90,8 +136,9 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
         style={{
           background: card, border: `1px solid ${borderStrong}`,
           borderRadius: 16, width: '100%', maxWidth: 520,
+          maxHeight: '90vh', overflowY: 'auto',
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
-          overflow: 'hidden'
+          scrollbarWidth: 'thin'
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -105,7 +152,7 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
               <Globe size={16} color="#60a5fa" />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: text }}>Assign Domain</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: text }}>{isEditMode ? 'Edit Domain' : 'Assign Domain'}</div>
               <div style={{ fontSize: 11, color: subText }}>{customer?.name} — {customer?.email}</div>
             </div>
           </div>
@@ -140,6 +187,34 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
             />
           </div>
 
+          {isEditMode && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelS}>Status</label>
+                <select
+                  style={{ ...inpS, appearance: 'none' }}
+                  value={status}
+                  onChange={e => setStatus(e.target.value)}
+                >
+                  {['pending', 'approved', 'active', 'expired', 'cancelled', 'registered'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelS}>Expiry Date</label>
+                <input
+                  style={inpS}
+                  type="date"
+                  value={expiryDate}
+                  onChange={e => setExpiryDate(e.target.value)}
+                  onFocus={e => e.target.style.borderColor = brand}
+                  onBlur={e => e.target.style.borderColor = border}
+                />
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={labelS}>Registration Period</label>
@@ -169,6 +244,13 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
               </div>
             </div>
           </div>
+
+          {isEditMode && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="checkbox" id="auto_renew" checked={autoRenew} onChange={e => setAutoRenew(e.target.checked)} style={{ width: 16, height: 16, accentColor: brand }} />
+              <label htmlFor="auto_renew" style={{ fontSize: 13, color: text, cursor: 'pointer' }}>Auto Renew</label>
+            </div>
+          )}
 
           {showMultiPct && (
             <div>
@@ -203,6 +285,18 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
               onChange={e => setNotes(e.target.value)}
             />
           </div>
+
+          {isEditMode && (
+            <div>
+              <label style={labelS}>Admin Reply</label>
+              <textarea
+                style={{ ...inpS, resize: 'vertical', minHeight: 72 }}
+                placeholder="Admin notes or reply to customer..."
+                value={adminReply}
+                onChange={e => setAdminReply(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -234,7 +328,7 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
             }}
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {saving ? 'Assigning…' : 'Assign Domain'}
+            {saving ? (isEditMode ? 'Saving…' : 'Assigning…') : (isEditMode ? 'Save Changes' : 'Assign Domain')}
           </button>
         </div>
       </div>

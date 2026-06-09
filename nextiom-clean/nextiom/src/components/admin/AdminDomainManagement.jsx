@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown } from 'lucide-react';
 import { getDomainRequests, updateDomainRequest, deleteDomainRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+import AssignDomainDialog from '@/components/dialogs/AssignDomainDialog';
 
 function AdminDomainManagement({ isDark = true }) {
   const [domains, setDomains] = useState([]);
@@ -10,8 +11,6 @@ function AdminDomainManagement({ isDark = true }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editDomain, setEditDomain] = useState(null);
-  const [editForm, setEditForm] = useState({});
-  const [saving, setSaving] = useState(false);
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -108,40 +107,6 @@ function AdminDomainManagement({ isDark = true }) {
 
   const openEdit = (d) => {
     setEditDomain(d);
-    setEditForm({
-      domain_name: d.domain_name || '',
-      status: d.status || 'approved',
-      registration_period: d.registration_period || '',
-      start_date: d.start_date ? d.start_date.split('T')[0] : d.created_at ? d.created_at.split('T')[0] : '',
-      expiry_date: d.expiry_date ? d.expiry_date.split('T')[0] : '',
-      auto_renew: d.auto_renew ?? true,
-      notes: d.notes || '',
-      admin_reply: d.admin_reply || '',
-    });
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateDomainRequest(editDomain.id, {
-        domain_name: editForm.domain_name,
-        status: editForm.status,
-        registration_period: editForm.registration_period ? Number(editForm.registration_period) : null,
-        start_date: editForm.start_date ? new Date(editForm.start_date).toISOString() : null,
-        expiry_date: editForm.expiry_date ? new Date(editForm.expiry_date).toISOString() : null,
-        auto_renew: editForm.auto_renew,
-        notes: editForm.notes,
-        admin_reply: editForm.admin_reply,
-      });
-      addNotification({ customer_id: null, type: 'request_updated', title: `Domain Updated — ${editForm.domain_name}`, message: `Admin updated domain record for ${editForm.domain_name} (status: ${editForm.status}).` }).catch(() => {});
-      toast({ title: 'Domain Updated', description: 'Changes saved successfully.' });
-      setEditDomain(null);
-      loadData();
-    } catch (e) {
-      toast({ title: 'Error', description: 'Failed to update domain', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleDelete = async (d) => {
@@ -279,68 +244,22 @@ function AdminDomainManagement({ isDark = true }) {
         </div>
       </div>
 
-      {/* Edit Modal */}
-      {editDomain && (
-        <div style={{ position: 'fixed', inset: 0, background: c.overlay, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setEditDomain(null)}>
-          <div style={{ background: c.card, border: `1px solid ${c.borderStrong || c.border}`, borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 3, height: 18, borderRadius: 2, background: '#378ADD', flexShrink: 0 }} />
-                <span style={{ fontWeight: 700, fontSize: 15, color: c.text }}>Edit Domain</span>
-              </div>
-              <button onClick={() => setEditDomain(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex' }}><X size={18} /></button>
-            </div>
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Domain Name</label>
-                <input style={inpS} value={editForm.domain_name} onChange={e => setEditForm(f => ({ ...f, domain_name: e.target.value }))} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Status</label>
-                <select style={{ ...inpS, appearance: 'none' }} value={editForm.status} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
-                  {['pending', 'approved', 'active', 'expired', 'cancelled', 'registered'].map(s => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Registration Period (yrs)</label>
-                  <input style={inpS} type="number" min="1" value={editForm.registration_period} onChange={e => setEditForm(f => ({ ...f, registration_period: e.target.value }))} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Start Date</label>
-                  <input style={inpS} type="date" value={editForm.start_date} onChange={e => setEditForm(f => ({ ...f, start_date: e.target.value }))} />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Expiry Date</label>
-                  <input style={inpS} type="date" value={editForm.expiry_date} onChange={e => setEditForm(f => ({ ...f, expiry_date: e.target.value }))} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <input type="checkbox" id="auto_renew" checked={editForm.auto_renew} onChange={e => setEditForm(f => ({ ...f, auto_renew: e.target.checked }))} style={{ width: 16, height: 16, accentColor: c.brand }} />
-                <label htmlFor="auto_renew" style={{ fontSize: 13, color: c.text, cursor: 'pointer' }}>Auto Renew</label>
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Notes</label>
-                <textarea style={{ ...inpS, resize: 'vertical', minHeight: 72 }} value={editForm.notes} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} />
-              </div>
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, display: 'block', marginBottom: 6 }}>Admin Reply</label>
-                <textarea style={{ ...inpS, resize: 'vertical', minHeight: 72 }} value={editForm.admin_reply} onChange={e => setEditForm(f => ({ ...f, admin_reply: e.target.value }))} />
-              </div>
-            </div>
-            <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={() => setEditDomain(null)} style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AssignDomainDialog
+        open={!!editDomain}
+        onClose={() => setEditDomain(null)}
+        customer={{
+          id: editDomain?.customer_id,
+          name: editDomain?.customers?.name || 'Customer',
+          email: editDomain?.customers?.email || ''
+        }}
+        request={editDomain}
+        c={c}
+        isEditMode={true}
+        onSuccess={() => {
+          setEditDomain(null);
+          loadData();
+        }}
+      />
     </div>
   );
 }
