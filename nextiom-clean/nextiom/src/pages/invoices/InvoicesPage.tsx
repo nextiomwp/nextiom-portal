@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo } from '@/lib/invoices'
+import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: 'Paid',    color: '#22c55e', bg: 'rgba(34,197,94,0.13)' },
@@ -46,6 +46,7 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
   const [mode, setMode] = useState<'view' | 'reject' | 'info'>('view')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
+  const [slipLoading, setSlipLoading] = useState(false)
 
   useEffect(() => {
     getLatestPaymentByInvoice(invoice.id!).then(p => { setPayment(p); setLoading(false) }).catch(() => setLoading(false))
@@ -82,6 +83,24 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
       onChanged(); onClose()
     } catch { toast({ title: 'Failed', variant: 'destructive' }) }
     finally { setBusy(false) }
+  }
+
+  async function downloadSlip() {
+    if (!payment) return
+    // Use the raw storage path (slip_path) to generate a fresh signed URL via
+    // the admin-document-link edge function. Never use slip_url directly — it
+    // may be a bare storage path which React Router would intercept.
+    const rawPath = payment.slip_path || payment.slip_url
+    if (!rawPath) return
+    setSlipLoading(true)
+    try {
+      const signedUrl = await getPaymentSlipSignedUrl(rawPath)
+      window.open(signedUrl, '_blank', 'noopener,noreferrer')
+    } catch (err: any) {
+      toast({ title: 'Could not open slip', description: err?.message || 'Failed to generate a download link. Please try again.', variant: 'destructive' })
+    } finally {
+      setSlipLoading(false)
+    }
   }
 
   const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase' as const, letterSpacing: 0.6, marginBottom: 4 }
@@ -128,16 +147,26 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
                 </div>
                 <div>
                   <div style={lbl}>Payment Slip</div>
-                  {payment.slip_url ? (
+                  {(payment.slip_path || payment.slip_url) ? (
                     <div style={{ border: `1px solid ${c.border}`, borderRadius: 8, overflow: 'hidden', background: isDark ? '#22252C' : '#fafafa' }}>
-                      {/\.(png|jpe?g|gif|webp)(?:\?.*)?$/i.test(payment.slip_url) ? (
-                        <img src={payment.slip_url} alt="slip" style={{ width: '100%', display: 'block', maxHeight: 320, objectFit: 'contain' }} />
+                      {/* Detect image type from the raw path (slip_url after signing has a long token URL that breaks extension matching) */}
+                      {/\.(png|jpe?g|gif|webp)$/i.test(payment.slip_path || payment.slip_url || '') ? (
+                        payment.slip_url && /^https?:\/\//i.test(payment.slip_url)
+                          ? <img src={payment.slip_url} alt="slip" style={{ width: '100%', display: 'block', maxHeight: 320, objectFit: 'contain' }} />
+                          : <div style={{ padding: '14px 16px', fontSize: 13, color: c.subText }}>Image slip — click Download to view.</div>
                       ) : (
-                        <div style={{ padding: 20, fontSize: 13, color: c.text }}>Slip uploaded (PDF or non-image).</div>
+                        <div style={{ padding: '14px 16px', fontSize: 13, color: c.text }}>
+                          📄 Payment slip uploaded ({(payment.slip_path || '').split('.').pop()?.toUpperCase() || 'FILE'})
+                        </div>
                       )}
-                      <a href={payment.slip_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderTop: `1px solid ${c.border}`, color: c.brand, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                        <ExternalLink size={13} /> Open original
-                      </a>
+                      <button
+                        onClick={downloadSlip}
+                        disabled={slipLoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderTop: `1px solid ${c.border}`, borderLeft: 'none', borderRight: 'none', borderBottom: 'none', background: 'none', color: slipLoading ? c.subText : c.brand, fontSize: 12, fontWeight: 600, cursor: slipLoading ? 'wait' : 'pointer', width: '100%', fontFamily: 'inherit' }}
+                      >
+                        <ExternalLink size={13} />
+                        {slipLoading ? 'Generating link…' : 'Download / Open slip'}
+                      </button>
                     </div>
                   ) : (
                     <div style={{ ...val, fontStyle: 'italic' as const }}>No slip uploaded</div>

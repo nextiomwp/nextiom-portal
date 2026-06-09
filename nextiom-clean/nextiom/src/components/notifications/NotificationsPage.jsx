@@ -50,7 +50,7 @@ function NotificationsPage({ customerId, isDark = false, c = {} }) {
     const load = async () => {
       setIsLoading(true);
       try {
-        const [dbRes, domainReqs, hostingReqs] = await Promise.all([
+        const [dbRes, domainReqs, hostingReqs, customerRes] = await Promise.all([
           supabase
             .from('notifications')
             .select('*')
@@ -58,15 +58,31 @@ function NotificationsPage({ customerId, isDark = false, c = {} }) {
             .order('created_at', { ascending: false }),
           getCustomerDomainRequests(customerId).catch(() => []),
           getCustomerHostingRequests(customerId).catch(() => []),
+          supabase
+            .from('customers')
+            .select('notifications_cleared_at')
+            .eq('id', customerId)
+            .maybeSingle(),
         ]);
 
-        const dbNotifications = dbRes.data || [];
+        const clearedAt = customerRes?.data?.notifications_cleared_at;
+        const clearedTime = clearedAt ? new Date(clearedAt).getTime() : 0;
+
+        let dbNotifications = dbRes.data || [];
+        if (clearedTime > 0) {
+          dbNotifications = dbNotifications.filter(n => !n.created_at || new Date(n.created_at).getTime() > clearedTime);
+        }
+
         const existingTitles = new Set(dbNotifications.map(n => n.title));
         const virtualNotifs = [];
 
         (domainReqs || []).forEach(r => {
           const st = String(r.status || '').toLowerCase();
           if (['approved', 'completed', 'rejected'].includes(st)) {
+            const timestamp = r.updated_at || r.created_at;
+            if (clearedTime > 0 && timestamp && new Date(timestamp).getTime() <= clearedTime) {
+              return;
+            }
             const title = st === 'rejected'
               ? `Domain Request Rejected — ${r.domain_name}`
               : `Domain Request Approved — ${r.domain_name}`;
@@ -79,7 +95,7 @@ function NotificationsPage({ customerId, isDark = false, c = {} }) {
                   : `Your domain registration request for "${r.domain_name}" has been approved and is now being processed.`,
                 type: st === 'rejected' ? 'expiration' : 'domain_request',
                 read_status: false,
-                created_at: r.updated_at || r.created_at,
+                created_at: timestamp,
                 virtual: true,
               });
             }
@@ -90,6 +106,10 @@ function NotificationsPage({ customerId, isDark = false, c = {} }) {
           const st = String(r.status || '').toLowerCase();
           if (['approved', 'completed', 'rejected'].includes(st)) {
             const planName = r.package_type?.split('|')[0]?.trim() || 'Hosting';
+            const timestamp = r.updated_at || r.created_at;
+            if (clearedTime > 0 && timestamp && new Date(timestamp).getTime() <= clearedTime) {
+              return;
+            }
             const title = st === 'rejected'
               ? `Hosting Request Rejected — ${planName}`
               : `Hosting Request Approved — ${planName}`;
@@ -102,7 +122,7 @@ function NotificationsPage({ customerId, isDark = false, c = {} }) {
                   : `Your hosting request for "${planName}" has been approved and is being set up.`,
                 type: st === 'rejected' ? 'expiration' : 'hosting_request',
                 read_status: false,
-                created_at: r.updated_at || r.created_at,
+                created_at: timestamp,
                 virtual: true,
               });
             }

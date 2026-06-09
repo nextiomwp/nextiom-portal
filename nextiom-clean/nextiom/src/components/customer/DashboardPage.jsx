@@ -184,7 +184,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       const customerId = user.id;
 
       try {
-        const [domainRes, hostingRes, emailRes, notifRes, invoiceRes] = await Promise.all([
+        const [domainRes, hostingRes, emailRes, notifRes, invoiceRes, customerRes] = await Promise.all([
           supabase.from('domain_requests')
             .select('id, status, created_at, domain_name')
             .eq('customer_id', customerId)
@@ -206,7 +206,14 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             .select('total, currency')
             .eq('status', 'paid')
             .eq('client_email', user.email),
+          supabase.from('customers')
+            .select('notifications_cleared_at')
+            .eq('id', customerId)
+            .maybeSingle(),
         ]);
+
+        const clearedAt = customerRes?.data?.notifications_cleared_at;
+        const clearedTime = clearedAt ? new Date(clearedAt).getTime() : 0;
 
         const domains = domainRes.data || [];
         const hostings = hostingRes.data || [];
@@ -245,7 +252,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         const older3 = chartData.slice(0, 3).reduce((s, d) => s + d.count, 0);
         const growth = older3 === 0 ? (recent3 > 0 ? 100 : 0) : Math.round(((recent3 - older3) / older3) * 100);
 
-        const activityItems = [
+        let activityItems = [
           ...domains.slice(0, 4).map(r => ({
             id: `d-${r.id}`,
             type: 'domain',
@@ -278,7 +285,13 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             status: n.type || 'info',
             date: n.created_at,
           })),
-        ]
+        ];
+
+        if (clearedTime > 0) {
+          activityItems = activityItems.filter(item => !item.date || new Date(item.date).getTime() > clearedTime);
+        }
+
+        activityItems = activityItems
           .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
           .slice(0, 6);
 

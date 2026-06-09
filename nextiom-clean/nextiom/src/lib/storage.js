@@ -664,12 +664,20 @@ export const deleteNotification = async (id) => {
 
 export const clearCustomerNotifications = async (customerId) => {
   if (!customerId) return;
-  const { error } = await supabase
+  const { error: deleteError } = await supabase
     .from('notifications')
     .delete()
     .eq('customer_id', customerId);
 
-  if (error) handleSupabaseError(error, 'clearCustomerNotifications');
+  if (deleteError) handleSupabaseError(deleteError, 'clearCustomerNotifications');
+
+  const { error: updateError } = await supabase
+    .from('customers')
+    .update({ notifications_cleared_at: new Date().toISOString() })
+    .eq('id', customerId);
+
+  if (updateError) handleSupabaseError(updateError, 'clearCustomerNotifications');
+
   return true;
 };
 
@@ -1423,17 +1431,10 @@ export const assignHostingToCustomer = async (data) => {
   } = data;
   const packageSummary = `${hostingType} - ${planName} | Billing: ${billingPeriod} | Domain: ${domain || 'N/A'} | Notes: ${notes || 'None'}`;
 
-  // Calculate expiry based on billing period
+  // Calculate expiry based on billing period and start date
   let expiryDate = null;
   if (billingPeriod) {
-    const d = new Date();
-    const b = String(billingPeriod).toLowerCase();
-    if (b.includes('yearly') || b.includes('annual') || b.includes('12')) d.setFullYear(d.getFullYear() + 1);
-    else if (b.includes('6') || b.includes('semi')) d.setMonth(d.getMonth() + 6);
-    else if (b.includes('3') || b.includes('quarter')) d.setMonth(d.getMonth() + 3);
-    else if (b.includes('2') && !b.includes('month')) d.setFullYear(d.getFullYear() + 2);
-    else d.setMonth(d.getMonth() + 1);
-    expiryDate = d.toISOString();
+    expiryDate = calculateHostingExpiryDate(billingPeriod, startDate);
   }
 
   const diskLimit = diskUsageLimit && diskUsageLimit.trim() ? diskUsageLimit.trim() : null;

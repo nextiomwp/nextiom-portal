@@ -44,19 +44,35 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
         }
       }
 
-      const [all, domainReqs, hostingReqs] = await Promise.all([
+      const [all, domainReqs, hostingReqs, customerRes] = await Promise.all([
         getNotifications(userId),
         getCustomerDomainRequests(userId).catch(() => []),
         getCustomerHostingRequests(userId).catch(() => []),
+        supabase
+          .from('customers')
+          .select('notifications_cleared_at')
+          .eq('id', userId)
+          .maybeSingle(),
       ]);
 
-      const dbNotifications = Array.isArray(all) ? all : [];
+      const clearedAt = customerRes?.data?.notifications_cleared_at;
+      const clearedTime = clearedAt ? new Date(clearedAt).getTime() : 0;
+
+      let dbNotifications = Array.isArray(all) ? all : [];
+      if (clearedTime > 0) {
+        dbNotifications = dbNotifications.filter(n => !n.created_at || new Date(n.created_at).getTime() > clearedTime);
+      }
+
       const existingTitles = new Set(dbNotifications.map(n => n.title));
       const virtualNotifs = [];
 
       (domainReqs || []).forEach(r => {
         const st = String(r.status || '').toLowerCase();
         if (st === 'approved' || st === 'completed' || st === 'rejected') {
+          const timestamp = r.updated_at || r.created_at;
+          if (clearedTime > 0 && timestamp && new Date(timestamp).getTime() <= clearedTime) {
+            return;
+          }
           const title = st === 'rejected'
             ? `Domain Request Rejected — ${r.domain_name}`
             : `Domain Request Approved — ${r.domain_name}`;
@@ -69,7 +85,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
                 : `Your domain request for ${r.domain_name} has been approved.`,
               type: st === 'rejected' ? 'expiration' : 'update',
               read_status: false,
-              created_at: r.updated_at || r.created_at,
+              created_at: timestamp,
               virtual: true,
             });
           }
@@ -79,6 +95,10 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
       (hostingReqs || []).forEach(r => {
         const st = String(r.status || '').toLowerCase();
         if (st === 'approved' || st === 'completed' || st === 'rejected') {
+          const timestamp = r.updated_at || r.created_at;
+          if (clearedTime > 0 && timestamp && new Date(timestamp).getTime() <= clearedTime) {
+            return;
+          }
           const planName = r.package_type?.split('|')[0]?.trim() || 'Hosting';
           const title = st === 'rejected'
             ? `Hosting Request Rejected — ${planName}`
@@ -92,7 +112,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
                 : `Your hosting request for ${planName} has been approved.`,
               type: st === 'rejected' ? 'expiration' : 'update',
               read_status: false,
-              created_at: r.updated_at || r.created_at,
+              created_at: timestamp,
               virtual: true,
             });
           }

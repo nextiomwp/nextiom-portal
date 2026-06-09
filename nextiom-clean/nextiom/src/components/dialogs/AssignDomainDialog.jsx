@@ -44,9 +44,9 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess }) {
     ? basePrice + (basePrice * pctBonus / 100)
     : basePrice;
 
-  // Calculate expiry date based on registration period
+  // Calculate expiry date based on registration period and start date
   const calcExpiry = () => {
-    const d = new Date();
+    const d = startDate ? new Date(startDate) : new Date();
     d.setFullYear(d.getFullYear() + periodNum);
     return d.toISOString();
   };

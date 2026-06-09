@@ -48,7 +48,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess }) {
     : basePrice;
 
   const calcExpiry = () => {
-    const d = new Date();
+    const d = startDate ? new Date(startDate) : new Date();
     d.setFullYear(d.getFullYear() + periodNum);
     return d.toISOString();
   };

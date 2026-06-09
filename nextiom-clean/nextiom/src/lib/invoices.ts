@@ -328,6 +328,8 @@ export interface InvoicePayment {
   payment_date: string
   notes?: string
   slip_url?: string
+  /** Raw Supabase storage path, preserved before slip_url is resolved to a signed URL. Use this for on-demand admin downloads. */
+  slip_path?: string
   status?: 'submitted' | 'approved' | 'rejected' | 'info_requested'
   admin_reason?: string
   created_at?: string
@@ -395,12 +397,22 @@ export async function getPaymentSlipSignedUrl(rawPath: string, expiresInSec = 36
       const { data, error } = await supabase.functions.invoke('admin-document-link', {
         body: { path, bucket: 'invoice-assets' }
       })
-      if (!error && data?.signedUrl) {
+      if (error) {
+        throw new Error(`Edge function invoke error: ${error.message || JSON.stringify(error)}`)
+      }
+      if (data?.error) {
+        throw new Error(`Edge function returned error: ${data.error}`)
+      }
+      if (data?.signedUrl) {
         return data.signedUrl
       }
+      throw new Error('Edge function response did not contain signedUrl')
     }
-  } catch (err) {
-    console.warn('Failed to resolve slip URL via Edge Function, falling back to direct storage call:', err)
+  } catch (err: any) {
+    console.warn('Failed to resolve slip URL via Edge Function:', err)
+    // For admins, direct storage fallback will fail because of RLS.
+    // Propagate the real error so it can be shown in the UI.
+    throw err
   }
 
   const { data, error } = await supabase.storage
@@ -471,6 +483,10 @@ export async function getInvoicePayments(invoiceId: string): Promise<InvoicePaym
   // Resolve to a signed URL the UI can render directly.
   await Promise.all(rows.map(async (r: InvoicePayment) => {
     if (r.slip_url) {
+      // Preserve the raw storage path so the admin can call the edge function
+      // on-demand (e.g. for the "Download slip" button) even if URL resolution
+      // below fails.
+      r.slip_path = r.slip_url
       try { r.slip_url = await getPaymentSlipSignedUrl(r.slip_url) } catch { /* leave as-is */ }
     }
   }))
