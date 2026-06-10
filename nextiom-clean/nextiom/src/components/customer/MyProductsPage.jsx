@@ -416,6 +416,10 @@ export default function MyProductsPage({ user, isDark, c }) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                <span style={{ color: sub }}>Product Name</span>
+                <span style={{ color: text, fontWeight: 600 }}>{lic.name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
                 <span style={{ color: sub }}>Product Type</span>
                 <span style={{ color: text }}>{dp.type || 'Plugin'}</span>
               </div>
