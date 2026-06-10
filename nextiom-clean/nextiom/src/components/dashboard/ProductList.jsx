@@ -120,8 +120,10 @@ function ProductList({ products, onUpdate, isDark, c }) {
                   </p>
                 )}
 
-                {product.price != null && (
-                  <p style={{ color: brand, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>${Number(product.price).toFixed(2)}</p>
+                 {product.price != null && (
+                  <p style={{ color: brand, fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
+                    {product.currency === 'LKR' ? `Rs. ${Number(product.price).toFixed(2)}` : `$${Number(product.price).toFixed(2)}`}
+                  </p>
                 )}
 
                 {isVirtual ? (
@@ -135,7 +137,9 @@ function ProductList({ products, onUpdate, isDark, c }) {
                     {product.renewal_enabled && product.renewal_price && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
                         <RefreshCw style={{ width: 12, height: 12, color: sub }} />
-                        <span style={{ color: sub, fontSize: 11 }}>Renewal: ${product.renewal_price}</span>
+                        <span style={{ color: sub, fontSize: 11 }}>
+                          Renewal: {product.currency === 'LKR' ? `Rs. ${product.renewal_price}` : `$${product.renewal_price}`}
+                        </span>
                       </div>
                     )}
                   </>

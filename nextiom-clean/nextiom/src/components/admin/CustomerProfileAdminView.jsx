@@ -36,6 +36,59 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [hostingRequests, setHostingRequests] = useState([]);
   const [emailRequests, setEmailRequests] = useState([]);
   const [licenses, setLicenses] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [productStatusFilter, setProductStatusFilter] = useState('all');
+  const [productSortOrder, setProductSortOrder] = useState('newest');
+
+  const getCalculatedStatus = (lic) => {
+    const lt = lic.product?.license_type || lic.license_type || 'one_time';
+    
+    // Check start date (if start_date is in the future)
+    if (lic.start_date) {
+      const start = new Date(lic.start_date);
+      if (new Date() < start) {
+        return 'Pending';
+      }
+    }
+
+    if (lt === 'lifetime') {
+      return 'Active';
+    }
+    if (lt === 'one_time') {
+      const used = (lic.download_count || 0) >= 1;
+      return used ? 'Expired' : 'Active';
+    }
+    if ((lt === 'yearly' || lt === 'monthly') && lic.expiry_date) {
+      const days = Math.ceil((new Date(lic.expiry_date) - new Date()) / 86400000);
+      if (days <= 0) return 'Expired';
+      if (days <= 30) return 'Expiring Soon';
+      return 'Active';
+    }
+    return 'Active';
+  };
+
+  const filteredLicenses = licenses
+    .map(lic => ({
+      ...lic,
+      calculatedStatus: getCalculatedStatus(lic)
+    }))
+    .filter(lic => {
+      const term = productSearch.toLowerCase();
+      const nameMatch = (lic.name || '').toLowerCase().includes(term);
+      const typeMatch = (lic.product?.type || '').toLowerCase().includes(term);
+      const keyMatch = (lic.license_key || '').toLowerCase().includes(term);
+      const statusMatch = (lic.calculatedStatus || '').toLowerCase().includes(term);
+      
+      const matchesSearch = nameMatch || typeMatch || keyMatch || statusMatch;
+      const matchesStatus = productStatusFilter === 'all' || lic.calculatedStatus.toLowerCase() === productStatusFilter.toLowerCase();
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at || a.start_date || 0);
+      const dateB = new Date(b.created_at || b.start_date || 0);
+      return productSortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+    });
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [isMobile, setIsMobile] = useState(() => {
@@ -237,14 +290,14 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const StatusBadge = ({ status }) => {
     const s = String(status || '').toLowerCase();
     const col = isDark
-      ? s === 'approved' ? { bg: '#1a3052', color: '#60a5fa', dot: '#60a5fa' }
-        : s === 'completed' ? { bg: '#1a3020', color: '#4ade80', dot: '#4ade80' }
-        : s === 'pending' ? { bg: '#3b2508', color: '#fb923c', dot: '#fb923c' }
-        : { bg: '#3a1515', color: '#f87171', dot: '#f87171' }
-      : s === 'approved' ? { bg: '#dbeafe', color: '#1d4ed8', dot: '#3b82f6' }
-        : s === 'completed' ? { bg: '#dcfce7', color: '#15803d', dot: '#22c55e' }
-        : s === 'pending' ? { bg: '#fff7ed', color: '#c2410c', dot: '#f97316' }
-        : { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' };
+      ? (s === 'approved' ? { bg: '#1a3052', color: '#60a5fa', dot: '#60a5fa' }
+        : ['completed', 'active'].includes(s) ? { bg: '#1a3020', color: '#4ade80', dot: '#4ade80' }
+        : ['pending', 'expiring soon'].includes(s) ? { bg: '#3b2508', color: '#fb923c', dot: '#fb923c' }
+        : { bg: '#3a1515', color: '#f87171', dot: '#f87171' })
+      : (s === 'approved' ? { bg: '#dbeafe', color: '#1d4ed8', dot: '#3b82f6' }
+        : ['completed', 'active'].includes(s) ? { bg: '#dcfce7', color: '#15803d', dot: '#22c55e' }
+        : ['pending', 'expiring soon'].includes(s) ? { bg: '#fff7ed', color: '#c2410c', dot: '#f97316' }
+        : { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' });
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: col.bg, color: col.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: col.dot, flexShrink: 0 }} />
@@ -591,6 +644,94 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
       {/* Assigned Products */}
       <div style={{ ...cardS, marginBottom: 0 }}>
         <SectionHeader title="Assigned Products" accent="#6366f1" />
+
+        {/* Search & Filter Bar */}
+        <div style={{
+          padding: '16px 20px',
+          borderBottom: `1px solid ${c.border}`,
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)'
+        }}>
+          {/* Search Box */}
+          <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 360 }}>
+            <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: c.subText }} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input
+              type="text"
+              placeholder="Search by product, type, key, status..."
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              style={{
+                width: '100%',
+                paddingLeft: 34,
+                paddingRight: 12,
+                paddingTop: 8,
+                paddingBottom: 8,
+                fontSize: 13,
+                border: `1.5px solid ${c.border}`,
+                borderRadius: 8,
+                background: isDark ? '#22252C' : '#fff',
+                color: c.text,
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+
+          {/* Filters Group */}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Status Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase' }}>Status:</span>
+              <select
+                value={productStatusFilter}
+                onChange={(e) => setProductStatusFilter(e.target.value)}
+                style={{
+                  padding: '7px 10px',
+                  fontSize: 12.5,
+                  borderRadius: 8,
+                  border: `1.5px solid ${c.border}`,
+                  background: isDark ? '#22252C' : '#fff',
+                  color: c.text,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="expiring soon">Expiring Soon</option>
+                <option value="expired">Expired</option>
+              </select>
+            </div>
+
+            {/* Sort Order Filter */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase' }}>Sort:</span>
+              <select
+                value={productSortOrder}
+                onChange={(e) => setProductSortOrder(e.target.value)}
+                style={{
+                  padding: '7px 10px',
+                  fontSize: 12.5,
+                  borderRadius: 8,
+                  border: `1.5px solid ${c.border}`,
+                  background: isDark ? '#22252C' : '#fff',
+                  color: c.text,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="newest">Newest to Oldest</option>
+                <option value="oldest">Oldest to Newest</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', minWidth: 1120, borderCollapse: 'collapse' }}>
             <thead>
@@ -606,7 +747,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
               </tr>
             </thead>
             <tbody>
-              {licenses.map((lic, i) => {
+              {filteredLicenses.map((lic, i) => {
                 const row = i % 2 === 0 ? tdS : tdAlt;
                 const lt = lic.product?.license_type || lic.license_type || 'one_time';
                 const ltLabel = lt === 'one_time' ? 'One Time' : lt === 'yearly' ? 'Yearly' : 'Lifetime';
@@ -621,7 +762,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     <td style={row}>
                       <span style={{ fontFamily: 'monospace', fontSize: 11, color: c.subText }}>{lic.license_key || '-'}</span>
                     </td>
-                    <td style={row}><StatusBadge status={lic.status} /></td>
+                    <td style={row}><StatusBadge status={lic.calculatedStatus} /></td>
                     <td style={row}><span style={{ color: c.subText, fontSize: 12 }}>{lic.start_date ? format(new Date(lic.start_date), 'MMM dd, yy') : lic.created_at ? format(new Date(lic.created_at), 'MMM dd, yy') : '—'}</span></td>
                     <td style={row}>
                       <span style={{ color: c.text, fontSize: 12 }}>
@@ -649,7 +790,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                   </tr>
                 );
               })}
-              {licenses.length === 0 && <tr><td colSpan={8} style={emptyS}>No products assigned</td></tr>}
+              {licenses.length === 0 ? (
+                <tr><td colSpan={8} style={emptyS}>No products assigned</td></tr>
+              ) : filteredLicenses.length === 0 ? (
+                <tr><td colSpan={8} style={emptyS}>No products found matching filters</td></tr>
+              ) : null}
             </tbody>
           </table>
         </div>

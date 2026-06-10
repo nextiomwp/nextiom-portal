@@ -80,12 +80,15 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
     name: '',
     description: '',
     price: '0.00',
+    currency: 'USD',
     category: 'digital',
     type: 'Plugin',
     downloadUrl: '',
     accessMethod: 'license_auto',
     duration: 'yearly',
-    imageUrl: ''
+    imageUrl: '',
+    hasRenewal: false,
+    renewalPercentage: ''
   });
 
   const [assignForm, setAssignForm] = useState({
@@ -99,22 +102,38 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
+  const getRenewalPrice = () => {
+    const basePrice = parseFloat(customForm.price) || 0;
+    const pct = parseFloat(customForm.renewalPercentage) || 0;
+    return (basePrice * (1 + pct / 100)).toFixed(2);
+  };
+
   useEffect(() => {
     if (product && license && open) {
       const initialAccessMethod = product.license_registration || product.automatic_updates
         ? 'license_auto'
         : (product.manual_updates ? 'manual_no_license' : 'one_time');
 
+      const basePrice = product.price || 0;
+      const renewalPrice = product.renewal_price || 0;
+      let calculatedPercentage = '';
+      if (product.renewal_enabled && basePrice > 0) {
+        calculatedPercentage = Math.round(((renewalPrice - basePrice) / basePrice) * 100).toString();
+      }
+
       setCustomForm({
         name: product.name || '',
         description: product.description || '',
         price: product.price?.toString() || '0.00',
+        currency: product.currency || 'USD',
         category: product.category || 'digital',
         type: product.type || 'Plugin',
         downloadUrl: product.download_url || '',
         accessMethod: initialAccessMethod,
         duration: product.license_type || 'yearly',
-        imageUrl: product.image_url || ''
+        imageUrl: product.image_url || '',
+        hasRenewal: !!product.renewal_enabled,
+        renewalPercentage: calculatedPercentage
       });
 
       setAssignForm({
@@ -125,6 +144,13 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
       });
     }
   }, [product, license, open]);
+
+  // Disable renewal if access method is one_time
+  useEffect(() => {
+    if (customForm.accessMethod === 'one_time') {
+      setCustomForm(prev => prev.hasRenewal ? { ...prev, hasRenewal: false } : prev);
+    }
+  }, [customForm.accessMethod]);
 
   // Expiry Date Auto-Calculation logic
   useEffect(() => {
@@ -241,6 +267,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         name: customForm.name.trim(),
         description: customForm.description?.trim() || null,
         price: parseFloat(customForm.price) || 0,
+        currency: customForm.currency || 'USD',
         type: customForm.type.trim(),
         download_url: customForm.category === 'digital' ? customForm.downloadUrl.trim() : null,
         category: customForm.category,
@@ -249,8 +276,8 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         license_registration: customForm.accessMethod === 'license_auto',
         automatic_updates: customForm.accessMethod === 'license_auto',
         manual_updates: customForm.accessMethod === 'manual_no_license',
-        renewal_enabled: customForm.accessMethod === 'license_auto',
-        renewal_price: parseFloat(customForm.price) || 0,
+        renewal_enabled: customForm.hasRenewal,
+        renewal_price: customForm.hasRenewal ? (parseFloat(getRenewalPrice()) || 0) : (parseFloat(customForm.price) || 0),
         renewal_period_days: customForm.duration === 'monthly' ? 30 : (customForm.duration === 'yearly' ? 365 : null),
       };
 
@@ -291,7 +318,6 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         padding: 24,
         overflowY: 'auto'
       }}
-      onClick={() => onOpenChange(false)}
     >
       <div
         style={{
@@ -442,18 +468,96 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                   </div>
 
                   <div>
-                    <label style={labelS}>Product Price *</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <label style={{ ...labelS, marginBottom: 0 }}>Product Price *</label>
+                      <div style={{ display: 'flex', gap: 4, background: panel, padding: 2, borderRadius: 6, border: `1px solid ${borderStrong}` }}>
+                        {['USD', 'LKR'].map(curr => (
+                          <button
+                            key={curr}
+                            type="button"
+                            onClick={() => setCustomForm(p => ({ ...p, currency: curr }))}
+                            style={{
+                              padding: '3px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                              background: customForm.currency === curr ? brand : 'transparent',
+                              color: customForm.currency === curr ? '#fff' : subText,
+                              border: 'none', cursor: 'pointer', transition: 'all 0.1s ease'
+                            }}
+                          >
+                            {curr}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>$</span>
+                      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
+                        {customForm.currency === 'LKR' ? 'Rs.' : '$'}
+                      </span>
                       <input
                         type="number"
                         step="0.01"
                         value={customForm.price}
                         required
                         onChange={(e) => setCustomForm(p => ({ ...p, price: e.target.value }))}
-                        style={{ ...inpS, paddingLeft: 24 }}
+                        style={{ ...inpS, paddingLeft: customForm.currency === 'LKR' ? 34 : 24 }}
                       />
                     </div>
+
+                    {/* Renewal Option */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, opacity: customForm.accessMethod === 'one_time' ? 0.5 : 1 }}>
+                      <input
+                        type="checkbox"
+                        id="has-renewal"
+                        disabled={customForm.accessMethod === 'one_time'}
+                        checked={customForm.hasRenewal}
+                        onChange={(e) => setCustomForm(p => ({ ...p, hasRenewal: e.target.checked }))}
+                        style={{
+                          width: 15,
+                          height: 15,
+                          accentColor: brand,
+                          cursor: customForm.accessMethod === 'one_time' ? 'not-allowed' : 'pointer'
+                        }}
+                      />
+                      <label
+                        htmlFor="has-renewal"
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: text,
+                          cursor: customForm.accessMethod === 'one_time' ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        Enable Renewal (Yes / No) {customForm.accessMethod === 'one_time' && <span style={{ fontSize: 11, fontWeight: 500, color: subText }}>(Disabled for One-Time Purchase)</span>}
+                      </label>
+                    </div>
+
+                    {customForm.hasRenewal && (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ ...labelS, marginBottom: 6 }}>Renewal Percentage (%)</label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 10"
+                            value={customForm.renewalPercentage}
+                            onChange={(e) => setCustomForm(p => ({ ...p, renewalPercentage: e.target.value }))}
+                            style={inpS}
+                          />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ ...labelS, marginBottom: 6 }}>Renewal Price</label>
+                          <div style={{ position: 'relative' }}>
+                            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
+                              {customForm.currency === 'LKR' ? 'Rs.' : '$'}
+                            </span>
+                            <input
+                              type="text"
+                              readOnly
+                              value={getRenewalPrice()}
+                              style={{ ...inpS, paddingLeft: customForm.currency === 'LKR' ? 34 : 24, opacity: 0.7, cursor: 'not-allowed' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
