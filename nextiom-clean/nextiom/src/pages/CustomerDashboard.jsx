@@ -66,6 +66,7 @@ const NAV_STRUCTURE = [
       { id: 'emails_new', label: 'Email Registration' },
     ],
   },
+  { id: 'products', label: 'My Products', icon: Package, type: 'item' },
   {
     id: 'orders', label: 'Orders', icon: ShoppingCart, type: 'group',
     children: [
@@ -86,7 +87,6 @@ const NAV_STRUCTURE = [
       { id: 'support_tickets', label: 'My Tickets' },
     ],
   },
-  { id: 'products', label: 'My Products', icon: Package, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   {
     id: 'about', label: 'About Us', icon: Info, type: 'group',
