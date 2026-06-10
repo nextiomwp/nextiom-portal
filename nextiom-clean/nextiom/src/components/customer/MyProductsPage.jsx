@@ -251,7 +251,7 @@ export default function MyProductsPage({ user, isDark, c }) {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Detail Panel Header */}
+        {/* Detail Panel Header
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 20, borderBottom: `1px solid ${border}` }}>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
             <div style={{
@@ -277,10 +277,11 @@ export default function MyProductsPage({ user, isDark, c }) {
           >
             <X size={18} />
           </button>
-        </div>
+        </div> */}
 
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Active Status Alert Banner */}
+          
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             padding: '12px 16px', borderRadius: 8,
@@ -295,6 +296,14 @@ export default function MyProductsPage({ user, isDark, c }) {
             <span style={{ fontSize: 13, fontWeight: 500 }}>
               {lt === 'lifetime' ? 'Never expires' : validity.days != null ? `${validity.days} days remaining` : validity.label}
             </span>
+            <button
+            onClick={() => setDetailLicense(null)}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 28, height: 28 }}
+            onMouseEnter={e => e.currentTarget.style.background = hover}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            <X size={18} />
+          </button>
           </div>
 
           {/* Pricing Metrics Box Row */}
