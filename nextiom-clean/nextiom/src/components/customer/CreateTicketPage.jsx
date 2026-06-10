@@ -23,7 +23,7 @@ const QUICK_ACTIONS = [
   { label: 'Technical Support', icon: Headphones, color: '#14b8a6' },
   { label: 'Website', icon: Monitor, color: '#06b6d4' },
   { label: 'App', icon: Smartphone, color: '#6366f1' },
-  { label: 'Service Request', icon: Wrench, color: '#f97316' },
+  { label: 'Service Request', image: '/self-service - Edited.png', color: '#f97316' },
   { label: 'Refund Request', icon: ReceiptText, color: '#f43f5e' },
   { label: 'Cancelations', icon: CircleX, color: '#ef4444' },
   { label: 'Other / General', icon: Info, color: '#facc15' },
@@ -159,7 +159,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
         .ticket-quick-actions-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-          gap: 6px;
+          gap: 16px;
         }
         .ticket-quick-action-button {
           min-width: 0;
@@ -203,7 +203,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           }
           .ticket-quick-actions-grid {
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 16px;
           }
           .ticket-quick-action-button {
             min-height: 72px;
@@ -256,7 +256,9 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                   aria-pressed={active}
                 >
                   <span style={{ width: 24, height: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {Icon ? (
+                    {action.image ? (
+                      <img src={action.image} alt={action.label} style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                    ) : Icon ? (
                       <Icon size={22} strokeWidth={2.1} style={{ color: action.color }} />
                     ) : (
                       <span
