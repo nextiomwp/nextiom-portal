@@ -188,10 +188,8 @@ export default function MyProductsPage({ user, isDark, c }) {
     if (detailLicense && !isMobile) {
       const existsInSorted = sorted.some(l => l.id === detailLicense.id);
       if (!existsInSorted) {
-        setDetailLicense(sorted.length > 0 ? sorted[0] : null);
+        setDetailLicense(null);
       }
-    } else if (!detailLicense && sorted.length > 0 && !isMobile) {
-      setDetailLicense(sorted[0]);
     }
   }, [search, statusFilter, licenses, isMobile]);
 
