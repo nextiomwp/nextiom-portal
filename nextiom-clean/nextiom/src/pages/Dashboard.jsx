@@ -393,10 +393,25 @@ function Dashboard({ onLogout }) {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100dvh', background: c.bg, color: c.text, fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ display: 'flex', height: '100dvh', background: isDark ? '#0f1013' : '#f0f0f2', color: c.text, fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden', position: 'relative' }}>
+      {/* Background Glassmorphism Gradients */}
+      <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '45%', height: '45%', borderRadius: '50%', background: `${c.brand}15`, filter: 'blur(110px)', zIndex: 0, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '55%', height: '55%', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.12)', filter: 'blur(130px)', zIndex: 0, pointerEvents: 'none' }} />
+
       {!isMobile && (
-        <div style={{ width: sidebarOpen ? 240 : 80, background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', transition: 'width 0.2s', zIndex: 10, flexShrink: 0 }}>
-          <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
+        <div style={{
+          width: sidebarOpen ? 240 : 80,
+          background: isDark ? 'rgba(28, 30, 36, 0.55)' : 'rgba(255, 255, 255, 0.55)',
+          backdropFilter: 'blur(30px)',
+          WebkitBackdropFilter: 'blur(30px)',
+          borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'width 0.2s',
+          zIndex: 10,
+          flexShrink: 0
+        }}>
+          <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
               {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>}
@@ -460,9 +475,16 @@ function Dashboard({ onLogout }) {
         <>
           <div
             onClick={() => setIsMobileSidebarOpen(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 29 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 29, backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
           />
-          <div style={{ position: 'fixed', inset: '0 auto 0 0', width: 288, maxWidth: '88vw', background: c.sidebar, borderRight: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', zIndex: 30, boxShadow: '8px 0 28px rgba(0,0,0,0.3)' }}>
+          <div style={{
+            position: 'fixed', inset: '0 auto 0 0', width: 288, maxWidth: '88vw',
+            background: isDark ? 'rgba(28, 30, 36, 0.65)' : 'rgba(255, 255, 255, 0.65)',
+            backdropFilter: 'blur(30px)', WebkitBackdropFilter: 'blur(30px)',
+            borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            display: 'flex', flexDirection: 'column', zIndex: 30,
+            boxShadow: '8px 0 32px rgba(0,0,0,0.2)'
+          }}>
             <div style={{ padding: '20px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>NEXTIOM</div>
@@ -518,8 +540,19 @@ function Dashboard({ onLogout }) {
         </>
       )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} className={isDark ? 'dashboard-dark' : ''}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: isMobile ? '12px 16px' : '24px 32px', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderBottom: isMobile ? `1px solid ${c.border}` : 'none', background: isMobile ? c.sidebar : 'transparent' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 1 }} className={isDark ? 'dashboard-dark' : ''}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          padding: isMobile ? '12px 16px' : '20px 32px',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'wrap',
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          background: isDark ? 'rgba(21, 22, 26, 0.35)' : 'rgba(248, 248, 247, 0.35)',
+          backdropFilter: 'blur(15px)',
+          WebkitBackdropFilter: 'blur(15px)'
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <button onClick={() => (isMobile ? setIsMobileSidebarOpen(true) : setSidebarOpen(!sidebarOpen))} style={{ background: 'none', border: 'none', color: c.text, cursor: 'pointer', padding: 0, display: 'flex' }}>
               <Menu size={20} />
@@ -536,7 +569,14 @@ function Dashboard({ onLogout }) {
                 {unreadCount > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, background: c.brand, borderRadius: 8, fontSize: 10, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
               </div>
               {isNotificationsOpen && (
-                <div style={{ position: 'absolute', top: 44, right: 0, width: 320, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.15)', zIndex: 50, display: 'flex', flexDirection: 'column', maxHeight: 420 }}>
+                <div style={{
+                  position: 'absolute', top: 44, right: 0, width: 320,
+                  background: c.card,
+                  border: `1px solid ${c.borderStrong}`,
+                  borderRadius: 12,
+                  boxShadow: isDark ? '0 10px 40px rgba(0,0,0,0.4)' : '0 10px 40px rgba(0,0,0,0.08)',
+                  zIndex: 50, display: 'flex', flexDirection: 'column', maxHeight: 420
+                }}>
                   <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                     <span style={{ fontWeight: 600, color: c.text }}>Notifications</span>
                     {unreadCount > 0 && <span style={{ fontSize: 11, background: c.brand, color: '#fff', borderRadius: 10, padding: '2px 7px', fontWeight: 700 }}>{unreadCount} new</span>}

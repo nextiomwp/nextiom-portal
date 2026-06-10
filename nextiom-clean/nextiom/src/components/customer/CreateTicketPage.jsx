@@ -2,35 +2,31 @@ import React, { useState } from 'react';
 import {
   Send, Ticket, CheckCircle, ChevronRight, AlertCircle, LockKeyhole, Globe, Mail,
   ArrowLeftRight, CreditCard, BriefcaseBusiness, Package, Paintbrush, Puzzle,
-  Phone, Headphones, ReceiptText, CircleX, Info,
+  Phone, Headphones, ReceiptText, CircleX, Info, Wrench, Monitor, Smartphone,
 } from 'lucide-react';
 import { createTicket, addTicketMessage, addNotification, assertPortalActionsAllowed } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
-const QUICK_ACTION_ROWS = [
-  [
-    { label: 'Hosting', icon: AlertCircle, color: '#facc15', width: 82 },
-    { label: 'WordPress', monogram: 'W', color: '#3b82f6', width: 96 },
-    { label: 'SSL', icon: LockKeyhole, color: '#facc15', width: 72 },
-    { label: 'Domain', icon: Globe, color: '#3b82f6', width: 82 },
-    { label: 'Email', icon: Mail, color: '#c026d3', width: 76 },
-    { label: 'Migration', icon: ArrowLeftRight, color: '#3b82f6', width: 94 },
-    { label: 'Payment Gateway', icon: CreditCard, color: '#22c55e', width: 132 },
-    { label: 'Business Registration', icon: BriefcaseBusiness, color: '#f59e0b', width: 164 },
-  ],
-  [
-    { label: 'Products', icon: Package, color: '#c026d3', width: 122 },
-    { label: 'Theme', icon: Paintbrush, color: '#14b8a6', width: 114 },
-    { label: 'Plugin', icon: Puzzle, color: '#3b82f6', width: 112 },
-    { label: 'Virtual Number', icon: Phone, color: '#22c55e', width: 150 },
-    { label: 'Technical Support', icon: Headphones, color: '#14b8a6', width: 168 },
-  ],
-  [
-    { label: 'Service Request', icon: Headphones, color: '#f97316', width: 158 },
-    { label: 'Refund Request', icon: ReceiptText, color: '#f43f5e', width: 158 },
-    { label: 'Cancelations', icon: CircleX, color: '#ef4444', width: 146 },
-    { label: 'Other / General', icon: Info, color: '#facc15', width: 160 },
-  ],
+const QUICK_ACTIONS = [
+  { label: 'Hosting', icon: AlertCircle, color: '#facc15' },
+  { label: 'WordPress', monogram: 'W', color: '#3b82f6' },
+  { label: 'SSL', icon: LockKeyhole, color: '#facc15' },
+  { label: 'Domain', icon: Globe, color: '#3b82f6' },
+  { label: 'Email', icon: Mail, color: '#c026d3' },
+  { label: 'Migration', icon: ArrowLeftRight, color: '#3b82f6' },
+  { label: 'Payment Gateway', icon: CreditCard, color: '#22c55e' },
+  { label: 'Business Registration', icon: BriefcaseBusiness, color: '#f59e0b' },
+  { label: 'Products', icon: Package, color: '#c026d3' },
+  { label: 'Theme', icon: Paintbrush, color: '#14b8a6' },
+  { label: 'Plugin', icon: Puzzle, color: '#3b82f6' },
+  { label: 'Virtual Number', icon: Phone, color: '#22c55e' },
+  { label: 'Technical Support', icon: Headphones, color: '#14b8a6' },
+  { label: 'Website', icon: Monitor, color: '#06b6d4' },
+  { label: 'App', icon: Smartphone, color: '#6366f1' },
+  { label: 'Service Request', icon: Wrench, color: '#f97316' },
+  { label: 'Refund Request', icon: ReceiptText, color: '#f43f5e' },
+  { label: 'Cancelations', icon: CircleX, color: '#ef4444' },
+  { label: 'Other / General', icon: Info, color: '#facc15' },
 ];
 
 export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
@@ -160,13 +156,19 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           flex: 0 0 430px;
           max-width: 430px;
         }
-        .ticket-quick-action-row {
-          display: flex;
-          justify-content: flex-start;
+        .ticket-quick-actions-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
           gap: 6px;
         }
         .ticket-quick-action-button {
           min-width: 0;
+          min-height: 62px;
+          padding: 10px 11px;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 10px;
           border-radius: 8px;
           font-family: inherit;
           cursor: pointer;
@@ -175,38 +177,14 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
         .ticket-quick-action-button:hover {
           transform: translateY(-1px);
         }
-        .ticket-quick-action-button.top {
-          min-height: 82px;
-          padding: 10px 5px 9px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 9px;
-        }
-        .ticket-quick-action-button.middle,
-        .ticket-quick-action-button.bottom {
-          min-height: 62px;
-          padding: 10px 11px;
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          gap: 10px;
-        }
-        .ticket-quick-action-button.middle {
-          flex: 0 0 auto;
-        }
-        .ticket-quick-action-button.bottom {
-          flex: 0 0 auto;
-        }
         .ticket-quick-action-label {
           color: inherit;
           font-size: 11.5px;
           font-weight: 750;
           line-height: 1.18;
-          text-align: center;
-          overflow-wrap: normal;
-          white-space: nowrap;
+          text-align: left;
+          overflow-wrap: break-word;
+          white-space: normal;
         }
         @media (max-width: 1220px) {
           .ticket-create-layout {
@@ -223,31 +201,23 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           .ticket-quick-actions {
             gap: 12px;
           }
-          .ticket-quick-action-row {
-            flex-wrap: wrap;
+          .ticket-quick-actions-grid {
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
           }
-          .ticket-quick-action-button.top,
-          .ticket-quick-action-button.middle,
-          .ticket-quick-action-button.bottom {
-            flex: 1 1 calc(50% - 10px);
-            max-width: none;
-            min-height: 92px;
-            padding: 16px 14px;
-            flex-direction: row;
+          .ticket-quick-action-button {
+            min-height: 72px;
+            padding: 12px 14px;
             gap: 12px;
           }
           .ticket-quick-action-label {
-            font-size: 13.5px;
-            text-align: left;
+            font-size: 12.5px;
             white-space: normal;
           }
         }
-        @media (max-width: 460px) {
-          .ticket-quick-action-button.top,
-          .ticket-quick-action-button.middle,
-          .ticket-quick-action-button.bottom {
-            flex-basis: 100%;
+        @media (max-width: 480px) {
+          .ticket-quick-actions-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
@@ -263,61 +233,56 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
               Quick Actions
             </span>
           </div>
-          <div className="ticket-quick-actions">
-            {QUICK_ACTION_ROWS.map((row, rowIndex) => (
-              <div key={rowIndex} className="ticket-quick-action-row">
-                {row.map(action => {
-                  const Icon = action.icon;
-                  const actionSubject = buildActionTemplate(action.label).subject;
-                  const active = subject === actionSubject;
+          <div className="ticket-quick-actions-grid">
+            {QUICK_ACTIONS.map(action => {
+              const Icon = action.icon;
+              const actionSubject = buildActionTemplate(action.label).subject;
+              const active = subject === actionSubject;
 
-                  return (
-                    <button
-                      key={action.label}
-                      type="button"
-                      onClick={() => applyAction(action)}
-                      className={`ticket-quick-action-button ${rowIndex === 0 ? 'top' : rowIndex === 1 ? 'middle' : 'bottom'}`}
-                      style={{
-                        flexBasis: action.width,
-                        border: `1.5px solid ${active ? action.color : c.borderStrong || c.border}`,
-                        background: active
-                          ? (isDark ? `${action.color}1f` : `${action.color}12`)
-                          : (isDark ? 'rgba(255,255,255,0.015)' : c.panel2),
-                        color: c.text,
-                        boxShadow: active ? `0 0 0 1px ${action.color}22` : 'none',
-                      }}
-                      aria-pressed={active}
-                    >
-                      <span style={{ width: rowIndex === 0 ? 26 : 24, height: rowIndex === 0 ? 26 : 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        {Icon ? (
-                          <Icon size={rowIndex === 0 ? 24 : 22} strokeWidth={2.1} style={{ color: action.color }} />
-                        ) : (
-                          <span
-                            style={{
-                              width: rowIndex === 0 ? 24 : 22,
-                              height: rowIndex === 0 ? 24 : 22,
-                              border: `2px solid ${action.color}`,
-                              borderRadius: '50%',
-                              color: action.color,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: rowIndex === 0 ? 16 : 14,
-                              fontWeight: 800,
-                              lineHeight: 1,
-                              fontFamily: 'Georgia, serif',
-                            }}
-                          >
-                            {action.monogram}
-                          </span>
-                        )}
+              return (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={() => applyAction(action)}
+                  className="ticket-quick-action-button"
+                  style={{
+                    border: `1.5px solid ${active ? action.color : c.borderStrong || c.border}`,
+                    background: active
+                      ? (isDark ? `${action.color}1f` : `${action.color}12`)
+                      : (isDark ? 'rgba(255,255,255,0.015)' : c.panel2),
+                    color: c.text,
+                    boxShadow: active ? `0 0 0 1px ${action.color}22` : 'none',
+                  }}
+                  aria-pressed={active}
+                >
+                  <span style={{ width: 24, height: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {Icon ? (
+                      <Icon size={22} strokeWidth={2.1} style={{ color: action.color }} />
+                    ) : (
+                      <span
+                        style={{
+                          width: 22,
+                          height: 22,
+                          border: `2px solid ${action.color}`,
+                          borderRadius: '50%',
+                          color: action.color,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          lineHeight: 1,
+                          fontFamily: 'Georgia, serif',
+                        }}
+                      >
+                        {action.monogram}
                       </span>
-                      <span className="ticket-quick-action-label">{action.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
+                    )}
+                  </span>
+                  <span className="ticket-quick-action-label">{action.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
