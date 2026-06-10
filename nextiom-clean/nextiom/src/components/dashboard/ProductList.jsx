@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity, Layers, Clock } from 'lucide-react';
+import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity, Layers, Clock, Key } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { deleteProduct, addNotification } from '@/lib/storage';
 import EditProductDialog from '@/components/dialogs/EditProductDialog';
@@ -154,6 +154,12 @@ function ProductList({ products, onUpdate, isDark, c }) {
                         style={{ display: 'flex', alignItems: 'center', gap: 5, color: brand, fontSize: 12, textDecoration: 'none', marginTop: 4 }}>
                         <Download style={{ width: 12, height: 12 }} /> Download URL set
                       </a>
+                    )}
+                    {product.license_key && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: sub, fontSize: 11, marginTop: 4 }}>
+                        <Key style={{ width: 12, height: 12 }} />
+                        <span style={{ fontFamily: 'monospace' }}>Key: {product.license_key}</span>
+                      </div>
                     )}
                   </>
                 )}

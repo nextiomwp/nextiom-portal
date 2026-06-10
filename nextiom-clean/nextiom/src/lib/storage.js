@@ -313,6 +313,9 @@ export const updateProduct = async (id, updates) => {
 };
 
 export const deleteProduct = async (id) => {
+  // Clean up referencing licenses first to prevent foreign key constraint violations
+  await supabase.from('licenses').delete().eq('product_id', id);
+
   const { error } = await supabase
     .from('products')
     .delete()
@@ -577,7 +580,7 @@ export const getCustomerServices = async (customerId) => {
 };
 
 export const getLicenses = async (customerId) => {
-  let query = supabase.from('licenses').select('*, products(id, name, price, currency, type, description, download_url, license_type, license_registration, manual_updates, automatic_updates, category, image_url, renewal_enabled, renewal_price, renewal_date, renewal_period_days)');
+  let query = supabase.from('licenses').select('*, products(id, name, price, currency, type, description, download_url, license_type, license_registration, manual_updates, automatic_updates, category, image_url, renewal_enabled, renewal_price, renewal_date, renewal_period_days, license_key)');
 
   if (customerId) {
     query = query.eq('customer_id', customerId);
