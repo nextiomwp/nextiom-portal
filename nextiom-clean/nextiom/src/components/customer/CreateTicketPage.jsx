@@ -3,30 +3,94 @@ import {
   Send, Ticket, CheckCircle, ChevronRight, AlertCircle, LockKeyhole, Globe, Mail,
   ArrowLeftRight, CreditCard, BriefcaseBusiness, Package, Paintbrush, Puzzle,
   Phone, Headphones, ReceiptText, CircleX, Info, Wrench, Monitor, Smartphone,
+  Server, Database, ShieldAlert, Code,
 } from 'lucide-react';
 import { createTicket, addTicketMessage, addNotification, assertPortalActionsAllowed } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
-const QUICK_ACTIONS = [
-  { label: 'Hosting', icon: AlertCircle, color: '#facc15' },
-  { label: 'WordPress', monogram: 'W', color: '#3b82f6' },
-  { label: 'SSL', icon: LockKeyhole, color: '#facc15' },
-  { label: 'Domain', icon: Globe, color: '#3b82f6' },
-  { label: 'Email', icon: Mail, color: '#c026d3' },
-  { label: 'Migration', icon: ArrowLeftRight, color: '#3b82f6' },
-  { label: 'Payment Gateway', icon: CreditCard, color: '#22c55e' },
-  { label: 'Business Registration', icon: BriefcaseBusiness, color: '#f59e0b' },
-  { label: 'Products', icon: Package, color: '#c026d3' },
-  { label: 'Theme', icon: Paintbrush, color: '#14b8a6' },
-  { label: 'Plugin', icon: Puzzle, color: '#3b82f6' },
-  { label: 'Virtual Number', icon: Phone, color: '#22c55e' },
-  { label: 'Technical Support', icon: Headphones, color: '#14b8a6' },
-  { label: 'Website', icon: Monitor, color: '#06b6d4' },
-  { label: 'App', icon: Smartphone, color: '#6366f1' },
-  { label: 'Service Request', image: '/self-service - Edited.png', color: '#f97316' },
-  { label: 'Refund Request', icon: ReceiptText, color: '#f43f5e' },
-  { label: 'Cancelations', icon: CircleX, color: '#ef4444' },
-  { label: 'Other / General', icon: Info, color: '#facc15' },
+const QUICK_ACTION_CATEGORIES = [
+  {
+    id: 'hosting',
+    title: 'Hosting & Servers',
+    desc: 'Server, hosting, SSL & migration',
+    icon: Server,
+    color: '#3b82f6',
+    actions: [
+      { label: 'Hosting', icon: Server },
+      { label: 'VPS', icon: Database },
+      { label: 'SSL', icon: LockKeyhole },
+      { label: 'Migration', icon: ArrowLeftRight },
+    ]
+  },
+  {
+    id: 'website',
+    title: 'Website & WordPress',
+    desc: 'Website, WordPress & related tools',
+    icon: Monitor,
+    color: '#a855f7',
+    actions: [
+      { label: 'Website', icon: Monitor },
+      { label: 'WordPress', monogram: 'W' },
+      { label: 'Plugin', icon: Puzzle },
+      { label: 'Theme', icon: Paintbrush },
+    ]
+  },
+  {
+    id: 'domains',
+    title: 'Domains & Email',
+    desc: 'Domain, email & communication',
+    icon: Globe,
+    color: '#0ea5e9',
+    actions: [
+      { label: 'Domain', icon: Globe },
+      { label: 'Email', icon: Mail },
+      { label: 'DNS Issues', icon: ShieldAlert },
+    ]
+  },
+  {
+    id: 'business',
+    title: 'Business Services',
+    desc: 'Business & professional services',
+    icon: BriefcaseBusiness,
+    color: '#10b981',
+    actions: [
+      { label: 'Business Registration', icon: BriefcaseBusiness },
+      { label: 'Payment Gateway', icon: CreditCard },
+      { label: 'Virtual Number', icon: Phone },
+    ]
+  },
+  {
+    id: 'billing',
+    title: 'Billing & Requests',
+    desc: 'Billing, requests & account related',
+    icon: ReceiptText,
+    color: '#f43f5e',
+    actions: [
+      { label: 'Service Request', image: '/self-service - Edited.png' },
+      { label: 'Refund Request', icon: ReceiptText },
+      { label: 'Cancellation', icon: CircleX },
+      { label: 'General Inquiry', icon: Info },
+    ]
+  },
+  {
+    id: 'development',
+    title: 'Development & Apps',
+    desc: 'Apps, development & technical help',
+    icon: Code,
+    color: '#ea580c',
+    actions: [
+      { label: 'App', icon: Smartphone },
+      { label: 'Custom Development', icon: Code },
+    ]
+  },
+  {
+    id: 'tech_support',
+    title: 'Technical Support',
+    desc: 'Open a ticket',
+    icon: Headphones,
+    color: '#ea580c',
+    isSpecial: true,
+  }
 ];
 
 export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
@@ -156,33 +220,90 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           flex: 0 0 430px;
           max-width: 430px;
         }
-        .ticket-quick-actions-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-          gap: 16px;
-        }
-        .ticket-quick-action-button {
-          min-width: 0;
-          min-height: 62px;
-          padding: 10px 11px;
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          gap: 10px;
-          border-radius: 8px;
-          font-family: inherit;
-          cursor: pointer;
-          transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
-        }
-        .ticket-quick-action-button:hover {
+        .ticket-special-card:hover {
           transform: translateY(-1px);
         }
-        .ticket-quick-action-label {
-          color: inherit;
-          font-size: 11.5px;
+        .ticket-categories-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 16px;
+        }
+        .ticket-category-card {
+          border-radius: 14px;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.015);
+          transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .ticket-category-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 16px;
+          border-bottom: 1px solid var(--border-color);
+        }
+        .ticket-category-header-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .ticket-category-icon-wrapper {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .ticket-category-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .ticket-category-title {
+          font-size: 13.5px;
           font-weight: 750;
-          line-height: 1.18;
-          text-align: left;
+          line-height: 1.2;
+        }
+        .ticket-category-desc {
+          font-size: 11px;
+          opacity: 0.65;
+          line-height: 1.1;
+        }
+        .ticket-category-chevron {
+          opacity: 0.4;
+          transition: opacity 0.15s;
+        }
+        .ticket-category-card:hover .ticket-category-chevron {
+          opacity: 0.8;
+        }
+        .ticket-category-actions-grid {
+          display: grid;
+          gap: 10px;
+          padding: 14px;
+        }
+        .ticket-category-action-button {
+          min-width: 0;
+          min-height: 82px;
+          padding: 12px 6px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          border-radius: 10px;
+          font-family: inherit;
+          cursor: pointer;
+          transition: border-color 0.15s, background 0.15s, transform 0.15s;
+        }
+        .ticket-category-action-button:hover {
+          transform: translateY(-1px);
+        }
+        .ticket-category-action-label {
+          font-size: 12px;
+          font-weight: 750;
+          line-height: 1.25;
+          text-align: center;
           overflow-wrap: break-word;
           white-space: normal;
         }
@@ -197,27 +318,30 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
             flex-basis: auto;
           }
         }
-        @media (max-width: 760px) {
-          .ticket-quick-actions {
-            gap: 12px;
+        @media (max-width: 900px) {
+          .ticket-categories-grid {
+            grid-template-columns: 1fr;
           }
-          .ticket-quick-actions-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-          }
-          .ticket-quick-action-button {
-            min-height: 72px;
-            padding: 12px 14px;
-            gap: 12px;
-          }
-          .ticket-quick-action-label {
-            font-size: 12.5px;
-            white-space: normal;
+          .ticket-category-card, .ticket-special-card {
+            grid-column: span 1 !important;
           }
         }
-        @media (max-width: 480px) {
-          .ticket-quick-actions-grid {
-            grid-template-columns: 1fr;
+        @media (max-width: 760px) {
+          .ticket-category-actions-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px;
+          }
+          .ticket-category-action-button {
+            min-height: 72px;
+            padding: 12px 14px;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 12px;
+          }
+          .ticket-category-action-label {
+            font-size: 12.5px;
+            text-align: left;
           }
         }
       `}</style>
@@ -233,56 +357,146 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
               Quick Actions
             </span>
           </div>
-          <div className="ticket-quick-actions-grid">
-            {QUICK_ACTIONS.map(action => {
-              const Icon = action.icon;
-              const actionSubject = buildActionTemplate(action.label).subject;
-              const active = subject === actionSubject;
+          <div className="ticket-categories-grid">
+            {QUICK_ACTION_CATEGORIES.map((cat, index) => {
+              const HeaderIcon = cat.icon;
+              const hasActiveAction = !cat.isSpecial && cat.actions.some(action => {
+                const actionSubject = buildActionTemplate(action.label).subject;
+                return subject === actionSubject;
+              });
+
+              if (cat.isSpecial) {
+                const active = subject === 'Technical Support support request';
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => applyAction({ label: 'Technical Support' })}
+                    className="ticket-category-card ticket-special-card"
+                    style={{
+                      gridColumn: index < 4 ? 'span 3' : 'span 2',
+                      border: `1px solid ${active ? cat.color : (isDark ? `${cat.color}25` : `${cat.color}1c`)}`,
+                      boxShadow: active ? `0 0 14px ${cat.color}1a` : 'none',
+                      background: c.card,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                      minHeight: 110,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      gap: 8,
+                      transition: 'border-color 0.15s, box-shadow 0.15s, transform 0.15s',
+                    }}
+                  >
+                    <Headphones size={36} style={{ color: cat.color }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{ fontSize: 13.5, fontWeight: 800, color: cat.color }}>Technical Support</span>
+                    </div>
+                  </button>
+                );
+              }
 
               return (
-                <button
-                  key={action.label}
-                  type="button"
-                  onClick={() => applyAction(action)}
-                  className="ticket-quick-action-button"
+                <div
+                  key={cat.id}
+                  className="ticket-category-card"
                   style={{
-                    border: `1.5px solid ${active ? action.color : c.borderStrong || c.border}`,
-                    background: active
-                      ? (isDark ? `${action.color}1f` : `${action.color}12`)
-                      : (isDark ? 'rgba(255,255,255,0.015)' : c.panel2),
-                    color: c.text,
-                    boxShadow: active ? `0 0 0 1px ${action.color}22` : 'none',
+                    gridColumn: index < 4 ? 'span 3' : 'span 2',
+                    border: `1px solid ${hasActiveAction ? cat.color : (isDark ? `${cat.color}25` : `${cat.color}1c`)}`,
+                    boxShadow: hasActiveAction ? `0 0 14px ${cat.color}1a` : 'none',
+                    background: c.card,
                   }}
-                  aria-pressed={active}
                 >
-                  <span style={{ width: 24, height: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {action.image ? (
-                      <img src={action.image} alt={action.label} style={{ width: 22, height: 22, objectFit: 'contain' }} />
-                    ) : Icon ? (
-                      <Icon size={22} strokeWidth={2.1} style={{ color: action.color }} />
-                    ) : (
-                      <span
+                  <div
+                    className="ticket-category-header"
+                    style={{
+                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                      background: isDark
+                        ? `linear-gradient(135deg, ${cat.color}15, transparent)`
+                        : `linear-gradient(135deg, ${cat.color}08, transparent)`,
+                    }}
+                  >
+                    <div className="ticket-category-header-left">
+                      <div
+                        className="ticket-category-icon-wrapper"
                         style={{
-                          width: 22,
-                          height: 22,
-                          border: `2px solid ${action.color}`,
-                          borderRadius: '50%',
-                          color: action.color,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 12,
-                          fontWeight: 800,
-                          lineHeight: 1,
-                          fontFamily: 'Georgia, serif',
+                          background: `${cat.color}1a`,
                         }}
                       >
-                        {action.monogram}
-                      </span>
-                    )}
-                  </span>
-                  <span className="ticket-quick-action-label">{action.label}</span>
-                </button>
+                        <HeaderIcon size={20} style={{ color: cat.color }} />
+                      </div>
+                      <div className="ticket-category-info">
+                        <span className="ticket-category-title" style={{ color: c.text }}>{cat.title}</span>
+                        <span className="ticket-category-desc" style={{ color: c.subText }}>{cat.desc}</span>
+                      </div>
+                    </div>
+                    <ChevronRight size={15} className="ticket-category-chevron" style={{ color: c.subText }} />
+                  </div>
+
+                  <div
+                    className="ticket-category-actions-grid"
+                    style={{
+                      gridTemplateColumns:
+                        cat.id === 'billing' ? 'repeat(2, 1fr)' :
+                        cat.id === 'development' ? 'repeat(1, 1fr)' :
+                        `repeat(${cat.actions.length}, 1fr)`,
+                    }}
+                  >
+                    {cat.actions.map(action => {
+                      const Icon = action.icon;
+                      const actionSubject = buildActionTemplate(action.label).subject;
+                      const active = subject === actionSubject;
+
+                      return (
+                        <button
+                          key={action.label}
+                          type="button"
+                          onClick={() => applyAction(action)}
+                          className="ticket-category-action-button"
+                          style={{
+                            border: `1.5px solid ${active ? cat.color : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)')}`,
+                            background: active
+                              ? (isDark ? `${cat.color}1f` : `${cat.color}12`)
+                              : (isDark ? 'rgba(255,255,255,0.015)' : c.panel2),
+                            color: active ? cat.color : c.text,
+                          }}
+                        >
+                          <span style={{ width: 24, height: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 4 }}>
+                            {action.image ? (
+                              <img src={action.image} alt={action.label} style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                            ) : Icon ? (
+                              <Icon size={22} strokeWidth={2} style={{ color: active ? cat.color : (isDark ? `${cat.color}cc` : cat.color) }} />
+                            ) : (
+                              <span
+                                style={{
+                                  width: 22,
+                                  height: 22,
+                                  border: `2.5px solid ${active ? cat.color : (isDark ? `${cat.color}cc` : cat.color)}`,
+                                  borderRadius: '50%',
+                                  color: active ? cat.color : (isDark ? `${cat.color}cc` : cat.color),
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 12,
+                                  fontWeight: 900,
+                                  lineHeight: 1,
+                                  fontFamily: 'Georgia, serif',
+                                }}
+                              >
+                                {action.monogram}
+                              </span>
+                            )}
+                          </span>
+                          <span className="ticket-category-action-label" style={{ color: active ? cat.color : c.text }}>
+                            {action.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
