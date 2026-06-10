@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, X, Key, Calendar, DollarSign, Shield, Zap } from 'lucide-react';
+import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, X, Key, Calendar, DollarSign, Shield, Zap, Tag } from 'lucide-react';
 import { getLicenses, incrementDownloadCount } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -244,7 +244,7 @@ export default function MyProductsPage({ user, isDark, c }) {
           <p style={{ color: sub, fontSize: 13, marginTop: 4 }}>Products assigned to your account will appear here.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
           {licenses
             .filter(l => !search || (l.name || '').toLowerCase().includes(search.toLowerCase()) || (l.product?.type || '').toLowerCase().includes(search.toLowerCase()))
             .sort((a, b) => {
@@ -252,160 +252,250 @@ export default function MyProductsPage({ user, isDark, c }) {
               return sortDir === 'desc' ? db - da : da - db;
             })
             .map(license => {
-            const product = license.product || {};
-            const isVirtual = product.category === 'virtual';
-            const lt = product.license_type || license.license_type || 'one_time';
-            const cfg = LICENSE_CFG[lt] || LICENSE_CFG.one_time;
-            const LtIcon = cfg.icon;
-            const validity = getValidity(license);
-            const downloadUrl = product.download_url;
-            const isValid = license.status === 'Active' && validity.valid;
+              const product = license.product || {};
+              const lt = license.license_type || product.license_type || 'one_time';
+              
+              let accessMethod = 'one_time';
+              if (product.license_registration || product.automatic_updates) {
+                accessMethod = 'license_auto';
+              } else if (product.manual_updates) {
+                accessMethod = 'manual_no_license';
+              }
 
-            return (
-              <div key={license.id} style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                {/* Image banner */}
-                <div style={{ position: 'relative', height: 120, background: product.image_url ? 'transparent' : 'linear-gradient(135deg,#4F46E5,#6366f1)', flexShrink: 0, overflow: 'hidden' }}>
-                  {product.image_url
-                    ? <img src={product.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {isVirtual ? <Layers style={{ width: 36, height: 36, color: 'rgba(255,255,255,0.6)' }} /> : <Package style={{ width: 36, height: 36, color: 'rgba(255,255,255,0.6)' }} />}
-                      </div>
+              const formatDateSlash = (dateStr) => {
+                if (!dateStr) return '—';
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return '—';
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                return `${mm}/${dd}/${yyyy}`;
+              };
+
+              const getCardMetadata = () => {
+                if (accessMethod === 'license_auto') {
+                  if (lt === 'monthly') {
+                    return {
+                      header: 'License + Auto Monthly',
+                      color: '#818cf8',
+                      icon: Shield,
+                      badge: 'Monthly Subscription',
+                      badgeType: 'purple'
+                    };
+                  } else if (lt === 'lifetime') {
+                    return {
+                      header: 'License + Auto Lifetime',
+                      color: '#22c55e', // Green for lifetime
+                      icon: Shield,
+                      badge: 'Lifetime License | Never Expires',
+                      badgeType: 'green'
+                    };
+                  } else {
+                    return {
+                      header: 'License + Auto Yearly',
+                      color: '#818cf8',
+                      icon: Shield,
+                      badge: 'Yearly Subscription',
+                      badgeType: 'purple'
+                    };
                   }
-                  {/* Overlay gradient */}
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.55))' }} />
-                  {/* Category badge top-left */}
-                  <div style={{ position: 'absolute', top: 8, left: 10, padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500,
-                    background: isVirtual ? 'rgba(99,102,241,0.85)' : 'rgba(34,197,94,0.85)', color: '#fff', backdropFilter: 'blur(4px)' }}>
-                    {isVirtual ? 'Virtual' : 'Digital'}
+                } else if (accessMethod === 'manual_no_license') {
+                  if (lt === 'monthly') {
+                    return {
+                      header: 'Manual Updates Monthly',
+                      color: '#60a5fa',
+                      icon: RefreshCw,
+                      badge: 'Manual Updates | Monthly Access',
+                      badgeType: 'blue'
+                    };
+                  } else if (lt === 'lifetime') {
+                    return {
+                      header: 'Manual Updates Lifetime',
+                      color: '#60a5fa',
+                      icon: RefreshCw,
+                      badge: 'Lifetime Manual Updates',
+                      badgeType: 'blue'
+                    };
+                  } else {
+                    return {
+                      header: 'Manual Updates Yearly',
+                      color: '#60a5fa',
+                      icon: RefreshCw,
+                      badge: 'Manual Updates | Yearly Access',
+                      badgeType: 'blue'
+                    };
+                  }
+                } else {
+                  return {
+                    header: 'One-Time Purchase',
+                    color: '#22c55e',
+                    icon: Tag,
+                    badge: 'One-Time Purchase | No License | No Updates',
+                    badgeType: 'green'
+                  };
+                }
+              };
+
+              const meta = getCardMetadata();
+              const HeaderIcon = meta.icon;
+              const hasLicenseKey = accessMethod === 'license_auto';
+              const isLifetime = lt === 'lifetime';
+              const isOneTime = accessMethod === 'one_time';
+
+              return (
+                <div
+                  key={license.id}
+                  style={{
+                    background: card,
+                    border: `1px solid ${border}`,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  {/* Colored Header Band */}
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: `1px solid ${border}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: 'rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    <HeaderIcon size={14} style={{ color: meta.color }} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: meta.color }}>
+                      {meta.header}
+                    </span>
                   </div>
-                  {/* Eye button top-right */}
-                  <button onClick={() => setDetailLicense(license)}
-                    style={{ position: 'absolute', top: 8, right: 10, width: 30, height: 30, borderRadius: '50%', border: 'none',
-                      background: 'rgba(0,0,0,0.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      backdropFilter: 'blur(4px)', color: '#fff' }}>
-                    <Eye style={{ width: 14, height: 14 }} />
-                  </button>
-                </div>
 
-                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-                {/* Name row */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ color: text, fontWeight: 600, fontSize: 15, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {license.name}
-                    </p>
-                    {product.type && <p style={{ color: sub, fontSize: 12, marginTop: 2 }}>{product.type}</p>}
-                  </div>
-                </div>
-
-                {product.description && (
-                  <p style={{ color: sub, fontSize: 13, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {product.description}
-                  </p>
-                )}
-
-                {/* Virtual: renewal info */}
-                {isVirtual ? (
-                  <>
-                    {product.renewal_date && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <Clock style={{ width: 12, height: 12, color: sub }} />
-                        <span style={{ color: sub, fontSize: 12 }}>
-                          Renews on: {new Date(product.renewal_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
-                    )}
-                    {product.renewal_enabled && product.renewal_price && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <RefreshCw style={{ width: 12, height: 12, color: sub }} />
-                        <span style={{ color: sub, fontSize: 12 }}>Renewal price: ${product.renewal_price}</span>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'auto' }}>
-                      <CheckCircle style={{ width: 14, height: 14, color: '#22c55e' }} />
-                      <span style={{ color: '#22c55e', fontSize: 13, fontWeight: 500 }}>Service Active</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* License type badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 6, background: cfg.bg, width: 'fit-content' }}>
-                      <LtIcon style={{ width: 13, height: 13, color: cfg.color }} />
-                      <span style={{ color: cfg.color, fontSize: 12, fontWeight: 500 }}>{cfg.label}</span>
+                  {/* Card Body */}
+                  <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                    {/* Product Name */}
+                    <div style={{ marginBottom: 4 }}>
+                      <p style={{ color: text, fontWeight: 700, fontSize: 15, margin: 0 }}>
+                        {license.name}
+                      </p>
+                      {product.type && <p style={{ color: sub, fontSize: 11.5, marginTop: 2, margin: 0 }}>{product.type}</p>}
                     </div>
 
-                    {license.start_date && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <Calendar style={{ width: 12, height: 12, color: sub }} />
-                        <span style={{ color: sub, fontSize: 12 }}>
-                          Started: {new Date(license.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
+                    {/* Fields */}
+                    {hasLicenseKey && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
+                          License Key
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          background: 'rgba(0,0,0,0.2)',
+                          color: text,
+                          fontSize: 12.5,
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all'
+                        }}>
+                          <span>{license.license_key || '—'}</span>
+                        </div>
                       </div>
                     )}
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {validity.valid
-                        ? <CheckCircle style={{ width: 14, height: 14, color: '#22c55e', marginTop: 1 }} />
-                        : <AlertCircle style={{ width: 14, height: 14, color: '#ef4444', marginTop: 1 }} />}
-                      <span style={{ color: validity.valid ? '#22c55e' : '#ef4444', fontSize: 13, fontWeight: 500 }}>
-                        {validity.valid ? validity.label : (lt === 'one_time' ? 'Download Used' : 'Expired')}
-                      </span>
-                      {lt === 'yearly' && validity.days !== null && validity.days > 0 && validity.days <= 30 && (
-                        <span style={{ color: '#f59e0b', fontSize: 12, marginLeft: 4 }}>⚠ Renew soon</span>
-                      )}
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
+                        {isOneTime ? 'Purchase Date' : 'Start Date'}
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        background: 'rgba(0,0,0,0.2)',
+                        color: text,
+                        fontSize: 12.5
+                      }}>
+                        <span>{formatDateSlash(isOneTime ? license.created_at : license.start_date)}</span>
+                        <Calendar size={13} style={{ color: sub }} />
+                      </div>
                     </div>
 
-                    {lt === 'yearly' && license.expiry_date && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <Clock style={{ width: 12, height: 12, color: sub }} />
-                        <span style={{ color: sub, fontSize: 12 }}>
-                          Expires: {new Date(license.expiry_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
+                    {!isLifetime && !isOneTime && (
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
+                          Expiry Date
+                        </div>
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          background: 'rgba(0,0,0,0.2)',
+                          color: text,
+                          fontSize: 12.5
+                        }}>
+                          <span>{formatDateSlash(license.expiry_date)}</span>
+                          <Calendar size={13} style={{ color: sub }} />
+                        </div>
                       </div>
                     )}
 
-                    {license.license_key && (
-                      <div style={{ background: panel, borderRadius: 6, padding: '6px 10px' }}>
-                        <p style={{ color: sub, fontSize: 10, fontWeight: 600, letterSpacing: 0.5, marginBottom: 2 }}>LICENSE KEY</p>
-                        <p style={{ color: text, fontSize: 12, fontFamily: 'monospace', margin: 0, wordBreak: 'break-all' }}>{license.license_key}</p>
-                      </div>
-                    )}
+                    {/* Badge */}
+                    <div style={{
+                      padding: '6px 12px',
+                      borderRadius: 20,
+                      textAlign: 'center',
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      marginTop: 'auto',
+                      border: meta.badgeType === 'green' ? 'none' : `1px solid ${meta.color}33`,
+                      background: meta.badgeType === 'green' ? 'rgba(34,197,94,0.12)' : `${meta.color}08`,
+                      color: meta.badgeType === 'green' ? '#22c55e' : meta.color
+                    }}>
+                      {meta.badge}
+                    </div>
 
+                    {/* Preview Button */}
                     <button
-                      onClick={async () => {
-                        if (!isValid) {
-                          const msg = lt === 'one_time' ? 'You have already used your one-time download.' : 'Your license has expired.';
-                          toast({ title: 'Download Unavailable', description: msg, variant: 'destructive' }); return;
-                        }
-                        if (!downloadUrl) {
-                          toast({ title: 'No download available', description: 'Download URL not configured.', variant: 'destructive' }); return;
-                        }
-                        if (lt === 'one_time') {
-                          await incrementDownloadCount(license.id);
-                          setLicenses(prev => prev.map(l => l.id === license.id ? { ...l, download_count: (l.download_count || 0) + 1 } : l));
-                        }
-                        triggerDownload(downloadUrl, license.name);
-                      }}
+                      onClick={() => setDetailLicense(license)}
                       style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        width: '100%', padding: '9px 0', borderRadius: 8, border: 'none',
-                        background: isValid && downloadUrl ? brand : panel,
-                        color: isValid && downloadUrl ? '#fff' : sub,
-                        cursor: isValid && downloadUrl ? 'pointer' : 'not-allowed',
-                        fontSize: 14, fontWeight: 500, transition: 'opacity 0.15s', marginTop: 'auto',
+                        width: '100%',
+                        padding: '9px 0',
+                        borderRadius: 8,
+                        border: `1px solid ${border}`,
+                        background: 'rgba(255,255,255,0.03)',
+                        color: text,
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        textAlign: 'center',
+                        transition: 'all 0.15s ease',
+                        marginTop: 4
                       }}
-                      onMouseEnter={e => { if (isValid && downloadUrl) e.currentTarget.style.opacity = '0.88'; }}
-                      onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+                        e.currentTarget.style.borderColor = brand;
+                        e.currentTarget.style.color = brand;
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        e.currentTarget.style.borderColor = border;
+                        e.currentTarget.style.color = text;
+                      }}
                     >
-                      <Download style={{ width: 15, height: 15 }} />
-                      {isValid ? 'Download Product' : 'License Expired'}
+                      Preview
                     </button>
-                  </>
-                )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
         </div>
       )}
     </div>

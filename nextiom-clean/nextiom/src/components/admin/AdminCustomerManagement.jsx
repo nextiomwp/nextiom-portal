@@ -266,6 +266,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
           customers={[assigningCustomer]}
           products={products}
           onSuccess={handleAssignSuccess}
+          c={c}
         />
       )}
 

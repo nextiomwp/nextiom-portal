@@ -4,6 +4,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
 import AssignDomainDialog from '@/components/dialogs/AssignDomainDialog';
 import AssignEmailDialog from '@/components/dialogs/AssignEmailDialog';
+import EditAssignedProductDialog from '@/components/dialogs/EditAssignedProductDialog';
 import {
   getCustomerById,
   updateCustomer,
@@ -46,6 +47,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [editHostingItem, setEditHostingItem] = useState(null);
   const [editDomainItem, setEditDomainItem] = useState(null);
   const [editEmailItem, setEditEmailItem] = useState(null);
+  const [editingLicense, setEditingLicense] = useState(null);
 
   const loadAll = async () => {
     if (!customer?.id) return;
@@ -630,14 +632,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     </td>
                     <td style={{ ...row, textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                        <Btn color={c.brand} onClick={async () => {
-                          const next = lic.status === 'Active' ? 'Disabled' : 'Active';
-                          await updateLicense(lic.id, { status: next });
-                          addNotification({ customer_id: null, type: 'license_updated', title: `License ${next} — ${lic.products?.name || 'Product'}`, message: `Admin set license for "${lic.products?.name || 'a product'}" to ${next} for ${customerData.name}.` }).catch(() => {});
-                          await loadAll();
-                          toast({ title: 'License updated', description: `Status set to ${next}.` });
-                        }}>
-                          <Edit size={11} /> {lic.status === 'Active' ? 'Disable' : 'Enable'}
+                        <Btn color={c.brand} onClick={() => setEditingLicense(lic)}>
+                          <Edit size={11} /> Edit
                         </Btn>
                         <Btn color="#ef4444" onClick={async () => {
                           if (!confirm('Revoke this product license? Customer will lose access.')) return;
@@ -756,6 +752,19 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
           setEditEmailItem(null);
           loadAll();
         }}
+      />
+
+      <EditAssignedProductDialog
+        open={!!editingLicense}
+        onOpenChange={() => setEditingLicense(null)}
+        license={editingLicense}
+        product={editingLicense?.product}
+        customer={customerData}
+        onSuccess={() => {
+          setEditingLicense(null);
+          loadAll();
+        }}
+        c={c}
       />
     </div>
   );

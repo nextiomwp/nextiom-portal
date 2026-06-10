@@ -634,7 +634,7 @@ function Dashboard({ onLogout }) {
       </div>
       <AddCustomerDialog open={isAddCustomerOpen} onOpenChange={setIsAddCustomerOpen} onSuccess={loadData} />
       <AddProductDialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen} onSuccess={loadData} isDark={isDark} c={c} />
-      <AssignProductDialog open={isAssignProductOpen} onOpenChange={setIsAssignProductOpen} customers={customers} products={products} onSuccess={loadData} />
+      <AssignProductDialog open={isAssignProductOpen} onOpenChange={setIsAssignProductOpen} customers={customers} products={products} onSuccess={loadData} c={c} />
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} onUpdate={loadData} isDark={isDark} />
     </div>
   );
