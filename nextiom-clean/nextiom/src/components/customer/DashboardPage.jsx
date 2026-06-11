@@ -490,15 +490,12 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
       </div>
 
-      {/* Row 3: News + Rate Us + Need Help */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        <div className="lg:col-span-2">
+      {/* Row 3: News + Need Help */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3 h-full">
           <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
         </div>
-        <div className="lg:col-span-1">
-          <RateUsCard user={user} isDark={isDark} c={c} />
-        </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-2 h-full">
           {/* Need Help Card */}
           <div style={{
             ...cardStyle,
@@ -552,7 +549,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
       </div>
 
-      {/* Row 4: About Company + Contact + Visit Website + Quick Links */}
+      {/* Row 4: About Company + Contact + Quick Links + Rate Us */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* About Our Company Card */}
         <div style={{
@@ -643,83 +640,34 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
                 <p style={{ color: subText, fontSize: 10, margin: 0 }}>Sri Lanka</p>
               </div>
             </div>
-          </div>
-          <button
-            onClick={() => onNavigate('about_contact')}
-            style={{
-              marginTop: 'auto',
-              padding: '8px 18px',
-              borderRadius: 10,
-              background: 'transparent',
-              color: brand,
-              border: `1px solid ${brand}`,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'background 0.15s',
-              textAlign: 'center'
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = brandLight}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            View All Contact Options
-          </button>
-        </div>
-
-        {/* Visit Our Website Card */}
-        <div style={{
-          ...cardStyle,
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          boxSizing: 'border-box'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Globe style={{ width: 15, height: 15, color: brand }} />
-            </div>
-            <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>Visit Our Website</span>
-          </div>
-          <p style={{ color: subText, fontSize: 12, lineHeight: 1.5, margin: 0 }}>
-            Discover more about our services, company, and latest offers on our official website.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '6px 0' }}>
-            {[
-              'Latest Offers & Promotions',
-              'Service Details & Pricing',
-              'Knowledge Base & Guides'
-            ].map((point, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CheckCircle2 style={{ width: 14, height: 14, color: brand, flexShrink: 0 }} />
-                <span style={{ color: text, fontSize: 11, fontWeight: 500 }}>{point}</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <Globe style={{ width: 14, height: 14, color: brand, marginTop: 2, flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <p style={{ color: text, fontSize: 12, fontWeight: 600, margin: 0 }}><a href="https://nextiom.com" target="_blank" style={{ color: text, textDecoration: 'underline' }}>https://nextiom.com</a></p>
+                <p style={{ color: subText, fontSize: 10, margin: 0 }}>Official website</p>
               </div>
-            ))}
+            </div>
+            <button
+              onClick={() => onNavigate('about_contact')}
+              style={{
+                marginTop: 'auto',
+                padding: '8px 18px',
+                borderRadius: 10,
+                background: 'transparent',
+                color: brand,
+                border: `1px solid ${brand}`,
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'background 0.15s',
+                textAlign: 'center'
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = brandLight}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              View All Contact Options
+            </button>
           </div>
-          <button
-            onClick={() => window.open('https://nextiom.com', '_blank')}
-            style={{
-              marginTop: 'auto',
-              padding: '8px 18px',
-              borderRadius: 10,
-              background: 'transparent',
-              color: brand,
-              border: `1px solid ${brand}`,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = brandLight}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            <span>Visit Website</span>
-            <ExternalLink style={{ width: 12, height: 12 }} />
-          </button>
         </div>
 
         {/* Quick Links Card */}
@@ -765,6 +713,8 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             ))}
           </div>
         </div>
+
+        <RateUsCard user={user} isDark={isDark} c={c} />
       </div>
     </div>
   );

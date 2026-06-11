@@ -40,6 +40,8 @@ function NewsAnnouncementsCard({ isDark = false, c = {}, customerId }) {
       padding: '20px',
       display: 'flex',
       flexDirection: 'column',
+      height: '100%',
+      boxSizing: 'border-box',
       gap: 14,
     }}>
       {/* Header */}
