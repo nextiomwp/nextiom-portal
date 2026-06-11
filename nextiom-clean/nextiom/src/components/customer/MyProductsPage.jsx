@@ -279,64 +279,64 @@ export default function MyProductsPage({ user, isDark, c }) {
           </button>
         </div> */}
 
-        <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Active Status Alert Banner */}
           
           <div style={{
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '12px 16px', borderRadius: 8,
+            padding: '10px 14px', borderRadius: 8,
             background: status === 'Active' ? 'rgba(34,197,94,0.08)' : status === 'Expired' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
             border: `1px solid ${status === 'Active' ? 'rgba(34,197,94,0.15)' : status === 'Expired' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'}`,
             color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 600 }}>
-              {status === 'Active' ? <CheckCircle size={16} /> : status === 'Expired' ? <AlertCircle size={16} /> : <AlertCircle size={16} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
+              {status === 'Active' ? <CheckCircle size={15} /> : status === 'Expired' ? <AlertCircle size={15} /> : <AlertCircle size={15} />}
               <span>{status === 'Active' ? 'Active License' : status === 'Expired' ? 'Expired License' : 'Expiring Soon'}</span>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>
+            <span style={{ fontSize: 12.5, fontWeight: 500 }}>
               {lt === 'lifetime' ? 'Never expires' : validity.days != null ? `${validity.days} days remaining` : validity.label}
             </span>
             <button
             onClick={() => setDetailLicense(null)}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 28, height: 28 }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 26, height: 26 }}
             onMouseEnter={e => e.currentTarget.style.background = hover}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <X size={18} />
+            <X size={16} />
           </button>
           </div>
 
           {/* Pricing Metrics Box Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 10,
+              display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10,
               background: panel, border: `1px solid ${border}`
             }}>
               <div style={{
-                width: 36, height: 36, borderRadius: '50%', background: `${brand}20`,
+                width: 30, height: 30, borderRadius: '50%', background: `${brand}20`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: brand, flexShrink: 0
               }}>
-                <DollarSign size={18} />
+                <DollarSign size={14} />
               </div>
               <div>
-                <p style={{ color: sub, fontSize: 11, fontWeight: 500, margin: 0 }}>Purchase Price</p>
-                <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: '2px 0 0' }}>{formatPrice(dp.price, dp.currency)}</p>
+                <p style={{ color: sub, fontSize: 10.5, fontWeight: 500, margin: 0 }}>Purchase Price</p>
+                <p style={{ color: text, fontSize: 14, fontWeight: 700, margin: '1px 0 0' }}>{formatPrice(dp.price, dp.currency)}</p>
               </div>
             </div>
 
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 10,
+              display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10,
               background: panel, border: `1px solid ${border}`
             }}>
               <div style={{
-                width: 36, height: 36, borderRadius: '50%', background: 'rgba(34,197,94,0.15)',
+                width: 30, height: 30, borderRadius: '50%', background: 'rgba(34,197,94,0.15)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', flexShrink: 0
               }}>
-                <RefreshCw size={16} />
+                <RefreshCw size={13} />
               </div>
               <div>
-                <p style={{ color: sub, fontSize: 11, fontWeight: 500, margin: 0 }}>Renewal Price</p>
-                <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: '2px 0 0' }}>
+                <p style={{ color: sub, fontSize: 10.5, fontWeight: 500, margin: 0 }}>Renewal Price</p>
+                <p style={{ color: text, fontSize: 14, fontWeight: 700, margin: '1px 0 0' }}>
                   {showRenewal ? `${formatPrice(dp.renewal_price, dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
                 </p>
               </div>
@@ -345,16 +345,16 @@ export default function MyProductsPage({ user, isDark, c }) {
 
           {/* License Key Section */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
               <Key size={14} style={{ color: brand }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
             </div>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '8px 12px', borderRadius: 8, background: 'rgba(0,0,0,0.2)',
+              padding: '6px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.2)',
               border: `1px solid ${border}`,
             }}>
-              <span style={{ color: text, fontSize: 13, fontFamily: 'monospace', letterSpacing: 0.5 }}>
+              <span style={{ color: text, fontSize: 12.5, fontFamily: 'monospace', letterSpacing: 0.5 }}>
                 {lic.license_key || '—'}
               </span>
               {lic.license_key && (
@@ -367,8 +367,8 @@ export default function MyProductsPage({ user, isDark, c }) {
                   }}
                   style={{
                     background: `${brand}18`, border: `1px solid ${brand}30`,
-                    color: brand, padding: '6px 12px', borderRadius: 6, display: 'flex',
-                    alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                    color: brand, padding: '4px 10px', borderRadius: 6, display: 'flex',
+                    alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11.5, fontWeight: 500,
                   }}
                 >
                   {copiedKey ? <Check size={12} /> : <Copy size={12} />}
@@ -380,26 +380,26 @@ export default function MyProductsPage({ user, isDark, c }) {
 
           {/* Subscription Details */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, borderBottom: `1px solid ${border}`, paddingBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
               <Calendar size={14} style={{ color: brand }} />
               <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Subscription Details</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Start Date</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: text }}>
                   <span>{formatDate(lic.start_date || lic.created_at)}</span>
-                  <Calendar size={13} style={{ color: sub }} />
+                  <Calendar size={12} style={{ color: sub }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Expiry Date</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: text }}>
                   <span>{lt === 'lifetime' ? 'Lifetime' : formatDate(lic.expiry_date)}</span>
-                  <Calendar size={13} style={{ color: sub }} />
+                  <Calendar size={12} style={{ color: sub }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Days Left</span>
                 <span style={{ color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
                   {lt === 'lifetime' ? 'Never expires' : validity.days != null ? `${validity.days} days` : validity.label}
@@ -410,24 +410,24 @@ export default function MyProductsPage({ user, isDark, c }) {
 
           {/* Product Information */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, borderBottom: `1px solid ${border}`, paddingBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
               <Package size={14} style={{ color: brand }} />
               <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Product Information</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Product Name</span>
                 <span style={{ color: text, fontWeight: 600 }}>{lic.name}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Product Type</span>
                 <span style={{ color: text }}>{dp.type || 'Plugin'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>License Type</span>
                 <span style={{ color: text }}>{licenseTypeLabel}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Assigned On</span>
                 <span style={{ color: text }}>{formatDate(lic.created_at)}</span>
               </div>
@@ -437,7 +437,7 @@ export default function MyProductsPage({ user, isDark, c }) {
           {/* Description Section */}
           {(isVirtual || (!isVirtual && dp.description?.trim())) && (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, borderBottom: `1px solid ${border}`, paddingBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
                 <FileText size={14} style={{ color: brand }} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: text }}>
                   {isVirtual ? 'Service Details' : 'Description'}
@@ -445,13 +445,13 @@ export default function MyProductsPage({ user, isDark, c }) {
               </div>
               <div style={{
                 color: text,
-                fontSize: 13,
-                lineHeight: '1.5',
+                fontSize: 12.5,
+                lineHeight: '1.4',
                 whiteSpace: 'pre-wrap',
                 background: 'rgba(0,0,0,0.15)',
                 border: `1px solid ${border}`,
                 borderRadius: 8,
-                padding: '10px 12px'
+                padding: '8px 10px'
               }}>
                 {dp.description?.trim() || '—'}
               </div>
@@ -461,24 +461,24 @@ export default function MyProductsPage({ user, isDark, c }) {
           {/* Downloads section - Hidden for Virtual services, documentation removed */}
           {!isVirtual && (
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, borderBottom: `1px solid ${border}`, paddingBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
                 <Download size={14} style={{ color: brand }} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Downloads</span>
               </div>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p style={{ color: text, fontSize: 13, fontWeight: 600, margin: 0 }}>Main Product File</p>
-                    <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>Version 1.2.4 • 4.8 MB</p>
+                    <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Main Product File</p>
+                    <p style={{ color: sub, fontSize: 11, margin: '1px 0 0' }}>Version 1.2.4 • 4.8 MB</p>
                   </div>
                   <button
                     onClick={() => handleDownload(lic)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 6,
+                      padding: '5px 10px', borderRadius: 6,
                       background: `${brand}18`, border: `1px solid ${brand}30`,
-                      color: brand, cursor: 'pointer', fontSize: 12, fontWeight: 600
+                      color: brand, cursor: 'pointer', fontSize: 11.5, fontWeight: 600
                     }}
                   >
                     <Download size={12} />
@@ -491,32 +491,32 @@ export default function MyProductsPage({ user, isDark, c }) {
 
           {/* Features section */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, borderBottom: `1px solid ${border}`, paddingBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={brand} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
               </svg>
               <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Features</span>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {(dp.license_registration || !isVirtual) && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 12, color: text }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                   <span>License Registration</span>
                 </div>
               )}
               {dp.automatic_updates && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 12, color: text }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                   <span>Automatic Updates</span>
                 </div>
               )}
               {dp.manual_updates && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 12, color: text }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                   <span>Manual Updates</span>
@@ -527,20 +527,20 @@ export default function MyProductsPage({ user, isDark, c }) {
 
           {/* Footer Standing Banner */}
           <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 10,
+            display: 'flex', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10,
             background: status === 'Active' ? 'rgba(34,197,94,0.05)' : status === 'Expired' ? 'rgba(239,68,68,0.05)' : 'rgba(245,158,11,0.05)',
             border: `1px solid ${status === 'Active' ? 'rgba(34,197,94,0.1)' : status === 'Expired' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'}`,
             color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b'
           }}>
             {status === 'Active' ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                 <polyline points="9 11 11 13 15 9"></polyline>
               </svg>
             ) : (
-              <AlertCircle size={18} style={{ flexShrink: 0 }} />
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
             )}
-            <div style={{ fontSize: 13 }}>
+            <div style={{ fontSize: 12.5 }}>
               <p style={{ fontWeight: 600, margin: 0 }}>
                 {status === 'Active' ? 'Your license is active and in good standing.' : status === 'Expired' ? 'Your license is expired.' : 'Your license expires soon.'}
               </p>
@@ -555,7 +555,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   };
 
   return (
-    <div style={{ padding: '0 0 32px' }}>
+    <div style={{ padding: '0 0 8px' }}>
       <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
         
         {/* Left Side (Products list) */}
@@ -980,18 +980,23 @@ export default function MyProductsPage({ user, isDark, c }) {
 
         {/* Right Details Sidebar (Desktop) */}
         {!isMobile && detailLicense && (
-          <div style={{
-            width: 420,
-            flexShrink: 0,
-            background: card,
-            border: `1px solid ${border}`,
-            borderRadius: 12,
-            position: 'sticky',
-            top: 24,
-            maxHeight: 'calc(100vh - 120px)',
-            overflowY: 'auto',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          }}>
+          <div 
+            className="no-scrollbar"
+            style={{
+              width: 420,
+              flexShrink: 0,
+              background: card,
+              border: `1px solid ${border}`,
+              borderRadius: 12,
+              position: 'sticky',
+              top: 24,
+              maxHeight: 'calc(100vh - 150px)',
+              overflowY: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            }}
+          >
             {renderDetailPanelContent(detailLicense)}
           </div>
         )}

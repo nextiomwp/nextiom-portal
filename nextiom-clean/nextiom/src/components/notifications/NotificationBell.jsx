@@ -168,6 +168,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     const title = (notification.title || '').toLowerCase();
     const type = (notification.type || '').toLowerCase();
     if (type === 'announcement') return null;
+    if (type === 'quotation' || title.includes('quotation')) return 'quotations';
     if (type === 'product_assigned' || title.includes('product')) return 'products';
     if (type === 'invoice' || type.startsWith('payment_') || title.includes('invoice') || title.includes('payment')) return 'invoices';
     if (type === 'email_request' || type.startsWith('email') || title.includes('email request') || title.includes('email')) return 'emails_my';

@@ -30,7 +30,7 @@ function TypeBadge({ type, isDark }) {
   );
 }
 
-function NotificationsPage({ customerId, isDark = false, c = {} }) {
+function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
@@ -280,24 +280,43 @@ function NotificationsPage({ customerId, isDark = false, c = {} }) {
                               }) : ''}
                             </span>
                           </div>
-                          {!isRead && (
-                            <button
-                              onClick={e => handleRead(e, n)}
-                              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                              style={{ color: brand, backgroundColor: brandLight }}
-                              onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-                              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              Mark as Read
-                            </button>
-                          )}
-                          {isRead && (
-                            <span className="flex items-center gap-1 text-xs" style={{ color: '#16a34a' }}>
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              Read
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {!isRead && (
+                              <button
+                                onClick={e => handleRead(e, n)}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: brand, backgroundColor: brandLight }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Mark as Read
+                              </button>
+                            )}
+                            {isRead && (
+                              <span className="flex items-center gap-1 text-xs" style={{ color: '#16a34a' }}>
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Read
+                              </span>
+                            )}
+                            {(n.type === 'quotation' || String(n.title || '').toLowerCase().includes('quotation')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) {
+                                    await handleRead(e, n);
+                                  }
+                                  onNavigate('quotations');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                Go to Quotations
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

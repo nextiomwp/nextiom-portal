@@ -4,10 +4,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText, Calendar as CalendarIcon, CheckCircle, Clock,
   Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
-  Eye, Download, X, Globe, MapPin, Phone, RefreshCw, ThumbsUp, CreditCard, PenTool, Info
+  Eye, Download, X, Globe, MapPin, Phone, RefreshCw, ThumbsUp, CreditCard, PenTool, Info, Check, AlertTriangle
 } from 'lucide-react';
-import { getCustomerQuotations, fmtCurrency } from '@/lib/quotations';
+import { getCustomerQuotations, fmtCurrency, updateQuotationStatus } from '@/lib/quotations';
 import { getPublicInvoiceSettings } from '@/lib/invoices';
+import { useToast } from '@/components/ui/use-toast';
 
 const PAGE_SIZE = 6;
 
@@ -301,6 +302,7 @@ function QuotationDrawer({ quotation, settings, isDark, c, onClose, isMobile = f
 }
 
 export default function CustomerQuotationsPage({ user, isDark, c }) {
+  const { toast } = useToast();
   const [quotations, setQuotations] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -310,6 +312,24 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
   const [calFilter, setCalFilter] = useState({ mode: 'none' });
   const [openQuotation, setOpenQuotation] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleStatusChange = async (qId, status) => {
+    try {
+      await updateQuotationStatus(qId, status, 'customer');
+      toast({ 
+        title: `Quotation ${status === 'accepted' ? 'Accepted' : 'Declined'}`, 
+        description: `The quotation has been successfully ${status}.` 
+      });
+      setRefreshKey(k => k + 1);
+    } catch (err) {
+      console.error(err);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to update quotation status.', 
+        variant: 'destructive' 
+      });
+    }
+  };
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -506,6 +526,7 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
                     <th style={thS}>Valid Until</th>
                     <th style={thS}>Amount</th>
                     <th style={thS}>Status</th>
+                    <th style={thS}>Decision</th>
                     <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
@@ -539,6 +560,58 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
                           ) : (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#e87b35', background: 'rgba(232,123,53,0.12)', borderRadius: 20, padding: '2px 9px' }}>
                               Active
+                            </span>
+                          )}
+                        </td>
+                        <td style={style}>
+                          {((q.status || 'active') === 'active' && !isExpired) ? (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                onClick={() => handleStatusChange(q.id, 'accepted')}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '5px 8px',
+                                  background: 'rgba(34,197,94,0.15)',
+                                  border: '1px solid rgba(34,197,94,0.3)',
+                                  color: '#22c55e',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  transition: 'background 0.2s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.25)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(34,197,94,0.15)'}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleStatusChange(q.id, 'declined')}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '5px 8px',
+                                  background: 'rgba(239,68,68,0.15)',
+                                  border: '1px solid rgba(239,68,68,0.3)',
+                                  color: '#ef4444',
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  transition: 'background 0.2s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.25)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                              >
+                                Decline
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 11, color: c.subText, fontStyle: 'italic' }}>
+                              {q.status === 'accepted' ? 'Accepted' : q.status === 'declined' ? 'Declined' : 'No Action'}
                             </span>
                           )}
                         </td>

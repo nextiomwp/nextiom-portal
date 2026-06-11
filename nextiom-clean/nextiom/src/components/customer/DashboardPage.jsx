@@ -434,13 +434,29 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {data.recentActivity.length > 0 ? (
               data.recentActivity.map(item => {
-                const dest = item.type === 'domain' ? 'domains_my' : item.type === 'hosting' ? 'hosting_my' : item.type === 'email' ? 'emails_my' : 'notifications';
+                let dest = 'notifications';
+                if (item.type === 'domain') dest = 'domains_my';
+                else if (item.type === 'hosting') dest = 'hosting_my';
+                else if (item.type === 'email') dest = 'emails_my';
+                else if (item.type === 'notification' && (item.status === 'quotation' || String(item.title || '').toLowerCase().includes('quotation'))) {
+                  dest = 'quotations';
+                }
                 const canNav = !!onNavigate;
                 return (
                 <div
                   key={item.id}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 12, cursor: canNav ? 'pointer' : 'default', transition: 'background 0.15s' }}
-                  onClick={() => canNav && onNavigate(dest)}
+                  onClick={async () => {
+                    if (canNav) {
+                      if (item.type === 'notification') {
+                        const notifId = item.id.replace('n-', '');
+                        supabase.from('notifications').update({ read_status: true }).eq('id', notifId).then(({ error }) => {
+                          if (error) console.error('Failed to mark notification as read:', error);
+                        });
+                      }
+                      onNavigate(dest);
+                    }
+                  }}
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = hover}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >

@@ -189,13 +189,71 @@ export async function getCustomerQuotations(email: string): Promise<Quotation[]>
   return (data ?? []).map((q: any) => ({ ...q, items: q.quotation_items ?? [] }))
 }
 
-export async function updateQuotationStatus(id: string, status: string): Promise<void> {
+export async function updateQuotationStatus(id: string, status: string, initiator: 'admin' | 'customer' = 'admin'): Promise<void> {
+  // 1. Fetch quotation details
+  const { data: q } = await supabase
+    .from('quotations')
+    .select('quotation_no, customer_id, client_email, client_name')
+    .eq('id', id)
+    .maybeSingle()
+
+  // 2. Update status in DB
   const { error } = await supabase
     .from('quotations')
     .update({ status })
     .eq('id', id)
 
-  if (error) throw error
+  if (error) {
+    // If the update returned an error, verify if the status was actually updated.
+    // This bypasses false-positive errors returned by PostgREST due to RLS select policies.
+    const { data: checkQ } = await supabase
+      .from('quotations')
+      .select('status')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (!checkQ || checkQ.status !== status) {
+      throw error
+    }
+  }
+
+  // 3. Send notifications
+  if (q) {
+    if (initiator === 'admin') {
+      let customerId = q.customer_id
+      if (!customerId && q.client_email) {
+        const { data: customer } = await supabase
+          .from('customers')
+          .select('id')
+          .eq('email', q.client_email)
+          .maybeSingle()
+        if (customer) {
+          customerId = customer.id
+        }
+      }
+
+      if (customerId) {
+        supabase.from('notifications').insert({
+          customer_id: customerId,
+          type: 'quotation',
+          title: `Quotation Status Updated — ${q.quotation_no}`,
+          message: `Your quotation ${q.quotation_no} status has been updated to "${status.charAt(0).toUpperCase() + status.slice(1)}" by the Admin.`,
+        }).then(({ error: nErr }) => {
+          if (nErr) console.error('Notification error:', nErr)
+        })
+      }
+    } else {
+      // Initiator is customer
+      supabase.from('notifications').insert({
+        customer_id: null,
+        type: 'quotation',
+        title: `Quotation ${status.charAt(0).toUpperCase() + status.slice(1)} — ${q.quotation_no}`,
+        message: `Customer ${q.client_name} (${q.client_email || ''}) has ${status} the quotation ${q.quotation_no}.`,
+      }).then(({ error: nErr }) => {
+        if (nErr) console.error('Notification error:', nErr)
+      })
+    }
+  }
 }
 
 

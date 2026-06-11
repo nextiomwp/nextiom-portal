@@ -358,7 +358,7 @@ function Dashboard({ onLogout }) {
       case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={navigateTo} onViewCustomer={cu => { setSelectedCustomer(cu); navigateTo('customerProfile'); }} onConfirmCustomer={handleConfirmCustomer} onRejectCustomer={handleRejectCustomer} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
       case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} /> : null;
-      case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={navigateTo} c={c} isDark={isDark} isMobile={isMobile} />;
+      case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={navigateTo} c={c} isDark={isDark} isMobile={isMobile} markNotifRead={markNotifRead} />;
       case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} isDark={isDark} />;
       case 'domains': return <AdminDomainManagement isDark={isDark} />;
       case 'approvedHostings': return <AdminDomainManagement isDark={isDark} />;
@@ -635,7 +635,14 @@ function Dashboard({ onLogout }) {
                               markNotifRead(item.key);
                               const isEmailRequest = n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email request') || String(n.title || '').toLowerCase().includes('email');
                               const isTicket = n.type === 'ticket' || String(n.title || '').toLowerCase().includes('ticket');
-                              setActive(isTicket ? 'logs' : isEmailRequest ? 'emailRequests' : isPayment ? 'invoices' : 'adminNotifications');
+                              const isQuotation = n.type === 'quotation' || String(n.title || '').toLowerCase().includes('quotation');
+                              setActive(
+                                isTicket ? 'logs' : 
+                                isEmailRequest ? 'emailRequests' : 
+                                isPayment ? 'invoices' : 
+                                isQuotation ? 'quotations' : 
+                                'adminNotifications'
+                              );
                               setIsNotificationsOpen(false);
                             }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -907,7 +914,7 @@ function AdminProfileContent({ c, isDark }) {
   );
 }
 
-function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark, isMobile = false }) {
+function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark, isMobile = false, markNotifRead }) {
   const pendingReqs = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
   const recentCustomers = customers.filter(c => c.status === 'pending').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -941,21 +948,54 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
           <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{allItems.length} items</span>
         </div>
         {allItems.length === 0 && <div style={{ padding: 32, textAlign: 'center', color: c.subText, fontSize: 13 }}>No notifications</div>}
-        {allItems.map((item, i) => (
-          <div key={item.id + i} onClick={() => { if (item.type === 'request') onNavigate(item.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); else if (item.type === 'customer') onNavigate('customers'); }} style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 14, cursor: item.type !== 'notification' ? 'pointer' : 'default', transition: 'background 0.1s', flexWrap: isMobile ? 'wrap' : 'nowrap' }} onMouseEnter={e => e.currentTarget.style.background = c.hover} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-            <div style={{ width: 38, height: 38, borderRadius: '50%', background: typeColor(item.type) + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Bell size={16} color={typeColor(item.type)} />
+        {allItems.map((item, i) => {
+          const nType = String(item.nType || '').toLowerCase();
+          const titleLower = String(item.title || '').toLowerCase();
+          const isEmailRequest = nType === 'email_request' || titleLower.includes('email request') || titleLower.includes('email');
+          const isTicket = nType === 'ticket' || titleLower.includes('ticket');
+          const isPayment = nType === 'payment_submitted' || titleLower.includes('payment');
+          const isQuotation = nType === 'quotation' || titleLower.includes('quotation');
+
+          const isClickable = item.type !== 'notification' || isEmailRequest || isTicket || isPayment || isQuotation;
+
+          return (
+            <div key={item.id + i} 
+              onClick={() => { 
+                if (item.type === 'request') {
+                  if (markNotifRead) markNotifRead(item.id);
+                  onNavigate(item.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); 
+                } else if (item.type === 'customer') {
+                  if (markNotifRead) markNotifRead('cust_' + item.id);
+                  onNavigate('customers'); 
+                } else if (item.type === 'notification' && isClickable) {
+                  if (markNotifRead) markNotifRead('notif_' + item.id);
+                  onNavigate(
+                    isTicket ? 'logs' : 
+                    isEmailRequest ? 'emailRequests' : 
+                    isPayment ? 'invoices' : 
+                    isQuotation ? 'quotations' : 
+                    'adminNotifications'
+                  );
+                }
+              }} 
+              style={{ padding: '14px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 14, cursor: isClickable ? 'pointer' : 'default', transition: 'background 0.1s', flexWrap: isMobile ? 'wrap' : 'nowrap' }} 
+              onMouseEnter={e => e.currentTarget.style.background = c.hover} 
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{ width: 38, height: 38, borderRadius: '50%', background: typeColor(item.type) + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Bell size={16} color={typeColor(item.type)} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
+                <div style={{ fontSize: 12, color: c.subText, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                <span style={{ background: typeColor(item.type) + '22', color: typeColor(item.type), fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{typeLabel(item)}</span>
+                <span style={{ fontSize: 11, color: c.subText }}>{item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
-              <div style={{ fontSize: 12, color: c.subText, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.sub}</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-              <span style={{ background: typeColor(item.type) + '22', color: typeColor(item.type), fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{typeLabel(item)}</span>
-              <span style={{ fontSize: 11, color: c.subText }}>{item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
