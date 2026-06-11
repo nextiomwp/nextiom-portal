@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Globe, Server, Bell, TrendingUp, TrendingDown, ShoppingCart, CheckCircle2, DollarSign, Calendar, Phone, Mail, MapPin, Building, ChevronRight, Info, ExternalLink } from 'lucide-react';
+import { Loader2, Globe, Server, Bell, TrendingUp, TrendingDown, ShoppingCart, CheckCircle2, DollarSign, Phone, Mail, MapPin, Building, ChevronRight, Info, ExternalLink, Package } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import NewsAnnouncementsCard from './NewsAnnouncementsCard';
 import RateUsCard from './RateUsCard';
@@ -143,6 +143,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
     chartData: [],
     totalOrders: 0,
     approvedOrders: 0,
+    totalProducts: 0,
     totalSpend: 'LKR 0.00 / USD 0.00',
     successRate: 0,
     growth: 0,
@@ -162,10 +163,6 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
   const hover = c.hover || '#f5f5f5';
   const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
 
-  const memberSince = user?.memberSince
-    ? new Date(user.memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    : '—';
-
   useEffect(() => {
     const media = window.matchMedia('(max-width: 768px)');
     const onChange = (e) => setIsMobile(e.matches);
@@ -184,7 +181,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       const customerId = user.id;
 
       try {
-        const [domainRes, hostingRes, emailRes, notifRes, invoiceRes, customerRes] = await Promise.all([
+        const [domainRes, hostingRes, emailRes, notifRes, invoiceRes, customerRes, productsRes] = await Promise.all([
           supabase.from('domain_requests')
             .select('id, status, created_at, domain_name')
             .eq('customer_id', customerId)
@@ -210,6 +207,9 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             .select('notifications_cleared_at')
             .eq('id', customerId)
             .maybeSingle(),
+          supabase.from('licenses')
+            .select('*', { count: 'exact', head: true })
+            .eq('customer_id', customerId),
         ]);
 
         const clearedAt = customerRes?.data?.notifications_cleared_at;
@@ -295,10 +295,13 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
           .slice(0, 6);
 
+        const totalProducts = productsRes?.count || 0;
+
         setData({
           chartData,
           totalOrders: allOrders.length,
           approvedOrders: approved.length,
+          totalProducts,
           totalSpend,
           successRate: allOrders.length === 0 ? 0 : Math.round((approved.length / allOrders.length) * 100),
           growth,
@@ -355,20 +358,20 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           isDark={isDark}
         />
         <StatMiniCard
+          icon={Package}
+          iconBg={isDark ? 'rgba(124,58,237,0.15)' : '#ede9fe'}
+          iconColor="#7c3aed"
+          label="Total Products"
+          value={data.totalProducts}
+          c={c}
+          isDark={isDark}
+        />
+        <StatMiniCard
           icon={DollarSign}
           iconBg={isDark ? 'rgba(59,130,246,0.15)' : '#dbeafe'}
           iconColor="#2563eb"
           label="Total Spend"
           value={data.totalSpend}
-          c={c}
-          isDark={isDark}
-        />
-        <StatMiniCard
-          icon={Calendar}
-          iconBg={isDark ? 'rgba(124,58,237,0.15)' : '#ede9fe'}
-          iconColor="#7c3aed"
-          label="Member Since"
-          value={memberSince}
           c={c}
           isDark={isDark}
         />

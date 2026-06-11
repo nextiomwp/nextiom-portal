@@ -150,11 +150,6 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
           <div>
             <p style={{ color: text, fontWeight: 700, fontSize: 17, marginBottom: 3 }}>{safeUser.name || 'Customer'}</p>
             <p style={{ color: subText, fontSize: 13 }}>{safeUser.email || ''}</p>
-            {safeUser.memberSince && (
-              <p style={{ color: subText, fontSize: 11, marginTop: 3 }}>
-                Member since {new Date(safeUser.memberSince).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </p>
-            )}
           </div>
         </div>
 
