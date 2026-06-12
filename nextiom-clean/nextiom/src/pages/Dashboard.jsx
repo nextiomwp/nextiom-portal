@@ -32,13 +32,47 @@ import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
 import AdminJobsPage from '@/components/admin/AdminJobsPage';
 
+const OnProgressIcon = ({ size, className, style, color }) => {
+  const sizePx = size ? `${size}px` : undefined;
+  const iconColor = color || style?.color || '';
+  const colorStr = String(iconColor).toLowerCase();
+
+  // Color matching filters
+  let imgFilter = 'brightness(0) saturate(100%) invert(60%)'; // default inactive gray
+  if (colorStr.includes('e87b35')) {
+    // Brand Orange (#E87B35) filter
+    imgFilter = 'brightness(0) saturate(100%) invert(56%) sepia(56%) saturate(1487%) hue-rotate(345deg) brightness(97%) contrast(92%)';
+  } else if (colorStr.includes('888')) {
+    imgFilter = 'brightness(0) saturate(100%) invert(53%)';
+  } else if (colorStr.includes('a0a0a0')) {
+    imgFilter = 'brightness(0) saturate(100%) invert(63%)';
+  } else if (colorStr.includes('fff') || colorStr.includes('rgb(255, 255, 255)')) {
+    imgFilter = 'brightness(0) saturate(100%) invert(100%)';
+  }
+
+  return (
+    <img
+      src="/on-progress.png"
+      alt="Jobs"
+      className={className}
+      style={{
+        width: sizePx || '20px',
+        height: sizePx || '20px',
+        objectFit: 'contain',
+        ...style,
+        filter: imgFilter
+      }}
+    />
+  );
+};
+
 const NAV = [
   { id: 'overview', label: 'Dashboard', icon: Home, section: 'top' },
   { section: 'divider' },
   { section: 'header', label: 'CUSTOMERS' },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'logs', label: 'Support Tickets', icon: MessageSquare, badgeType: 'orange' },
-  { id: 'jobs', label: 'Jobs', icon: Briefcase },
+  { id: 'jobs', label: 'Jobs', icon: OnProgressIcon },
   { id: 'notifications', label: 'Announcements', icon: Megaphone },
   { section: 'header', label: 'SERVICES' },
   // { id: 'domains', label: 'Domains', icon: Globe },
@@ -554,7 +588,9 @@ function Dashboard({ onLogout }) {
           borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
           background: isDark ? 'rgba(21, 22, 26, 0.35)' : 'rgba(248, 248, 247, 0.35)',
           backdropFilter: 'blur(15px)',
-          WebkitBackdropFilter: 'blur(15px)'
+          WebkitBackdropFilter: 'blur(15px)',
+          position: 'relative',
+          zIndex: 30
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
             <button onClick={() => (isMobile ? setIsMobileSidebarOpen(true) : setSidebarOpen(!sidebarOpen))} style={{ background: 'none', border: 'none', color: c.text, cursor: 'pointer', padding: 0, display: 'flex' }}>

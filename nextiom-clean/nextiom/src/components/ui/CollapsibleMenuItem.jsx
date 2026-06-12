@@ -15,6 +15,10 @@ const CollapsibleMenuItem = ({
   collapsed = false,
   c = {},
   isDark = false,
+  badge = 0,
+  badgeColor,
+  badge2 = 0,
+  badge2Color,
 }) => {
   const brand = c.brand || '#E87B35';
   const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
@@ -44,10 +48,54 @@ const CollapsibleMenuItem = ({
       >
         <div className={cn('flex items-center', collapsed ? '' : 'gap-3')}>
           {Icon && (
-            <Icon
-              className="w-5 h-5 flex-shrink-0"
-              style={{ color: isActive ? brand : subText }}
-            />
+            <div className="relative">
+              <Icon
+                className="w-5 h-5 flex-shrink-0"
+                style={{ color: isActive ? brand : subText }}
+              />
+              {badge > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -5,
+                    right: -6,
+                    width: 14,
+                    height: 14,
+                    backgroundColor: badgeColor || brand,
+                    borderRadius: '50%',
+                    fontSize: 9,
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                  }}
+                >
+                  {badge}
+                </span>
+              )}
+              {badge2 > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -5,
+                    left: -6,
+                    width: 14,
+                    height: 14,
+                    backgroundColor: badge2Color || brand,
+                    borderRadius: '50%',
+                    fontSize: 9,
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                  }}
+                >
+                  {badge2}
+                </span>
+              )}
+            </div>
           )}
           {!collapsed && (
             <span style={{ color: isActive ? brand : textColor }}>{label}</span>

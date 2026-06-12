@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Eye, Pencil, Trash2, MoreVertical, Check, X, 
   ArrowUp, ArrowDown, Settings, ChevronRight, AlertCircle, 
@@ -33,6 +33,9 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('All'); // All | Active | Waiting | On Hold | Completed
   const [expandedJobId, setExpandedJobId] = useState(null);
+  const [editingTimelineJobId, setEditingTimelineJobId] = useState(null);
+  const [tempTimelineSteps, setTempTimelineSteps] = useState([]);
+  const [tempProgressStep, setTempProgressStep] = useState(0);
   
   // Sidebar State (Create/Edit Panel)
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -65,6 +68,41 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
   const [newRequirementText, setNewRequirementText] = useState('');
   const [newRequirementType, setNewRequirementType] = useState('text');
 
+  const isQueuePositionDirty = useRef(false);
+
+  // Sync edit form's queue position if the job's queue position is changed in the background (e.g., via table shift)
+  useEffect(() => {
+    if (sidebarOpen && editingJob && !isQueuePositionDirty.current) {
+      const currentDbJob = jobs.find(j => j.id === editingJob.id);
+      if (currentDbJob) {
+        // Calculate its new position in the waiting list
+        let currentPos = '';
+        if (currentDbJob.status === 'Waiting') {
+          const waitingJobs = jobs.filter(j => j.status === 'Waiting');
+          if (settings.queue_position_mode === 'automatic') {
+            waitingJobs.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+          } else {
+            waitingJobs.sort((a, b) => {
+              const posA = a.queue_position ?? 999999;
+              const posB = b.queue_position ?? 999999;
+              if (posA !== posB) return posA - posB;
+              return new Date(a.created_date) - new Date(b.created_date);
+            });
+          }
+          const wIdx = waitingJobs.findIndex(wj => wj.id === currentDbJob.id);
+          currentPos = wIdx !== -1 ? (wIdx + 1).toString() : '';
+        }
+        
+        if (formData.queue_position !== currentPos) {
+          setFormData(prev => ({
+            ...prev,
+            queue_position: currentPos
+          }));
+        }
+      }
+    }
+  }, [jobs, editingJob, sidebarOpen, settings.queue_position_mode, formData.queue_position]);
+
   // Predefined lists
   const categories = ['Web Design', 'SEO', 'Branding', 'UI/UX', 'Mobile App', 'Marketing', 'Consulting'];
   const assignees = ['None', 'Web Team', 'SEO Team', 'Design Team', 'Lead Developer', 'Alex (Fullstack)', 'Sarah (UI/UX)', 'Emily (Branding)'];
@@ -85,6 +123,37 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
 
   useEffect(() => {
     fetchData();
+    
+    // Subscribe to realtime updates for jobs and job settings
+    const channel = supabase
+      .channel('admin-jobs-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'jobs'
+        },
+        () => {
+          fetchData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_settings'
+        },
+        () => {
+          fetchData();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchData = async () => {
@@ -126,6 +195,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
     setEditingJob(null);
     setIsCustomCategory(false);
     setCustomCategoryText('');
+    isQueuePositionDirty.current = false;
     setFormData({
       customer_id: customers[0]?.id || '',
       title: '',
@@ -149,6 +219,27 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
     const isCustom = !categories.includes(job.category);
     setIsCustomCategory(isCustom);
     setCustomCategoryText(isCustom ? job.category : '');
+    
+    // Calculate current position in the waiting list
+    let currentPos = '';
+    if (job.status === 'Waiting') {
+      const waitingJobs = jobs.filter(j => j.status === 'Waiting');
+      if (settings.queue_position_mode === 'automatic') {
+        waitingJobs.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+      } else {
+        waitingJobs.sort((a, b) => {
+          const posA = a.queue_position ?? 999999;
+          const posB = b.queue_position ?? 999999;
+          if (posA !== posB) return posA - posB;
+          return new Date(a.created_date) - new Date(b.created_date);
+        });
+      }
+      const wIdx = waitingJobs.findIndex(wj => wj.id === job.id);
+      currentPos = wIdx !== -1 ? (wIdx + 1).toString() : '';
+    }
+
+    isQueuePositionDirty.current = false;
+
     setFormData({
       customer_id: job.customer_id,
       title: job.title,
@@ -157,7 +248,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
       priority: job.priority,
       estimated_start: job.estimated_start || '3–5 Business Days',
       created_date: new Date(job.created_date).toISOString().split('T')[0],
-      queue_position: job.queue_position ?? '',
+      queue_position: currentPos,
       status: job.status,
       assign_to: job.assign_to || '',
       description: job.description || '',
@@ -168,10 +259,107 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
 
   const handleFormChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'queue_position') {
+      isQueuePositionDirty.current = true;
+    }
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+  };
+
+  // Helper to reorder queue sequentially to remove gaps and duplicates
+  const reorderQueue = async () => {
+    try {
+      const { data: waitingJobs, error } = await supabase
+        .from('jobs')
+        .select('id, queue_position, created_date')
+        .eq('status', 'Waiting');
+        
+      if (error) throw error;
+      
+      waitingJobs.sort((a, b) => {
+        const posA = a.queue_position ?? 999999;
+        const posB = b.queue_position ?? 999999;
+        if (posA !== posB) return posA - posB;
+        return new Date(a.created_date) - new Date(b.created_date);
+      });
+      
+      const updates = [];
+      for (let i = 0; i < waitingJobs.length; i++) {
+        const job = waitingJobs[i];
+        const assignedPos = i + 1;
+        if (job.queue_position !== assignedPos) {
+          updates.push(
+            supabase
+              .from('jobs')
+              .update({ queue_position: assignedPos })
+              .eq('id', job.id)
+          );
+        }
+      }
+      
+      if (updates.length > 0) {
+        await Promise.all(updates);
+      }
+    } catch (e) {
+      console.error('Error reordering queue:', e);
+    }
+  };
+
+  // Sync all queue positions when a specific job's position is manually set
+  const syncQueuePositions = async (targetJobId, newPos) => {
+    try {
+      // Get all waiting jobs from database
+      const { data: waitingJobs, error } = await supabase
+        .from('jobs')
+        .select('id, queue_position, created_date')
+        .eq('status', 'Waiting');
+        
+      if (error) throw error;
+      
+      // Sort them according to manual mode sorting rules
+      waitingJobs.sort((a, b) => {
+        const posA = a.queue_position ?? 999999;
+        const posB = b.queue_position ?? 999999;
+        if (posA !== posB) return posA - posB;
+        return new Date(a.created_date) - new Date(b.created_date);
+      });
+      
+      // Find the target job in the list
+      const targetJob = waitingJobs.find(j => j.id === targetJobId);
+      if (!targetJob) return;
+      
+      // Filter out the target job
+      const otherWaitingJobs = waitingJobs.filter(j => j.id !== targetJobId);
+      
+      // Insert target job at target index (newPos - 1)
+      const targetIdx = Math.max(0, Math.min(newPos - 1, otherWaitingJobs.length));
+      const reordered = [...otherWaitingJobs];
+      reordered.splice(targetIdx, 0, targetJob);
+      
+      // Prepare updates for any jobs whose position is out of sync with its new index
+      const otherUpdates = [];
+      for (let i = 0; i < reordered.length; i++) {
+        const job = reordered[i];
+        const assignedPos = i + 1;
+        if (job.queue_position !== assignedPos) {
+          otherUpdates.push(
+            supabase
+              .from('jobs')
+              .update({ queue_position: assignedPos })
+              .eq('id', job.id)
+          );
+        }
+      }
+      
+      if (otherUpdates.length > 0) {
+        await Promise.all(otherUpdates);
+      }
+    } catch (e) {
+      console.error('Error syncing queue positions:', e);
+      toast({ title: 'Error syncing queue', description: e.message, variant: 'destructive' });
+    }
   };
 
   const handleFormSubmit = async (e) => {
@@ -182,15 +370,27 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
     }
 
     try {
+      const newPos = formData.queue_position !== '' ? parseInt(formData.queue_position) : null;
       const payload = {
         ...formData,
-        queue_position: formData.queue_position !== '' ? parseInt(formData.queue_position) : null,
+        queue_position: newPos,
         created_date: new Date(formData.created_date).toISOString(),
       };
+
+      // If they assigned a manual queue position and the setting mode is automatic, auto-switch to manual
+      if (formData.status === 'Waiting' && newPos !== null && newPos > 0 && settings.queue_position_mode === 'automatic') {
+        await updateJobSettings({ ...settings, queue_position_mode: 'manual' });
+        setSettings(prev => ({ ...prev, queue_position_mode: 'manual' }));
+      }
 
       if (editingJob) {
         // Update
         await updateJob(editingJob.id, payload);
+        if (formData.status === 'Waiting' && newPos !== null && newPos > 0) {
+          await syncQueuePositions(editingJob.id, newPos);
+        } else {
+          await reorderQueue();
+        }
         toast({ title: 'Success', description: 'Job updated successfully' });
       } else {
         // Create new
@@ -201,6 +401,12 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
           customer_view_notes: '',
           progress_step: 0,
         });
+        
+        if (formData.status === 'Waiting' && newPos !== null && newPos > 0) {
+          await syncQueuePositions(newJob.id, newPos);
+        } else {
+          await reorderQueue();
+        }
         
         // Log activity or notifications
         await supabase.from('notifications').insert([{
@@ -224,6 +430,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
     if (!window.confirm('Are you sure you want to delete this job?')) return;
     try {
       await deleteJob(jobId);
+      await reorderQueue();
       toast({ title: 'Success', description: 'Job deleted successfully' });
       if (expandedJobId === jobId) setExpandedJobId(null);
       fetchData();
@@ -248,6 +455,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
   const handleUpdateStatus = async (jobId, newStatus) => {
     try {
       await updateJob(jobId, { status: newStatus });
+      await reorderQueue();
       toast({ title: 'Status updated', description: `Job status set to ${newStatus}` });
       fetchData();
     } catch (error) {
@@ -259,7 +467,9 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
   const handleUpdateProgressStep = async (jobId, stepIndex) => {
     try {
       await updateJob(jobId, { progress_step: stepIndex });
-      toast({ title: 'Progress updated', description: `Job stage updated to: ${progressSteps[stepIndex]}` });
+      const targetJob = jobs.find(j => j.id === jobId);
+      const steps = targetJob && Array.isArray(targetJob.timeline_steps) ? targetJob.timeline_steps : progressSteps;
+      toast({ title: 'Progress updated', description: `Job stage updated to: ${steps[stepIndex] || ('Stage ' + (stepIndex + 1))}` });
       
       // Load details again
       const updatedJobs = jobs.map(j => j.id === jobId ? { ...j, progress_step: stepIndex } : j);
@@ -989,8 +1199,68 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
 
                               {/* Progress Timeline Tracker */}
                               <div style={{ marginBottom: 28 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: c.subText, marginBottom: 12 }}>
-                                  PROGRESS TIMELINE (Click step to advance/rewind)
+                                <div style={{ fontSize: 12, fontWeight: 600, color: c.subText, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span>PROGRESS TIMELINE {editingTimelineJobId === job.id ? '(Editing mode)' : '(Click step to advance/rewind)'}</span>
+                                  {editingTimelineJobId !== job.id ? (
+                                    <button
+                                      onClick={() => {
+                                        setEditingTimelineJobId(job.id);
+                                        setTempTimelineSteps([...(Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps)]);
+                                        setTempProgressStep(job.progress_step);
+                                      }}
+                                      style={{
+                                        background: 'none', border: 'none', color: c.brand, fontSize: 11,
+                                        fontWeight: 600, cursor: 'pointer', padding: '2px 8px'
+                                      }}
+                                    >
+                                      🛠️ Edit Phases
+                                    </button>
+                                  ) : (
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                      <button
+                                        onClick={async () => {
+                                          if (tempTimelineSteps.length === 0) {
+                                            toast({ title: 'Validation error', description: 'At least one phase is required.', variant: 'destructive' });
+                                            return;
+                                          }
+                                          try {
+                                            await updateJob(job.id, { 
+                                              timeline_steps: tempTimelineSteps,
+                                              progress_step: tempProgressStep
+                                            });
+                                            toast({ title: 'Success', description: 'Timeline phases updated' });
+                                            
+                                            const updatedJobs = jobs.map(j => j.id === job.id ? { 
+                                              ...j, 
+                                              timeline_steps: tempTimelineSteps,
+                                              progress_step: tempProgressStep
+                                            } : j);
+                                            setJobs(updatedJobs);
+                                            setEditingTimelineJobId(null);
+                                          } catch (e) {
+                                            toast({ title: 'Error saving timeline', description: e.message, variant: 'destructive' });
+                                          }
+                                        }}
+                                        style={{
+                                          background: '#10b981', color: '#fff', border: 'none', 
+                                          borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                        }}
+                                      >
+                                        Save Phases
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setEditingTimelineJobId(null);
+                                        }}
+                                        style={{
+                                          background: 'none', border: `1px solid ${c.border}`, color: c.text,
+                                          borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                                 <div style={{ 
                                   display: 'flex', 
@@ -1016,79 +1286,186 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
                                     position: 'absolute', 
                                     top: 24, 
                                     left: '4%', 
-                                    width: `${(job.progress_step / (progressSteps.length - 1)) * 92}%`, 
+                                    width: `${((editingTimelineJobId === job.id ? tempProgressStep : job.progress_step) / (Math.max(1, (editingTimelineJobId === job.id ? tempTimelineSteps : (Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps)).length - 1))) * 92}%`, 
                                     height: 2, 
                                     background: c.brand,
                                     zIndex: 1,
                                     transition: 'width 0.3s'
                                   }} />
 
-                                  {progressSteps.map((step, stepIdx) => {
-                                    const isCompleted = stepIdx < job.progress_step;
-                                    const isCurrent = stepIdx === job.progress_step;
-                                    const isFuture = stepIdx > job.progress_step;
-
-                                    let circleBg = isDark ? '#22252c' : '#e2e8f0';
-                                    let circleBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-                                    let textColor = c.subText;
-                                    let circleContent = stepIdx + 1;
-
-                                    if (isCompleted) {
-                                      circleBg = '#10b981';
-                                      circleBorder = '#10b981';
-                                      textColor = '#10b981';
-                                      circleContent = <Check size={12} color="#fff" />;
-                                    } else if (isCurrent) {
-                                      circleBg = '#f59e0b';
-                                      circleBorder = '#f59e0b';
-                                      textColor = '#f59e0b';
-                                      circleContent = <Clock size={12} color="#fff" />;
-                                    }
+                                  {(() => {
+                                    const stepsToRender = editingTimelineJobId === job.id 
+                                      ? tempTimelineSteps 
+                                      : (Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps);
+                                    const currentProgressStep = editingTimelineJobId === job.id ? tempProgressStep : job.progress_step;
 
                                     return (
-                                      <div 
-                                        key={step} 
-                                        onClick={() => handleUpdateProgressStep(job.id, stepIdx)}
-                                        style={{ 
-                                          display: 'flex', 
-                                          flexDirection: 'column', 
-                                          alignItems: 'center', 
-                                          flex: 1, 
-                                          zIndex: 2,
-                                          cursor: 'pointer',
-                                          textAlign: 'center',
-                                          minWidth: 70
-                                        }}
-                                      >
-                                        <div style={{ 
-                                          width: 28, 
-                                          height: 28, 
-                                          borderRadius: '50%', 
-                                          background: circleBg, 
-                                          border: `2px solid ${circleBorder}`,
-                                          display: 'flex', 
-                                          alignItems: 'center', 
-                                          justifyContent: 'center', 
-                                          fontSize: 11, 
-                                          fontWeight: 700, 
-                                          color: isCurrent || isCompleted ? '#fff' : c.subText,
-                                          marginBottom: 8,
-                                          boxShadow: isCurrent ? '0 0 10px rgba(245,158,11,0.5)' : 'none',
-                                          transition: 'all 0.2s'
-                                        }}>
-                                          {circleContent}
-                                        </div>
-                                        <span style={{ 
-                                          fontSize: 10, 
-                                          fontWeight: isCurrent ? 700 : 500, 
-                                          color: textColor,
-                                          maxWidth: 90
-                                        }}>
-                                          {step}
-                                        </span>
-                                      </div>
+                                      <>
+                                        {stepsToRender.map((step, stepIdx) => {
+                                          const isCompleted = stepIdx < currentProgressStep;
+                                          const isCurrent = stepIdx === currentProgressStep;
+                                          const isFuture = stepIdx > currentProgressStep;
+
+                                          let circleBg = isDark ? '#22252c' : '#e2e8f0';
+                                          let circleBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                                          let textColor = c.subText;
+                                          let circleContent = stepIdx + 1;
+
+                                          if (isCompleted) {
+                                            circleBg = '#10b981';
+                                            circleBorder = '#10b981';
+                                            textColor = '#10b981';
+                                            circleContent = <Check size={12} color="#fff" />;
+                                          } else if (isCurrent) {
+                                            circleBg = '#f59e0b';
+                                            circleBorder = '#f59e0b';
+                                            textColor = '#f59e0b';
+                                            circleContent = <Clock size={12} color="#fff" />;
+                                          }
+
+                                          return (
+                                            <div 
+                                              key={stepIdx} 
+                                              onClick={() => {
+                                                if (editingTimelineJobId !== job.id) {
+                                                  handleUpdateProgressStep(job.id, stepIdx);
+                                                }
+                                              }}
+                                              style={{ 
+                                                display: 'flex', 
+                                                flexDirection: 'column', 
+                                                alignItems: 'center', 
+                                                flex: 1, 
+                                                zIndex: 2,
+                                                cursor: editingTimelineJobId !== job.id ? 'pointer' : 'default',
+                                                textAlign: 'center',
+                                                minWidth: 70
+                                              }}
+                                            >
+                                              {editingTimelineJobId === job.id ? (
+                                                <div 
+                                                  onClick={() => {
+                                                    const newSteps = tempTimelineSteps.filter((_, idx) => idx !== stepIdx);
+                                                    setTempTimelineSteps(newSteps);
+                                                    
+                                                    // Adjust tempProgressStep
+                                                    let newProgress = tempProgressStep;
+                                                    if (stepIdx === tempProgressStep) {
+                                                      newProgress = Math.min(tempProgressStep, newSteps.length - 1);
+                                                    } else if (stepIdx < tempProgressStep) {
+                                                      newProgress = tempProgressStep - 1;
+                                                    }
+                                                    setTempProgressStep(Math.max(0, newProgress));
+                                                  }}
+                                                  style={{ 
+                                                    width: 28, 
+                                                    height: 28, 
+                                                    borderRadius: '50%', 
+                                                    background: '#ef4444', 
+                                                    border: '2px solid #ef4444',
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'center', 
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 2px 5px rgba(239,68,68,0.3)',
+                                                    marginBottom: 8,
+                                                    transition: 'all 0.2s'
+                                                  }}
+                                                  title="Delete step"
+                                                >
+                                                  <X size={12} color="#fff" />
+                                                </div>
+                                              ) : (
+                                                <div style={{ 
+                                                  width: 28, 
+                                                  height: 28, 
+                                                  borderRadius: '50%', 
+                                                  background: circleBg, 
+                                                  border: `2px solid ${circleBorder}`,
+                                                  display: 'flex', 
+                                                  alignItems: 'center', 
+                                                  justifyContent: 'center', 
+                                                  fontSize: 11, 
+                                                  fontWeight: 700, 
+                                                  color: isCurrent || isCompleted ? '#fff' : c.subText,
+                                                  marginBottom: 8,
+                                                  boxShadow: isCurrent ? '0 0 10px rgba(245,158,11,0.5)' : 'none',
+                                                  transition: 'all 0.2s'
+                                                }}>
+                                                  {circleContent}
+                                                </div>
+                                              )}
+
+                                              {editingTimelineJobId === job.id ? (
+                                                <input 
+                                                  type="text"
+                                                  value={step}
+                                                  onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    const newSteps = [...tempTimelineSteps];
+                                                    newSteps[stepIdx] = val;
+                                                    setTempTimelineSteps(newSteps);
+                                                  }}
+                                                  style={{
+                                                    fontSize: 10, padding: '2px 4px', 
+                                                    background: c.bg, 
+                                                    border: stepIdx === tempProgressStep ? `1.5px solid #f59e0b` : `1px solid ${c.border}`,
+                                                    borderRadius: 4, color: c.text, width: 80, textAlign: 'center', marginTop: 4,
+                                                    boxShadow: stepIdx === tempProgressStep ? '0 0 4px rgba(245,158,11,0.2)' : 'none'
+                                                  }}
+                                                  required
+                                                />
+                                              ) : (
+                                                <span style={{ 
+                                                  fontSize: 10, 
+                                                  fontWeight: isCurrent ? 700 : 500, 
+                                                  color: textColor,
+                                                  maxWidth: 90
+                                                }}>
+                                                  {step}
+                                                </span>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+
+                                        {editingTimelineJobId === job.id && (
+                                          <div 
+                                            onClick={() => {
+                                              setTempTimelineSteps([...tempTimelineSteps, `New Phase ${tempTimelineSteps.length + 1}`]);
+                                            }}
+                                            style={{ 
+                                              display: 'flex', 
+                                              flexDirection: 'column', 
+                                              alignItems: 'center', 
+                                              flex: 1, 
+                                              zIndex: 2,
+                                              cursor: 'pointer',
+                                              textAlign: 'center',
+                                              minWidth: 70
+                                            }}
+                                            title="Add a new phase"
+                                          >
+                                            <div style={{ 
+                                              width: 28, 
+                                              height: 28, 
+                                              borderRadius: '50%', 
+                                              background: c.hover, 
+                                              border: `2px dashed ${c.borderStrong}`,
+                                              display: 'flex', 
+                                              alignItems: 'center', 
+                                              justifyContent: 'center', 
+                                              color: c.brand,
+                                              marginBottom: 8
+                                            }}>
+                                              <Plus size={14} />
+                                            </div>
+                                            <span style={{ fontSize: 10, color: c.subText }}>Add Step</span>
+                                          </div>
+                                        )}
+                                      </>
                                     );
-                                  })}
+                                  })()}
                                 </div>
                               </div>
 

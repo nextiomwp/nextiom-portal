@@ -10,6 +10,9 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { clearCustomerNotifications } from '@/lib/storage';
 
+import { getCustomerJobs } from '@/lib/jobs';
+import { getTicketsByCustomer } from '@/lib/storage';
+
 // Re-use real customer components
 import DashboardPage from '@/components/customer/DashboardPage';
 import NotificationsPage from '@/components/notifications/NotificationsPage';
@@ -30,6 +33,40 @@ import NewEmailRequestPage from '@/components/customer/NewEmailRequestPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
+
+const OnProgressIcon = ({ size, className, style, color }) => {
+  const sizePx = size ? `${size}px` : undefined;
+  const iconColor = color || style?.color || '';
+  const colorStr = String(iconColor).toLowerCase();
+
+  // Color matching filters
+  let imgFilter = 'brightness(0) saturate(100%) invert(60%)'; // default inactive gray
+  if (colorStr.includes('e87b35')) {
+    // Brand Orange (#E87B35) filter
+    imgFilter = 'brightness(0) saturate(100%) invert(56%) sepia(56%) saturate(1487%) hue-rotate(345deg) brightness(97%) contrast(92%)';
+  } else if (colorStr.includes('888')) {
+    imgFilter = 'brightness(0) saturate(100%) invert(53%)';
+  } else if (colorStr.includes('a0a0a0')) {
+    imgFilter = 'brightness(0) saturate(100%) invert(63%)';
+  } else if (colorStr.includes('fff') || colorStr.includes('rgb(255, 255, 255)')) {
+    imgFilter = 'brightness(0) saturate(100%) invert(100%)';
+  }
+
+  return (
+    <img
+      src="/on-progress.png"
+      alt="Jobs"
+      className={className}
+      style={{
+        width: sizePx || '20px',
+        height: sizePx || '20px',
+        objectFit: 'contain',
+        ...style,
+        filter: imgFilter
+      }}
+    />
+  );
+};
 
 const c = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
@@ -82,7 +119,7 @@ const NAV_STRUCTURE = [
       { id: 'support_tickets', label: 'My Tickets' },
     ],
   },
-  { id: 'jobs', label: 'Jobs', icon: Briefcase, type: 'item' },
+  { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   {
     id: 'about', label: 'About Us', icon: Info, type: 'group',
@@ -111,6 +148,50 @@ function ImpersonationDashboard() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [startTime] = useState(() => Date.now());
+
+  const [activeJobsCount, setActiveJobsCount] = useState(0);
+  const [activeTicketsCount, setActiveTicketsCount] = useState(0);
+
+  useEffect(() => {
+    if (!customerProfile?.id) return;
+
+    const fetchCounts = async () => {
+      try {
+        const [jobsData, ticketsData] = await Promise.all([
+          getCustomerJobs(customerProfile.id).catch(() => []),
+          getTicketsByCustomer(customerProfile.id).catch(() => []),
+        ]);
+        setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
+        setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
+      } catch (error) {
+        console.error('Error fetching impersonated dashboard counts:', error);
+      }
+    };
+
+    fetchCounts();
+
+    const channel = supabase
+      .channel('impersonation-counts')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jobs' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tickets' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [customerProfile?.id]);
 
   // Read impersonation data
   useEffect(() => {
@@ -365,6 +446,8 @@ function ImpersonationDashboard() {
                 if (collapsed) switchTab(item.children[0].id);
                 else toggleMenu(item.id);
               }}
+              badge={item.id === 'support' ? activeTicketsCount : 0}
+              badgeColor="#16a34a"
             >
               {item.children.map((child) => (
                 <button
@@ -400,6 +483,8 @@ function ImpersonationDashboard() {
             c={c}
             isDark={true}
             onClick={() => switchTab(item.id)}
+            badge={item.id === 'jobs' ? activeJobsCount : 0}
+            badgeColor="#16a34a"
           />
         );
       })}
@@ -617,7 +702,7 @@ function ImpersonationDashboard() {
         {/* Header bar */}
         <div
           className="h-14 flex items-center justify-between px-6 flex-shrink-0"
-          style={{ background: c.sidebar, borderBottom: `1px solid ${c.border}` }}
+          style={{ background: c.sidebar, borderBottom: `1px solid ${c.border}`, position: 'relative', zIndex: 30 }}
         >
           <div className="lg:pl-0 pl-10 font-semibold text-sm" style={{ color: c.text }}>
             {activeTab === 'dashboard'

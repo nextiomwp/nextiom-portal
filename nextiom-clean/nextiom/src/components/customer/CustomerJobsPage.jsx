@@ -21,10 +21,41 @@ export default function CustomerJobsPage({ user, c, isDark }) {
   const [uploadingFile, setUploadingFile] = useState(false);
 
   useEffect(() => {
-    if (user?.id) {
-      loadData();
-    }
-  }, [user]);
+    if (!user?.id) return;
+    
+    loadData();
+    
+    // Subscribe to realtime updates for jobs and job settings
+    const channel = supabase
+      .channel('customer-jobs-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'jobs'
+        },
+        () => {
+          loadData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_settings'
+        },
+        () => {
+          loadData();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const loadData = async () => {
     setLoading(true);
@@ -276,7 +307,7 @@ function QueueDetailsContainer({
     loading: false
   });
 
-  const progressSteps = [
+  const defaultProgressSteps = [
     'Request Submitted',
     'Under Review',
     'Waiting for Customer',
@@ -287,6 +318,7 @@ function QueueDetailsContainer({
     'Client Review',
     'Completed'
   ];
+  const progressSteps = Array.isArray(job.timeline_steps) ? job.timeline_steps : defaultProgressSteps;
 
   useEffect(() => {
     fetchRelativePosition();
@@ -447,7 +479,7 @@ function QueueDetailsContainer({
               }
 
               return (
-                <div key={step} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, zIndex: 2, minWidth: 70, textAlign: 'center' }}>
+                <div key={stepIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, zIndex: 2, minWidth: 70, textAlign: 'center' }}>
                   <div style={{ 
                     width: 24, 
                     height: 24, 
