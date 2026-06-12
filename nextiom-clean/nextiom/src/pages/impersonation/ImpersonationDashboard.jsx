@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LogOut, Clock, AlertTriangle, LayoutDashboard, Globe, Server, Mail,
   ShoppingCart, MessageSquare, Package, User, Loader2, Menu, X,
-  CreditCard, FileText, Info, BellOff,
+  CreditCard, FileText, Info, BellOff, Briefcase,
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -29,6 +29,7 @@ import NewDomainRequestPage from '@/components/customer/NewDomainRequestPage';
 import NewEmailRequestPage from '@/components/customer/NewEmailRequestPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
+import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
 
 const c = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
@@ -81,6 +82,7 @@ const NAV_STRUCTURE = [
       { id: 'support_tickets', label: 'My Tickets' },
     ],
   },
+  { id: 'jobs', label: 'Jobs', icon: Briefcase, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   {
     id: 'about', label: 'About Us', icon: Info, type: 'group',
@@ -92,7 +94,7 @@ const NAV_STRUCTURE = [
   },
 ];
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
+const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
 
 function ImpersonationDashboard() {
   const { customerId } = useParams();
@@ -329,6 +331,7 @@ function ImpersonationDashboard() {
         {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark c={c} onNavigate={setActiveTab} />)}
+        {mountedTabs.has('jobs') && wrap('jobs', <CustomerJobsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => {}} {...theme} />)}
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} {...theme} />)}

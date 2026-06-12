@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -30,6 +30,7 @@ import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, 
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
+import AdminJobsPage from '@/components/admin/AdminJobsPage';
 
 const NAV = [
   { id: 'overview', label: 'Dashboard', icon: Home, section: 'top' },
@@ -37,6 +38,7 @@ const NAV = [
   { section: 'header', label: 'CUSTOMERS' },
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'logs', label: 'Support Tickets', icon: MessageSquare, badgeType: 'orange' },
+  { id: 'jobs', label: 'Jobs', icon: Briefcase },
   { id: 'notifications', label: 'Announcements', icon: Megaphone },
   { section: 'header', label: 'SERVICES' },
   // { id: 'domains', label: 'Domains', icon: Globe },
@@ -368,6 +370,7 @@ function Dashboard({ onLogout }) {
       case 'products': return <ProductList products={products} onUpdate={loadData} isDark={isDark} c={c} />;
       case 'notifications': return <AdminNotificationManagement isDark={isDark} isMobile={isMobile} />;
       case 'logs': return <AdminTicketsPage c={c} isDark={isDark} isMobile={isMobile} />;
+      case 'jobs': return <AdminJobsPage c={c} isDark={isDark} isMobile={isMobile} />;
       case 'invoices': {
         const goList = () => { setEditInvoiceId(null); setInvoiceView('list'); };
         if (invoiceView === 'new') return <NewInvoicePage c={c} isDark={isDark} onBack={goList} />;
