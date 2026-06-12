@@ -703,6 +703,12 @@ function QueueDetailsContainer({
               YOUR PROJECT QUEUE STATUS
             </span>
             <h3 style={{ fontSize: 18, fontWeight: 700, margin: '4px 0 0', color: c.text }}>{job.title}</h3>
+            {job.service_package && job.service_package.trim() !== '' && (
+              <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
+                <span>Service/Package: <strong style={{ color: c.text }}>{job.service_package}</strong></span>
+              </div>
+            )}
             {job.assign_to && job.assign_to !== 'None' && job.assign_to.trim() !== '' && (
               <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
