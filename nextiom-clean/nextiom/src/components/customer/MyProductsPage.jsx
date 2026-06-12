@@ -13,7 +13,7 @@ function getValidity(license) {
   if (license.status === 'Disabled' || license.status === 'Suspended' || license.status === 'Expired') {
     return { valid: false, label: license.status, days: null };
   }
-  const lt = license.product?.license_type || license.license_type || 'one_time';
+  const lt = license.license_type || license.product?.license_type || 'one_time';
   if (lt === 'lifetime') return { valid: true, label: 'Lifetime', days: null };
   if (lt === 'one_time') {
     const used = (license.download_count || 0) >= 1;
@@ -35,7 +35,7 @@ function getLicenseStatus(license) {
     return 'Expired';
   }
   const validity = getValidity(license);
-  const lt = license.product?.license_type || license.license_type || 'one_time';
+  const lt = license.license_type || license.product?.license_type || 'one_time';
   if (lt === 'lifetime') {
     return 'Active';
   }
@@ -44,7 +44,7 @@ function getLicenseStatus(license) {
   }
   if (lt === 'yearly' || lt === 'monthly') {
     if (validity.days <= 0) return 'Expired';
-    if (validity.days <= 30) return 'Expiring Soon';
+    if (validity.days <= 5) return 'Expiring Soon';
     return 'Active';
   }
   return 'Active';

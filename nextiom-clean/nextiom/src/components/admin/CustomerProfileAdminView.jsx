@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound, Package, Edit, RefreshCw, Infinity, Lock, Key, X } from 'lucide-react';
+import { ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound, Package, Edit, RefreshCw, Infinity, Lock, Key, X, Eye } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
 import AssignDomainDialog from '@/components/dialogs/AssignDomainDialog';
 import AssignEmailDialog from '@/components/dialogs/AssignEmailDialog';
 import EditAssignedProductDialog from '@/components/dialogs/EditAssignedProductDialog';
+import ViewAssignedProductDialog from '@/components/dialogs/ViewAssignedProductDialog';
 import {
   getCustomerById,
   updateCustomer,
@@ -39,12 +40,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [productSearch, setProductSearch] = useState('');
   const [productStatusFilter, setProductStatusFilter] = useState('all');
   const [productSortOrder, setProductSortOrder] = useState('newest');
+  const [viewingLicense, setViewingLicense] = useState(null);
 
   const getCalculatedStatus = (lic) => {
     if (lic.status === 'Disabled' || lic.status === 'Suspended' || lic.status === 'Expired') {
       return lic.status;
     }
-    const lt = lic.product?.license_type || lic.license_type || 'one_time';
+    const lt = lic.license_type || lic.product?.license_type || 'one_time';
     
     // Check start date (if start_date is in the future)
     if (lic.start_date) {
@@ -752,9 +754,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
             <tbody>
               {filteredLicenses.map((lic, i) => {
                 const row = i % 2 === 0 ? tdS : tdAlt;
-                const lt = lic.product?.license_type || lic.license_type || 'one_time';
-                const ltLabel = lt === 'one_time' ? 'One Time' : lt === 'yearly' ? 'Yearly' : 'Lifetime';
-                const ltColor = lt === 'one_time' ? '#22c55e' : lt === 'yearly' ? '#f59e0b' : '#6366f1';
+                const lt = lic.license_type || lic.product?.license_type || 'one_time';
+                const ltLabel = lt === 'one_time' ? 'One Time' : lt === 'yearly' ? 'Yearly' : lt === 'monthly' ? 'Monthly' : 'Lifetime';
+                const ltColor = lt === 'one_time' ? '#22c55e' : lt === 'yearly' ? '#f59e0b' : lt === 'monthly' ? '#a78bfa' : '#6366f1';
                 return (
                   <tr key={lic.id}>
                     <td style={row}><span style={{ fontWeight: 600, color: c.text, fontSize: 13 }}>{lic.name}</span></td>
@@ -769,13 +771,16 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
                     <td style={row}><span style={{ color: c.subText, fontSize: 12 }}>{lic.start_date ? format(new Date(lic.start_date), 'MMM dd, yy') : lic.created_at ? format(new Date(lic.created_at), 'MMM dd, yy') : '—'}</span></td>
                     <td style={row}>
                       <span style={{ color: c.text, fontSize: 12 }}>
-                        {lt === 'yearly'
+                        {lt === 'yearly' || lt === 'monthly'
                           ? (lic.expiry_date ? format(new Date(lic.expiry_date), 'MMM dd, yyyy') : '—')
                           : lt === 'lifetime' ? 'Lifetime' : 'One Time'}
                       </span>
                     </td>
                     <td style={{ ...row, textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <Btn color="#3b82f6" onClick={() => setViewingLicense(lic)}>
+                          <Eye size={11} /> View
+                        </Btn>
                         <Btn color={c.brand} onClick={() => setEditingLicense(lic)}>
                           <Edit size={11} /> Edit
                         </Btn>
@@ -912,6 +917,15 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
           setEditingLicense(null);
           loadAll();
         }}
+        c={c}
+      />
+
+      <ViewAssignedProductDialog
+        open={!!viewingLicense}
+        onOpenChange={() => setViewingLicense(null)}
+        license={viewingLicense}
+        product={viewingLicense?.product}
+        customer={customerData}
         c={c}
       />
     </div>

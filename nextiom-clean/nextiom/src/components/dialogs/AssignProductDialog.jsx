@@ -11,7 +11,7 @@ const generateCustomKey = () => {
 function processCustomProductPayload({ category, access_method, duration, start_date, license_key }) {
   let finalDuration = duration;
   if (access_method === 'one_time') {
-    finalDuration = null;
+    finalDuration = 'one_time';
   } else {
     if (!duration) {
       throw new Error(`Duration cannot be null for access method: ${access_method}`);
@@ -394,7 +394,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         price: parseFloat(formData.price) || 0,
         renewalPrice: formData.hasRenewal ? (parseFloat(formData.renewalPrice) || 0) : (parseFloat(formData.price) || 0),
         renewalDate: formData.renewalDate || null,
-        licenseType: formData.accessMethod === 'one_time' ? null : formData.duration,
+        licenseType: formData.accessMethod === 'one_time' ? 'one_time' : formData.duration,
         membershipType: formData.accessMethod === 'one_time'
           ? 'One-Time Purchase, No License, No Updates'
           : formData.duration === 'lifetime'
@@ -455,7 +455,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         category: customForm.category,
         image_url: customForm.imageUrl || null,
         license_key: assignForm.licenseKey || null,
-        license_type: customForm.accessMethod === 'one_time' ? null : customForm.duration,
+        license_type: customForm.accessMethod === 'one_time' ? 'one_time' : customForm.duration,
         license_registration: customForm.accessMethod === 'license_auto',
         automatic_updates: customForm.accessMethod === 'license_auto',
         manual_updates: customForm.accessMethod === 'manual_no_license',

@@ -14,6 +14,7 @@ const LICENSE_LABEL = {
   one_time: { label: 'One Time', icon: Package, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
   yearly: { label: 'Yearly', icon: RefreshCw, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   lifetime: { label: 'Lifetime', icon: Infinity, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  monthly: { label: 'Monthly', icon: RefreshCw, color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
 };
 
 export default function ProductList({ products, licenses = [], customers = [], onUpdate, isDark, c }) {
@@ -385,54 +386,30 @@ export default function ProductList({ products, licenses = [], customers = [], o
                     </span>
                   </div>
 
-                  {isVirtual ? (
-                    <>
-                      {product.renewal_date && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={12} /> Renewal</span>
-                          <span style={{ color: text, fontSize: 12, fontWeight: 500 }}>{product.renewal_date}</span>
-                        </div>
-                      )}
-                      {product.renewal_enabled && product.renewal_price && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}><RefreshCw size={12} /> Renewal Price</span>
-                          <span style={{ color: text, fontSize: 12, fontWeight: 600 }}>
-                            {product.currency === 'LKR' ? `Rs. ${product.renewal_price}` : `$${product.renewal_price}`}
-                          </span>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <LtIcon size={12} style={{ color: lt.color }} /> License
-                        </span>
-                        <span style={{ color: lt.color, fontSize: 12, fontWeight: 650 }}>{lt.label}</span>
-                      </div>
-                      
-                      {product.download_url && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
-                          <span style={{ fontSize: 12, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}><Download size={12} /> Updates</span>
-                          <a href={product.download_url} target="_blank" rel="noopener noreferrer"
-                            style={{ color: brand, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                            Get Download URL
-                          </a>
-                        </div>
-                      )}
-                    </>
-                  )}
+                  {/* Version */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <RefreshCw size={12} /> Version
+                    </span>
+                    <span style={{ color: text, fontSize: 12, fontWeight: 600 }}>
+                      {product.version || '1.0.0'}
+                    </span>
+                  </div>
 
-                  {product.license_key && (
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4,
-                      padding: '6px 10px', borderRadius: 8, background: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.03)',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`
-                    }}>
-                      <span style={{ fontSize: 11, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}><Key size={11} /> Default Key</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 11, color: text, fontWeight: 600 }}>{product.license_key}</span>
-                    </div>
-                  )}
+                  {/* Updates */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                    <span style={{ fontSize: 12, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Download size={12} /> Updates
+                    </span>
+                    {product.download_url ? (
+                      <a href={product.download_url} target="_blank" rel="noopener noreferrer"
+                        style={{ color: brand, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+                        Get Download Link
+                      </a>
+                    ) : (
+                      <span style={{ color: sub, fontSize: 12, fontWeight: 500 }}>—</span>
+                    )}
+                  </div>
                 </div>
 
               </motion.div>

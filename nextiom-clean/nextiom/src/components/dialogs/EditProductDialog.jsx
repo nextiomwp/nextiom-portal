@@ -22,6 +22,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
     hasRenewal: false,
     renewalPercentage: '',
     licenseKey: '',
+    version: '1.0.0',
   });
 
   const [saving, setSaving] = useState(false);
@@ -66,6 +67,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
         hasRenewal,
         renewalPercentage,
         licenseKey: product.license_key || '',
+        version: product.version || '1.0.0',
       });
     }
   }, [product, open]);
@@ -162,6 +164,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
         renewal_enabled: customForm.hasRenewal,
         renewal_price: customForm.hasRenewal ? (parseFloat(getRenewalPrice()) || 0) : (parseFloat(customForm.price) || 0),
         renewal_period_days: customForm.hasRenewal ? (customForm.duration === 'monthly' ? 30 : 365) : null,
+        version: customForm.version.trim() || null,
       };
 
       await updateProduct(product.id, updates);
@@ -454,6 +457,17 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
                   placeholder="e.g., Plugin, SaaS, Theme, Service"
                   value={customForm.type}
                   onChange={(e) => setCustomForm(p => ({ ...p, type: e.target.value }))}
+                  style={inpS}
+                />
+              </div>
+
+              <div>
+                <label style={labelS}>Version</label>
+                <input
+                  type="text"
+                  placeholder="e.g., 1.0.0"
+                  value={customForm.version}
+                  onChange={(e) => setCustomForm(p => ({ ...p, version: e.target.value }))}
                   style={inpS}
                 />
               </div>

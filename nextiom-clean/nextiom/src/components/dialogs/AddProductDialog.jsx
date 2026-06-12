@@ -22,7 +22,8 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
     imageUrl: '',
     hasRenewal: false,
     renewalPercentage: '',
-    licenseKey: ''
+    licenseKey: '',
+    version: '1.0.0'
   });
 
   const [saving, setSaving] = useState(false);
@@ -51,7 +52,8 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
         imageUrl: '',
         hasRenewal: false,
         renewalPercentage: '',
-        licenseKey: generateCustomKey()
+        licenseKey: generateCustomKey(),
+        version: '1.0.0'
       });
     }
     prevOpenRef.current = open;
@@ -148,6 +150,7 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
         renewal_enabled: customForm.hasRenewal,
         renewal_price: customForm.hasRenewal ? (parseFloat(getRenewalPrice()) || 0) : (parseFloat(customForm.price) || 0),
         renewal_period_days: customForm.duration === 'monthly' ? 30 : (customForm.duration === 'yearly' ? 365 : null),
+        version: customForm.version.trim() || null,
         created_at: new Date().toISOString()
       };
 
@@ -441,6 +444,17 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
                   placeholder="e.g., Plugin, SaaS, Theme, Service"
                   value={customForm.type}
                   onChange={(e) => setCustomForm(p => ({ ...p, type: e.target.value }))}
+                  style={inpS}
+                />
+              </div>
+
+              <div>
+                <label style={labelS}>Version</label>
+                <input
+                  type="text"
+                  placeholder="e.g., 1.0.0"
+                  value={customForm.version}
+                  onChange={(e) => setCustomForm(p => ({ ...p, version: e.target.value }))}
                   style={inpS}
                 />
               </div>
