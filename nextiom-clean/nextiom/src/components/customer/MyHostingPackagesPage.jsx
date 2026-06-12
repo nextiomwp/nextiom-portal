@@ -55,6 +55,19 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
     return base;
   };
 
+  const getExpiredText = (date) => {
+    if (!date) return 'Expired';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(date);
+    exp.setHours(0, 0, 0, 0);
+    const diff = today.getTime() - exp.getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days <= 0) return 'Expired today';
+    if (days === 1) return 'Expired 1 day ago';
+    return `Expired ${days} days ago`;
+  };
+
   const parseRequestField = (raw, label) => {
     if (!raw) return null;
     const regex = new RegExp(`${label}:\\s*([^|;\\n]+)`, 'i');
@@ -254,7 +267,7 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                             {expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                           </div>
                           <div style={{ fontSize: 11, color: expiryColor, marginTop: 2 }}>
-                            {daysLeft <= 0 ? 'Expired' : `${daysLeft}d remaining`}
+                            {daysLeft <= 0 ? getExpiredText(expiryDate) : `${daysLeft}d remaining`}
                           </div>
                         </div>
                       ) : (

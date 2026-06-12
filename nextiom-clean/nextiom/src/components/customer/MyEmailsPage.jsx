@@ -62,6 +62,19 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
     }
   };
 
+  const getExpiredText = (date) => {
+    if (!date) return 'Expired';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(date);
+    exp.setHours(0, 0, 0, 0);
+    const diff = today.getTime() - exp.getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days <= 0) return 'Expired today';
+    if (days === 1) return 'Expired 1 day ago';
+    return `Expired ${days} days ago`;
+  };
+
   const filtered = emails.filter(e =>
     (e.email || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -151,7 +164,20 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                       {email.start_date ? new Date(email.start_date).toLocaleDateString() : email.created_at ? new Date(email.created_at).toLocaleDateString() : '—'}
                     </td>
                     <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
-                      {email.expiry_date ? new Date(email.expiry_date).toLocaleDateString() : 'N/A'}
+                      {email.expiry_date ? (
+                        <div>
+                          <div style={{ fontSize: 12, color: isExpired ? '#ef4444' : text, fontWeight: isExpired ? 600 : 400 }}>
+                            {new Date(email.expiry_date).toLocaleDateString()}
+                          </div>
+                          {isExpired && (
+                            <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2 }}>
+                              {getExpiredText(email.expiry_date)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: subText, fontSize: 13 }}>N/A</span>
+                      )}
                     </td>
                     <td style={{ padding: '12px 20px' }}>
                       <Switch
@@ -203,10 +229,19 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
             <div style={{ display: 'grid', gap: 14 }}>
               {[
                 { label: 'Email', value: viewEmail.email },
-                { label: 'Status', value: (viewEmail.expiry_date && new Date(viewEmail.expiry_date).getTime() < new Date().getTime()) ? 'EXPIRED' : viewEmail.status },
+                { label: 'Status', value: (viewEmail.expiry_date && new Date(viewEmail.expiry_date).getTime() < new Date().getTime()) ? `EXPIRED (${getExpiredText(viewEmail.expiry_date)})` : viewEmail.status },
                 { label: 'Registration Period', value: viewEmail.registration_period ? `${viewEmail.registration_period} Year(s)` : '—' },
                 { label: 'Start Date', value: viewEmail.start_date ? new Date(viewEmail.start_date).toLocaleDateString() : viewEmail.created_at ? new Date(viewEmail.created_at).toLocaleDateString() : '—' },
-                { label: 'Expiry Date', value: viewEmail.expiry_date ? new Date(viewEmail.expiry_date).toLocaleDateString() : '—' },
+                { label: 'Expiry Date', value: viewEmail.expiry_date ? (
+                  <div>
+                    <span>{new Date(viewEmail.expiry_date).toLocaleDateString()}</span>
+                    {new Date(viewEmail.expiry_date).getTime() < new Date().getTime() && (
+                      <span style={{ display: 'block', color: '#dc2626', fontSize: 11, fontWeight: 600, marginTop: 2 }}>
+                        {getExpiredText(viewEmail.expiry_date)}
+                      </span>
+                    )}
+                  </div>
+                ) : '—' },
                 { label: 'Auto Renew', value: viewEmail.auto_renew ? 'Enabled' : 'Disabled' },
                 { label: 'Notes', value: viewEmail.notes || '—' },
                 { label: 'Created', value: viewEmail.created_at ? new Date(viewEmail.created_at).toLocaleString() : '—' },

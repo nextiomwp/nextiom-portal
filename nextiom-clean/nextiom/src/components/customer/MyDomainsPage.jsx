@@ -78,6 +78,19 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
     }
   };
 
+  const getExpiredText = (date) => {
+    if (!date) return 'Expired';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(date);
+    exp.setHours(0, 0, 0, 0);
+    const diff = today.getTime() - exp.getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days <= 0) return 'Expired today';
+    if (days === 1) return 'Expired 1 day ago';
+    return `Expired ${days} days ago`;
+  };
+
   const filteredDomains = domains.filter(d =>
     (d.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -167,7 +180,20 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
                       {domain.start_date ? new Date(domain.start_date).toLocaleDateString() : domain.created_at ? new Date(domain.created_at).toLocaleDateString() : '—'}
                     </td>
                     <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
-                      {domain.expiry_date ? new Date(domain.expiry_date).toLocaleDateString() : 'N/A'}
+                      {domain.expiry_date ? (
+                        <div>
+                          <div style={{ fontSize: 12, color: isExpired ? '#ef4444' : text, fontWeight: isExpired ? 600 : 400 }}>
+                            {new Date(domain.expiry_date).toLocaleDateString()}
+                          </div>
+                          {isExpired && (
+                            <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2 }}>
+                              {getExpiredText(domain.expiry_date)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: subText, fontSize: 13 }}>N/A</span>
+                      )}
                     </td>
                     <td style={{ padding: '12px 20px' }}>
                       <Switch

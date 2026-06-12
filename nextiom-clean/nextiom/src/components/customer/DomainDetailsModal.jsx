@@ -32,11 +32,33 @@ function DomainDetailsModal({ domain, isOpen, onClose, isDark = false, c = {} })
   const displayStatus = isExpired ? 'EXPIRED' : (domain.status || 'Unknown');
   const { bg: statusBg, color: statusColor } = statusBadgeStyle(displayStatus, isDark);
 
+  const getExpiredText = (date) => {
+    if (!date) return '';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(date);
+    exp.setHours(0, 0, 0, 0);
+    const diff = today.getTime() - exp.getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days <= 0) return 'Expired today';
+    if (days === 1) return 'Expired 1 day ago';
+    return `Expired ${days} days ago`;
+  };
+
   const rows = [
     { label: 'Domain Name', value: domain.name || domain.domain_name || 'N/A' },
     { label: 'Registration Period', value: domain.registration_period ? `${domain.registration_period} Year${domain.registration_period !== 1 ? 's' : ''}` : 'N/A' },
     { label: 'Start Date', value: formatDate(domain.start_date || domain.created_at) },
-    { label: 'Expiry Date', value: formatDate(domain.expiry_date || domain.expiryDate) },
+    { label: 'Expiry Date', value: (
+      <div>
+        <span>{formatDate(domain.expiry_date || domain.expiryDate)}</span>
+        {isExpired && domain.expiry_date && (
+          <span style={{ display: 'block', color: '#dc2626', fontSize: 11, fontWeight: 600, marginTop: 2 }}>
+            {getExpiredText(domain.expiry_date)}
+          </span>
+        )}
+      </div>
+    ) },
     { label: 'Auto Renew', value: (domain.auto_renew ?? domain.autoRenew) ? 'Enabled' : 'Disabled' },
     { label: 'Notes', value: domain.notes || '—' },
   ];

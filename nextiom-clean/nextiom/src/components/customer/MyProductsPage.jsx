@@ -95,6 +95,19 @@ function triggerDownload(url, name) {
   document.body.removeChild(a);
 }
 
+function getExpiredText(date) {
+  if (!date) return 'Expired';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const exp = new Date(date);
+  exp.setHours(0, 0, 0, 0);
+  const diff = today.getTime() - exp.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days <= 0) return 'Expired today';
+  if (days === 1) return 'Expired 1 day ago';
+  return `Expired ${days} days ago`;
+}
+
 export default function MyProductsPage({ user, isDark, c }) {
   const [licenses, setLicenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -304,7 +317,7 @@ export default function MyProductsPage({ user, isDark, c }) {
               <span>{status === 'Active' ? 'Active License' : status === 'Expired' ? 'Expired License' : 'Expiring Soon'}</span>
             </div>
             <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-              {lt === 'lifetime' ? 'Never expires' : validity.days != null ? `${validity.days} days remaining` : validity.label}
+              {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(lic.expiry_date) : validity.days != null ? `${validity.days} days remaining` : validity.label}
             </span>
             <button
             onClick={() => setDetailLicense(null)}
@@ -412,7 +425,7 @@ export default function MyProductsPage({ user, isDark, c }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Days Left</span>
                 <span style={{ color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
-                  {lt === 'lifetime' ? 'Never expires' : validity.days != null ? `${validity.days} days` : validity.label}
+                  {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(lic.expiry_date) : validity.days != null ? `${validity.days} days` : validity.label}
                 </span>
               </div>
             </div>
@@ -785,7 +798,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                                 fontSize: 11, fontWeight: 600,
                                 color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b'
                               }}>
-                                {lt === 'lifetime' ? 'Never expires' : validity.days != null ? (validity.days <= 0 ? 'Expired' : `${validity.days} days left`) : validity.label}
+                                {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(license.expiry_date) : validity.days != null ? `${validity.days} days left` : validity.label}
                               </span>
                             </div>
                           </div>
@@ -917,9 +930,16 @@ export default function MyProductsPage({ user, isDark, c }) {
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ color: sub }}>Expires On</span>
-                            <span style={{ color: text }}>
-                              {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                              <span style={{ color: text }}>
+                                {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
+                              </span>
+                              {status === 'Expired' && license.expiry_date && (
+                                <span style={{ color: '#ef4444', fontSize: 10.5, fontWeight: 600, marginTop: 1 }}>
+                                  {getExpiredText(license.expiry_date)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
