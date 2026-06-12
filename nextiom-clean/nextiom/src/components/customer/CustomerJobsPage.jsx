@@ -713,7 +713,7 @@ function QueueDetailsContainer({
             {job.created_date && (
               <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
-                <span>Start Job Date: <strong style={{ color: c.text }}>{new Date(job.created_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
+                <span>Job Start Date: <strong style={{ color: c.text }}>{new Date(job.created_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
               </div>
             )}
           </div>
