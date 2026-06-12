@@ -342,10 +342,9 @@ function QueueDetailsContainer({
     if (!settings) return;
     setPositionState(prev => ({ ...prev, loading: true }));
     try {
-      // Get all active and waiting jobs to calculate positions relative to this customer's job
+      // Get all active and waiting jobs to calculate positions relative to this customer's job via RPC to bypass RLS limits
       const { data: allJobs, error } = await supabase
-        .from('jobs')
-        .select('id, status, created_date, queue_position');
+        .rpc('get_queue_positions');
       
       if (error) throw error;
 
