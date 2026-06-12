@@ -437,10 +437,6 @@ export default function MyProductsPage({ user, isDark, c }) {
                 <span style={{ color: sub }}>License Type</span>
                 <span style={{ color: text }}>{licenseTypeLabel}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Assigned On</span>
-                <span style={{ color: text }}>{formatDate(lic.created_at)}</span>
-              </div>
             </div>
           </div>
 
