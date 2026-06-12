@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Globe } from 'lucide-react';
 import { getCustomerDomains, getCustomerDomainRequests, updateDomain, updateDomainRequest, resolveCustomerId } from '@/lib/storage';
-import { Switch } from '@/components/ui/switch';
 import DomainDetailsModal from './DomainDetailsModal';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -64,20 +63,6 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
     }
   };
 
-  const handleAutoRenew = async (id, current) => {
-    try {
-      if (String(id).startsWith('req-')) {
-        await updateDomainRequest(String(id).replace('req-', ''), { auto_renew: !current });
-      } else {
-        await updateDomain(id, { auto_renew: !current });
-      }
-      loadDomains();
-      toast({ title: 'Success', description: 'Auto-renew status updated' });
-    } catch {
-      toast({ title: 'Error', description: 'Could not update status', variant: 'destructive' });
-    }
-  };
-
   const getExpiredText = (date) => {
     if (!date) return 'Expired';
     const today = new Date();
@@ -127,6 +112,9 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
         WebkitBackdropFilter: 'blur(12px)',
         boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.2)' : '0 2px 16px rgba(0,0,0,0.05)',
         overflow: 'hidden',
+        maxWidth: 900,
+        width: '100%',
+        margin: '0 auto',
       }}>
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${border}` }}>
           <div style={{ position: 'relative', maxWidth: 320 }}>
@@ -147,10 +135,10 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
-                {['Domain', 'Status', 'Start Date', 'Expiry', 'Auto Renew', 'Actions'].map((h, i) => (
+                {['Domain', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (
                   <th key={h} style={{
-                    padding: '10px 20px',
-                    textAlign: i === 5 ? 'right' : 'left',
+                    padding: '10px 16px',
+                    textAlign: h === 'Actions' ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: subText,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     borderBottom: `1px solid ${border}`,
@@ -170,16 +158,16 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
                     onMouseEnter={e => e.currentTarget.style.background = hover}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '12px 20px', color: text, fontWeight: 600, fontSize: 13 }}>{domain.name}</td>
-                    <td style={{ padding: '12px 20px' }}>
+                    <td style={{ padding: '12px 16px', color: text, fontWeight: 600, fontSize: 13 }}>{domain.name}</td>
+                    <td style={{ padding: '12px 16px' }}>
                       <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
                         {displayStatus}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
+                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
                       {domain.start_date ? new Date(domain.start_date).toLocaleDateString() : domain.created_at ? new Date(domain.created_at).toLocaleDateString() : '—'}
                     </td>
-                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
+                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
                       {domain.expiry_date ? (
                         <div>
                           <div style={{ fontSize: 12, color: isExpired ? '#ef4444' : text, fontWeight: isExpired ? 600 : 400 }}>
@@ -195,13 +183,7 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
                         <span style={{ color: subText, fontSize: 13 }}>N/A</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 20px' }}>
-                      <Switch
-                        checked={!!domain.auto_renew}
-                        onCheckedChange={() => handleAutoRenew(domain.id, domain.auto_renew)}
-                      />
-                    </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                       <button
                         onClick={() => { setSelectedDomain(domain); setIsDetailsOpen(true); }}
                         style={{
@@ -219,7 +201,7 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
                 );
               }) : (
                 <tr>
-                  <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                  <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
                     No domains found
                   </td>
                 </tr>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff } from 'lucide-react';
+import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications } from '@/lib/storage';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
@@ -235,7 +235,6 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                     <Btn color="#378ADD" onClick={() => setSelectedCustomer(customer)} title="View profile"><Eye size={12} /> View</Btn>
                     <Btn color="#8B5CF6" onClick={() => handleLoginAsCustomer(customer)} title="Login as this customer"><MonitorSmartphone size={12} /> Login as</Btn>
-                    <Btn color={c.subText} onClick={() => setEditingCustomer(customer)} title="Edit"><Edit size={12} /> Edit</Btn>
                     <Btn color="#16a34a" onClick={() => { setAssigningCustomer(customer); setShowAssignOptions(true); }} title="Assign product/service"><Plus size={12} /> Assign</Btn>
                     <Btn color="#f59e0b" onClick={() => handleClearNotifications(customer)} title="Clear notification history"><BellOff size={12} /> Clear Notifs</Btn>
                     <Btn color="#ef4444" onClick={() => handleDelete(customer.id)} title="Delete"><Trash2 size={12} /> Delete</Btn>
