@@ -656,7 +656,21 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Briefcase className="text-orange-500" /> Jobs & Project Queue
+            <span style={{
+              display: 'inline-block',
+              width: 24,
+              height: 24,
+              backgroundColor: c.brand || '#E87B35',
+              WebkitMaskImage: "url('/on-progress.png')",
+              maskImage: "url('/on-progress.png')",
+              WebkitMaskSize: 'contain',
+              maskSize: 'contain',
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskPosition: 'center',
+              maskPosition: 'center',
+              flexShrink: 0
+            }} /> Jobs & Project Queue
           </h1>
           <p style={{ fontSize: 14, color: c.subText }}>Manage customer deliverables, estimated start times, and queue sequencing.</p>
         </div>
@@ -1850,7 +1864,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 6 }}>
-                    Job Created Date
+                    Start Job Date
                   </label>
                   <input 
                     type="date"

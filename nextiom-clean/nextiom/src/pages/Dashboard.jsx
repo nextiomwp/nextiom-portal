@@ -401,7 +401,7 @@ function Dashboard({ onLogout }) {
       case 'hosting': return <AdminHostingManagement isDark={isDark} isMobile={isMobile} />;
       case 'hostingRequests': return <AdminHostingRequestManagement isDark={isDark} />;
       case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;
-      case 'products': return <ProductList products={products} onUpdate={loadData} isDark={isDark} c={c} />;
+      case 'products': return <ProductList products={products} licenses={licenses} customers={customers} onUpdate={loadData} isDark={isDark} c={c} />;
       case 'notifications': return <AdminNotificationManagement isDark={isDark} isMobile={isMobile} />;
       case 'logs': return <AdminTicketsPage c={c} isDark={isDark} isMobile={isMobile} />;
       case 'jobs': return <AdminJobsPage c={c} isDark={isDark} isMobile={isMobile} />;

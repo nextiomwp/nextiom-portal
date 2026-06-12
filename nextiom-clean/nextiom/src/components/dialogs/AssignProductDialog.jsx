@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Loader2, Check, Upload, Download, Layers, Shield, RefreshCw, Zap, Calendar, Key } from 'lucide-react';
+import { X, Loader2, Check, Download, Layers, Shield, RefreshCw, Zap, Calendar, Key } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { assignProductToCustomer, uploadProductImage } from '@/lib/storage';
+import { assignProductToCustomer } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const generateCustomKey = () => {
@@ -83,7 +83,22 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
   const [formData, setFormData] = useState({
     customerId: '',
     productId: '',
-    activationDate: new Date().toISOString().split('T')[0],
+    purchaseDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0],
+    expiryDate: '',
+    downloadUrl: '',
+    licenseKey: '',
+    version: '1.0.0',
+    status: 'Active',
+    notes: '',
+    price: '0.00',
+    renewalPrice: '0.00',
+    renewalDate: '',
+    accessMethod: 'license_auto',
+    duration: 'yearly',
+    hasRenewal: false,
+    renewalPercentage: '',
+    currency: 'USD',
   });
 
   // Custom product details (Screen 1)
@@ -107,13 +122,12 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     licenseKey: '',
     status: 'Active',
     startDate: new Date().toISOString().split('T')[0],
-    expiryDate: ''
+    expiryDate: '',
+    notes: ''
   });
 
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
-
   const prevOpenRef = useRef(false);
 
   const getRenewalPrice = () => {
@@ -129,7 +143,22 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
       setFormData({
         customerId: customers && customers.length === 1 ? customers[0].id : '',
         productId: '',
-        activationDate: new Date().toISOString().split('T')[0],
+        purchaseDate: new Date().toISOString().split('T')[0],
+        startDate: new Date().toISOString().split('T')[0],
+        expiryDate: '',
+        downloadUrl: '',
+        licenseKey: '',
+        version: '1.0.0',
+        status: 'Active',
+        notes: '',
+        price: '0.00',
+        renewalPrice: '0.00',
+        renewalDate: '',
+        accessMethod: 'license_auto',
+        duration: 'yearly',
+        hasRenewal: false,
+        renewalPercentage: '',
+        currency: 'USD',
       });
       setCustomForm({
         name: '',
@@ -149,13 +178,14 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         licenseKey: generateCustomKey(),
         status: 'Active',
         startDate: new Date().toISOString().split('T')[0],
-        expiryDate: ''
+        expiryDate: '',
+        notes: ''
       });
     }
     prevOpenRef.current = open;
   }, [open, customers]);
 
-  // Expiry Date Auto-Calculation logic for Screen 2
+  // Expiry Date Auto-Calculation logic for Screen 2 (Custom wizard)
   useEffect(() => {
     if (customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') {
       setAssignForm(prev => ({ ...prev, expiryDate: '' }));
@@ -175,12 +205,121 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     }
   }, [assignForm.startDate, customForm.duration, customForm.accessMethod]);
 
-  // Disable renewal if access method is one_time
+  // Expiry Date Auto-Calculation logic for Standard Assign Form
   useEffect(() => {
-    if (customForm.accessMethod === 'one_time') {
+    if (formData.accessMethod === 'one_time' || formData.duration === 'lifetime') {
+      setFormData(prev => ({ ...prev, expiryDate: '', renewalDate: '' }));
+      return;
+    }
+
+    const start = new Date(formData.startDate);
+    if (isNaN(start.getTime())) return;
+
+    let calculatedExpiry = '';
+    if (formData.duration === 'monthly') {
+      const d = new Date(start);
+      d.setDate(d.getDate() + 30);
+      calculatedExpiry = d.toISOString().split('T')[0];
+    } else if (formData.duration === 'yearly') {
+      const d = new Date(start);
+      d.setFullYear(d.getFullYear() + 1);
+      calculatedExpiry = d.toISOString().split('T')[0];
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      expiryDate: calculatedExpiry,
+      renewalDate: calculatedExpiry
+    }));
+  }, [formData.startDate, formData.accessMethod, formData.duration]);
+
+  // Prefill Standard Form when Product is selected
+  useEffect(() => {
+    if (!formData.productId) return;
+    const prod = products.find(p => p.id === formData.productId);
+    if (prod) {
+      const accessMethod = (prod.license_registration || prod.automatic_updates)
+        ? 'license_auto'
+        : (prod.manual_updates ? 'manual_no_license' : 'one_time');
+
+      const duration = accessMethod === 'one_time' ? null : (prod.license_type || 'yearly');
+
+      // Generate license key if license registration is enabled on product
+      const key = (accessMethod === 'license_auto') ? generateCustomKey() : '';
+
+      // Calculate initial renewal percentage if renewal is enabled
+      let pct = '';
+      if (prod.renewal_enabled && prod.price > 0 && prod.renewal_price != null) {
+        pct = Math.round(((prod.renewal_price - prod.price) / prod.price) * 100).toString();
+      }
+
+      // Expiry calculation
+      let exp = '';
+      const start = new Date(formData.startDate);
+      if (!isNaN(start.getTime())) {
+        if (duration === 'monthly') {
+          const d = new Date(start);
+          d.setDate(d.getDate() + 30);
+          exp = d.toISOString().split('T')[0];
+        } else if (duration === 'yearly') {
+          const d = new Date(start);
+          d.setFullYear(d.getFullYear() + 1);
+          exp = d.toISOString().split('T')[0];
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        downloadUrl: prod.download_url || '',
+        price: prod.price != null ? prod.price.toString() : '0.00',
+        licenseKey: key,
+        expiryDate: exp,
+        renewalDate: exp,
+        accessMethod,
+        duration,
+        hasRenewal: prod.renewal_enabled || false,
+        renewalPercentage: pct,
+        currency: prod.currency || 'USD',
+      }));
+    }
+  }, [formData.productId, products]);
+
+  // License key generation logic based on accessMethod selection (Standard form)
+  useEffect(() => {
+    if (formData.accessMethod === 'license_auto') {
+      if (!formData.licenseKey) {
+        setFormData(prev => ({ ...prev, licenseKey: generateCustomKey() }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, licenseKey: '' }));
+    }
+  }, [formData.accessMethod]);
+
+  // Disable renewal if access method is one_time or duration is lifetime (Standard form)
+  useEffect(() => {
+    if (formData.accessMethod === 'one_time' || formData.duration === 'lifetime') {
+      setFormData(prev => prev.hasRenewal ? { ...prev, hasRenewal: false, renewalPercentage: '' } : prev);
+    }
+  }, [formData.accessMethod, formData.duration]);
+
+  // Auto-calculate renewal price for standard form based on price, hasRenewal, and renewalPercentage
+  useEffect(() => {
+    if (formData.hasRenewal) {
+      const basePrice = parseFloat(formData.price) || 0;
+      const pct = parseFloat(formData.renewalPercentage) || 0;
+      const calculated = (basePrice * (1 + pct / 100)).toFixed(2);
+      setFormData(prev => ({ ...prev, renewalPrice: calculated }));
+    } else {
+      setFormData(prev => ({ ...prev, renewalPrice: formData.price }));
+    }
+  }, [formData.price, formData.hasRenewal, formData.renewalPercentage]);
+
+  // Disable renewal if access method is one_time or duration is lifetime (Custom wizard)
+  useEffect(() => {
+    if (customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') {
       setCustomForm(prev => prev.hasRenewal ? { ...prev, hasRenewal: false } : prev);
     }
-  }, [customForm.accessMethod]);
+  }, [customForm.accessMethod, customForm.duration]);
 
   if (!open) return null;
 
@@ -235,13 +374,38 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
   // Standard Product Assignment Submit
   const handleStandardSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!formData.customerId || !formData.productId || !formData.activationDate) {
+    if (!formData.customerId || !formData.productId) {
       toast({ title: 'Error', description: 'Please fill in all required fields', variant: 'destructive' });
       return;
     }
     setSaving(true);
     try {
-      await assignProductToCustomer(formData);
+      const payload = {
+        customerId: formData.customerId,
+        productId: formData.productId,
+        purchaseDate: formData.purchaseDate || null,
+        startDate: formData.startDate || null,
+        expiryDate: formData.expiryDate || null,
+        downloadUrl: formData.downloadUrl || null,
+        licenseKey: formData.licenseKey || null,
+        version: formData.version || null,
+        status: formData.status || 'Active',
+        notes: formData.notes || null,
+        price: parseFloat(formData.price) || 0,
+        renewalPrice: formData.hasRenewal ? (parseFloat(formData.renewalPrice) || 0) : (parseFloat(formData.price) || 0),
+        renewalDate: formData.renewalDate || null,
+        licenseType: formData.accessMethod === 'one_time' ? null : formData.duration,
+        membershipType: formData.accessMethod === 'one_time'
+          ? 'One-Time Purchase, No License, No Updates'
+          : formData.duration === 'lifetime'
+            ? 'Lifetime License, Never Expires'
+            : formData.duration === 'yearly'
+              ? 'Yearly Subscription'
+              : 'Monthly Subscription',
+        currency: formData.currency || 'USD',
+      };
+
+      await assignProductToCustomer(payload);
       toast({ title: 'Success', description: 'Product assigned successfully' });
       if (onSuccess) onSuccess();
       onOpenChange(false);
@@ -249,22 +413,6 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
       toast({ title: 'Error', description: err.message || 'Failed to assign product', variant: 'destructive' });
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Image Upload handler for Screen 1
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const url = await uploadProductImage(file);
-      setCustomForm(prev => ({ ...prev, imageUrl: url }));
-      toast({ title: 'Success', description: 'Product image uploaded successfully' });
-    } catch (err) {
-      toast({ title: 'Upload failed', description: err.message || 'Failed to upload image', variant: 'destructive' });
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -306,6 +454,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         download_url: customForm.category === 'digital' ? customForm.downloadUrl.trim() : null,
         category: customForm.category,
         image_url: customForm.imageUrl || null,
+        license_key: assignForm.licenseKey || null,
         license_type: customForm.accessMethod === 'one_time' ? null : customForm.duration,
         license_registration: customForm.accessMethod === 'license_auto',
         automatic_updates: customForm.accessMethod === 'license_auto',
@@ -344,6 +493,14 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         license_type: processed.license_type,
         membership_type: processed.membership_type,
         download_count: 0,
+        purchase_date: assignForm.startDate ? new Date(assignForm.startDate).toISOString() : new Date().toISOString(),
+        download_url: customForm.downloadUrl || null,
+        version: '1.0.0',
+        notes: assignForm.notes || null,
+        price: parseFloat(customForm.price) || 0,
+        renewal_price: customForm.hasRenewal ? (parseFloat(getRenewalPrice()) || 0) : (parseFloat(customForm.price) || 0),
+        renewal_date: processed.expiry_date || null,
+        currency: customForm.currency || 'USD',
         created_at: new Date().toISOString()
       };
 
@@ -404,7 +561,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
           border: `1px solid ${borderStrong}`,
           borderRadius: 16,
           width: '100%',
-          maxWidth: isCustom ? (step === 1 ? 960 : 760) : 480,
+          maxWidth: isCustom ? (step === 1 ? 960 : 760) : 760,
           boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           overflow: 'hidden',
           display: 'flex',
@@ -427,7 +584,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         >
           <div>
             <div style={{ fontWeight: 700, fontSize: 16, color: text }}>
-              {isCustom ? (step === 1 ? 'Add New Product' : 'Assign Product & Generate License') : 'Assign Product & Generate License'}
+              {isCustom ? (step === 1 ? 'Add New Product' : 'Assign Product & Generate License') : 'Assign Existing Product'}
             </div>
             {customers && customers.length === 1 && (
               <div style={{ fontSize: 12, color: subText, marginTop: 2 }}>
@@ -450,71 +607,434 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
           </button>
         </div>
 
+        {/* Tab Switcher (Visible only if step === 1) */}
+        {step === 1 && (
+          <div style={{ display: 'flex', borderBottom: `1.5px solid ${border}`, background: panel }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCustom(false);
+                setStep(1);
+              }}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                background: !isCustom ? `${brand}15` : 'transparent',
+                border: 'none',
+                borderBottom: `2.5px solid ${!isCustom ? brand : 'transparent'}`,
+                color: !isCustom ? text : subText,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                textAlign: 'center'
+              }}
+            >
+              Assign Existing Product
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCustom(true);
+                setStep(1);
+              }}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                background: isCustom ? `${brand}15` : 'transparent',
+                border: 'none',
+                borderBottom: `2.5px solid ${isCustom ? brand : 'transparent'}`,
+                color: isCustom ? text : subText,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                textAlign: 'center'
+              }}
+            >
+              Create & Assign Custom Product
+            </button>
+          </div>
+        )}
+
         {/* Form Body */}
         {!isCustom ? (
-          /* STANDARD NORMAL ASSIGNMENT VIEW */
+          /* STANDARD NORMAL ASSIGNMENT VIEW (Assign Existing Product) */
           <form onSubmit={handleStandardSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-            <div style={{ padding: '24px 24px 16px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
+            <div style={{ padding: '24px 24px 16px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', maxHeight: '70vh' }}>
               
-              {/* Custom Product Toggle Checkbox */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <input
-                  type="checkbox"
-                  id="enable-custom"
-                  checked={isCustom}
-                  onChange={(e) => setIsCustom(e.target.checked)}
-                  style={{ width: 15, height: 15, accentColor: brand, cursor: 'pointer' }}
-                />
-                <label htmlFor="enable-custom" style={{ fontSize: 13, fontWeight: 600, color: text, cursor: 'pointer' }}>
-                  Enable Custom Product
-                </label>
-              </div>
 
-              {customers && customers.length > 1 && (
-                <div>
-                  <label style={labelS}>Customer *</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {customers && customers.length > 1 && (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelS}>Customer *</label>
+                    <select
+                      style={inpS}
+                      value={formData.customerId}
+                      required
+                      onChange={(e) => setFormData((p) => ({ ...p, customerId: e.target.value }))}
+                    >
+                      <option value="">Select Customer</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} – {c.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelS}>Select Product *</label>
                   <select
                     style={inpS}
-                    value={formData.customerId}
+                    value={formData.productId}
                     required
-                    onChange={(e) => setFormData((p) => ({ ...p, customerId: e.target.value }))}
+                    onChange={(e) => setFormData((p) => ({ ...p, productId: e.target.value }))}
                   >
-                    <option value="">Select Customer</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} – {c.email}
+                    <option value="">Select Product</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
                       </option>
                     ))}
                   </select>
                 </div>
-              )}
 
-              <div>
-                <label style={labelS}>Product *</label>
-                <select
-                  style={inpS}
-                  value={formData.productId}
-                  required
-                  onChange={(e) => setFormData((p) => ({ ...p, productId: e.target.value }))}
-                >
-                  <option value="">Select Product</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                {/* Service Plan Selector (Full Width) */}
+                {formData.productId && (
+                  <div style={{ gridColumn: '1 / -1', marginBottom: 8 }}>
+                    <label style={labelS}>Service Plan *</label>
+                    <p style={{ fontSize: 11, color: subText, marginTop: -4, marginBottom: 12 }}>Choose how customers will get access and receive updates.</p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* Option 1: License + Auto Updates */}
+                      <div
+                        style={{
+                          border: `1.5px solid ${formData.accessMethod === 'license_auto' ? '#818cf8' : border}`,
+                          borderRadius: 12, padding: 16, background: formData.accessMethod === 'license_auto' ? 'rgba(129,140,248,0.04)' : panel,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setFormData(p => ({ ...p, accessMethod: 'license_auto', duration: 'yearly' }))}
+                      >
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <input type="radio" checked={formData.accessMethod === 'license_auto'} onChange={() => {}} style={{ marginTop: 3, accentColor: '#818cf8' }} />
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Shield size={14} style={{ color: '#818cf8' }} />
+                              <span style={{ fontSize: 13, fontWeight: 650, color: text }}>License Registration + Automatic Updates</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: subText, marginTop: 2 }}>Customers get a license and automatic updates.</div>
+                          </div>
+                        </div>
 
-              <div>
-                <label style={labelS}>Start Date *</label>
-                <input
-                  type="date"
-                  value={formData.activationDate}
-                  required
-                  onChange={(e) => setFormData((p) => ({ ...p, activationDate: e.target.value }))}
-                  style={inpS}
-                />
+                        {formData.accessMethod === 'license_auto' && (
+                          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                            {['monthly', 'yearly', 'lifetime'].map(dur => {
+                              const active = formData.duration === dur;
+                              const label = dur === 'monthly' ? 'Monthly Subscription' : dur === 'yearly' ? 'Yearly Subscription' : 'Lifetime License';
+                              return (
+                                <button
+                                  key={dur} type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, duration: dur })); }}
+                                  style={{
+                                    flex: 1, padding: '8px 4px', fontSize: 10, fontWeight: 600, borderRadius: 8,
+                                    border: `1.5px solid ${active ? '#818cf8' : borderStrong}`,
+                                    background: active ? '#818cf8' : 'transparent',
+                                    color: active ? '#fff' : text, cursor: 'pointer'
+                                  }}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Option 2: Manual Updates */}
+                      <div
+                        style={{
+                          border: `1.5px solid ${formData.accessMethod === 'manual_no_license' ? '#60a5fa' : border}`,
+                          borderRadius: 12, padding: 16, background: formData.accessMethod === 'manual_no_license' ? 'rgba(96,165,250,0.04)' : panel,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setFormData(p => ({ ...p, accessMethod: 'manual_no_license', duration: 'yearly' }))}
+                      >
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <input type="radio" checked={formData.accessMethod === 'manual_no_license'} onChange={() => {}} style={{ marginTop: 3, accentColor: '#60a5fa' }} />
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <RefreshCw size={14} style={{ color: '#60a5fa' }} />
+                              <span style={{ fontSize: 13, fontWeight: 650, color: text }}>Manual Updates (No License Required)</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: subText, marginTop: 2 }}>Customers get access but updates are manual.</div>
+                          </div>
+                        </div>
+
+                        {formData.accessMethod === 'manual_no_license' && (
+                          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                            {['monthly', 'yearly', 'lifetime'].map(dur => {
+                              const active = formData.duration === dur;
+                              const label = dur === 'monthly' ? 'Monthly Access' : dur === 'yearly' ? 'Yearly Access' : 'Lifetime Access';
+                              return (
+                                <button
+                                  key={dur} type="button" onClick={(e) => { e.stopPropagation(); setFormData(p => ({ ...p, duration: dur })); }}
+                                  style={{
+                                    flex: 1, padding: '8px 4px', fontSize: 10, fontWeight: 600, borderRadius: 8,
+                                    border: `1.5px solid ${active ? '#60a5fa' : borderStrong}`,
+                                    background: active ? '#60a5fa' : 'transparent',
+                                    color: active ? '#fff' : text, cursor: 'pointer'
+                                  }}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Option 3: One-Time Purchase */}
+                      <div
+                        style={{
+                          border: `1.5px solid ${formData.accessMethod === 'one_time' ? '#22c55e' : border}`,
+                          borderRadius: 12, padding: 16, background: formData.accessMethod === 'one_time' ? 'rgba(34,197,94,0.04)' : panel,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setFormData(p => ({ ...p, accessMethod: 'one_time', duration: null }))}
+                      >
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <input type="radio" checked={formData.accessMethod === 'one_time'} onChange={() => {}} style={{ marginTop: 3, accentColor: '#22c55e' }} />
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Zap size={14} style={{ color: '#22c55e' }} />
+                              <span style={{ fontSize: 13, fontWeight: 650, color: text }}>One-Time Purchase</span>
+                            </div>
+                            <div style={{ fontSize: 11, color: subText, marginTop: 2 }}>No updates, no license registration needed.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label style={labelS}>Purchase Date</label>
+                  <input
+                    type="date"
+                    value={formData.purchaseDate}
+                    onChange={(e) => setFormData((p) => ({ ...p, purchaseDate: e.target.value }))}
+                    style={inpS}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelS}>Start Date *</label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    required
+                    onChange={(e) => setFormData((p) => ({ ...p, startDate: e.target.value }))}
+                    style={inpS}
+                  />
+                </div>
+
+                <div>
+                  <label style={labelS}>Expiry Date</label>
+                  {formData.accessMethod === 'one_time' || formData.duration === 'lifetime' ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={formData.duration === 'lifetime' ? 'Lifetime - Never Expires' : 'One-Time Purchase (No Expiry)'}
+                      style={{ ...inpS, background: panel, color: subText, cursor: 'not-allowed' }}
+                    />
+                  ) : (
+                    <input
+                      type="date"
+                      disabled
+                      value={formData.expiryDate}
+                      style={{ ...inpS, background: panel, color: subText, cursor: 'not-allowed' }}
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label style={labelS}>License Key</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      disabled={formData.accessMethod !== 'license_auto'}
+                      value={formData.accessMethod === 'license_auto' ? formData.licenseKey : 'No License Key Required'}
+                      onChange={(e) => setFormData((p) => ({ ...p, licenseKey: e.target.value }))}
+                      style={formData.accessMethod === 'license_auto' ? inpS : { ...inpS, opacity: 0.7, cursor: 'not-allowed', background: panel }}
+                      placeholder="License key"
+                    />
+                    {formData.accessMethod === 'license_auto' && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(p => ({ ...p, licenseKey: generateCustomKey() }))}
+                        style={{
+                          background: brand,
+                          color: '#fff',
+                          border: 'none',
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 650,
+                          cursor: 'pointer',
+                          flexShrink: 0
+                        }}
+                      >
+                        Gen
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelS}>Download URL</label>
+                  <input
+                    type="text"
+                    value={formData.downloadUrl}
+                    onChange={(e) => setFormData((p) => ({ ...p, downloadUrl: e.target.value }))}
+                    style={inpS}
+                    placeholder="https://example.com/download"
+                  />
+                </div>
+
+                <div>
+                  <label style={labelS}>Version</label>
+                  <input
+                    type="text"
+                    value={formData.version}
+                    onChange={(e) => setFormData((p) => ({ ...p, version: e.target.value }))}
+                    style={inpS}
+                    placeholder="e.g. 1.0.0"
+                  />
+                </div>
+
+                <div>
+                  <label style={labelS}>Status</label>
+                  <select
+                    style={inpS}
+                    value={formData.status}
+                    onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Disabled">Disabled</option>
+                    <option value="Suspended">Suspended</option>
+                    <option value="Expired">Expired</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ ...labelS, marginBottom: 0 }}>Price</label>
+                    <div style={{ display: 'flex', gap: 4, background: panel, padding: 2, borderRadius: 6, border: `1px solid ${borderStrong}` }}>
+                      {['USD', 'LKR'].map(curr => (
+                        <button
+                          key={curr}
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, currency: curr }))}
+                          style={{
+                            padding: '3px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                            background: formData.currency === curr ? brand : 'transparent',
+                            color: formData.currency === curr ? '#fff' : subText,
+                            border: 'none', cursor: 'pointer', transition: 'all 0.1s ease'
+                          }}
+                        >
+                          {curr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
+                      {formData.currency === 'LKR' ? 'Rs.' : '$'}
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) => setFormData((p) => ({ ...p, price: e.target.value }))}
+                      style={{ ...inpS, paddingLeft: formData.currency === 'LKR' ? 34 : 24 }}
+                    />
+                  </div>
+                </div>
+
+                {formData.accessMethod !== 'one_time' && formData.duration !== 'lifetime' && (
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                    <input
+                      type="checkbox"
+                      id="enable-renewal-standard"
+                      checked={formData.hasRenewal}
+                      onChange={(e) => setFormData(p => ({ ...p, hasRenewal: e.target.checked }))}
+                      style={{ width: 15, height: 15, accentColor: brand, cursor: 'pointer' }}
+                    />
+                    <label htmlFor="enable-renewal-standard" style={{ fontSize: 13, fontWeight: 600, color: text, cursor: 'pointer' }}>
+                      Enable Renewal (Yes / No)
+                    </label>
+                  </div>
+                )}
+
+                {formData.accessMethod !== 'one_time' && formData.duration !== 'lifetime' && formData.hasRenewal && (
+                  <>
+                    <div>
+                      <label style={labelS}>Renewal Percentage (%)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 10"
+                        value={formData.renewalPercentage}
+                        onChange={(e) => setFormData((p) => ({ ...p, renewalPercentage: e.target.value }))}
+                        style={inpS}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ ...labelS, marginBottom: 6 }}>Renewal Price</label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
+                          {formData.currency === 'LKR' ? 'Rs.' : '$'}
+                        </span>
+                        <input
+                          type="text"
+                          readOnly
+                          value={formData.renewalPrice}
+                          style={{ ...inpS, paddingLeft: formData.currency === 'LKR' ? 34 : 24, opacity: 0.7, cursor: 'not-allowed', background: panel }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <label style={labelS}>Renewal Date</label>
+                  {formData.accessMethod === 'one_time' || formData.duration === 'lifetime' ? (
+                    <input
+                      type="text"
+                      disabled
+                      value={formData.duration === 'lifetime' ? 'Lifetime (No Renewal)' : 'One-Time (No Renewal)'}
+                      style={{ ...inpS, background: panel, color: subText, cursor: 'not-allowed' }}
+                    />
+                  ) : (
+                    <input
+                      type="date"
+                      value={formData.renewalDate}
+                      onChange={(e) => setFormData((p) => ({ ...p, renewalDate: e.target.value }))}
+                      style={inpS}
+                    />
+                  )}
+                </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelS}>Notes</label>
+                  <textarea
+                    value={formData.notes}
+                    onChange={(e) => setFormData((p) => ({ ...p, notes: e.target.value }))}
+                    style={{ ...inpS, minHeight: 60 }}
+                    placeholder="Assignment notes..."
+                  />
+                </div>
               </div>
             </div>
 
@@ -572,25 +1092,13 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
           /* CUSTOM PRODUCT WIZARD WIDE VIEW */
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
             {step === 1 ? (
-              /* SCREEN 1: ADD NEW PRODUCT (customProduct.jpeg) */
+              /* SCREEN 1: ADD NEW PRODUCT */
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 <div style={{ padding: '24px', display: 'flex', gap: 24, overflowY: 'auto', maxHeight: '70vh' }}>
                   {/* Left Column */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
                     
-                    {/* Checkbox to Disable/Enable Custom mode */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input
-                        type="checkbox"
-                        id="enable-custom-inside"
-                        checked={isCustom}
-                        onChange={(e) => setIsCustom(e.target.checked)}
-                        style={{ width: 15, height: 15, accentColor: brand, cursor: 'pointer' }}
-                      />
-                      <label htmlFor="enable-custom-inside" style={{ fontSize: 13, fontWeight: 600, color: text, cursor: 'pointer' }}>
-                        Enable Custom Product
-                      </label>
-                    </div>
+                    {/* Mode selected via tab switcher above */}
 
                     <div>
                       <label style={labelS}>Product Icon</label>
@@ -619,7 +1127,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                             }}>
                               <Download size={24} style={{ color: brand }} />
                             </div>
-                            <span style={{ fontSize: 13, color: text, fontWeight: 600 }}>Digital Product Icon</span>
+                            <span style={{ fontSize: 13, color: text, fontWeight: 650 }}>Digital Product Icon</span>
                             <span style={{ fontSize: 11, color: subText, marginTop: 2 }}>Auto-generated download icon</span>
                           </div>
                         ) : (
@@ -632,7 +1140,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                             }}>
                               <Layers size={24} style={{ color: '#6366f1' }} />
                             </div>
-                            <span style={{ fontSize: 13, color: text, fontWeight: 600 }}>Virtual Service Icon</span>
+                            <span style={{ fontSize: 13, color: text, fontWeight: 650 }}>Virtual Service Icon</span>
                             <span style={{ fontSize: 11, color: subText, marginTop: 2 }}>Auto-generated layers icon</span>
                           </div>
                         )}
@@ -737,18 +1245,18 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                       </div>
 
                       {/* Renewal Option */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, opacity: customForm.accessMethod === 'one_time' ? 0.5 : 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, opacity: (customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') ? 0.5 : 1 }}>
                         <input
                           type="checkbox"
                           id="has-renewal"
-                          disabled={customForm.accessMethod === 'one_time'}
+                          disabled={customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime'}
                           checked={customForm.hasRenewal}
                           onChange={(e) => setCustomForm(p => ({ ...p, hasRenewal: e.target.checked }))}
                           style={{
                             width: 15,
                             height: 15,
                             accentColor: brand,
-                            cursor: customForm.accessMethod === 'one_time' ? 'not-allowed' : 'pointer'
+                            cursor: (customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') ? 'not-allowed' : 'pointer'
                           }}
                         />
                         <label
@@ -757,10 +1265,14 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                             fontSize: 13,
                             fontWeight: 600,
                             color: text,
-                            cursor: customForm.accessMethod === 'one_time' ? 'not-allowed' : 'pointer'
+                            cursor: (customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') ? 'not-allowed' : 'pointer'
                           }}
                         >
-                          Enable Renewal (Yes / No) {customForm.accessMethod === 'one_time' && <span style={{ fontSize: 11, fontWeight: 500, color: subText }}>(Disabled for One-Time Purchase)</span>}
+                          Enable Renewal (Yes / No) {(customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') && (
+                            <span style={{ fontSize: 11, fontWeight: 500, color: subText }}>
+                              (Disabled for {customForm.duration === 'lifetime' ? 'Lifetime License' : 'One-Time Purchase'})
+                            </span>
+                          )}
                         </label>
                       </div>
 
@@ -854,7 +1366,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <Shield size={14} style={{ color: '#818cf8' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: text }}>License Registration + Automatic Updates</span>
+                                <span style={{ fontSize: 13, fontWeight: 650, color: text }}>License Registration + Automatic Updates</span>
                               </div>
                               <div style={{ fontSize: 11, color: subText, marginTop: 2 }}>Customers get a license and automatic updates.</div>
                             </div>
@@ -897,7 +1409,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <RefreshCw size={14} style={{ color: '#60a5fa' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: text }}>Manual Updates (No License Required)</span>
+                                <span style={{ fontSize: 13, fontWeight: 650, color: text }}>Manual Updates (No License Required)</span>
                               </div>
                               <div style={{ fontSize: 11, color: subText, marginTop: 2 }}>Customers get access but updates are manual.</div>
                             </div>
@@ -940,37 +1452,13 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <Zap size={14} style={{ color: '#22c55e' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: text }}>One-Time Purchase</span>
+                                <span style={{ fontSize: 13, fontWeight: 650, color: text }}>One-Time Purchase</span>
                               </div>
-                              <div style={{ fontSize: 11, color: subText, marginTop: 2 }}>No license. No updates. Pay once and use forever.</div>
+                              <div style={{ fontSize: 11, color: subText, marginTop: 2 }}>No updates, no license registration needed.</div>
                             </div>
                           </div>
-
-                          {customForm.accessMethod === 'one_time' && (
-                            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                              {['No License', 'No Updates', 'Lifetime Usage'].map((label, idx) => (
-                                <div
-                                  key={idx}
-                                  style={{
-                                    flex: 1, padding: '8px 4px', fontSize: 10.5, fontWeight: 500, borderRadius: 8,
-                                    border: `1px solid ${borderStrong}`, background: 'rgba(255,255,255,0.02)',
-                                    color: subText, textAlign: 'center'
-                                  }}
-                                >
-                                  {label}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 8, padding: 12, borderRadius: 8, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
-                      <Zap size={14} style={{ color: '#3b82f6', flexShrink: 0, marginTop: 2 }} />
-                      <p style={{ fontSize: 11, color: '#93c5fd', margin: 0 }}>
-                        Note: The selected service plan will define how this product is assigned and managed for your customers.
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -992,7 +1480,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                     style={{
                       padding: '8px 18px',
                       borderRadius: 8,
-                      border: `1.5px solid ${border}`,
+                      border: `1.5px solid ${borderStrong}`,
                       background: 'transparent',
                       color: text,
                       fontSize: 13,
@@ -1024,7 +1512,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                 </div>
               </div>
             ) : (
-              /* SCREEN 2: ASSIGN PARAMETERS (customProduct2.png) */
+              /* SCREEN 2: ASSIGN PARAMETERS */
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 <div style={{ padding: '24px', overflowY: 'auto', maxHeight: '70vh' }}>
                   
@@ -1099,13 +1587,10 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
 
                   {/* Config Sections */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 20 }}>
-                    {/* Left Column: LICENSE INFORMATION (Shown only for license_auto) */}
+                    {/* Left Column: LICENSE INFORMATION */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                         LICENSE INFORMATION
-                        <div style={{ fontSize: 9.5, color: subText, textTransform: 'none', fontWeight: 500, marginTop: 2 }}>
-                          (Shown only for License + Automatic Updates)
-                        </div>
                       </div>
 
                       {customForm.accessMethod === 'license_auto' ? (
@@ -1194,16 +1679,6 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                           />
                         </div>
                       )}
-
-                      {/* Updates Info callout */}
-                      <div style={{ display: 'flex', gap: 8, padding: 12, borderRadius: 8, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}>
-                        <Zap size={14} style={{ color: '#3b82f6', flexShrink: 0, marginTop: 2 }} />
-                        <p style={{ fontSize: 11, color: '#93c5fd', margin: 0 }}>
-                          {customForm.accessMethod === 'license_auto'
-                            ? 'Customer will receive automatic updates during this period.'
-                            : (customForm.accessMethod === 'manual_no_license' ? 'Customer gets access but updates are manual.' : 'One-time purchase, no updates, no license.')}
-                        </p>
-                      </div>
                     </div>
                   </div>
 
@@ -1237,7 +1712,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                     style={{
                       padding: '8px 18px',
                       borderRadius: 8,
-                      border: `1.5px solid ${border}`,
+                      border: `1.5px solid ${borderStrong}`,
                       background: 'transparent',
                       color: text,
                       fontSize: 13,
@@ -1253,7 +1728,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                     style={{
                       padding: '8px 18px',
                       borderRadius: 8,
-                      border: `1.5px solid ${border}`,
+                      border: `1.5px solid ${borderStrong}`,
                       background: 'transparent',
                       color: text,
                       fontSize: 13,

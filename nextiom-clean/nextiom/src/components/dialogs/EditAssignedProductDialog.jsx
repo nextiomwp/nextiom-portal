@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Check, Upload, Download, Layers, Shield, RefreshCw, Zap, Calendar, Key } from 'lucide-react';
+import { X, Loader2, Check, Download, Layers, Shield, RefreshCw, Zap, Calendar, Key, Copy, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { updateProduct, updateLicense, uploadProductImage } from '@/lib/storage';
+import { updateLicense } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const generateCustomKey = () => {
@@ -79,98 +79,87 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
   const [customForm, setCustomForm] = useState({
     name: '',
     description: '',
-    price: '0.00',
-    currency: 'USD',
     category: 'digital',
     type: 'Plugin',
-    downloadUrl: '',
-    accessMethod: 'license_auto',
-    duration: 'yearly',
-    imageUrl: '',
-    hasRenewal: false,
-    renewalPercentage: ''
+    currency: 'USD',
   });
 
   const [assignForm, setAssignForm] = useState({
-    licenseKey: '',
-    status: 'Active',
+    purchaseDate: '',
     startDate: '',
-    expiryDate: ''
+    expiryDate: '',
+    downloadUrl: '',
+    licenseKey: '',
+    version: '1.0.0',
+    status: 'Active',
+    price: '0.00',
+    renewalPrice: '0.00',
+    renewalDate: '',
+    notes: '',
+    accessMethod: 'license_auto',
+    duration: 'yearly',
+    currency: 'USD',
   });
 
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
-
-  const getRenewalPrice = () => {
-    const basePrice = parseFloat(customForm.price) || 0;
-    const pct = parseFloat(customForm.renewalPercentage) || 0;
-    return (basePrice * (1 + pct / 100)).toFixed(2);
-  };
 
   useEffect(() => {
     if (product && license && open) {
-      const initialAccessMethod = product.license_registration || product.automatic_updates
-        ? 'license_auto'
-        : (product.manual_updates ? 'manual_no_license' : 'one_time');
+      const initialAccessMethod = license.license_type || product.license_type || 'yearly';
 
-      const basePrice = product.price || 0;
-      const renewalPrice = product.renewal_price || 0;
-      let calculatedPercentage = '';
-      if (product.renewal_enabled && basePrice > 0) {
-        calculatedPercentage = Math.round(((renewalPrice - basePrice) / basePrice) * 100).toString();
-      }
-
+      const basePrice = license.price !== undefined && license.price !== null ? license.price.toString() : (product.price?.toString() || '0.00');
+      const renewalPrice = license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price.toString() : (product.renewal_price?.toString() || '0.00');
+      const currency = license.currency || product.currency || 'USD';
+      
       setCustomForm({
         name: product.name || '',
         description: product.description || '',
-        price: product.price?.toString() || '0.00',
-        currency: product.currency || 'USD',
         category: product.category || 'digital',
         type: product.type || 'Plugin',
-        downloadUrl: product.download_url || '',
-        accessMethod: initialAccessMethod,
-        duration: product.license_type || 'yearly',
-        imageUrl: product.image_url || '',
-        hasRenewal: !!product.renewal_enabled,
-        renewalPercentage: calculatedPercentage
+        currency: product.currency || 'USD',
       });
 
       setAssignForm({
-        licenseKey: license.license_key || '',
-        status: license.status || 'Active',
+        purchaseDate: license.purchase_date ? license.purchase_date.split('T')[0] : '',
         startDate: license.start_date ? license.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
-        expiryDate: license.expiry_date ? license.expiry_date.split('T')[0] : ''
+        expiryDate: license.expiry_date ? license.expiry_date.split('T')[0] : '',
+        downloadUrl: license.download_url !== undefined && license.download_url !== null ? license.download_url : (product.download_url || ''),
+        licenseKey: license.license_key || '',
+        version: license.version || '1.0.0',
+        status: license.status || 'Active',
+        price: basePrice,
+        renewalPrice: renewalPrice,
+        renewalDate: license.renewal_date ? license.renewal_date.split('T')[0] : '',
+        notes: license.notes || '',
+        accessMethod: product.license_registration || product.automatic_updates
+          ? 'license_auto'
+          : (product.manual_updates ? 'manual_no_license' : 'one_time'),
+        duration: initialAccessMethod,
+        currency: currency,
       });
     }
   }, [product, license, open]);
 
-  // Disable renewal if access method is one_time
-  useEffect(() => {
-    if (customForm.accessMethod === 'one_time') {
-      setCustomForm(prev => prev.hasRenewal ? { ...prev, hasRenewal: false } : prev);
-    }
-  }, [customForm.accessMethod]);
-
   // Expiry Date Auto-Calculation logic
   useEffect(() => {
-    if (customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') {
+    if (assignForm.accessMethod === 'one_time' || assignForm.duration === 'lifetime') {
       setAssignForm(prev => ({ ...prev, expiryDate: '' }));
       return;
     }
     const start = new Date(assignForm.startDate);
     if (isNaN(start.getTime())) return;
     
-    if (customForm.duration === 'monthly') {
+    if (assignForm.duration === 'monthly') {
       const d = new Date(start);
       d.setDate(d.getDate() + 30);
       setAssignForm(prev => ({ ...prev, expiryDate: d.toISOString().split('T')[0] }));
-    } else if (customForm.duration === 'yearly') {
+    } else if (assignForm.duration === 'yearly') {
       const d = new Date(start);
       d.setFullYear(d.getFullYear() + 1);
       setAssignForm(prev => ({ ...prev, expiryDate: d.toISOString().split('T')[0] }));
     }
-  }, [assignForm.startDate, customForm.duration, customForm.accessMethod]);
+  }, [assignForm.startDate, assignForm.duration, assignForm.accessMethod]);
 
   if (!open || !product || !license) return null;
 
@@ -193,7 +182,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
   const border = theme.border || 'rgba(255,255,255,0.06)';
   const borderStrong = theme.borderStrong || 'rgba(255,255,255,0.10)';
   const brand = theme.brand || '#e87b35';
-  const input = theme.input || (theme.bg === '#15161A' ? '#22252C' : '#fff');
+  const inputBg = theme.input || (theme.bg === '#15161A' ? '#22252C' : '#fff');
   const panel = theme.panel2 || '#22252C';
   const overlay = 'rgba(0,0,0,0.6)';
 
@@ -202,13 +191,20 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
     padding: '8px 12px',
     border: `1.5px solid ${border}`,
     borderRadius: 8,
-    background: input,
+    background: inputBg,
     color: text,
     fontSize: 13,
     outline: 'none',
     boxSizing: 'border-box',
     fontFamily: 'inherit',
     transition: 'border-color 0.15s ease',
+  };
+
+  const readOnlyInpS = {
+    ...inpS,
+    opacity: 0.7,
+    cursor: 'not-allowed',
+    background: panel
   };
 
   const labelS = {
@@ -221,76 +217,35 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
     marginBottom: 6,
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const url = await uploadProductImage(file);
-      setCustomForm(prev => ({ ...prev, imageUrl: url }));
-      toast({ title: 'Success', description: 'Product image uploaded successfully' });
-    } catch (err) {
-      toast({ title: 'Upload failed', description: err.message || 'Failed to upload image', variant: 'destructive' });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleSave = async (e) => {
     if (e) e.preventDefault();
-    if (!customForm.name.trim()) {
-      toast({ title: 'Validation Error', description: 'Product name is required', variant: 'destructive' });
-      return;
-    }
-    if (customForm.category === 'digital' && !customForm.downloadUrl.trim()) {
-      toast({ title: 'Validation Error', description: 'Download URL is required for digital products', variant: 'destructive' });
-      return;
-    }
-    if (!customForm.type.trim()) {
-      toast({ title: 'Validation Error', description: 'Product type is required', variant: 'destructive' });
-      return;
-    }
-
     setSaving(true);
     try {
       // 1. Process payload rules
       const processed = processCustomProductPayload({
         category: customForm.category,
-        access_method: customForm.accessMethod,
-        duration: customForm.duration,
+        access_method: assignForm.accessMethod,
+        duration: assignForm.duration,
         start_date: assignForm.startDate,
         license_key: assignForm.licenseKey
       });
 
-      // 2. Update the product table row
-      const productUpdates = {
-        name: customForm.name.trim(),
-        description: customForm.description?.trim() || null,
-        price: parseFloat(customForm.price) || 0,
-        currency: customForm.currency || 'USD',
-        type: customForm.type.trim(),
-        download_url: customForm.category === 'digital' ? customForm.downloadUrl.trim() : null,
-        category: customForm.category,
-        image_url: customForm.imageUrl || null,
-        license_type: processed.license_type,
-        license_registration: customForm.accessMethod === 'license_auto',
-        automatic_updates: customForm.accessMethod === 'license_auto',
-        manual_updates: customForm.accessMethod === 'manual_no_license',
-        renewal_enabled: customForm.hasRenewal,
-        renewal_price: customForm.hasRenewal ? (parseFloat(getRenewalPrice()) || 0) : (parseFloat(customForm.price) || 0),
-        renewal_period_days: customForm.duration === 'monthly' ? 30 : (customForm.duration === 'yearly' ? 365 : null),
-      };
-
-      await updateProduct(product.id || license.product_id, productUpdates);
-
-      // 3. Update the license table row
+      // 2. Update the license table row
       const licenseUpdates = {
-        license_key: processed.license_key,
-        status: assignForm.status,
-        expiry_date: processed.expiry_date,
+        purchase_date: assignForm.purchaseDate ? new Date(assignForm.purchaseDate).toISOString() : null,
         start_date: processed.start_date,
+        expiry_date: processed.expiry_date,
+        download_url: assignForm.downloadUrl || null,
+        license_key: processed.license_key,
+        version: assignForm.version || null,
+        status: assignForm.status,
+        notes: assignForm.notes || null,
+        price: parseFloat(assignForm.price) || 0,
+        renewal_price: parseFloat(assignForm.renewalPrice) || 0,
+        renewal_date: assignForm.renewalDate ? new Date(assignForm.renewalDate).toISOString() : null,
         license_type: processed.license_type,
-        membership_type: processed.membership_type
+        membership_type: processed.membership_type,
+        currency: assignForm.currency || 'USD',
       };
 
       await updateLicense(license.id, licenseUpdates);
@@ -369,10 +324,10 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
           <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 24, overflowY: 'auto', maxHeight: '70vh' }}>
             
-            {/* Row 1: Product Definition (Screen 1 Equivalent) */}
+            {/* Row 1: Product Definition (READ-ONLY) */}
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: brand, textTransform: 'uppercase', letterSpacing: 1, borderBottom: `1.5px solid ${borderStrong}`, paddingBottom: 6, marginBottom: 16 }}>
-                1. Product Definition
+                1. Master Product Information (Read-Only)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                 {/* Left Column */}
@@ -381,12 +336,12 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                     <label style={labelS}>Product Icon</label>
                     <div
                       style={{
-                        border: `1.5px solid ${borderStrong}`,
+                        border: `1.5px solid ${border}`,
                         borderRadius: 12,
                         padding: '16px 24px',
                         textAlign: 'center',
                         background: panel,
-                        height: 120,
+                        height: 100,
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
@@ -396,307 +351,73 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                     >
                       {customForm.category === 'digital' ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{
-                            width: 40, height: 40, borderRadius: '50%',
-                            background: 'rgba(232, 123, 53, 0.15)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            marginBottom: 6
-                          }}>
-                            <Download size={20} style={{ color: brand }} />
-                          </div>
-                          <span style={{ fontSize: 12.5, color: text, fontWeight: 600 }}>Digital Product Icon</span>
-                          <span style={{ fontSize: 10.5, color: subText, marginTop: 1 }}>Auto-generated download icon</span>
+                          <Download size={20} style={{ color: brand, marginBottom: 4 }} />
+                          <span style={{ fontSize: 12.5, color: text, fontWeight: 600 }}>Digital Product</span>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{
-                            width: 40, height: 40, borderRadius: '50%',
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            marginBottom: 6
-                          }}>
-                            <Layers size={20} style={{ color: '#6366f1' }} />
-                          </div>
-                          <span style={{ fontSize: 12.5, color: text, fontWeight: 600 }}>Virtual Service Icon</span>
-                          <span style={{ fontSize: 10.5, color: subText, marginTop: 1 }}>Auto-generated layers icon</span>
+                          <Layers size={20} style={{ color: '#6366f1', marginBottom: 4 }} />
+                          <span style={{ fontSize: 12.5, color: text, fontWeight: 600 }}>Virtual Service</span>
                         </div>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <label style={labelS}>Product Name *</label>
+                    <label style={labelS}>Product Name</label>
                     <input
                       type="text"
+                      readOnly
                       value={customForm.name}
-                      required
-                      onChange={(e) => setCustomForm(p => ({ ...p, name: e.target.value }))}
-                      style={inpS}
-                      placeholder="Enter product name"
+                      style={readOnlyInpS}
                     />
-                  </div>
-
-                  <div>
-                    <label style={labelS}>Product Category *</label>
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      <div
-                        onClick={() => setCustomForm(p => ({ ...p, category: 'digital' }))}
-                        style={{
-                          flex: 1, padding: '12px 10px', borderRadius: 10,
-                          border: `2px solid ${customForm.category === 'digital' ? brand : border}`,
-                          background: customForm.category === 'digital' ? `${brand}12` : panel,
-                          cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'center'
-                        }}
-                      >
-                        <Download size={14} style={{ color: customForm.category === 'digital' ? brand : subText }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Digital Product</span>
-                      </div>
-
-                      <div
-                        onClick={() => setCustomForm(p => ({ ...p, category: 'virtual' }))}
-                        style={{
-                          flex: 1, padding: '12px 10px', borderRadius: 10,
-                          border: `2px solid ${customForm.category === 'virtual' ? brand : border}`,
-                          background: customForm.category === 'virtual' ? `${brand}12` : panel,
-                          cursor: 'pointer', display: 'flex', gap: 8, alignItems: 'center'
-                        }}
-                      >
-                        <Layers size={14} style={{ color: customForm.category === 'virtual' ? brand : subText }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Virtual Service</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <label style={{ ...labelS, marginBottom: 0 }}>Product Price *</label>
-                      <div style={{ display: 'flex', gap: 4, background: panel, padding: 2, borderRadius: 6, border: `1px solid ${borderStrong}` }}>
-                        {['USD', 'LKR'].map(curr => (
-                          <button
-                            key={curr}
-                            type="button"
-                            onClick={() => setCustomForm(p => ({ ...p, currency: curr }))}
-                            style={{
-                              padding: '3px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
-                              background: customForm.currency === curr ? brand : 'transparent',
-                              color: customForm.currency === curr ? '#fff' : subText,
-                              border: 'none', cursor: 'pointer', transition: 'all 0.1s ease'
-                            }}
-                          >
-                            {curr}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
-                        {customForm.currency === 'LKR' ? 'Rs.' : '$'}
-                      </span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={customForm.price}
-                        required
-                        onChange={(e) => setCustomForm(p => ({ ...p, price: e.target.value }))}
-                        style={{ ...inpS, paddingLeft: customForm.currency === 'LKR' ? 34 : 24 }}
-                      />
-                    </div>
-
-                    {/* Renewal Option */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, opacity: customForm.accessMethod === 'one_time' ? 0.5 : 1 }}>
-                      <input
-                        type="checkbox"
-                        id="has-renewal"
-                        disabled={customForm.accessMethod === 'one_time'}
-                        checked={customForm.hasRenewal}
-                        onChange={(e) => setCustomForm(p => ({ ...p, hasRenewal: e.target.checked }))}
-                        style={{
-                          width: 15,
-                          height: 15,
-                          accentColor: brand,
-                          cursor: customForm.accessMethod === 'one_time' ? 'not-allowed' : 'pointer'
-                        }}
-                      />
-                      <label
-                        htmlFor="has-renewal"
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: text,
-                          cursor: customForm.accessMethod === 'one_time' ? 'not-allowed' : 'pointer'
-                        }}
-                      >
-                        Enable Renewal (Yes / No) {customForm.accessMethod === 'one_time' && <span style={{ fontSize: 11, fontWeight: 500, color: subText }}>(Disabled for One-Time Purchase)</span>}
-                      </label>
-                    </div>
-
-                    {customForm.hasRenewal && (
-                      <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                        <div style={{ flex: 1 }}>
-                          <label style={{ ...labelS, marginBottom: 6 }}>Renewal Percentage (%)</label>
-                          <input
-                            type="number"
-                            placeholder="e.g. 10"
-                            value={customForm.renewalPercentage}
-                            onChange={(e) => setCustomForm(p => ({ ...p, renewalPercentage: e.target.value }))}
-                            style={inpS}
-                          />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <label style={{ ...labelS, marginBottom: 6 }}>Renewal Price</label>
-                          <div style={{ position: 'relative' }}>
-                            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
-                              {customForm.currency === 'LKR' ? 'Rs.' : '$'}
-                            </span>
-                            <input
-                              type="text"
-                              readOnly
-                              value={getRenewalPrice()}
-                              style={{ ...inpS, paddingLeft: customForm.currency === 'LKR' ? 34 : 24, opacity: 0.7, cursor: 'not-allowed' }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 {/* Right Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label style={labelS}>Product Type *</label>
+                    <label style={labelS}>Product Category</label>
                     <input
                       type="text"
-                      placeholder="e.g., Plugin, SaaS, Theme, Service"
-                      value={customForm.type}
-                      onChange={(e) => setCustomForm(p => ({ ...p, type: e.target.value }))}
-                      style={inpS}
+                      readOnly
+                      value={customForm.category === 'digital' ? 'Digital Product' : 'Virtual Service'}
+                      style={readOnlyInpS}
                     />
                   </div>
 
-                  {customForm.category === 'digital' && (
-                    <div>
-                      <label style={labelS}>Product Download URL *</label>
-                      <input
-                        type="text"
-                        placeholder="https://example.com/download"
-                        value={customForm.downloadUrl}
-                        required
-                        onChange={(e) => setCustomForm(p => ({ ...p, downloadUrl: e.target.value }))}
-                        style={inpS}
-                      />
-                    </div>
-                  )}
-
                   <div>
-                    <label style={labelS}>Service Access Plan *</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {/* Plan 1: License + Auto */}
-                      <div
-                        style={{
-                          border: `1.5px solid ${customForm.accessMethod === 'license_auto' ? '#818cf8' : border}`,
-                          borderRadius: 10, padding: 12, background: customForm.accessMethod === 'license_auto' ? 'rgba(129,140,248,0.04)' : panel,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setCustomForm(p => ({ ...p, accessMethod: 'license_auto', duration: p.duration === 'lifetime' || p.duration === 'monthly' || p.duration === 'yearly' ? p.duration : 'yearly' }))}
-                      >
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <input type="radio" checked={customForm.accessMethod === 'license_auto'} onChange={() => {}} style={{ accentColor: '#818cf8' }} />
-                          <Shield size={13} style={{ color: '#818cf8' }} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: text }}>License + Auto Updates</span>
-                        </div>
-                        {customForm.accessMethod === 'license_auto' && (
-                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                            {['monthly', 'yearly', 'lifetime'].map(dur => (
-                              <button
-                                key={dur} type="button" onClick={(e) => { e.stopPropagation(); setCustomForm(p => ({ ...p, duration: dur })); }}
-                                style={{
-                                  flex: 1, padding: '5px 2px', fontSize: 10, fontWeight: 600, borderRadius: 6,
-                                  border: `1px solid ${customForm.duration === dur ? '#818cf8' : borderStrong}`,
-                                  background: customForm.duration === dur ? '#818cf8' : 'transparent',
-                                  color: customForm.duration === dur ? '#fff' : text, cursor: 'pointer'
-                                }}
-                              >
-                                {dur === 'monthly' ? 'Monthly' : dur === 'yearly' ? 'Yearly' : 'Lifetime'}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Plan 2: Manual Updates */}
-                      <div
-                        style={{
-                          border: `1.5px solid ${customForm.accessMethod === 'manual_no_license' ? '#60a5fa' : border}`,
-                          borderRadius: 10, padding: 12, background: customForm.accessMethod === 'manual_no_license' ? 'rgba(96,165,250,0.04)' : panel,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setCustomForm(p => ({ ...p, accessMethod: 'manual_no_license', duration: p.duration === 'lifetime' || p.duration === 'monthly' || p.duration === 'yearly' ? p.duration : 'yearly' }))}
-                      >
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <input type="radio" checked={customForm.accessMethod === 'manual_no_license'} onChange={() => {}} style={{ accentColor: '#60a5fa' }} />
-                          <RefreshCw size={13} style={{ color: '#60a5fa' }} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Manual (No License Required)</span>
-                        </div>
-                        {customForm.accessMethod === 'manual_no_license' && (
-                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                            {['monthly', 'yearly', 'lifetime'].map(dur => (
-                              <button
-                                key={dur} type="button" onClick={(e) => { e.stopPropagation(); setCustomForm(p => ({ ...p, duration: dur })); }}
-                                style={{
-                                  flex: 1, padding: '5px 2px', fontSize: 10, fontWeight: 600, borderRadius: 6,
-                                  border: `1px solid ${customForm.duration === dur ? '#60a5fa' : borderStrong}`,
-                                  background: customForm.duration === dur ? '#60a5fa' : 'transparent',
-                                  color: customForm.duration === dur ? '#fff' : text, cursor: 'pointer'
-                                }}
-                              >
-                                {dur === 'monthly' ? 'Monthly' : dur === 'yearly' ? 'Yearly' : 'Lifetime'}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Plan 3: One-Time Purchase */}
-                      <div
-                        style={{
-                          border: `1.5px solid ${customForm.accessMethod === 'one_time' ? '#22c55e' : border}`,
-                          borderRadius: 10, padding: 12, background: customForm.accessMethod === 'one_time' ? 'rgba(34,197,94,0.04)' : panel,
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => setCustomForm(p => ({ ...p, accessMethod: 'one_time', duration: null }))}
-                      >
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <input type="radio" checked={customForm.accessMethod === 'one_time'} onChange={() => {}} style={{ accentColor: '#22c55e' }} />
-                          <Zap size={13} style={{ color: '#22c55e' }} />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: text }}>One-Time Purchase</span>
-                        </div>
-                      </div>
-                    </div>
+                    <label style={labelS}>Product Type</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={customForm.type}
+                      style={readOnlyInpS}
+                    />
                   </div>
 
                   <div>
                     <label style={labelS}>Description</label>
                     <textarea
-                      value={customForm.description}
-                      onChange={(e) => setCustomForm(p => ({ ...p, description: e.target.value }))}
-                      style={{ ...inpS, minHeight: 60 }}
-                      placeholder="Enter product description (optional)"
+                      readOnly
+                      value={customForm.description || 'No description provided.'}
+                      style={{ ...readOnlyInpS, minHeight: 60 }}
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Row 2: License Assignment Parameters (Screen 2 Equivalent) */}
+            {/* Row 2: License Assignment Parameters (EDITABLE) */}
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: brand, textTransform: 'uppercase', letterSpacing: 1, borderBottom: `1.5px solid ${borderStrong}`, paddingBottom: 6, marginBottom: 16 }}>
-                2. Assignment &amp; License Settings
+                2. Customer Assignment Settings (Editable)
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                {/* Left Column: License Key & Status */}
+                
+                {/* Left Column: LICENSE & STATUS */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {customForm.accessMethod === 'license_auto' ? (
+                  {assignForm.accessMethod === 'license_auto' ? (
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                         <label style={labelS}>License Key *</label>
@@ -726,7 +447,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                         type="text"
                         disabled
                         value="No License Key Required"
-                        style={{ ...inpS, background: panel, color: subText, cursor: 'not-allowed' }}
+                        style={readOnlyInpS}
                       />
                     </div>
                   )}
@@ -744,40 +465,60 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                       <option value="Expired">Expired</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label style={labelS}>Version</label>
+                    <input
+                      type="text"
+                      value={assignForm.version}
+                      onChange={(e) => setAssignForm(p => ({ ...p, version: e.target.value }))}
+                      style={inpS}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={labelS}>Download URL</label>
+                    <input
+                      type="text"
+                      value={assignForm.downloadUrl}
+                      onChange={(e) => setAssignForm(p => ({ ...p, downloadUrl: e.target.value }))}
+                      style={inpS}
+                      placeholder="Custom download link for this customer"
+                    />
+                  </div>
                 </div>
 
-                {/* Right Column: Dates */}
+                {/* Right Column: DATES & PRICING */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label style={labelS}>
-                      {customForm.accessMethod === 'one_time' ? 'Purchase Date' : 'Start Date'}
-                    </label>
-                    {customForm.accessMethod === 'one_time' ? (
-                      <input
-                        type="text"
-                        disabled
-                        value="Tracked by purchase date (system-defined)"
-                        style={{ ...inpS, background: panel, color: subText, cursor: 'not-allowed' }}
-                      />
-                    ) : (
-                      <input
-                        type="date"
-                        value={assignForm.startDate}
-                        required
-                        onChange={(e) => setAssignForm(p => ({ ...p, startDate: e.target.value }))}
-                        style={inpS}
-                      />
-                    )}
+                    <label style={labelS}>Purchase Date</label>
+                    <input
+                      type="date"
+                      value={assignForm.purchaseDate}
+                      onChange={(e) => setAssignForm(p => ({ ...p, purchaseDate: e.target.value }))}
+                      style={inpS}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={labelS}>Start Date *</label>
+                    <input
+                      type="date"
+                      value={assignForm.startDate}
+                      required
+                      onChange={(e) => setAssignForm(p => ({ ...p, startDate: e.target.value }))}
+                      style={inpS}
+                    />
                   </div>
 
                   <div>
                     <label style={labelS}>Expiry Date</label>
-                    {customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime' ? (
+                    {assignForm.accessMethod === 'one_time' || assignForm.duration === 'lifetime' ? (
                       <input
                         type="text"
                         disabled
-                        value={customForm.duration === 'lifetime' ? 'Lifetime - Never Expires' : 'One-Time Purchase (No Expiry)'}
-                        style={{ ...inpS, background: panel, color: subText, cursor: 'not-allowed' }}
+                        value={assignForm.duration === 'lifetime' ? 'Lifetime - Never Expires' : 'One-Time Purchase (No Expiry)'}
+                        style={readOnlyInpS}
                       />
                     ) : (
                       <input
@@ -787,11 +528,83 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                         style={inpS}
                       />
                     )}
-                    {!(customForm.accessMethod === 'one_time' || customForm.duration === 'lifetime') && (
-                      <p style={{ fontSize: 11, color: subText, marginTop: 4 }}>Auto-calculated but can be modified manually.</p>
-                    )}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={{ ...labelS, marginBottom: 0 }}>Price</label>
+                        <div style={{ display: 'flex', gap: 4, background: panel, padding: 2, borderRadius: 6, border: `1px solid ${borderStrong}` }}>
+                          {['USD', 'LKR'].map(curr => (
+                            <button
+                              key={curr}
+                              type="button"
+                              onClick={() => setAssignForm(p => ({ ...p, currency: curr }))}
+                              style={{
+                                padding: '3px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                                background: assignForm.currency === curr ? brand : 'transparent',
+                                color: assignForm.currency === curr ? '#fff' : subText,
+                                border: 'none', cursor: 'pointer', transition: 'all 0.1s ease'
+                              }}
+                            >
+                              {curr}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
+                          {assignForm.currency === 'LKR' ? 'Rs.' : '$'}
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={assignForm.price}
+                          onChange={(e) => setAssignForm(p => ({ ...p, price: e.target.value }))}
+                          style={{ ...inpS, paddingLeft: assignForm.currency === 'LKR' ? 34 : 24 }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ ...labelS, marginBottom: 6 }}>Renewal Price</label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13 }}>
+                          {assignForm.currency === 'LKR' ? 'Rs.' : '$'}
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={assignForm.renewalPrice}
+                          onChange={(e) => setAssignForm(p => ({ ...p, renewalPrice: e.target.value }))}
+                          style={{ ...inpS, paddingLeft: assignForm.currency === 'LKR' ? 34 : 24 }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={labelS}>Renewal Date</label>
+                    <input
+                      type="date"
+                      value={assignForm.renewalDate}
+                      onChange={(e) => setAssignForm(p => ({ ...p, renewalDate: e.target.value }))}
+                      style={inpS}
+                    />
                   </div>
                 </div>
+
+              </div>
+
+              {/* Notes Row */}
+              <div style={{ marginTop: 16 }}>
+                <label style={labelS}>Notes</label>
+                <textarea
+                  value={assignForm.notes}
+                  onChange={(e) => setAssignForm(p => ({ ...p, notes: e.target.value }))}
+                  style={{ ...inpS, minHeight: 60 }}
+                  placeholder="Enter notes about this customer assignment..."
+                />
               </div>
             </div>
 
@@ -814,7 +627,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
               style={{
                 padding: '8px 18px',
                 borderRadius: 8,
-                border: `1.5px solid ${border}`,
+                border: `1.5px solid ${borderStrong}`,
                 background: 'transparent',
                 color: text,
                 fontSize: 13,

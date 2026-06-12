@@ -218,7 +218,21 @@ export default function CustomerJobsPage({ user, c, isDark }) {
       {/* Title */}
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: c.text }}>
-          <Briefcase className="text-orange-500" /> Project Queue & Progress
+          <span style={{
+            display: 'inline-block',
+            width: 24,
+            height: 24,
+            backgroundColor: c.brand,
+            WebkitMaskImage: "url('/on-progress.png')",
+            maskImage: "url('/on-progress.png')",
+            WebkitMaskSize: 'contain',
+            maskSize: 'contain',
+            WebkitMaskRepeat: 'no-repeat',
+            maskRepeat: 'no-repeat',
+            WebkitMaskPosition: 'center',
+            maskPosition: 'center',
+            flexShrink: 0
+          }} /> Project Queue & Progress
         </h1>
         <p style={{ fontSize: 14, color: c.subText }}>Monitor your project's queue positioning, active workloads, and checklist requirements.</p>
       </div>
@@ -694,6 +708,12 @@ function QueueDetailsContainer({
               <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
                 <span>Assigned to: <strong style={{ color: c.text }}>{job.assign_to}</strong></span>
+              </div>
+            )}
+            {job.created_date && (
+              <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
+                <span>Start Job Date: <strong style={{ color: c.text }}>{new Date(job.created_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
               </div>
             )}
           </div>

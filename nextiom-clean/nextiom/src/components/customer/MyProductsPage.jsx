@@ -10,6 +10,9 @@ const LICENSE_CFG = {
 };
 
 function getValidity(license) {
+  if (license.status === 'Disabled' || license.status === 'Suspended' || license.status === 'Expired') {
+    return { valid: false, label: license.status, days: null };
+  }
   const lt = license.product?.license_type || license.license_type || 'one_time';
   if (lt === 'lifetime') return { valid: true, label: 'Lifetime', days: null };
   if (lt === 'one_time') {
@@ -25,6 +28,12 @@ function getValidity(license) {
 }
 
 function getLicenseStatus(license) {
+  if (license.status === 'Disabled' || license.status === 'Suspended') {
+    return license.status;
+  }
+  if (license.status === 'Expired') {
+    return 'Expired';
+  }
   const validity = getValidity(license);
   const lt = license.product?.license_type || license.license_type || 'one_time';
   if (lt === 'lifetime') {
@@ -131,13 +140,14 @@ export default function MyProductsPage({ user, isDark, c }) {
   }
 
   const handleDownload = async (license) => {
-    if (!license.product?.download_url) {
+    const downloadUrl = license.download_url || license.product?.download_url;
+    if (!downloadUrl) {
       toast({ title: 'Download URL not available for this product', variant: 'destructive' });
       return;
     }
     try {
       await incrementDownloadCount(license.id);
-      triggerDownload(license.product.download_url, license.name);
+      triggerDownload(downloadUrl, license.name);
       toast({ title: 'Download started successfully' });
       load();
     } catch (err) {
@@ -320,7 +330,7 @@ export default function MyProductsPage({ user, isDark, c }) {
               </div>
               <div>
                 <p style={{ color: sub, fontSize: 10.5, fontWeight: 500, margin: 0 }}>Purchase Price</p>
-                <p style={{ color: text, fontSize: 14, fontWeight: 700, margin: '1px 0 0' }}>{formatPrice(dp.price, dp.currency)}</p>
+                <p style={{ color: text, fontSize: 14, fontWeight: 700, margin: '1px 0 0' }}>{formatPrice(lic.price !== undefined && lic.price !== null ? lic.price : dp.price, lic.currency || dp.currency)}</p>
               </div>
             </div>
 
@@ -337,7 +347,7 @@ export default function MyProductsPage({ user, isDark, c }) {
               <div>
                 <p style={{ color: sub, fontSize: 10.5, fontWeight: 500, margin: 0 }}>Renewal Price</p>
                 <p style={{ color: text, fontSize: 14, fontWeight: 700, margin: '1px 0 0' }}>
-                  {showRenewal ? `${formatPrice(dp.renewal_price, dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
+                  {showRenewal ? `${formatPrice(lic.renewal_price !== undefined && lic.renewal_price !== null ? lic.renewal_price : dp.renewal_price, lic.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
                 </p>
               </div>
             </div>
@@ -731,14 +741,14 @@ export default function MyProductsPage({ user, isDark, c }) {
 
                         {/* Col 2: Purchase Price */}
                         <div style={{ flex: 1, minWidth: 80 }}>
-                          <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>{formatPrice(dp.price, dp.currency)}</p>
+                          <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>{formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}</p>
                           <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Purchase Price</p>
                         </div>
 
                         {/* Col 3: Renewal Price */}
                         <div style={{ flex: 1.2, minWidth: 100 }}>
                           <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
-                            {showRenewal ? `${formatPrice(dp.renewal_price, dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
+                            {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
                           </p>
                           <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Renewal Price</p>
                         </div>
@@ -891,12 +901,12 @@ export default function MyProductsPage({ user, isDark, c }) {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '10px 0', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
                           <div>
-                            <p style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>{formatPrice(dp.price, dp.currency)}</p>
+                            <p style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>{formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}</p>
                             <p style={{ color: sub, fontSize: 10.5, margin: '1px 0 0' }}>Purchase</p>
                           </div>
                           <div>
                             <p style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>
-                              {showRenewal ? `${formatPrice(dp.renewal_price, dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
+                              {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
                             </p>
                             <p style={{ color: sub, fontSize: 10.5, margin: '1px 0 0' }}>Renewal</p>
                           </div>

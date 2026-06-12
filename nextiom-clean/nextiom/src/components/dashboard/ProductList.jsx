@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity, Layers, Clock, Key, ArrowUpDown } from 'lucide-react';
+import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity, Layers, Clock, Key, ArrowUpDown, Users } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { deleteProduct, addNotification } from '@/lib/storage';
 import EditProductDialog from '@/components/dialogs/EditProductDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -15,8 +16,48 @@ const LICENSE_LABEL = {
   lifetime: { label: 'Lifetime', icon: Infinity, color: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
 };
 
-export default function ProductList({ products, onUpdate, isDark, c }) {
+export default function ProductList({ products, licenses = [], customers = [], onUpdate, isDark, c }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewingCustomersProduct, setViewingCustomersProduct] = useState(null);
+
+  const getAssignmentStats = (productId) => {
+    const productLicenses = licenses.filter(l => l.product_id === productId);
+    
+    let active = 0;
+    let expired = 0;
+    
+    productLicenses.forEach(lic => {
+      // Check calculated status
+      const lt = lic.license_type || lic.product?.license_type || 'one_time';
+      let status = 'Active';
+      
+      if (lic.status === 'Disabled' || lic.status === 'Suspended') {
+        status = 'Disabled';
+      } else if (lic.start_date && new Date() < new Date(lic.start_date)) {
+        status = 'Pending';
+      } else if (lt === 'one_time') {
+        const used = (lic.download_count || 0) >= 1;
+        status = used ? 'Expired' : 'Active';
+      } else if ((lt === 'yearly' || lt === 'monthly') && lic.expiry_date) {
+        const days = Math.ceil((new Date(lic.expiry_date) - new Date()) / 86400000);
+        if (days <= 0) {
+          status = 'Expired';
+        }
+      }
+      
+      if (status === 'Active') {
+        active++;
+      } else if (status === 'Expired') {
+        expired++;
+      }
+    });
+    
+    return {
+      total: productLicenses.length,
+      active,
+      expired
+    };
+  };
   const [categoryFilter, setCategoryFilter] = useState('all'); // 'all', 'digital', 'virtual'
   const [sortBy, setSortBy] = useState('newest'); // 'newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc'
   const [editingProduct, setEditingProduct] = useState(null);
@@ -248,6 +289,19 @@ export default function ProductList({ products, onUpdate, isDark, c }) {
                     </span>
                     
                     <button
+                      onClick={() => setViewingCustomersProduct(product)}
+                      title="View Assigned Customers"
+                      style={{
+                        padding: 6, borderRadius: 8, border: 'none', background: 'transparent',
+                        cursor: 'pointer', color: sub, display: 'flex', transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'; e.currentTarget.style.color = '#3b82f6'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = sub; }}
+                    >
+                      <Users style={{ width: 14, height: 14 }} />
+                    </button>
+
+                    <button
                       onClick={() => setEditingProduct(product)}
                       style={{
                         padding: 6, borderRadius: 8, border: 'none', background: 'transparent',
@@ -286,6 +340,36 @@ export default function ProductList({ products, onUpdate, isDark, c }) {
                       {product.description}
                     </p>
                   )}
+
+                  {/* Assignment Stats Block */}
+                  {(() => {
+                    const stats = getAssignmentStats(product.id);
+                    return (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: 8,
+                        marginTop: 12,
+                        padding: 10,
+                        borderRadius: 10,
+                        background: isDark ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0.02)',
+                        border: `1px solid ${border}`
+                      }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 9.5, color: sub, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Assignments</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: text, marginTop: 2 }}>{stats.total}</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 9.5, color: sub, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Active</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', marginTop: 2 }}>{stats.active}</div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: 9.5, color: sub, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Expired</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', marginTop: 2 }}>{stats.expired}</div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Divider */}
@@ -402,6 +486,167 @@ export default function ProductList({ products, onUpdate, isDark, c }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assigned Customers Dialog */}
+      <Dialog open={!!viewingCustomersProduct} onOpenChange={o => !o && setViewingCustomersProduct(null)}>
+        <DialogContent style={{ background: isDark ? '#1C1E24' : '#fff', color: text, border: `1px solid ${borderStrong}`, maxWidth: 700, borderRadius: 16 }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: text, display: 'flex', alignItems: 'center', gap: 10, fontSize: 18 }}>
+              <Users size={20} style={{ color: brand }} />
+              <span>Assigned Customers — {viewingCustomersProduct?.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+            {(() => {
+              if (!viewingCustomersProduct) return null;
+              const productLicenses = licenses.filter(l => l.product_id === viewingCustomersProduct.id);
+              
+              if (productLicenses.length === 0) {
+                return (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: sub }}>
+                    <Users size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                    <p style={{ fontSize: 14, fontWeight: 500, margin: 0 }}>No customers assigned to this product yet.</p>
+                  </div>
+                );
+              }
+              
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {productLicenses.map(lic => {
+                    const customer = customers.find(c => c.id === lic.customer_id);
+                    const isVirtual = viewingCustomersProduct.category === 'virtual';
+                    
+                    // Status calculation matching main screen
+                    const lt = lic.license_type || lic.product?.license_type || 'one_time';
+                    let calculatedStatus = lic.status || 'Active';
+                    
+                    if (lic.status === 'Disabled' || lic.status === 'Suspended') {
+                      calculatedStatus = lic.status;
+                    } else if (lic.start_date && new Date() < new Date(lic.start_date)) {
+                      calculatedStatus = 'Pending';
+                    } else if (lt === 'one_time') {
+                      const used = (lic.download_count || 0) >= 1;
+                      calculatedStatus = used ? 'Expired' : 'Active';
+                    } else if ((lt === 'yearly' || lt === 'monthly') && lic.expiry_date) {
+                      const days = Math.ceil((new Date(lic.expiry_date) - new Date()) / 86400000);
+                      if (days <= 0) {
+                        calculatedStatus = 'Expired';
+                      }
+                    }
+
+                    const statusColors = {
+                      Active: { text: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
+                      Pending: { text: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+                      Disabled: { text: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                      Suspended: { text: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+                      Expired: { text: '#6b7280', bg: 'rgba(107,114,128,0.12)' }
+                    };
+
+                    const sColor = statusColors[calculatedStatus] || statusColors.Active;
+                    const displayCurrency = lic.currency || viewingCustomersProduct.currency || 'USD';
+
+                    return (
+                      <div 
+                        key={lic.id} 
+                        style={{
+                          padding: 14,
+                          borderRadius: 12,
+                          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                          border: `1px solid ${border}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10
+                        }}
+                      >
+                        {/* Row Header: Customer Info & Status */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: text }}>
+                              {customer?.name || 'Unknown Customer'}
+                            </div>
+                            {customer?.company && (
+                              <div style={{ fontSize: 11, color: sub, fontWeight: 555, marginTop: 1 }}>
+                                {customer.company}
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11, color: sub, marginTop: 2 }}>
+                              {customer?.email || 'No Email'}
+                            </div>
+                          </div>
+                          
+                          <span style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: 12,
+                            background: sColor.bg,
+                            color: sColor.text,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.02em'
+                          }}>
+                            {calculatedStatus}
+                          </span>
+                        </div>
+                        
+                        {/* Divider */}
+                        <div style={{ height: 1, background: border }} />
+                        
+                        {/* Row Details: Key, Plan, Price, Dates */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+                          {lic.license_key && (
+                            <div>
+                              <div style={{ fontSize: 10, color: sub, fontWeight: 700, textTransform: 'uppercase' }}>License Key</div>
+                              <div style={{ fontFamily: 'monospace', fontSize: 11, color: text, marginTop: 3, wordBreak: 'break-all' }}>
+                                {lic.license_key}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div>
+                            <div style={{ fontSize: 10, color: sub, fontWeight: 700, textTransform: 'uppercase' }}>Type / Plan</div>
+                            <div style={{ fontSize: 12, color: text, fontWeight: 600, marginTop: 3 }}>
+                              {lic.membership_type || (lic.license_type === 'lifetime' ? 'Lifetime Plan' : (lic.license_type === 'yearly' ? 'Yearly Plan' : (lic.license_type === 'monthly' ? 'Monthly Plan' : 'One-Time Purchase')))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ fontSize: 10, color: sub, fontWeight: 700, textTransform: 'uppercase' }}>Price / Renewal</div>
+                            <div style={{ fontSize: 12, color: text, fontWeight: 600, marginTop: 3 }}>
+                              {displayCurrency === 'LKR' ? 'Rs. ' : '$'}{Number(lic.price || 0).toFixed(2)}
+                              {lic.renewal_price != null && (
+                                <span style={{ fontSize: 11, color: sub, fontWeight: 500 }}>
+                                  {' '}(Renews at {displayCurrency === 'LKR' ? 'Rs. ' : '$'}{Number(lic.renewal_price).toFixed(2)})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div style={{ fontSize: 10, color: sub, fontWeight: 700, textTransform: 'uppercase' }}>Dates</div>
+                            <div style={{ fontSize: 11.5, color: text, marginTop: 3 }}>
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <span style={{ color: sub }}>Assigned:</span>
+                                <span>{lic.start_date ? lic.start_date.split('T')[0] : 'N/A'}</span>
+                              </div>
+                              {lic.expiry_date && (
+                                <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
+                                  <span style={{ color: sub }}>Expires:</span>
+                                  <span>{lic.expiry_date.split('T')[0]}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

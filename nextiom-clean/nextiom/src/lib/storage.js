@@ -918,36 +918,54 @@ export const addHostingRequest = async (requestData) => {
 };
 
 export const assignProductToCustomer = async (data) => {
-  const { customerId, productId, activationDate } = data;
+  const { 
+    customerId, 
+    productId, 
+    purchaseDate,
+    startDate, 
+    expiryDate, 
+    downloadUrl, 
+    licenseKey, 
+    version,
+    status, 
+    notes,
+    price,
+    renewalPrice,
+    renewalDate,
+    licenseType,
+    membershipType,
+    currency
+  } = data;
+  
   if (!customerId) {
     throw new Error('Customer is required for product assignment');
   }
 
   const { data: product } = await supabase
     .from('products')
-    .select('name, license_type')
+    .select('name, license_type, download_url, price, renewal_price')
     .eq('id', productId)
     .single();
-
-  let expiryDate = null;
-  if (product?.license_type === 'yearly') {
-    const d = new Date(activationDate || new Date());
-    d.setFullYear(d.getFullYear() + 1);
-    expiryDate = d.toISOString().split('T')[0];
-  }
-
-  const licenseKey = generateLicenseKey();
 
   const { data: license, error } = await supabase
     .from('licenses')
     .insert([{
       customer_id: customerId,
       product_id: productId,
-      license_key: licenseKey,
-      status: 'Active',
-      expiry_date: expiryDate,
-      license_type: product?.license_type || 'one_time',
-      start_date: activationDate ? new Date(activationDate).toISOString() : new Date().toISOString(),
+      purchase_date: purchaseDate ? new Date(purchaseDate).toISOString() : null,
+      start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
+      expiry_date: expiryDate ? new Date(expiryDate).toISOString() : null,
+      download_url: downloadUrl || null,
+      license_key: licenseKey || null,
+      version: version || null,
+      status: status || 'Active',
+      notes: notes || null,
+      price: price !== undefined && price !== null ? parseFloat(price) : null,
+      renewal_price: renewalPrice !== undefined && renewalPrice !== null ? parseFloat(renewalPrice) : null,
+      renewal_date: renewalDate ? new Date(renewalDate).toISOString() : null,
+      license_type: licenseType || product?.license_type || 'one_time',
+      membership_type: membershipType || null,
+      currency: currency || 'USD',
     }])
     .select()
     .single();

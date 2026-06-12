@@ -41,6 +41,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true }) {
   const [productSortOrder, setProductSortOrder] = useState('newest');
 
   const getCalculatedStatus = (lic) => {
+    if (lic.status === 'Disabled' || lic.status === 'Suspended' || lic.status === 'Expired') {
+      return lic.status;
+    }
     const lt = lic.product?.license_type || lic.license_type || 'one_time';
     
     // Check start date (if start_date is in the future)
