@@ -113,7 +113,7 @@ const NAV_STRUCTURE = [
     ],
   },
   {
-    id: 'support', label: 'Support', icon: MessageSquare, type: 'group',
+    id: 'support', label: 'Ticket', icon: MessageSquare, type: 'group',
     children: [
       { id: 'support_create', label: 'Create Ticket' },
       { id: 'support_tickets', label: 'My Tickets' },
