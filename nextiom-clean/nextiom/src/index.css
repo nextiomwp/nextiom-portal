@@ -49,3 +49,19 @@
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Blinking yellow animation for jobs menu item */
+@keyframes blink-yellow-animation {
+  0%, 100% {
+    background-color: rgba(234, 179, 8, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.2), 0 0 4px rgba(234, 179, 8, 0.05);
+  }
+  50% {
+    background-color: rgba(234, 179, 8, 0.25);
+    box-shadow: inset 0 0 0 1.5px rgba(234, 179, 8, 0.6), 0 0 12px rgba(234, 179, 8, 0.35);
+  }
+}
+
+.blink-yellow {
+  animation: blink-yellow-animation 2s infinite ease-in-out;
+}

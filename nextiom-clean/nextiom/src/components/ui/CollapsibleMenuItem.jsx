@@ -17,8 +17,11 @@ const CollapsibleMenuItem = ({
   isDark = false,
   badge = 0,
   badgeColor,
+  badgeTextColor,
   badge2 = 0,
   badge2Color,
+  badge2TextColor,
+  isBlinking = false,
 }) => {
   const brand = c.brand || '#E87B35';
   const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
@@ -35,14 +38,15 @@ const CollapsibleMenuItem = ({
         title={collapsed ? label : undefined}
         className={cn(
           'w-full flex items-center py-2.5 rounded-lg transition-colors text-sm font-medium select-none touch-manipulation',
-          collapsed ? 'justify-center px-2' : 'justify-between px-3'
+          collapsed ? 'justify-center px-2' : 'justify-between px-3',
+          isBlinking && 'blink-yellow'
         )}
-        style={{ backgroundColor: isItemActive ? brandLight : 'transparent' }}
+        style={{ backgroundColor: isBlinking ? undefined : (isItemActive ? brandLight : 'transparent') }}
         onMouseEnter={e => {
-          if (!isActive) e.currentTarget.style.backgroundColor = hover;
+          if (!isActive && !isBlinking) e.currentTarget.style.backgroundColor = hover;
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.backgroundColor = isItemActive ? brandLight : 'transparent';
+          e.currentTarget.style.backgroundColor = isBlinking ? '' : (isItemActive ? brandLight : 'transparent');
         }}
         aria-expanded={isExpanded}
       >
@@ -64,7 +68,7 @@ const CollapsibleMenuItem = ({
                     backgroundColor: badgeColor || brand,
                     borderRadius: '50%',
                     fontSize: 9,
-                    color: '#fff',
+                    color: badgeTextColor || '#fff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -85,7 +89,7 @@ const CollapsibleMenuItem = ({
                     backgroundColor: badge2Color || brand,
                     borderRadius: '50%',
                     fontSize: 9,
-                    color: '#fff',
+                    color: badge2TextColor || '#fff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

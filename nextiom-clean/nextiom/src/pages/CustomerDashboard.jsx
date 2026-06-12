@@ -196,6 +196,7 @@ function CustomerDashboard() {
   const c = isDark ? DARK : LIGHT;
 
   const [activeJobsCount, setActiveJobsCount] = useState(0);
+  const [waitingJobsCount, setWaitingJobsCount] = useState(0);
   const [activeTicketsCount, setActiveTicketsCount] = useState(0);
 
   useEffect(() => {
@@ -208,6 +209,7 @@ function CustomerDashboard() {
           getTicketsByCustomer(customerProfile.id).catch(() => []),
         ]);
         setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
+        setWaitingJobsCount(jobsData.filter(j => j.status === 'Waiting').length);
         setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
       } catch (error) {
         console.error('Error fetching dashboard counts:', error);
@@ -348,6 +350,8 @@ function CustomerDashboard() {
             onClick={() => navigate(item.id)}
             badge={item.id === 'jobs' ? activeJobsCount : 0}
             badgeColor="#16a34a"
+            badgeTextColor="#ffffff"
+            isBlinking={item.id === 'jobs' && waitingJobsCount > 0}
           />
         );
       })}
