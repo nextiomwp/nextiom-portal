@@ -501,7 +501,14 @@ function Login({ onLoginSuccess }) {
         </AnimatePresence>
         
         <div className="fixed bottom-6 text-center text-xs text-slate-400">
-          © 2026 Nextiom Inc. All rights reserved.
+          <a 
+            href="https://nextiom.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="hover:text-[#FF8C42] transition-colors"
+          >
+            © 2026 Nextiom (Pvt) Ltd
+          </a>. All rights reserved.
         </div>
       </div>
     </>
