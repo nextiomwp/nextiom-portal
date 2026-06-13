@@ -203,6 +203,9 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
         WebkitBackdropFilter: 'blur(12px)',
         boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.2)' : '0 2px 16px rgba(0,0,0,0.05)',
         overflow: 'hidden',
+        maxWidth: 900,
+        width: '100%',
+        margin: '0 auto',
       }}>
         {/* Search bar */}
         <div style={{ padding: '16px 20px', borderBottom: `1px solid ${border}` }}>
@@ -227,8 +230,8 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
               <tr style={{ background: panel2 }}>
                 {['Package', 'Domain', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (
                   <th key={h} style={{
-                    padding: '10px 20px',
-                    textAlign: i === 5 ? 'right' : 'left',
+                    padding: '10px 16px',
+                    textAlign: h === 'Actions' ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: subText,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     borderBottom: `1px solid ${border}`,
@@ -250,17 +253,17 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                     onMouseEnter={e => e.currentTarget.style.background = hover}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '12px 20px', color: text, fontWeight: 600, fontSize: 13 }}>{displayName}</td>
-                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>{pkg.domain || 'N/A'}</td>
-                    <td style={{ padding: '12px 20px' }}>
+                    <td style={{ padding: '12px 16px', color: text, fontWeight: 600, fontSize: 13 }}>{displayName}</td>
+                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>{pkg.domain || 'N/A'}</td>
+                    <td style={{ padding: '12px 16px' }}>
                       <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
                         {pkg.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>
+                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
                       {pkg.start_date ? new Date(pkg.start_date).toLocaleDateString() : pkg.created_at ? new Date(pkg.created_at).toLocaleDateString() : '—'}
                     </td>
-                    <td style={{ padding: '12px 20px' }}>
+                    <td style={{ padding: '12px 16px' }}>
                       {expiryDate ? (
                         <div>
                           <div style={{ fontSize: 12, color: expiryColor, fontWeight: 600 }}>
@@ -274,7 +277,7 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                         <span style={{ color: subText, fontSize: 12 }}>—</span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                       <button
                         onClick={() => { setSelectedPackage(pkg); setIsDetailsOpen(true); }}
                         style={{
@@ -292,7 +295,7 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
                 );
               }) : (
                 <tr>
-                  <td colSpan={6} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                  <td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
                     No hosting packages found
                   </td>
                 </tr>
