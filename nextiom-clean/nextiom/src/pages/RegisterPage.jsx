@@ -255,7 +255,7 @@ function RegisterPage() {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input id="fullName" type="text" value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className={inputCls('fullName')} placeholder="John Doe" />
+                    className={inputCls('fullName')} placeholder="Your name" />
                 </div>
                 {errors.fullName && <p className="text-xs text-red-500">{errors.fullName}</p>}
               </div>
