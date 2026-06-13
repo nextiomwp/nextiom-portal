@@ -10,7 +10,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
 import { cn } from '@/lib/utils';
 import { getMaintenanceStatus } from '@/lib/storage';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import useDisableRightClick from '@/hooks/useDisableRightClick';
 
 const DEFAULT_LOGO = '/NEXTIOM.png';
@@ -34,6 +34,16 @@ function Login({ onLoginSuccess }) {
   const { signIn, user, role } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Auto-open the Forgot Password panel when redirected from the Register page
+  useEffect(() => {
+    if (location.state?.openForgotPassword) {
+      setShowForgotPassword(true);
+      // Clean the state so a refresh doesn't re-trigger it
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.openForgotPassword]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setEmail('');
@@ -163,7 +173,7 @@ function Login({ onLoginSuccess }) {
     if (forgotCooldown > 0) return;
     setForgotLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: 'https://portal.nextiom.com/reset-password',
     });
     setForgotLoading(false);
     if (error) {

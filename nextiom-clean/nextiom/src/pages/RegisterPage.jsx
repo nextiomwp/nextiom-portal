@@ -50,16 +50,41 @@ function RegisterPage() {
     if (!validateForm()) return;
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      // --- Layer 1: Check the customers profile table ---
+      // This catches emails of fully-confirmed, active customers.
+      const { data: existingCustomer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('email', formData.email.toLowerCase().trim())
+        .maybeSingle();
+
+      if (existingCustomer) {
+        setErrors((prev) => ({ ...prev, email: '__DUPLICATE__' }));
+        return;
+      }
+
+      // --- Layer 2: Attempt signUp and inspect the returned identities array ---
+      // Supabase does NOT throw an error for duplicate emails to prevent enumeration.
+      // However, for an already-confirmed account it returns a user with an empty
+      // `identities` array — we use this as a reliable duplicate signal.
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: { data: { full_name: formData.fullName, phone: formData.phone } }
       });
-      if (error) {
-        toast({ variant: 'destructive', title: 'Registration Failed', description: error.message || 'Failed to create account.' });
-      } else {
-        setStep('otp');
+
+      if (signUpError) {
+        toast({ variant: 'destructive', title: 'Registration Failed', description: signUpError.message || 'Failed to create account.' });
+        return;
       }
+
+      // Empty identities array = email already exists in Supabase Auth (confirmed account).
+      if (signUpData?.user && Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+        setErrors((prev) => ({ ...prev, email: '__DUPLICATE__' }));
+        return;
+      }
+
+      setStep('otp');
     } finally {
       setIsLoading(false);
     }
@@ -251,10 +276,21 @@ function RegisterPage() {
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input id="email" type="email" value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setErrors((prev) => ({ ...prev, email: undefined })); }}
                     className={inputCls('email')} placeholder="you@example.com" />
                 </div>
-                {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
+                {errors.email && (
+                  errors.email === '__DUPLICATE__' ? (
+                    <p className="text-xs text-red-500 leading-relaxed">
+                      This email is already registered.{' '}
+                      <Link to="/" state={{ openForgotPassword: true }} className="font-semibold underline underline-offset-2 hover:text-red-700 transition-colors">
+                        Use Forgot Password?
+                      </Link>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-red-500">{errors.email}</p>
+                  )
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
