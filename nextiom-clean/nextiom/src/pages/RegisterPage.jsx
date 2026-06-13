@@ -282,9 +282,9 @@ function RegisterPage() {
                 {errors.email && (
                   errors.email === '__DUPLICATE__' ? (
                     <p className="text-xs text-red-500 leading-relaxed">
-                      This email is already registered.{' '}
+                      Email already registered. {' '}
                       <Link to="/" state={{ openForgotPassword: true }} className="font-semibold underline underline-offset-2 hover:text-red-700 transition-colors">
-                        Use Forgot Password?
+                        Sign in or reset your password.
                       </Link>
                     </p>
                   ) : (
