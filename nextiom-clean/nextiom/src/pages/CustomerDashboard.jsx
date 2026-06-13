@@ -542,6 +542,31 @@ function CustomerDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Status button */}
+            <a
+              href="https://nextiom.com/hosting-status/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center border"
+              style={{
+                borderColor: c.borderStrong,
+                color: c.text,
+                background: 'transparent',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = c.brandLight;
+                e.currentTarget.style.borderColor = c.brand;
+                e.currentTarget.style.color = c.brand;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = c.borderStrong;
+                e.currentTarget.style.color = c.text;
+              }}
+            >
+              Status
+            </a>
+
             {/* Dark mode toggle */}
             <button
               onClick={toggleDark}
