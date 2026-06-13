@@ -33,6 +33,7 @@ import NewEmailRequestPage from '@/components/customer/NewEmailRequestPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
+import useDisableRightClick from '@/hooks/useDisableRightClick';
 
 const OnProgressIcon = ({ size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -134,6 +135,7 @@ const NAV_STRUCTURE = [
 const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
 
 function ImpersonationDashboard() {
+  useDisableRightClick();
   const { customerId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();

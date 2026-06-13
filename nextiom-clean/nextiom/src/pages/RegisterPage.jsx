@@ -10,8 +10,10 @@ import { AUTH_ERRORS } from '@/lib/authErrors';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/customSupabaseClient';
 import { addNotification } from '@/lib/storage';
+import useDisableRightClick from '@/hooks/useDisableRightClick';
 
 function RegisterPage() {
+  useDisableRightClick();
   const [step, setStep] = useState('form');
   const [formData, setFormData] = useState({ fullName: '', phone: '', email: '', password: '', confirmPassword: '' });
   const [otp, setOtp] = useState('');

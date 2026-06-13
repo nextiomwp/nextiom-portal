@@ -11,10 +11,12 @@ import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
 import { cn } from '@/lib/utils';
 import { getMaintenanceStatus } from '@/lib/storage';
 import { useNavigate, Link } from 'react-router-dom';
+import useDisableRightClick from '@/hooks/useDisableRightClick';
 
 const DEFAULT_LOGO = '/NEXTIOM.png';
 
 function Login({ onLoginSuccess }) {
+  useDisableRightClick();
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

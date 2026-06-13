@@ -28,6 +28,7 @@ import CreateTicketPage from '@/components/customer/CreateTicketPage';
 import MyTicketsPage from '@/components/customer/MyTicketsPage';
 import PortalRestrictionBanner from '@/components/customer/PortalRestrictionBanner';
 import { usePortalRestriction } from '@/hooks/usePortalRestriction';
+import useDisableRightClick from '@/hooks/useDisableRightClick';
 import { cn } from '@/lib/utils';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
@@ -159,6 +160,7 @@ function getGreeting() {
 const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
 
 function CustomerDashboard() {
+  useDisableRightClick();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mountedTabs, setMountedTabs] = useState(() => new Set(['dashboard']));
   const portalRestriction = usePortalRestriction();

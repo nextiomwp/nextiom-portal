@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -120,7 +120,16 @@ const isAdminInternalNotification = (notification) => {
 };
 
 function Dashboard({ onLogout }) {
-  const [active, setActive] = useState('overview');
+  const [active, setActive] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && NAV.some(n => n.id === tab)) {
+        return tab;
+      }
+    }
+    return 'overview';
+  });
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [licenses, setLicenses] = useState([]);
@@ -231,6 +240,16 @@ function Dashboard({ onLogout }) {
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   }, [isDark]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get('tab') !== active) {
+        url.searchParams.set('tab', active);
+        window.history.pushState({}, '', url.toString());
+      }
+    }
+  }, [active]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -730,19 +749,80 @@ function NavItem({ item, active, setActive, open, c, badge = 0, badgeColor, dot 
   const isActive = active === item.id;
   const color = isActive ? c.text : c.subText;
   const bc = badgeColor || c.brand;
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
-    <button onClick={() => { setActive(item.id); if (onSelectMobile) onSelectMobile(); }} style={{
-      display: 'flex', alignItems: 'center', justifyContent: open ? 'flex-start' : 'center', gap: 12, padding: open ? '10px 12px' : '10px 0', width: '100%', border: 'none',
-      background: isActive ? c.hover : 'transparent', borderRadius: 8, cursor: 'pointer',
-      borderLeft: isActive ? `3px solid ${c.brand}` : '3px solid transparent', marginBottom: 4, transition: 'all 0.1s'
-    }}>
-      <div style={{ position: 'relative', flexShrink: 0, marginLeft: open ? 0 : -3 }}>
-        <item.icon size={18} color={isActive ? c.brand : c.subText} />
-        {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -6, width: 14, height: 14, background: bc, borderRadius: '50%', fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{badge > 9 ? '9+' : badge}</span>}
-        {dot && badge === 0 && <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, background: c.brand, borderRadius: '50%', border: `2px solid ${c.sidebar}` }} />}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => { setActive(item.id); if (onSelectMobile) onSelectMobile(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setActive(item.id);
+          if (onSelectMobile) onSelectMobile();
+        }
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: open ? 'space-between' : 'center',
+        padding: open ? '10px 12px' : '10px 0',
+        width: '100%',
+        background: isActive ? c.hover : 'transparent',
+        borderRadius: 8,
+        cursor: 'pointer',
+        borderLeft: isActive ? `3px solid ${c.brand}` : '3px solid transparent',
+        marginBottom: 4,
+        transition: 'all 0.1s',
+        outline: 'none',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <div style={{ position: 'relative', flexShrink: 0, marginLeft: open ? 0 : -3 }}>
+          <item.icon size={18} color={isActive ? c.brand : c.subText} />
+          {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -6, width: 14, height: 14, background: bc, borderRadius: '50%', fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{badge > 9 ? '9+' : badge}</span>}
+          {dot && badge === 0 && <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, background: c.brand, borderRadius: '50%', border: `2px solid ${c.sidebar}` }} />}
+        </div>
+        {open && <span style={{ fontSize: 14, color, fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>}
       </div>
-      {open && <span style={{ fontSize: 14, color, fontWeight: isActive ? 600 : 400 }}>{item.label}</span>}
-    </button>
+
+      {open && (
+        <a
+          href={`/admin-dashboard?tab=${item.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={`Open ${item.label} in new tab`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: c.subText,
+            opacity: isHovered ? 0.6 : 0,
+            transition: 'opacity 0.2s, color 0.2s',
+            padding: 4,
+            borderRadius: 4,
+            marginLeft: 8,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = c.brand;
+            e.currentTarget.style.opacity = '1';
+            e.currentTarget.style.background = c.hover;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = c.subText;
+            e.currentTarget.style.opacity = '0.6';
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          <ExternalLink size={14} />
+        </a>
+      )}
+    </div>
   );
 }
 
