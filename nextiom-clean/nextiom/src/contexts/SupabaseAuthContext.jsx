@@ -57,6 +57,13 @@ export const AuthProvider = ({ children }) => {
 
   const handleUserSession = async (authUser) => {
     try {
+      // Guard: re-verify the session is still active before touching any state.
+      // This prevents a race where signIn() calls signOut() (e.g. for restricted/
+      // pending accounts) but the deferred setTimeout fires AFTER the signOut,
+      // causing user/role to be set anyway and inadvertently triggering navigation.
+      const { data: { session: liveSession } } = await supabase.auth.getSession();
+      if (!liveSession || liveSession.user?.id !== authUser.id) return;
+
       // Role MUST come from app_metadata (server-only). user_metadata is
       // user-writable and can be tampered with via supabase.auth.updateUser.
       const userRole = authUser.app_metadata?.role || 'customer';
@@ -126,6 +133,11 @@ export const AuthProvider = ({ children }) => {
         await supabase.auth.signOut();
         setLoading(false);
         return { error: { message: 'ACCOUNT_PENDING' } };
+      }
+      if (profile?.status === 'restricted') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        return { error: { message: 'ACCOUNT_RESTRICTED' } };
       }
       if (profile?.status === 'rejected') {
         await supabase.auth.signOut();

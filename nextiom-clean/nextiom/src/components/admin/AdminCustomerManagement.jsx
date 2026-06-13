@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff } from 'lucide-react';
+import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications } from '@/lib/storage';
+import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications, updateCustomer } from '@/lib/storage';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
 import AssignOptionsDialog from '@/components/dialogs/AssignOptionsDialog';
@@ -21,6 +21,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
   const [showAssignOptions, setShowAssignOptions] = useState(false);
   const [assignTargetType, setAssignTargetType] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [togglingAccess, setTogglingAccess] = useState({}); // { [customerId]: true }
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -114,6 +115,41 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
     }
   };
 
+  const handleToggleAccess = async (customer) => {
+    const isRestricted = customer.status === 'restricted';
+    const newStatus = isRestricted ? 'active' : 'restricted';
+    const action = isRestricted ? 'Access Granted' : 'Access Restricted';
+    const actionDesc = isRestricted
+      ? `${customer.name} can now log in to the portal.`
+      : `${customer.name} has been restricted from logging in.`;
+
+    setTogglingAccess(prev => ({ ...prev, [customer.id]: true }));
+    try {
+      await updateCustomer(customer.id, { status: newStatus });
+      addNotification({
+        customer_id: null,
+        type: isRestricted ? 'access_granted' : 'access_restricted',
+        title: `${action} — ${customer.name}`,
+        message: actionDesc,
+      }).catch(() => {});
+      if (!isRestricted) {
+        // Notify the customer they've been restricted
+        addNotification({
+          customer_id: customer.id,
+          type: 'access_restricted',
+          title: 'Account Access Restricted',
+          message: 'Your account has been restricted by the administrator. Please contact support for assistance.',
+        }).catch(() => {});
+      }
+      toast({ title: action, description: actionDesc });
+      loadCustomers();
+    } catch (err) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setTogglingAccess(prev => { const n = { ...prev }; delete n[customer.id]; return n; });
+    }
+  };
+
   const handleLoginAsCustomer = async (customer) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -187,6 +223,26 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
     (cu.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()))
   );
 
+  const getAccessBtnStyle = (customer) => {
+    const isRestricted = customer.status === 'restricted';
+    const isToggling = !!togglingAccess[customer.id];
+    const color = isRestricted ? '#ef4444' : '#16a34a';
+    return {
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+      padding: '5px 0', borderRadius: 8,
+      border: `1.5px solid ${color}`,
+      background: color,
+      color: '#fff',
+      fontSize: 12, fontWeight: 600,
+      cursor: isToggling ? 'not-allowed' : 'pointer',
+      transition: 'opacity 0.15s, transform 0.1s',
+      whiteSpace: 'nowrap',
+      opacity: isToggling ? 0.7 : 1,
+      boxShadow: `0 2px 8px ${color}55`,
+      minWidth: 96,
+    };
+  };
+
   if (isLoading) return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
       <Loader2 className="animate-spin" size={28} style={{ color: c.brand }} />
@@ -233,6 +289,21 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true }) {
                 <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{new Date(customer.created_at).toLocaleDateString()}</span></td>
                 <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                    <button
+                      style={getAccessBtnStyle(customer)}
+                      onClick={() => handleToggleAccess(customer)}
+                      disabled={!!togglingAccess[customer.id]}
+                      title={customer.status === 'restricted' ? 'Click to grant access' : 'Click to restrict access'}
+                    >
+                      {togglingAccess[customer.id] ? (
+                        <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />
+                      ) : customer.status === 'restricted' ? (
+                        <ShieldOff size={12} />
+                      ) : (
+                        <ShieldCheck size={12} />
+                      )}
+                      {customer.status === 'restricted' ? 'Restricted' : 'Access'}
+                    </button>
                     <Btn color="#378ADD" onClick={() => setSelectedCustomer(customer)} title="View profile"><Eye size={12} /> View</Btn>
                     <Btn color="#8B5CF6" onClick={() => handleLoginAsCustomer(customer)} title="Login as this customer"><MonitorSmartphone size={12} /> Login as</Btn>
                     <Btn color="#16a34a" onClick={() => { setAssigningCustomer(customer); setShowAssignOptions(true); }} title="Assign product/service"><Plus size={12} /> Assign</Btn>

@@ -27,7 +27,7 @@ function Login({ onLoginSuccess }) {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotCooldown, setForgotCooldown] = useState(0);
-  const [loginStatusMsg, setLoginStatusMsg] = useState(null); // 'pending' | 'rejected' | null
+  const [loginStatusMsg, setLoginStatusMsg] = useState(null); // 'pending' | 'rejected' | 'restricted' | null
   const [maintenance, setMaintenance] = useState(null); // null | { active, message, expectedDowntime }
   const [logoUrl, setLogoUrl] = useState(DEFAULT_LOGO);
 
@@ -108,6 +108,7 @@ function Login({ onLoginSuccess }) {
   const getErrorMessage = (error) => {
     const msg = typeof error === 'string' ? error : error?.message || '';
     if (msg === 'ACCOUNT_PENDING') return 'PENDING';
+    if (msg === 'ACCOUNT_RESTRICTED') return 'RESTRICTED';
     if (msg === 'ACCOUNT_REJECTED') return 'REJECTED';
     if (msg === 'MAINTENANCE_MODE') return 'MAINTENANCE_MODE';
     if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
@@ -141,6 +142,8 @@ function Login({ onLoginSuccess }) {
       const msg = getErrorMessage(error);
       if (msg === 'PENDING') {
         setLoginStatusMsg('pending');
+      } else if (msg === 'RESTRICTED') {
+        setLoginStatusMsg('restricted');
       } else if (msg === 'REJECTED') {
         setLoginStatusMsg('rejected');
       } else if (msg === 'MAINTENANCE_MODE') {
@@ -470,6 +473,12 @@ function Login({ onLoginSuccess }) {
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center space-y-1">
                     <p className="text-sm font-semibold text-amber-800">Account Pending Approval</p>
                     <p className="text-xs text-amber-700">Please wait for admin approval before signing in.</p>
+                  </div>
+                )}
+                {loginStatusMsg === 'restricted' && (
+                  <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-center space-y-1">
+                    <p className="text-sm font-semibold text-red-800">Account Access Restricted</p>
+                    <p className="text-xs text-red-700">Your account is currently not activated. Please try again after the administrator has approved your account.</p>
                   </div>
                 )}
                 {loginStatusMsg === 'rejected' && (
