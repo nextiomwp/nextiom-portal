@@ -718,30 +718,38 @@ function ImpersonationDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Status button */}
-            <a
-              href="https://nextiom.com/hosting-status/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center border"
-              style={{
-                borderColor: c.borderStrong,
-                color: c.text,
-                background: 'transparent',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = c.brandLight;
-                e.currentTarget.style.borderColor = c.brand;
-                e.currentTarget.style.color = c.brand;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.borderColor = c.borderStrong;
-                e.currentTarget.style.color = c.text;
-              }}
-            >
-              Status
-            </a>
+            {/* Status button — always cositive green pulse */}
+            <div className="pulse-green">
+              <a
+                href="https://nextiom.com/hosting-status/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 border"
+                style={{
+                  borderColor: 'rgba(34, 197, 94, 0.5)',
+                  color: 'rgb(34, 197, 94)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.12)';
+                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.9)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                }}
+              >
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: 'rgb(34, 197, 94)',
+                  display: 'inline-block',
+                  flexShrink: 0,
+                }} />
+                Status
+              </a>
+            </div>
 
             {customerProfile?.id && (
               <NotificationBell
