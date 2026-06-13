@@ -291,7 +291,7 @@ function CustomerDashboard() {
   };
 
   const renderNav = (collapsed) => (
-    <nav className="flex-1 overflow-y-auto py-4 px-2">
+    <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2">
       {NAV_STRUCTURE.map(item => {
         if (item.type === 'group') {
           const groupActive = item.children.some(ch => ch.id === activeTab);
@@ -353,7 +353,7 @@ function CustomerDashboard() {
             badge={item.id === 'jobs' ? activeJobsCount : 0}
             badgeColor="#16a34a"
             badgeTextColor="#ffffff"
-            isBlinking={item.id === 'jobs' && waitingJobsCount > 0}
+            isBlinking={item.id === 'jobs' &&  waitingJobsCount > 0 }
           />
         );
       })}
@@ -542,30 +542,38 @@ function CustomerDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Status button */}
-            <a
-              href="https://nextiom.com/hosting-status/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center border"
-              style={{
-                borderColor: c.borderStrong,
-                color: c.text,
-                background: 'transparent',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = c.brandLight;
-                e.currentTarget.style.borderColor = c.brand;
-                e.currentTarget.style.color = c.brand;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.borderColor = c.borderStrong;
-                e.currentTarget.style.color = c.text;
-              }}
-            >
-              Status
-            </a>
+            {/* Status button — always cositive green pulse */}
+            <div className="pulse-green">
+              <a
+                href="https://nextiom.com/hosting-status/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 border"
+                style={{
+                  borderColor: 'rgba(34, 197, 94, 0.5)',
+                  color: 'rgb(34, 197, 94)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.12)';
+                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.9)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                }}
+              >
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  backgroundColor: 'rgb(34, 197, 94)',
+                  display: 'inline-block',
+                  flexShrink: 0,
+                }} />
+                Status
+              </a>
+            </div>
 
             {/* Dark mode toggle */}
             <button

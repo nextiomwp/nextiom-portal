@@ -33,13 +33,13 @@ const CollapsibleMenuItem = ({
 
   return (
     <div className="mb-0.5">
+      <div className={cn('rounded-lg', isBlinking && 'blink-yellow')} style={{ position: 'relative' }}>
       <button
         onClick={hasSubItems ? onToggle : onClick}
         title={collapsed ? label : undefined}
         className={cn(
           'w-full flex items-center py-2.5 rounded-lg transition-colors text-sm font-medium select-none touch-manipulation',
-          collapsed ? 'justify-center px-2' : 'justify-between px-3',
-          isBlinking && 'blink-yellow'
+          collapsed ? 'justify-center px-2' : 'justify-between px-3'
         )}
         style={{ backgroundColor: isBlinking ? undefined : (isItemActive ? brandLight : 'transparent') }}
         onMouseEnter={e => {
@@ -116,6 +116,7 @@ const CollapsibleMenuItem = ({
           </motion.div>
         )}
       </button>
+      </div>
 
       <AnimatePresence initial={false}>
         {hasSubItems && isExpanded && !collapsed && (

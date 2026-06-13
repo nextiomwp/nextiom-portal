@@ -427,7 +427,7 @@ function ImpersonationDashboard() {
   };
 
   const renderNav = (collapsed) => (
-    <nav className="flex-1 overflow-y-auto py-4 px-2">
+    <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-2">
       {NAV_STRUCTURE.map((item) => {
         if (item.type === 'group') {
           const groupActive = item.children.some((ch) => ch.id === activeTab);

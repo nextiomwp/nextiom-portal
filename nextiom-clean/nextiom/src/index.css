@@ -50,18 +50,108 @@
   scrollbar-width: none;  /* Firefox */
 }
 
-/* Blinking yellow animation for jobs menu item */
-@keyframes blink-yellow-animation {
-  0%, 100% {
-    background-color: rgba(234, 179, 8, 0.05);
-    box-shadow: inset 0 0 0 1px rgba(234, 179, 8, 0.2), 0 0 4px rgba(234, 179, 8, 0.05);
+/* Cositive pulsing animation for jobs menu item — radiating ring pulse */
+@keyframes pulse-glow {
+  0% {
+    background-color: rgba(232, 123, 53, 0.08);
+    box-shadow: 0 0 0 0 rgba(232, 123, 53, 0.55), 0 0 8px rgba(232, 123, 53, 0.2);
   }
   50% {
-    background-color: rgba(234, 179, 8, 0.25);
-    box-shadow: inset 0 0 0 1.5px rgba(234, 179, 8, 0.6), 0 0 12px rgba(234, 179, 8, 0.35);
+    background-color: rgba(232, 123, 53, 0.18);
+    box-shadow: 0 0 0 7px rgba(232, 123, 53, 0), 0 0 16px rgba(232, 123, 53, 0.35);
+  }
+  100% {
+    background-color: rgba(232, 123, 53, 0.08);
+    box-shadow: 0 0 0 0 rgba(232, 123, 53, 0), 0 0 8px rgba(232, 123, 53, 0.2);
+  }
+}
+
+@keyframes pulse-ring-1 {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-ring-2 {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
   }
 }
 
 .blink-yellow {
-  animation: blink-yellow-animation 2s infinite ease-in-out;
+  position: relative;
+  overflow: visible;
+  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  border-radius: 8px;
+  z-index: 0;
+}
+
+.blink-yellow::before,
+.blink-yellow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  border: 1.5px solid rgba(232, 123, 53, 0.7);
+  pointer-events: none;
+}
+
+.blink-yellow::before {
+  animation: pulse-ring-1 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.blink-yellow::after {
+  animation: pulse-ring-2 2s cubic-bezier(0.4, 0, 0.6, 1) 0.4s infinite;
+}
+
+/* Cositive green pulsing animation — for Status button */
+@keyframes pulse-glow-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6), 0 0 8px rgba(34, 197, 94, 0.2);
+    background-color: rgba(34, 197, 94, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0), 0 0 18px rgba(34, 197, 94, 0.35);
+    background-color: rgba(34, 197, 94, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0), 0 0 8px rgba(34, 197, 94, 0.2);
+    background-color: rgba(34, 197, 94, 0.08);
+  }
+}
+
+.pulse-green {
+  position: relative;
+  overflow: visible;
+  animation: pulse-glow-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  border-radius: 6px;
+  z-index: 0;
+}
+
+.pulse-green::before,
+.pulse-green::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  border: 1.5px solid rgba(34, 197, 94, 0.75);
+  pointer-events: none;
+}
+
+.pulse-green::before {
+  animation: pulse-ring-1 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-green::after {
+  animation: pulse-ring-2 2s cubic-bezier(0.4, 0, 0.6, 1) 0.4s infinite;
 }
