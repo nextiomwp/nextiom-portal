@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -149,6 +149,12 @@ function Dashboard({ onLogout }) {
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off, seconds
+  const [showAutoRefreshMenu, setShowAutoRefreshMenu] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const autoRefreshMenuRef = useRef(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isAssignProductOpen, setIsAssignProductOpen] = useState(false);
@@ -251,8 +257,12 @@ function Dashboard({ onLogout }) {
     }
   }, [active]);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     try {
       const [cus, prd, lic, sts, lgs, emailReqs, domReq, hostReq, hostPkg, adminN, hostPlans] = await Promise.all([
         getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getEmailRequests(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications(), getHostingPlans()
@@ -295,10 +305,21 @@ function Dashboard({ onLogout }) {
       const approvedEmailStatuses = new Set(['approved', 'active', 'completed']);
       const activeEmails = (emailReqs || []).filter(r => approvedEmailStatuses.has(String(r.status || '').toLowerCase()));
       setActiveEmailsCount(activeEmails.length);
+      // Bump refreshKey so child components that accept it re-render
+      setRefreshKey(k => k + 1);
+      const now = new Date();
+      setLastRefreshed(now);
+      if (isManualRefresh) {
+        toast({
+          title: '✓ Dashboard data refreshed successfully',
+          description: `Last updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        });
+      }
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to load data', variant: 'destructive' });
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -361,6 +382,27 @@ function Dashboard({ onLogout }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [isNotificationsOpen]);
 
+  // Close auto-refresh menu on outside click
+  useEffect(() => {
+    if (!showAutoRefreshMenu) return;
+    const handler = (e) => {
+      if (autoRefreshMenuRef.current && !autoRefreshMenuRef.current.contains(e.target)) {
+        setShowAutoRefreshMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAutoRefreshMenu]);
+
+  // Auto-refresh ticker
+  useEffect(() => {
+    if (!autoRefreshInterval) return;
+    const id = setInterval(() => {
+      loadData(false);
+    }, autoRefreshInterval * 1000);
+    return () => clearInterval(id);
+  }, [autoRefreshInterval]);
+
   const handleLogout = async () => {
     await signOut();
     if ('caches' in window) {
@@ -414,34 +456,34 @@ function Dashboard({ onLogout }) {
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
       case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} /> : null;
       case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={navigateTo} c={c} isDark={isDark} isMobile={isMobile} markNotifRead={markNotifRead} />;
-      case 'customers': return <AdminCustomerManagement products={products} onSuccess={loadData} isDark={isDark} />;
-      case 'domains': return <AdminDomainManagement isDark={isDark} />;
-      case 'approvedHostings': return <AdminDomainManagement isDark={isDark} />;
-      case 'hosting': return <AdminHostingManagement isDark={isDark} isMobile={isMobile} />;
-      case 'hostingRequests': return <AdminHostingRequestManagement isDark={isDark} />;
-      case 'domainsRequests': return <AdminRequestManagement isDark={isDark} />;
-      case 'products': return <ProductList products={products} licenses={licenses} customers={customers} onUpdate={loadData} isDark={isDark} c={c} />;
-      case 'notifications': return <AdminNotificationManagement isDark={isDark} isMobile={isMobile} />;
-      case 'logs': return <AdminTicketsPage c={c} isDark={isDark} isMobile={isMobile} />;
-      case 'jobs': return <AdminJobsPage c={c} isDark={isDark} isMobile={isMobile} />;
+      case 'customers': return <AdminCustomerManagement key={refreshKey} products={products} onSuccess={loadData} isDark={isDark} />;
+      case 'domains': return <AdminDomainManagement key={refreshKey} isDark={isDark} />;
+      case 'approvedHostings': return <AdminDomainManagement key={refreshKey} isDark={isDark} />;
+      case 'hosting': return <AdminHostingManagement key={refreshKey} isDark={isDark} isMobile={isMobile} />;
+      case 'hostingRequests': return <AdminHostingRequestManagement key={refreshKey} isDark={isDark} />;
+      case 'domainsRequests': return <AdminRequestManagement key={refreshKey} isDark={isDark} />;
+      case 'products': return <ProductList key={refreshKey} products={products} licenses={licenses} customers={customers} onUpdate={loadData} isDark={isDark} c={c} />;
+      case 'notifications': return <AdminNotificationManagement key={refreshKey} isDark={isDark} isMobile={isMobile} />;
+      case 'logs': return <AdminTicketsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
+      case 'jobs': return <AdminJobsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'invoices': {
         const goList = () => { setEditInvoiceId(null); setInvoiceView('list'); };
         if (invoiceView === 'new') return <NewInvoicePage c={c} isDark={isDark} onBack={goList} />;
         if (invoiceView === 'edit' && editInvoiceId) return <EditInvoicePage c={c} isDark={isDark} invoiceId={editInvoiceId} onBack={goList} />;
         if (invoiceView === 'settings') return <InvoiceSettingsPage c={c} isDark={isDark} onBack={goList} />;
-        return <InvoicesPage c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
+        return <InvoicesPage key={refreshKey} c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
       }
       case 'quotations': {
         const goList = () => { setEditQuotationId(null); setQuotationView('list'); };
         if (quotationView === 'new') return <QuotationForm c={c} isDark={isDark} onBack={goList} />;
         if (quotationView === 'edit' && editQuotationId) return <QuotationForm c={c} isDark={isDark} existingId={editQuotationId} onBack={goList} />;
-        return <QuotationsPage c={c} isDark={isDark} onNew={() => setQuotationView('new')} onEdit={id => { setEditQuotationId(id); setQuotationView('edit'); }} />;
+        return <QuotationsPage key={refreshKey} c={c} isDark={isDark} onNew={() => setQuotationView('new')} onEdit={id => { setEditQuotationId(id); setQuotationView('edit'); }} />;
       }
-      case 'maintenance': return <MaintenanceModePage isDark={isDark} />;
-      case 'activityLog': return <AdminActivityLogPage isDark={isDark} />;
-      case 'emailRequests': return <AdminEmailRequestManagement isDark={isDark} />;
-      case 'approvedEmailsActive': return <AdminApprovedEmails isDark={isDark} />;
-      case 'activeHosting': return <AdminApprovedHostings isDark={isDark} />;
+      case 'maintenance': return <MaintenanceModePage key={refreshKey} isDark={isDark} />;
+      case 'activityLog': return <AdminActivityLogPage key={refreshKey} isDark={isDark} />;
+      case 'emailRequests': return <AdminEmailRequestManagement key={refreshKey} isDark={isDark} />;
+      case 'approvedEmailsActive': return <AdminApprovedEmails key={refreshKey} isDark={isDark} />;
+      case 'activeHosting': return <AdminApprovedHostings key={refreshKey} isDark={isDark} />;
       case 'adminManagement': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>Admin management page coming soon.</div>;
       case 'systemSettings': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>System settings page coming soon.</div>;
       default: return null;
@@ -618,9 +660,151 @@ function Dashboard({ onLogout }) {
             <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{NAV.find(n => n.id === active)?.label || 'Dashboard'}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
+
+            {/* ── Refresh Button + Auto-refresh ── */}
+            <div ref={autoRefreshMenuRef} style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative' }}>
+              {/* Main pill wrapper — glowing neon border */}
+              <div style={{
+                display: 'flex', alignItems: 'stretch',
+                borderRadius: 50,
+                background: isDark
+                  ? 'linear-gradient(135deg, #2a1f14 0%, #1e1810 50%, #2a1f14 100%)'
+                  : 'linear-gradient(135deg, #fff5ee 0%, #fde9d5 50%, #fff5ee 100%)',
+                boxShadow: isRefreshing
+                  ? `0 0 0 1.5px ${c.brand}, 0 0 14px 4px rgba(232,123,53,0.55), 0 0 28px 8px rgba(232,123,53,0.25), inset 0 1px 0 rgba(255,255,255,0.06)`
+                  : isDark
+                    ? `0 0 0 1.5px rgba(232,123,53,0.65), 0 0 10px 2px rgba(232,123,53,0.30), 0 0 22px 6px rgba(232,123,53,0.12), inset 0 1px 0 rgba(255,255,255,0.06)`
+                    : `0 0 0 1.5px rgba(232,123,53,0.50), 0 0 8px 2px rgba(232,123,53,0.20), inset 0 1px 0 rgba(255,255,255,0.5)`,
+                transition: 'box-shadow 0.3s ease',
+                overflow: 'hidden',
+                cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                opacity: isRefreshing ? 0.82 : 1,
+              }}>
+                {/* Left: icon + label */}
+                <button
+                  id="admin-refresh-btn"
+                  title="Refresh Dashboard Data"
+                  onClick={() => loadData(true)}
+                  disabled={isRefreshing}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 7,
+                    background: 'transparent',
+                    border: 'none',
+                    color: c.brand,
+                    padding: isMobile ? '8px 12px' : '8px 16px 8px 18px',
+                    fontSize: 13, fontWeight: 700,
+                    cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                    letterSpacing: 0.3,
+                    whiteSpace: 'nowrap',
+                    textShadow: isDark ? `0 0 8px rgba(232,123,53,0.7)` : 'none',
+                  }}
+                >
+                  <RefreshCw
+                    size={15}
+                    style={{
+                      filter: isDark ? `drop-shadow(0 0 4px rgba(232,123,53,0.8))` : 'none',
+                      animation: isRefreshing ? 'spin 0.7s linear infinite' : 'none',
+                      flexShrink: 0,
+                    }}
+                  />
+                  {!isMobile && (
+                    <span style={{ textShadow: isDark ? `0 0 10px rgba(232,123,53,0.6)` : 'none' }}>
+                      {isRefreshing ? 'Refreshing…' : 'Refresh'}
+                    </span>
+                  )}
+                </button>
+
+                {/* Divider */}
+                <div style={{
+                  width: 1,
+                  margin: '7px 0',
+                  background: isDark ? 'rgba(232,123,53,0.40)' : 'rgba(232,123,53,0.30)',
+                  boxShadow: isDark ? '0 0 4px rgba(232,123,53,0.5)' : 'none',
+                  flexShrink: 0,
+                }} />
+
+                {/* Right: chevron */}
+                <button
+                  id="admin-auto-refresh-toggle"
+                  title={autoRefreshInterval ? `Auto-refresh: every ${autoRefreshInterval >= 60 ? autoRefreshInterval / 60 + ' min' : autoRefreshInterval + 's'}` : 'Set auto-refresh'}
+                  onClick={() => setShowAutoRefreshMenu(v => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: autoRefreshInterval
+                      ? (isDark ? 'rgba(232,123,53,0.18)' : 'rgba(232,123,53,0.12)')
+                      : 'transparent',
+                    border: 'none',
+                    color: c.brand,
+                    padding: '8px 13px',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s',
+                    filter: isDark ? `drop-shadow(0 0 3px rgba(232,123,53,0.5))` : 'none',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.20)' : 'rgba(232,123,53,0.10)'}
+                  onMouseLeave={e => e.currentTarget.style.background = autoRefreshInterval ? (isDark ? 'rgba(232,123,53,0.18)' : 'rgba(232,123,53,0.12)') : 'transparent'}
+                >
+                  <ChevronDown size={13} style={{ transform: showAutoRefreshMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.22s ease' }} />
+                </button>
+              </div>
+
+              {/* Auto-refresh dropdown */}
+              {showAutoRefreshMenu && (
+                <div style={{
+                  position: 'absolute', top: 42, right: 0,
+                  background: c.card,
+                  border: `1px solid ${c.borderStrong || c.border}`,
+                  borderRadius: 10,
+                  boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.45)' : '0 8px 32px rgba(0,0,0,0.12)',
+                  zIndex: 60,
+                  minWidth: 210,
+                  overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>Auto-Refresh</div>
+                  {[
+                    { label: 'Off', value: 0 },
+                    { label: 'Every 30 Seconds', value: 30 },
+                    { label: 'Every 1 Minute', value: 60 },
+                    { label: 'Every 5 Minutes', value: 300 },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setAutoRefreshInterval(opt.value); setShowAutoRefreshMenu(false); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        width: '100%', padding: '9px 14px',
+                        background: autoRefreshInterval === opt.value
+                          ? (isDark ? 'rgba(232,123,53,0.14)' : 'rgba(232,123,53,0.10)')
+                          : 'transparent',
+                        border: 'none',
+                        color: autoRefreshInterval === opt.value ? c.brand : c.text,
+                        fontSize: 13, fontWeight: autoRefreshInterval === opt.value ? 600 : 400,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}
+                      onMouseLeave={e => e.currentTarget.style.background = autoRefreshInterval === opt.value ? (isDark ? 'rgba(232,123,53,0.14)' : 'rgba(232,123,53,0.10)') : 'transparent'}
+                    >
+                      <span>{opt.label}</span>
+                      {autoRefreshInterval === opt.value && (
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, display: 'inline-block' }} />
+                      )}
+                    </button>
+                  ))}
+                  {lastRefreshed && (
+                    <div style={{ padding: '7px 14px 10px', fontSize: 11, color: c.subText, borderTop: `1px solid ${c.border}`, marginTop: 4 }}>
+                      Last updated: {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* ── /Refresh ── */}
+
             <button onClick={() => setIsDark(!isDark)} style={{ background: c.card, border: `1px solid ${c.border}`, color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer' }}>
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
+
             <div ref={notifRef} style={{ position: 'relative' }}>
               <div onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <Bell size={16} style={{ color: unreadCount > 0 ? c.brand : c.subText }} />
