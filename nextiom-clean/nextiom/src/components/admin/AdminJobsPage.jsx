@@ -156,6 +156,32 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
     };
   }, []);
 
+  useEffect(() => {
+    const prefilledCustId = sessionStorage.getItem('create_job_customer_id');
+    if (prefilledCustId && customers.length > 0) {
+      sessionStorage.removeItem('create_job_customer_id');
+      setEditingJob(null);
+      setIsCustomCategory(false);
+      setCustomCategoryText('');
+      isQueuePositionDirty.current = false;
+      setFormData({
+        customer_id: prefilledCustId,
+        title: '',
+        category: 'Web Design',
+        service_package: '',
+        priority: 'Medium',
+        estimated_start: '3–5 Business Days',
+        created_date: new Date().toISOString().split('T')[0],
+        queue_position: '',
+        status: 'Waiting',
+        assign_to: '',
+        description: '',
+        send_email_notification: false,
+      });
+      setSidebarOpen(true);
+    }
+  }, [customers]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
