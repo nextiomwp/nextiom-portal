@@ -160,7 +160,15 @@ export default function InvoicePrintPage() {
             <tbody>
               {items.map((item: any, i: number) => (
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '11px 10px', fontSize: 13 }}>{item.description}</td>
+                  <td style={{ padding: '11px 10px', fontSize: 13 }}>
+                    {item.link_url ? (
+                      <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#E8650A', textDecoration: 'underline' }}>
+                        {item.description}
+                      </a>
+                    ) : (
+                      item.description
+                    )}
+                  </td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{item.qty}</td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.unit_price, currency)}</td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.discount || 0, currency)}</td>

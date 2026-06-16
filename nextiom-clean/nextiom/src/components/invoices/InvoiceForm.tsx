@@ -127,6 +127,24 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     setItems(prev => prev.filter((_, i) => i !== index))
   }, [])
 
+  const handleDescriptionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Enter' && e.shiftKey) {
+      e.preventDefault()
+      setItems(prev => prev.map((item, i) => {
+        if (i === index) {
+          if (item.link_url === undefined) {
+            return { ...item, link_url: '' }
+          } else {
+            const updated = { ...item }
+            delete updated.link_url
+            return updated
+          }
+        }
+        return item
+      }))
+    }
+  }
+
   const handleSave = async () => {
     if (!clientName.trim()) { toast({ title: 'Client name is required', variant: 'destructive' }); return }
     if (!items.some(i => i.description.trim())) { toast({ title: 'Add at least one line item', variant: 'destructive' }); return }
@@ -328,15 +346,33 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
 
           <div style={{ marginBottom: 10 }}>
             {items.map((item, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'center', marginBottom: 6 }}>
-                <input style={inp} placeholder="Service or product" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'start', marginBottom: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                  <input
+                    style={inp}
+                    placeholder="Service or product (Shift+Enter for link)"
+                    value={item.description}
+                    onChange={e => updateItem(i, 'description', e.target.value)}
+                    onKeyDown={e => handleDescriptionKeyDown(e, i)}
+                  />
+                  {item.link_url !== undefined && (
+                    <input
+                      style={{ ...inp, fontSize: 11, padding: '4px 8px' }}
+                      placeholder="Enter link URL (e.g. https://...)"
+                      value={item.link_url || ''}
+                      onChange={e => updateItem(i, 'link_url', e.target.value)}
+                    />
+                  )}
+                </div>
                 <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
                 <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
                 <input type="number" min={0} placeholder="0.00" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
-                <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
-                <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
-                  <Trash2 size={13} />
-                </button>
+                <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text, paddingTop: 8 }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: 6 }}>
+                  <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

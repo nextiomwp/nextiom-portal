@@ -13,6 +13,7 @@ export interface InvoiceItem {
   qty: number
   unit_price: number
   discount?: number
+  link_url?: string
   amount?: number
   sort_order?: number
 }
@@ -284,6 +285,7 @@ export async function createInvoice(invoice: Invoice, items: InvoiceItem[]): Pro
         qty: item.qty,
         unit_price: item.unit_price,
         discount: item.discount || 0,
+        link_url: item.link_url || null,
         invoice_id: data.id,
         sort_order: i,
       }))
@@ -312,6 +314,7 @@ export async function updateInvoice(id: string, invoice: Partial<Invoice>, items
         qty: item.qty,
         unit_price: item.unit_price,
         discount: item.discount || 0,
+        link_url: item.link_url || null,
         invoice_id: id,
         sort_order: i,
       }))
