@@ -827,7 +827,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
   );
 
   if (selectedCustomer) {
-    return <CustomerProfileAdminView customer={selectedCustomer} onBack={() => setSelectedCustomer(null)} isDark={isDark} />;
+    return <CustomerProfileAdminView customer={selectedCustomer} onBack={() => setSelectedCustomer(null)} isDark={isDark} onNavigate={onNavigate} />;
   }
 
   return (
@@ -1025,12 +1025,12 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                 <th style={{ ...thS, padding: '11px 8px' }}>Joined</th>
                 <th style={thS}>Status</th>
                 <th style={thS}>Health</th>
-                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px' }} title="Products">📦</th>
-                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px' }} title="Hosting">🖥</th>
-                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px' }} title="Domains">🌐</th>
-                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px' }} title="Emails">📧</th>
-                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px' }} title="Jobs">💼</th>
-                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px' }} title="Tickets">🎫</th>
+                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px', fontSize: 18 }} title="Products">📦</th>
+                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px', fontSize: 18 }} title="Hosting">🖥</th>
+                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px', fontSize: 18 }} title="Domains">🌐</th>
+                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px', fontSize: 18 }} title="Emails">📧</th>
+                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px', fontSize: 18 }} title="Jobs">💼</th>
+                <th style={{ ...thS, textAlign: 'center', padding: '11px 4px', fontSize: 18 }} title="Tickets">🎫</th>
                 <th style={{ ...thS, padding: '11px 8px' }}>Last Activity</th>
                 <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
               </tr>

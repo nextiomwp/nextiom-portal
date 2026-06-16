@@ -454,7 +454,7 @@ function Dashboard({ onLogout }) {
     switch (active) {
       case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={navigateTo} onViewCustomer={cu => { setSelectedCustomer(cu); navigateTo('customerProfile'); }} onConfirmCustomer={handleConfirmCustomer} onRejectCustomer={handleRejectCustomer} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
-      case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} /> : null;
+      case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} onNavigate={navigateTo} /> : null;
       case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={navigateTo} c={c} isDark={isDark} isMobile={isMobile} markNotifRead={markNotifRead} />;
       case 'customers': return <AdminCustomerManagement key={refreshKey} products={products} onSuccess={loadData} isDark={isDark} onNavigate={navigateTo} />;
       case 'domains': return <AdminDomainManagement key={refreshKey} isDark={isDark} />;
