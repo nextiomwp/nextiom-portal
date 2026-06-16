@@ -295,12 +295,13 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                 {items.map((item, i) => (
                   <tr key={item.id || i} style={{ borderBottom: '1px solid #e8e5e0' }}>
                     <td style={{ padding: '9px 10px', fontSize: 13 }}>
-                      {item.link_url ? (
-                        <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ color: '#e87b35', textDecoration: 'underline' }}>
-                          {item.description}
-                        </a>
-                      ) : (
-                        item.description
+                      <div>{item.description}</div>
+                      {item.link_url && (
+                        <div style={{ marginTop: 3 }}>
+                          <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#e87b35', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                            {item.link_url}
+                          </a>
+                        </div>
                       )}
                     </td>
                     <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
