@@ -25,6 +25,8 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [settings, setSettings] = useState<InvoiceSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [invoiceNo, setInvoiceNo] = useState('')
+  const [autoInvoiceNo, setAutoInvoiceNo] = useState('')
+  const [isManual, setIsManual] = useState(false)
   const [invoiceDate, setInvoiceDate] = useState(todayISO())
   const [dueDate, setDueDate] = useState(dueDateISO())
   const [status, setStatus] = useState<Invoice['status']>('unpaid')
@@ -69,6 +71,23 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     setShowSuggestions(false)
   }
 
+  const handleManualToggle = async (checked: boolean) => {
+    setIsManual(checked)
+    if (!checked) {
+      if (existing) {
+        setInvoiceNo(existing.invoice_no)
+      } else {
+        if (autoInvoiceNo) {
+          setInvoiceNo(autoInvoiceNo)
+        } else {
+          const no = await generateInvoiceNo()
+          setAutoInvoiceNo(no)
+          setInvoiceNo(no)
+        }
+      }
+    }
+  }
+
   useEffect(() => {
     async function init() {
       const s = await getInvoiceSettings()
@@ -88,6 +107,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         setNotes(existing.notes ?? '')
       } else {
         const no = await generateInvoiceNo()
+        setAutoInvoiceNo(no)
         setInvoiceNo(no)
         setNotes(s.default_notes)
       }
@@ -192,8 +212,24 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
             <p style={secTitle}>Invoice details</p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
-                <label style={lbl}>Invoice no.</label>
-                <input style={{ ...inp, background: isDark ? '#1C1E24' : '#f0f0f0', color: c.subText }} value={invoiceNo} readOnly />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Invoice no.</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: c.subText, cursor: 'pointer', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={isManual}
+                      onChange={e => handleManualToggle(e.target.checked)}
+                      style={{ cursor: 'pointer', margin: 0 }}
+                    />
+                    Manual
+                  </label>
+                </div>
+                <input
+                  style={isManual ? inp : { ...inp, background: isDark ? '#1C1E24' : '#f0f0f0', color: c.subText }}
+                  value={invoiceNo}
+                  onChange={e => isManual && setInvoiceNo(e.target.value)}
+                  readOnly={!isManual}
+                />
               </div>
               <div>
                 <label style={lbl}>Invoice date</label>
