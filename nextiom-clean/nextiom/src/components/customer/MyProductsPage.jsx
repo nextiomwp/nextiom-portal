@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, X, Key, Calendar, DollarSign, Shield, Zap, Tag, MoreVertical, Search, ChevronDown, ChevronLeft, ChevronRight, Check, Copy, FileText } from 'lucide-react';
+import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, X, Key, Calendar, DollarSign, Shield, Zap, Tag, MoreVertical, Search, ChevronDown, ChevronLeft, ChevronRight, Check, Copy, FileText, Globe } from 'lucide-react';
 import { getLicenses, incrementDownloadCount } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -450,6 +450,24 @@ export default function MyProductsPage({ user, isDark, c }) {
                 <span style={{ color: sub }}>License Type</span>
                 <span style={{ color: text }}>{licenseTypeLabel}</span>
               </div>
+              {lic.domain && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: sub }}>
+                    <Globe size={11} />
+                    Domain
+                  </span>
+                  <a
+                    href={lic.domain.startsWith('http') ? lic.domain : `https://${lic.domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: brand, fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all', textAlign: 'right', maxWidth: '60%' }}
+                    onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                    onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                  >
+                    {lic.domain}
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 

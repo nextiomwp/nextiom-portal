@@ -88,6 +88,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     expiryDate: '',
     downloadUrl: '',
     licenseKey: '',
+    domain: '',
     version: '1.0.0',
     status: 'Active',
     notes: '',
@@ -148,6 +149,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         expiryDate: '',
         downloadUrl: '',
         licenseKey: '',
+        domain: '',
         version: '1.0.0',
         status: 'Active',
         notes: '',
@@ -388,6 +390,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         expiryDate: formData.expiryDate || null,
         downloadUrl: formData.downloadUrl || null,
         licenseKey: formData.licenseKey || null,
+        domain: formData.domain?.trim() || null,
         version: formData.version || null,
         status: formData.status || 'Active',
         notes: formData.notes || null,
@@ -889,6 +892,17 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                       </button>
                     )}
                   </div>
+                </div>
+
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={labelS}>Domain <span style={{ fontWeight: 400, color: subText, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>(Optional)</span></label>
+                  <input
+                    type="text"
+                    value={formData.domain}
+                    onChange={(e) => setFormData((p) => ({ ...p, domain: e.target.value }))}
+                    style={inpS}
+                    placeholder="e.g. example.com or https://example.com"
+                  />
                 </div>
 
                 <div style={{ gridColumn: '1 / -1' }}>
