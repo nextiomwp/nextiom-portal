@@ -1823,7 +1823,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <tbody>
                       {filteredJobs.map((j, i) => {
                         const row = i % 2 === 0 ? tdS : tdAlt;
-                        const pct = j.progress_percent || 0;
+                        const DEFAULT_STEPS = ['Request Submitted','Under Review','Waiting for Customer','Job Created','Design Phase','Development','Testing','Client Review','Completed'];
+                        const steps = Array.isArray(j.timeline_steps) && j.timeline_steps.length > 0 ? j.timeline_steps : DEFAULT_STEPS;
+                        const progressStep = j.progress_step ?? 0;
+                        const pct = Math.round((progressStep / Math.max(1, steps.length - 1)) * 100);
+                        const currentStepLabel = steps[progressStep] || steps[steps.length - 1];
                         return (
                           <tr key={j.id}>
                             <td style={{ ...row, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: c.brand }}>JOB-{j.id.slice(0, 4).toUpperCase()}</span></td>
@@ -1831,11 +1835,14 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                             <td style={row}><span style={{ color: j.priority === 'Critical' || j.priority === 'High' ? '#f87171' : c.text, fontWeight: 600 }}>{j.priority}</span></td>
                             <td style={{ ...row, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{j.assign_to || 'Unassigned'}</td>
                             <td style={row}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ flex: 1, height: 6, background: isDark ? '#374151' : '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
-                                  <div style={{ width: `${pct}%`, height: '100%', background: '#22c55e', borderRadius: 3 }} />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <div style={{ flex: 1, height: 5, background: isDark ? '#374151' : '#e5e7eb', borderRadius: 3, overflow: 'hidden' }}>
+                                    <div style={{ width: `${pct}%`, height: '100%', background: pct === 100 ? '#10b981' : '#f59e0b', borderRadius: 3, transition: 'width 0.3s' }} />
+                                  </div>
+                                  <span style={{ fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', color: pct === 100 ? '#10b981' : c.text }}>{pct}%</span>
                                 </div>
-                                <span style={{ fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>{pct}%</span>
+                                <span style={{ fontSize: 10, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentStepLabel}</span>
                               </div>
                             </td>
                             <td style={row}><span style={{ fontSize: 12 }}>{j.due_date ? format(new Date(j.due_date), 'MMM dd, yyyy') : '—'}</span></td>
