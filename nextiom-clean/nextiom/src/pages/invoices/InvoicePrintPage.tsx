@@ -38,7 +38,7 @@ export default function InvoicePrintPage() {
   )
 
   const { invoice_no, invoice_date, due_date, client_name, client_company,
-          client_phone, client_email, client_address, items, notes, total, settings: s } = data
+          client_phone, client_email, client_address, items, notes, total, status, settings: s } = data
   const currency: InvoiceCurrency = data.currency === 'USD' ? 'USD' : 'LKR'
   const paymentImage = currency === 'USD' ? '/NEXTIOM_USD.png' : '/NEXTIOM_LKR.png'
   const printInvoiceDate = formatPrintDate(invoice_date)
@@ -168,7 +168,23 @@ export default function InvoicePrintPage() {
           </table>
 
           {/* Totals */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginBottom: 32 }}>
+          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginBottom: 32 }}>
+            {status === 'paid' && (
+              <img
+                src="/PAID STUMP.png"
+                alt="PAID"
+                style={{
+                  position: 'absolute',
+                  left: '48%',
+                  top: '50%',
+                  transform: 'translate(-50%, -50%) rotate(-10deg)',
+                  width: 100,
+                  height: 100,
+                  objectFit: 'contain',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
               <span>INV total cost</span><span>{fmtCurrency(total, currency)}</span>
             </div>

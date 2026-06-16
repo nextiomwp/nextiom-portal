@@ -844,6 +844,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 {pageItems.map((inv, i) => {
                   const firstItem = (inv.items || [])[0];
                   const service = firstItem?.description || inv.invoice_no;
+                  const displayService = service.length > 10 ? service.substring(0, 10) + '...' : service;
                   return (
                     <tr key={inv.id}
                       onClick={() => handleDownload(inv)}
@@ -857,8 +858,20 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       <td style={tdS}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ color: c.brand }}>{svcIcon('hosting', 14)}</span>
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: c.text }}>{service}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <div
+                              title={service}
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 500,
+                                color: c.text,
+                                textOverflow: 'ellipsis',
+                                overflow: 'hidden',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {displayService}
+                            </div>
                           </div>
                         </div>
                       </td>
