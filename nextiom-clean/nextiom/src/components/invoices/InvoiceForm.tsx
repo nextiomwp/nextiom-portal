@@ -3,14 +3,14 @@ import { Plus, Trash2, Printer, Save, ArrowLeft } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import {
   Invoice, InvoiceCurrency, InvoiceItem, InvoiceSettings,
-  calcTotal, fmtCurrency, todayISO, dueDateISO,
+  calcTotal, calcSubtotal, calcTotalDiscount, fmtCurrency, todayISO, dueDateISO,
   generateInvoiceNo, getInvoiceSettings,
   createInvoice, updateInvoice,
 } from '@/lib/invoices'
 import { getCustomers, getCustomerByEmail, addNotification } from '@/lib/storage'
 
 function newItem(): InvoiceItem {
-  return { description: '', qty: 1, unit_price: 0 }
+  return { description: '', qty: 1, unit_price: 0, discount: 0 }
 }
 
 interface Props {
@@ -115,6 +115,8 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     init()
   }, [existing])
 
+  const subtotal = calcSubtotal(items)
+  const totalDiscount = calcTotalDiscount(items)
   const total = calcTotal(items)
 
   const updateItem = useCallback((index: number, field: keyof InvoiceItem, value: string | number) => {
@@ -319,18 +321,19 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 100px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            <span>Description</span><span>Qty</span><span>Unit price</span>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <span>Description</span><span>Qty</span><span>Unit price</span><span>Discount</span>
             <span style={{ textAlign: 'right' }}>Amount</span><span></span>
           </div>
 
           <div style={{ marginBottom: 10 }}>
             {items.map((item, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 100px 28px', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'center', marginBottom: 6 }}>
                 <input style={inp} placeholder="Service or product" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
                 <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
                 <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-                <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text }}>{fmtCurrency(item.qty * item.unit_price, currency)}</div>
+                <input type="number" min={0} placeholder="0.00" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
+                <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
                 <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
                   <Trash2 size={13} />
                 </button>
@@ -345,7 +348,10 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
           {/* Totals */}
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${c.border}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText, marginBottom: 4 }}>
-              <span>Subtotal</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
+              <span>Subtotal</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(subtotal, currency)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText, marginBottom: 4 }}>
+              <span>Total Discount</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(totalDiscount, currency)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: `1px solid ${c.border}`, paddingTop: 8, color: c.brand }}>
               <span>Grand total</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>

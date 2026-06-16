@@ -38,11 +38,13 @@ export default function InvoicePrintPage() {
   )
 
   const { invoice_no, invoice_date, due_date, client_name, client_company,
-          client_phone, client_email, client_address, items, notes, total, status, settings: s } = data
+          client_phone, client_email, client_address, items = [], notes, total, status, settings: s } = data
   const currency: InvoiceCurrency = data.currency === 'USD' ? 'USD' : 'LKR'
   const paymentImage = currency === 'USD' ? '/NEXTIOM_USD.png' : '/NEXTIOM_LKR.png'
   const printInvoiceDate = formatPrintDate(invoice_date)
   const printDueDate = formatPrintDate(due_date)
+  const subtotal = items.reduce((sum: number, item: any) => sum + (item.qty * item.unit_price), 0)
+  const totalDiscount = items.reduce((sum: number, item: any) => sum + (item.discount || 0), 0)
 
   return (
     <>
@@ -150,18 +152,19 @@ export default function InvoicePrintPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                {['Description', 'Qty', 'Unit price', 'Amount'].map((h, i) => (
+                {['Description', 'Qty', 'Unit price', 'Discount', 'Amount'].map((h, i) => (
                   <th key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', padding: '8px 10px' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {items.map((item, i) => (
+              {items.map((item: any, i: number) => (
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '11px 10px', fontSize: 13 }}>{item.description}</td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{item.qty}</td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.unit_price, currency)}</td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{fmtCurrency(item.qty * item.unit_price, currency)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.discount || 0, currency)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -186,7 +189,13 @@ export default function InvoicePrintPage() {
               />
             )}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-              <span>INV total cost</span><span>{fmtCurrency(total, currency)}</span>
+              <span>Subtotal</span><span>{fmtCurrency(subtotal, currency)}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
+              <span>Total Discount</span><span>{fmtCurrency(totalDiscount, currency)}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
+              <span>Grand total</span><span>{fmtCurrency(total, currency)}</span>
             </div>
             <div style={{ display: 'flex', gap: 56, fontSize: 16, fontWeight: 700, borderTop: '2px solid #111', paddingTop: 8, marginTop: 4 }}>
               <span>Due total</span><span>{fmtCurrency(total, currency)}</span>

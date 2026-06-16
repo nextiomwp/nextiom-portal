@@ -211,6 +211,7 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
 
   const items = invoice.items || [];
   const subtotal = items.reduce((s, it) => s + (it.qty || 1) * (it.unit_price || 0), 0);
+  const totalDiscount = items.reduce((s, it) => s + (it.discount || 0), 0);
   const tax = 0;
 
   return (
@@ -285,6 +286,8 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                 <tr style={{ background: '#f0ede8' }}>
                   <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Description</th>
                   <th style={{ textAlign: 'center', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 50 }}>Qty</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 85 }}>Unit Price</th>
+                  <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 80 }}>Discount</th>
                   <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Amount</th>
                 </tr>
               </thead>
@@ -293,13 +296,19 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                   <tr key={item.id || i} style={{ borderBottom: '1px solid #e8e5e0' }}>
                     <td style={{ padding: '9px 10px', fontSize: 13 }}>{item.description}</td>
                     <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
+                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {fmtAmt(item.unit_price || 0, invoice.currency)}
+                    </td>
+                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
+                      {fmtAmt(item.discount || 0, invoice.currency)}
+                    </td>
                     <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-                      {fmtAmt(item.qty * item.unit_price, invoice.currency)}
+                      {fmtAmt(item.qty * item.unit_price - (item.discount || 0), invoice.currency)}
                     </td>
                   </tr>
                 ))}
                 {items.length === 0 && (
-                  <tr><td colSpan={3} style={{ padding: '12px 10px', textAlign: 'center', color: '#888', fontSize: 12, fontStyle: 'italic' }}>No line items</td></tr>
+                  <tr><td colSpan={5} style={{ padding: '12px 10px', textAlign: 'center', color: '#888', fontSize: 12, fontStyle: 'italic' }}>No line items</td></tr>
                 )}
               </tbody>
             </table>
@@ -311,13 +320,17 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                   <span style={{ color: '#888' }}>Subtotal</span>
                   <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(subtotal, invoice.currency)}</span>
                 </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                  <span style={{ color: '#888' }}>Total Discount</span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(totalDiscount, invoice.currency)}</span>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
                   <span style={{ color: '#888' }}>Tax</span>
                   <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(tax, invoice.currency)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, borderTop: '2px solid #1a1a1a', paddingTop: 8 }}>
                   <span>Total</span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#e87b35' }}>{fmtAmt(invoice.total ?? subtotal + tax, invoice.currency)}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#e87b35' }}>{fmtAmt(invoice.total ?? subtotal - totalDiscount + tax, invoice.currency)}</span>
                 </div>
               </div>
             </div>

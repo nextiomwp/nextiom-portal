@@ -12,6 +12,7 @@ export interface InvoiceItem {
   description: string
   qty: number
   unit_price: number
+  discount?: number
   amount?: number
   sort_order?: number
 }
@@ -57,8 +58,16 @@ export interface InvoiceSettings {
 
 // ── Helpers ──────────────────────────────────────────────────
 
-export function calcTotal(items: InvoiceItem[]): number {
+export function calcSubtotal(items: InvoiceItem[]): number {
   return items.reduce((s, i) => s + i.qty * i.unit_price, 0)
+}
+
+export function calcTotalDiscount(items: InvoiceItem[]): number {
+  return items.reduce((s, i) => s + (i.discount || 0), 0)
+}
+
+export function calcTotal(items: InvoiceItem[]): number {
+  return items.reduce((s, i) => s + (i.qty * i.unit_price - (i.discount || 0)), 0)
 }
 
 export function fmtLKR(amount: number): string {
@@ -274,6 +283,7 @@ export async function createInvoice(invoice: Invoice, items: InvoiceItem[]): Pro
         description: item.description,
         qty: item.qty,
         unit_price: item.unit_price,
+        discount: item.discount || 0,
         invoice_id: data.id,
         sort_order: i,
       }))
@@ -301,6 +311,7 @@ export async function updateInvoice(id: string, invoice: Partial<Invoice>, items
         description: item.description,
         qty: item.qty,
         unit_price: item.unit_price,
+        discount: item.discount || 0,
         invoice_id: id,
         sort_order: i,
       }))
