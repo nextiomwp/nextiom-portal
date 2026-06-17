@@ -580,7 +580,7 @@ export const getCustomerServices = async (customerId) => {
 };
 
 export const getLicenses = async (customerId) => {
-  let query = supabase.from('licenses').select('*, products(id, name, price, currency, type, description, download_url, license_type, license_registration, manual_updates, automatic_updates, category, image_url, renewal_enabled, renewal_price, renewal_date, renewal_period_days, license_key)');
+  let query = supabase.from('licenses').select('*, products(id, name, price, currency, type, description, download_url, license_type, license_registration, manual_updates, automatic_updates, category, image_url, renewal_enabled, renewal_price, renewal_date, renewal_period_days, license_key, version)');
 
   if (customerId) {
     query = query.eq('customer_id', customerId);

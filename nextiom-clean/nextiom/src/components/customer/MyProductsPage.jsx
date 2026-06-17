@@ -510,7 +510,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Main Product File</p>
-                    <p style={{ color: sub, fontSize: 11, margin: '1px 0 0' }}>Version 1.2.4 • 4.8 MB</p>
+                    <p style={{ color: sub, fontSize: 11, margin: '1px 0 0' }}>Version {lic.version || dp.version || '1.0.0'}</p>
                   </div>
                   <button
                     onClick={() => handleDownload(lic)}
