@@ -146,6 +146,9 @@ export default function InvoicePrintPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36, paddingBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
             {/* Left side: Company details */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="logo" style={{ maxHeight: 52, maxWidth: 180, objectFit: 'contain', marginBottom: 14, alignSelf: 'flex-start' }} />
+              ) : null}
               <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.03em', color: '#111', marginBottom: 4 }}>
                 {(s?.company_name ?? 'NEXTIOM (PVT) LTD').toUpperCase()}
               </div>
@@ -161,16 +164,11 @@ export default function InvoicePrintPage() {
               </div>
             </div>
 
-            {/* Right side: Logo & Invoice details */}
+            {/* Right side: Invoice details */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              {logoUrl ? (
-                <img src={logoUrl} alt="logo" style={{ maxHeight: 52, maxWidth: 180, objectFit: 'contain', marginBottom: 16 }} />
-              ) : (
-                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 16, color: '#111' }}>
-                  {s?.company_name ?? 'Nextiom (Pvt) Ltd'}
-                </div>
-              )}
-              
+              <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.03em', color: '#111', marginBottom: 10, lineHeight: 1 }}>
+                INVOICE
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: 4 }}>
                 <div style={{ fontSize: 12, color: '#111', lineHeight: 1.8, textAlign: 'right' }}>
                   <div><strong style={{ fontWeight: 700 }}>No:</strong> {invoice_no}</div>
