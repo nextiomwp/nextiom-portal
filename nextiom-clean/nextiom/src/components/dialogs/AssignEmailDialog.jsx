@@ -17,6 +17,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
   const [status, setStatus] = useState('approved');
   const [expiryDate, setExpiryDate] = useState('');
   const [adminReply, setAdminReply] = useState('');
+  const [autoRenew, setAutoRenew] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -35,6 +36,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
       setStatus(request.status || 'approved');
       setExpiryDate(request.expiry_date ? request.expiry_date.split('T')[0] : '');
       setAdminReply(request.admin_reply || '');
+      setAutoRenew(!!request.auto_renew);
     } else {
       setEmailName('');
       setExtension('.com');
@@ -50,6 +52,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
       setStatus('approved');
       setExpiryDate('');
       setAdminReply('');
+      setAutoRenew(false);
     }
   }, [open, request]);
 
@@ -111,6 +114,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
           start_date: startDate ? new Date(startDate).toISOString() : null,
           notes: notes.trim() || null,
           price: price ? parseFloat(price) : null,
+          auto_renew: autoRenew,
         });
         addNotification({ customer_id: null, type: 'request_updated', title: `Email Updated — ${emailName}`, message: `Admin updated email record for ${emailName} (status: ${status}).` }).catch(() => {});
         toast({ title: 'Email Updated', description: 'Changes saved successfully.' });
@@ -128,11 +132,13 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
           emailUsername: emailUsername.trim() || null,
           emailPassword: emailPassword.trim() || null,
           url: url.trim() || null,
+          auto_renew: autoRenew,
         });
         toast({ title: 'Email Assigned', description: `${fullEmail} assigned to ${customer.name}` });
         setEmailName(''); setExtension('.com'); setRegPeriod('1');
         setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
         setEmailUsername(''); setEmailPassword(''); setUrl('');
+        setAutoRenew(false);
       }
 
       onSuccess?.();
@@ -328,6 +334,17 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
               onFocus={e => e.target.style.borderColor = brand}
               onBlur={e => e.target.style.borderColor = border}
             />
+          </div>
+
+          {/* Auto Renewal */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <input
+              type="checkbox"
+              checked={autoRenew}
+              onChange={e => setAutoRenew(e.target.checked)}
+              style={{ accentColor: brand }}
+            />
+            <span style={{ fontSize: 13, color: text }}>Auto Renewal Enabled</span>
           </div>
 
           {/* Credentials */}

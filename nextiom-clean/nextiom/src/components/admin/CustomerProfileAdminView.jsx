@@ -96,6 +96,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   // Modal / Dialog States
   const [viewingLicense, setViewingLicense] = useState(null);
   const [editingLicense, setEditingLicense] = useState(null);
+  const [viewingHosting, setViewingHosting] = useState(null);
   
   // Assign Modals (Create modes)
   const [isAssignProductOpen, setIsAssignProductOpen] = useState(false);
@@ -1138,31 +1139,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
     }
   };
 
-  const handleUpdateEmailSave = async (e) => {
-    e.preventDefault();
-    if (!editingEmail) return;
-    try {
-      const { error } = await supabase
-        .from('email_requests')
-        .update({
-          email: editingEmail.email,
-          plan_name: editingEmail.plan_name,
-          storage_used: editingEmail.storage_used,
-          forwarders: editingEmail.forwarders,
-          status: editingEmail.status,
-          expiry_date: editingEmail.expiry_date ? new Date(editingEmail.expiry_date).toISOString() : null,
-          start_date: editingEmail.start_date ? new Date(editingEmail.start_date).toISOString() : null
-        })
-        .eq('id', editingEmail.id);
 
-      if (error) throw error;
-      toast({ title: 'Email Details Updated' });
-      setEditingEmail(null);
-      loadAll();
-    } catch (err) {
-      toast({ title: 'Error saving email data', description: err.message, variant: 'destructive' });
-    }
-  };
 
   const handleUpdateJobSave = async (e) => {
     e.preventDefault();
@@ -1522,9 +1499,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                         <th style={thS}>Renewal Type</th>
                         <th style={thS}>Purchase Price</th>
                         <th style={thS}>Renewal Price</th>
-                        <th style={thS}>Download URL</th>
+                        <th style={thS}>Start Date</th>
+                        <th style={thS}>Expiry Date</th>
                         <th style={thS}>Status</th>
-                        <th style={thS}>Last Updated</th>
                         <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                       </tr>
                     </thead>
@@ -1549,21 +1526,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                             <td style={row}><span style={{ textTransform: 'capitalize' }}>{type.replace('_', ' ')}</span></td>
                             <td style={row}>Rs. {lic.price?.toLocaleString() || lic.product?.price?.toLocaleString() || '0'}</td>
                             <td style={row}>Rs. {lic.renewal_price?.toLocaleString() || lic.product?.renewal_price?.toLocaleString() || '0'}</td>
-                            <td style={row}>
-                              {lic.download_url || lic.product?.download_url ? (
-                                <a href={lic.download_url || lic.product?.download_url} target="_blank" rel="noreferrer" style={{ color: c.brand, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600 }}>
-                                  <ExternalLink size={12} /> Available
-                                </a>
-                              ) : <span style={{ color: c.subText }}>None</span>}
-                            </td>
+                            <td style={row}>{lic.start_date ? format(new Date(lic.start_date), 'MMM dd, yyyy') : '—'}</td>
+                            <td style={row}>{lic.expiry_date ? format(new Date(lic.expiry_date), 'MMM dd, yyyy') : '—'}</td>
                             <td style={row}><StatusBadge status={lic.calculatedStatus} /></td>
-                            <td style={row}><span style={{ color: c.subText, fontSize: 12 }}>{lic.created_at ? format(new Date(lic.created_at), 'MMM dd, yyyy') : '—'}</span></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                 <button onClick={() => setViewingLicense(lic)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View"><Eye size={14} /></button>
                                 <button onClick={() => setEditingLicense(lic)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Edit"><Edit size={14} /></button>
-                                <button onClick={() => handleRenewProduct(lic)} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew"><RefreshCw size={14} /></button>
-                                <button onClick={() => handleSuspendProduct(lic)} style={{ background: 'none', border: 'none', color: '#fb923c', cursor: 'pointer', padding: 4 }} title="Suspend"><Lock size={14} /></button>
                                 <button onClick={async () => {
                                   if (!confirm('Revoke this product license?')) return;
                                   await deleteLicense(lic.id);
@@ -1604,11 +1573,10 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                       <tr>
                         <th style={thS}>Domain</th>
                         <th style={thS}>Package</th>
-                        <th style={thS}>Server Name</th>
-                        <th style={thS}>Provider</th>
+                        <th style={thS}>Start Date</th>
+                        <th style={thS}>End Date</th>
                         <th style={thS}>Disk Usage</th>
                         <th style={thS}>Bandwidth</th>
-                        <th style={thS}>Renewal Cost</th>
                         <th style={thS}>Status</th>
                         <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                       </tr>
@@ -1621,29 +1589,22 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                           <tr key={h.id}>
                             <td style={row}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#3b82f6' }}>{h.domain || '—'}</span></td>
                             <td style={row}>{h.plan_name || packageLabel}</td>
-                            <td style={row}>{h.server_name || 'Not Set'}</td>
-                            <td style={row}>{h.hosting_provider || 'Not Set'}</td>
+                            <td style={row}>{h.start_date ? format(new Date(h.start_date), 'MMM dd, yyyy') : '—'}</td>
+                            <td style={row}>{h.expiry_date ? format(new Date(h.expiry_date), 'MMM dd, yyyy') : '—'}</td>
                             <td style={row}>{h.disk_usage || '—'} / {h.disk_usage_limit || '—'}</td>
                             <td style={row}>{h.bandwidth_usage || '—'} / {h.bandwidth_limit || '—'}</td>
-                            <td style={row}>Rs. {h.renewal_cost?.toLocaleString() || h.next_renewal_price?.toLocaleString() || '—'}</td>
                             <td style={row}><StatusBadge status={h.status} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                                {h.cpanel && (
-                                  <a href={h.cpanel} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 6, background: 'rgba(232,123,53,0.15)', color: c.brand, fontSize: 11, fontWeight: 700 }} title="Login to cPanel">
-                                    cPanel
-                                  </a>
-                                )}
+                                <button onClick={() => setViewingHosting(h)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View Details"><Eye size={14} /></button>
                                 <button onClick={() => setEditingHosting(h)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={14} /></button>
-                                <button onClick={() => handleRenewHosting(h)} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew Hosting"><RefreshCw size={14} /></button>
-                                <button onClick={() => handleSuspendHosting(h)} style={{ background: 'none', border: 'none', color: '#fb923c', cursor: 'pointer', padding: 4 }} title="Suspend"><Lock size={14} /></button>
                                 <button onClick={() => deleteItem('hosting', h.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
                               </div>
                             </td>
                           </tr>
                         );
                       })}
-                      {filteredHosting.length === 0 && <tr><td colSpan={9} style={emptyS}>No hosting packages.</td></tr>}
+                      {filteredHosting.length === 0 && <tr><td colSpan={8} style={emptyS}>No hosting packages.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -1744,9 +1705,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                       <tr>
                         <th style={thS}>Email Address</th>
                         <th style={thS}>Package</th>
-                        <th style={thS}>Storage Used</th>
-                        <th style={thS}>Password Last Changed</th>
-                        <th style={thS}>Forwarders</th>
+                        <th style={thS}>Start Date</th>
+                        <th style={thS}>Expiry</th>
+                        <th style={thS}>Auto Renew</th>
                         <th style={thS}>Status</th>
                         <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                       </tr>
@@ -1758,13 +1719,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                           <tr key={e.id}>
                             <td style={row}><span style={{ fontWeight: 600 }}>{e.email}</span></td>
                             <td style={row}>{e.plan_name || e.email_type || 'Starter Email'}</td>
-                            <td style={row}>{e.storage_used || '0 MB / 5 GB'}</td>
+                            <td style={row}>{e.start_date ? format(new Date(e.start_date), 'MMM dd, yyyy') : '—'}</td>
+                            <td style={row}>{e.expiry_date ? format(new Date(e.expiry_date), 'MMM dd, yyyy') : '—'}</td>
                             <td style={row}>
-                              <span style={{ fontSize: 12, color: c.subText }}>
-                                {e.password_last_changed ? format(new Date(e.password_last_changed), 'MMM dd, yyyy') : 'Never'}
+                              <span style={{ color: e.auto_renew ? '#22c55e' : c.subText, fontSize: 12, fontWeight: 600 }}>
+                                {e.auto_renew ? 'Enabled' : 'Disabled'}
                               </span>
                             </td>
-                            <td style={row}>{e.forwarders || 'None'}</td>
                             <td style={row}><StatusBadge status={e.status} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
@@ -1774,8 +1735,6 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                                   </button>
                                 )}
                                 <button onClick={() => setEditingEmail(e)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={14} /></button>
-                                <button onClick={() => handleResetEmailPassword(e)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="Reset Password"><Key size={14} /></button>
-                                <button onClick={() => handleEditEmailQuota(e)} style={{ background: 'none', border: 'none', color: '#eab308', cursor: 'pointer', padding: 4 }} title="Edit Quota"><SlidersIcon size={14} /></button>
                                 <button onClick={() => deleteEmailItem(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
                               </div>
                             </td>
@@ -2547,6 +2506,96 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
 
       {/* --- EDIT MODALS FOR ITEMS --- */}
 
+      {/* View Hosting Details Modal */}
+      {viewingHosting && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Hosting Package Details</span>
+              <button onClick={() => setViewingHosting(null)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Domain</span>
+                  <span style={{ fontSize: 14, color: c.text, fontWeight: 500, fontFamily: 'monospace' }}>{viewingHosting.domain || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Package / Plan</span>
+                  <span style={{ fontSize: 14, color: c.text, fontWeight: 500 }}>{viewingHosting.plan_name || parsePackageSummary(viewingHosting.package_type).name}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Server Name</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.server_name || 'Not Set'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Hosting Provider</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.hosting_provider || 'Not Set'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Disk Usage</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.disk_usage || '—'} / {viewingHosting.disk_usage_limit || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Bandwidth</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.bandwidth_usage || '—'} / {viewingHosting.bandwidth_limit || '—'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Start Date</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.start_date ? format(new Date(viewingHosting.start_date), 'MMM dd, yyyy') : '—'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Expiry / End Date</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.expiry_date ? format(new Date(viewingHosting.expiry_date), 'MMM dd, yyyy') : '—'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Renewal Cost</span>
+                  <span style={{ fontSize: 14, color: c.text }}>Rs. {viewingHosting.renewal_cost?.toLocaleString() || viewingHosting.next_renewal_price?.toLocaleString() || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Status</span>
+                  <div style={{ marginTop: 4 }}><StatusBadge status={viewingHosting.status} /></div>
+                </div>
+              </div>
+
+              {viewingHosting.cpanel && (
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>cPanel URL</span>
+                  <a href={viewingHosting.cpanel} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: c.brand, textDecoration: 'none', wordBreak: 'break-all', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <ExternalLink size={12} /> {viewingHosting.cpanel}
+                  </a>
+                </div>
+              )}
+
+              {viewingHosting.ftp && (
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>FTP Details</span>
+                  <pre style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, margin: '4px 0 0 0', fontSize: 12, color: c.text, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                    {viewingHosting.ftp}
+                  </pre>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', marginTop: 8 }}>
+                <button type="button" onClick={() => setViewingHosting(null)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Hosting Modal */}
       {editingHosting && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
@@ -2674,56 +2723,6 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
                 <button type="button" onClick={() => setEditingDomain(null)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Email Modal */}
-      {editingEmail && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 460, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Edit Email Details</span>
-              <button onClick={() => setEditingEmail(null)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer' }}><X size={18} /></button>
-            </div>
-            <form onSubmit={handleUpdateEmailSave} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Email Address</label>
-                <input value={editingEmail.email || ''} onChange={e => setEditingEmail({ ...editingEmail, email: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13, outline: 'none', marginTop: 4, boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Package</label>
-                  <input value={editingEmail.plan_name || ''} onChange={e => setEditingEmail({ ...editingEmail, plan_name: e.target.value })} placeholder="e.g. Starter Email" style={{ width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13, outline: 'none', marginTop: 4, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Storage Used / Quota</label>
-                  <input value={editingEmail.storage_used || ''} onChange={e => setEditingEmail({ ...editingEmail, storage_used: e.target.value })} placeholder="e.g. 50 MB / 5 GB" style={{ width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13, outline: 'none', marginTop: 4, boxSizing: 'border-box' }} />
-                </div>
-              </div>
-              <div>
-                <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Forwarders (Comma separated)</label>
-                <input value={editingEmail.forwarders || ''} onChange={e => setEditingEmail({ ...editingEmail, forwarders: e.target.value })} placeholder="e.g. boss@company.com" style={{ width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13, outline: 'none', marginTop: 4, boxSizing: 'border-box' }} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Status</label>
-                  <select value={editingEmail.status} onChange={e => setEditingEmail({ ...editingEmail, status: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13, outline: 'none', marginTop: 4 }}>
-                    <option value="approved">Approved / Active</option>
-                    <option value="pending">Pending</option>
-                    <option value="suspended">Suspended</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Expiry Date</label>
-                  <input type="date" value={editingEmail.expiry_date ? editingEmail.expiry_date.split('T')[0] : ''} onChange={e => setEditingEmail({ ...editingEmail, expiry_date: e.target.value })} style={{ width: '100%', padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13, outline: 'none', marginTop: 4, boxSizing: 'border-box' }} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                <button type="button" onClick={() => setEditingEmail(null)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Save Changes</button>
               </div>
             </form>

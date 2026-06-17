@@ -1531,7 +1531,7 @@ export const assignHostingToCustomer = async (data) => {
 };
 
 export const assignEmailToCustomer = async (data) => {
-  const { customerId, email, registrationPeriod, expiryDate, notes, price, startDate, emailUsername, emailPassword, url } = data;
+  const { customerId, email, registrationPeriod, expiryDate, notes, price, startDate, emailUsername, emailPassword, url, auto_renew } = data;
   const { data: record, error } = await supabase
     .from('email_requests')
     .insert([{
@@ -1547,6 +1547,7 @@ export const assignEmailToCustomer = async (data) => {
       url: url || null,
       created_at: new Date().toISOString(),
       start_date: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
+      auto_renew: auto_renew || false,
     }])
     .select()
     .single();
