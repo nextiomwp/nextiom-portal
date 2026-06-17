@@ -89,18 +89,193 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
   );
 }
 
-function KpiTile({ icon, label, value, sub, subColor, c, isDark }) {
+function KpiTile({ icon, label, value, sub, subColor, c, isDark, sparklinePoints, sparklineColor }) {
+  let primaryVal = value;
+  let secondaryVal = null;
+  if (typeof value === 'string' && value.includes(' / ')) {
+    const parts = value.split(' / ');
+    primaryVal = parts[0];
+    secondaryVal = parts[1];
+  }
+
   return (
-    <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 8, boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.05)' }}>
+    <div style={{
+      background: c.card,
+      border: `1px solid ${c.border}`,
+      borderRadius: 14,
+      padding: '20px 24px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+      position: 'relative',
+      minHeight: 130,
+      boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.05)',
+      boxSizing: 'border-box'
+    }}>
+      {/* Top row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</span>
-        {icon}
+        <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</span>
+        <div style={{ opacity: 0.8 }}>{icon}</div>
       </div>
-      <div style={{ fontSize: 22, fontWeight: 700, color: c.text, fontFamily: 'JetBrains Mono, monospace' }}>{value}</div>
-      <div style={{ fontSize: 12, color: subColor || c.subText }}>{sub}</div>
+
+      {/* Value row */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexGrow: 1 }}>
+        <div style={{ fontSize: 24, fontWeight: 800, color: subColor || c.text, fontFamily: 'JetBrains Mono, monospace', letterSpacing: -0.5 }}>{primaryVal}</div>
+        {secondaryVal && (
+          <div style={{ fontSize: 17, fontWeight: 700, color: subColor || c.text, opacity: 0.8, fontFamily: 'JetBrains Mono, monospace' }}>{secondaryVal}</div>
+        )}
+      </div>
+
+      {/* Bottom row (subtext + sparkline) */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 4 }}>
+        <span style={{ fontSize: 12, fontWeight: 500, color: subColor || c.subText }}>{sub}</span>
+        {sparklinePoints && (
+          <div style={{ marginBottom: -4, marginRight: -8 }}>
+            <svg width="100" height="28" viewBox="0 0 100 28" style={{ display: 'block' }}>
+              <path
+                d={sparklinePoints}
+                fill="none"
+                stroke={sparklineColor}
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+function InvoiceOverviewCard({ invoices, c, isDark }) {
+  const total = invoices.length;
+  const paid = invoices.filter(inv => inv.status === 'paid').length;
+  const overdue = invoices.filter(inv => inv.status === 'overdue').length;
+  const unpaid = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'partially_paid' || inv.status === 'payment_submitted').length;
+
+  const paidPct = total > 0 ? (paid / total) * 100 : 0;
+  const unpaidPct = total > 0 ? (unpaid / total) * 100 : 0;
+  const overduePct = total > 0 ? (overdue / total) * 100 : 0;
+
+  const r = 15.91549430918954;
+  const strokeWidth = 5.5;
+
+  const paidOffset = 25;
+  const unpaidOffset = paidOffset - paidPct;
+  const overdueOffset = unpaidOffset - unpaidPct;
+
+  return (
+    <div style={{
+      background: c.card,
+      border: `1px solid ${c.border}`,
+      borderRadius: 14,
+      padding: '20px 22px',
+      boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.25)' : '0 2px 12px rgba(0,0,0,0.06)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16,
+      marginBottom: 20
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 3, height: 14, borderRadius: 1.5, background: c.brand }} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Invoice Overview</span>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ width: 110, height: 110, position: 'relative', flexShrink: 0 }}>
+          <svg viewBox="0 0 42 42" width="100%" height="100%">
+            <circle
+              cx="21"
+              cy="21"
+              r={r}
+              fill="transparent"
+              stroke={isDark ? 'rgba(124, 92, 246, 0.15)' : 'rgba(124, 92, 246, 0.08)'}
+              strokeWidth={strokeWidth}
+            />
+
+            {paidPct > 0 && (
+              <circle
+                cx="21"
+                cy="21"
+                r={r}
+                fill="transparent"
+                stroke="#22c55e"
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${paidPct} ${100 - paidPct}`}
+                strokeDashoffset={paidOffset}
+                strokeLinecap="round"
+              />
+            )}
+
+            {unpaidPct > 0 && (
+              <circle
+                cx="21"
+                cy="21"
+                r={r}
+                fill="transparent"
+                stroke="#f59e0b"
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${unpaidPct} ${100 - unpaidPct}`}
+                strokeDashoffset={unpaidOffset}
+                strokeLinecap="round"
+              />
+            )}
+
+            {overduePct > 0 && (
+              <circle
+                cx="21"
+                cy="21"
+                r={r}
+                fill="transparent"
+                stroke="#ef4444"
+                strokeWidth={strokeWidth}
+                strokeDasharray={`${overduePct} ${100 - overduePct}`}
+                strokeDashoffset={overdueOffset}
+                strokeLinecap="round"
+              />
+            )}
+          </svg>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flexGrow: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6', display: 'inline-block' }} />
+              <span>Total Invoices</span>
+            </div>
+            <span style={{ fontWeight: 700, color: c.text, fontFamily: 'JetBrains Mono, monospace' }}>{total}</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              <span>Paid</span>
+            </div>
+            <span style={{ fontWeight: 700, color: c.text, fontFamily: 'JetBrains Mono, monospace' }}>{paid}</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
+              <span>Unpaid</span>
+            </div>
+            <span style={{ fontWeight: 700, color: c.text, fontFamily: 'JetBrains Mono, monospace' }}>{unpaid}</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+              <span>Overdue</span>
+            </div>
+            <span style={{ fontWeight: 700, color: c.text, fontFamily: 'JetBrains Mono, monospace' }}>{overdue}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function DarkCalendar({ invoiceDates, calFilter, onDayClick, onMonthClick, c, isDark }) {
   const today = new Date();
@@ -761,8 +936,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
     setTimeout(() => el.remove(), 2400);
   };
 
-  const thS = { padding: '11px 10px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}`, textAlign: 'left', whiteSpace: 'nowrap' };
-  const tdS = { padding: '12px 10px', borderTop: `1px solid ${c.border}`, fontSize: 13, color: c.text, verticalAlign: 'middle', whiteSpace: 'nowrap' };
+  const thS = { padding: '11px 8px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}`, textAlign: 'left', whiteSpace: 'nowrap' };
+  const tdS = { padding: '12px 8px', borderTop: `1px solid ${c.border}`, fontSize: 13, color: c.text, verticalAlign: 'middle', whiteSpace: 'nowrap' };
   const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
   const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.25)' : '0 2px 12px rgba(0,0,0,0.06)' };
 
@@ -787,10 +962,49 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
 
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 14, marginBottom: 24 }}>
-        <KpiTile icon={<Receipt size={18} style={{ color: c.brand }} />} label="Total Billed" value={totalBilled} sub={`Across ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`} c={c} isDark={isDark} />
-        <KpiTile icon={<Wallet size={18} style={{ color: '#f59e0b' }} />} label="Outstanding Balance" value={<span style={{ color: c.brand }}>{outstanding}</span>} sub={`${unpaidCount} unpaid`} subColor="#f59e0b" c={c} isDark={isDark} />
-        <KpiTile icon={<CheckCircle size={18} style={{ color: '#22c55e' }} />} label="Paid This Year" value={<span style={{ color: '#22c55e' }}>{paidThisYear}</span>} sub={`${thisYear} to date`} subColor="#22c55e" c={c} isDark={isDark} />
-        <KpiTile icon={<AlertTriangle size={18} style={{ color: '#ef4444' }} />} label="Overdue" value={<span style={{ color: '#ef4444' }}>{overdueCount}</span>} sub={`${overduePast} past due`} subColor="#ef4444" c={c} isDark={isDark} />
+        <KpiTile
+          icon={<Receipt size={18} style={{ color: '#8b5cf6' }} />}
+          label="Total Billed"
+          value={totalBilled}
+          sub={`Across ${invoices.length} invoice${invoices.length !== 1 ? 's' : ''}`}
+          c={c}
+          isDark={isDark}
+          sparklinePoints="M 5 22 Q 20 8 35 18 T 65 10 T 95 14"
+          sparklineColor="#8b5cf6"
+        />
+        <KpiTile
+          icon={<Wallet size={18} style={{ color: '#f59e0b' }} />}
+          label="Outstanding Balance"
+          value={outstanding}
+          sub={`${unpaidCount} unpaid`}
+          subColor="#f59e0b"
+          c={c}
+          isDark={isDark}
+          sparklinePoints="M 5 22 Q 20 12 35 20 T 65 14 T 95 8"
+          sparklineColor="#f59e0b"
+        />
+        <KpiTile
+          icon={<CheckCircle size={18} style={{ color: '#22c55e' }} />}
+          label="Paid This Year"
+          value={paidThisYear}
+          sub={`${thisYear} to date`}
+          subColor="#22c55e"
+          c={c}
+          isDark={isDark}
+          sparklinePoints="M 5 22 Q 20 18 35 10 T 65 18 T 95 12"
+          sparklineColor="#22c55e"
+        />
+        <KpiTile
+          icon={<AlertTriangle size={18} style={{ color: '#ef4444' }} />}
+          label="Overdue"
+          value={overduePast}
+          sub={`${overdueCount} past due`}
+          subColor="#ef4444"
+          c={c}
+          isDark={isDark}
+          sparklinePoints="M 5 22 Q 20 22 35 22 T 65 12 T 95 8"
+          sparklineColor="#ef4444"
+        />
       </div>
 
       {/* Two-column body */}
@@ -859,6 +1073,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                   <th style={thS}>Status</th>
                   <th style={{ ...thS, textAlign: 'right' }}>Total</th>
                   <th style={{ ...thS, textAlign: 'right' }}>Paid</th>
+                  <th style={{ ...thS, textAlign: 'right' }}>Balance</th>
                   <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -867,6 +1082,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                   const firstItem = (inv.items || [])[0];
                   const service = firstItem?.description || inv.invoice_no;
                   const displayService = service.length > 10 ? service.substring(0, 10) + '...' : service;
+                  const balance = (inv.total || 0) - (inv.paid_amount || 0);
                   return (
                     <tr key={inv.id}
                       onClick={() => handleDownload(inv)}
@@ -904,11 +1120,18 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       </td>
                       <td style={tdS}><BadgeComponent status={inv.status} style={badgeStyle} /></td>
                       <td style={{ ...tdS, textAlign: 'right' }}>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13 }}>{fmtAmt(inv.total, inv.currency)}</span>
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13 }}>
+                          {fmtAmt(inv.total, inv.currency)}
+                        </span>
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }}>
                         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: inv.paid_amount > 0 ? '#22c55e' : c.subText }}>
                           {fmtAmt(inv.paid_amount || 0, inv.currency)}
+                        </span>
+                      </td>
+                      <td style={{ ...tdS, textAlign: 'right' }}>
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: balance > 0 ? c.text : c.subText }}>
+                          {fmtAmt(balance, inv.currency)}
                         </span>
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
@@ -932,7 +1155,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                   );
                 })}
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' }}>
+                  <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' }}>
                     {invoices.length === 0 ? 'No invoices found. Contact support if you believe this is an error.' : 'No invoices match your current filters.'}
                   </td></tr>
                 )}
@@ -963,8 +1186,9 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
           )}
         </div>
 
-        {/* Right column — calendar */}
+        {/* Right column — overview + calendar */}
         <div>
+          <InvoiceOverviewCard invoices={invoices} c={c} isDark={isDark} />
           <DarkCalendar
             invoiceDates={invoiceDates}
             calFilter={calFilter}

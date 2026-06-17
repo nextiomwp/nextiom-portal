@@ -612,7 +612,7 @@ function CustomerDashboard() {
 
         {/* Page content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+          <div className="p-4 sm:p-6 max-w-[1600px] mx-auto">
             <PortalRestrictionBanner restriction={portalRestriction} c={c} isDark={isDark} />
             {renderContent()}
           </div>

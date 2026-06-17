@@ -771,7 +771,7 @@ function ImpersonationDashboard() {
 
         {/* Page content wrapper — fills remaining space, scrolls independently */}
         <div className="flex-1 overflow-auto">
-          <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+          <div className="p-4 sm:p-6 max-w-[1600px] mx-auto">
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
                 <Loader2 className="animate-spin" size={32} style={{ color: c.brand }} />
