@@ -10,6 +10,43 @@ function formatPrintDate(value?: string) {
   return value.split('T')[0]
 }
 
+function formatAddressLines(address?: string): string[] {
+  if (!address) return ['NIWANDAMA', 'JA -ELA', 'SRI LANKA -11000']
+  const normalized = address.toLowerCase().replace(/\s+/g, ' ')
+  if (normalized.includes('niwandama') && normalized.includes('ja ela')) {
+    return [
+      'NIWANDAMA',
+      'JA -ELA',
+      'SRI LANKA -11000'
+    ]
+  }
+  if (address.includes('\n')) {
+    return address.split('\n').map(l => l.trim().toUpperCase()).filter(Boolean)
+  }
+  return address.split(/[,–-]/).map(l => l.trim().toUpperCase()).filter(Boolean)
+}
+
+function getDisplayPhone(phone?: string): string {
+  const displayPhone = phone ?? '+94 70 203 2323'
+  if (displayPhone.trim() === '+94 70 203 2323') {
+    return '+94 70 203 2323 / +94 11 224 5666'
+  }
+  return displayPhone
+}
+
+function getDisplayEmail(website?: string): string {
+  let displayEmail = 'info@nextiom.com'
+  if (website) {
+    try {
+      const domain = website.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]
+      if (domain) {
+        displayEmail = `info@${domain}`
+      }
+    } catch {}
+  }
+  return displayEmail
+}
+
 export default function InvoicePrintPage() {
   const [data, setData] = useState<any>(null)
   const [logoUrl, setLogoUrl] = useState('')
@@ -106,24 +143,40 @@ export default function InvoicePrintPage() {
         }}>
 
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36, paddingBottom: 24, borderBottom: '3px solid #E8650A' }}>
-            <div>
-              {logoUrl
-                ? <img src={logoUrl} alt="logo" style={{ maxHeight: 52, maxWidth: 180, objectFit: 'contain', marginBottom: 10 }} />
-                : <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 6 }}>{s?.company_name ?? 'Nextiom (Pvt) Ltd'}</div>
-              }
-              <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.8 }}>
-                {s?.address && <div>{s.address}</div>}
-                {s?.phone && <div>{s.phone}{s?.website ? ` · ${s.website}` : ''}</div>}
-                {s?.reg_no && <div>{s.reg_no}</div>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36, paddingBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
+            {/* Left side: Company details */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: '0.03em', color: '#111', marginBottom: 4 }}>
+                {(s?.company_name ?? 'NEXTIOM (PVT) LTD').toUpperCase()}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#111', lineHeight: 1.4, marginBottom: 12 }}>
+                {formatAddressLines(s?.address).map((line, idx) => (
+                  <div key={idx}>{line}</div>
+                ))}
+              </div>
+              <div style={{ fontSize: 11, color: '#111', lineHeight: 1.6 }}>
+                <div><strong style={{ fontWeight: 700 }}>PHONE:</strong> {getDisplayPhone(s?.phone)}</div>
+                <div><strong style={{ fontWeight: 700 }}>E-MAIL:</strong> <a href={`mailto:${getDisplayEmail(s?.website)}`} style={{ color: '#0066cc', textDecoration: 'underline' }}>{getDisplayEmail(s?.website)}</a></div>
+                <div><strong style={{ fontWeight: 700 }}>WEB:</strong> <span style={{ color: '#6b7280' }}>{s?.website ?? 'https://nextiom.com/'}</span></div>
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.04em', color: '#111' }}>INVOICE</div>
-              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 10, lineHeight: 2 }}>
-                <div><strong style={{ color: '#111' }}>No.</strong> {invoice_no}</div>
-                <div><strong style={{ color: '#111' }}>Date:</strong> {printInvoiceDate}</div>
-                {printDueDate && <div><strong style={{ color: '#111' }}>Due:</strong> {printDueDate}</div>}
+
+            {/* Right side: Logo & Invoice details */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              {logoUrl ? (
+                <img src={logoUrl} alt="logo" style={{ maxHeight: 52, maxWidth: 180, objectFit: 'contain', marginBottom: 16 }} />
+              ) : (
+                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 16, color: '#111' }}>
+                  {s?.company_name ?? 'Nextiom (Pvt) Ltd'}
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: '#111', lineHeight: 1.8, textAlign: 'right' }}>
+                  <div><strong style={{ fontWeight: 700 }}>No:</strong> {invoice_no}</div>
+                  <div><strong style={{ fontWeight: 700 }}>Date:</strong> {printInvoiceDate}</div>
+                  {printDueDate && <div><strong style={{ fontWeight: 700 }}>Due:</strong> {printDueDate}</div>}
+                </div>
               </div>
             </div>
           </div>
