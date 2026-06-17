@@ -315,7 +315,7 @@ export default function MyProductsPage({ user, isDark, c }) {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
               {status === 'Active' ? <CheckCircle size={15} /> : status === 'Expired' ? <AlertCircle size={15} /> : <AlertCircle size={15} />}
-              <span>{status === 'Active' ? 'Active License' : status === 'Expired' ? 'Expired License' : 'Expiring Soon'}</span>
+              <span>{status === 'Active' ? 'Active Product' : status === 'Expired' ? 'Expired License' : 'Expiring Soon'}</span>
             </div>
             <span style={{ fontSize: 12.5, fontWeight: 500 }}>
               {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(lic.expiry_date) : validity.days != null ? `${validity.days} days remaining` : validity.label}
@@ -450,8 +450,8 @@ export default function MyProductsPage({ user, isDark, c }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Service Plan</span>
                 <span style={{ color: text }}>
-                  {(dp.license_registration || dp.automatic_updates) ? 'License Registration' :
-                   dp.manual_updates ? 'Manual Updates' : 'One Time Purchase'}
+                  {(dp.license_registration && dp.automatic_updates) ? 'License Registration + Automatic Updates' :
+                   dp.manual_updates ? 'Manual Updates (No License Required)' : 'One-Time Purchase'}
                 </span>
               </div>
               {lic.domain && (
@@ -539,28 +539,36 @@ export default function MyProductsPage({ user, isDark, c }) {
               <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Features</span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {(dp.license_registration || !isVirtual) && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span>License Registration</span>
-                </div>
-              )}
-              {dp.automatic_updates && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span>Automatic Updates</span>
-                </div>
+              {dp.license_registration && dp.automatic_updates && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Licenses</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Automatic update</span>
+                  </div>
+                </>
               )}
               {dp.manual_updates && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                  <span>Manual Updates</span>
+                  <span>Manual Update</span>
+                </div>
+              )}
+              {!dp.license_registration && !dp.automatic_updates && !dp.manual_updates && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span>One time purchase</span>
                 </div>
               )}
             </div>
@@ -583,7 +591,7 @@ export default function MyProductsPage({ user, isDark, c }) {
             )}
             <div style={{ fontSize: 12.5 }}>
               <p style={{ fontWeight: 600, margin: 0 }}>
-                {status === 'Active' ? 'Your license is active and in good standing.' : status === 'Expired' ? 'Your license is expired.' : 'Your license expires soon.'}
+                {status === 'Active' ? 'Your product is active and in good standing.' : status === 'Expired' ? 'Your product is expired.' : 'Your product expires soon.'}
               </p>
               <p style={{ fontSize: 11, color: sub, margin: '2px 0 0' }}>
                 {status === 'Active' ? 'Thank you for being a valued customer!' : status === 'Expired' ? 'Please contact our support department to renew your product.' : 'Please contact support soon to avoid service disruptions.'}
