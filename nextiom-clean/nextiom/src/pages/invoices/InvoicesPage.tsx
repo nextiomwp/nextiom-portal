@@ -493,8 +493,8 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '85px 1fr 100px 100px 85px 85px 115px 75px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                <span>Invoice</span><span>Client</span><span>Total</span><span>Paid</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 75px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
                 <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
               </div>
               {filtered.map(inv => {
@@ -502,11 +502,16 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                 return (
                   <div
                     key={inv.id}
-                    style={{ display: 'grid', gridTemplateColumns: '85px 1fr 100px 100px 85px 85px 115px 75px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
+                    style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 75px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
                   >
                     <span style={{ fontFamily: 'monospace', fontSize: 12, color: c.subText }}>{inv.invoice_no}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.service_name || ''}>
+                        {inv.service_name || '—'}
+                      </div>
+                    </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</div>
                       {inv.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_company}</div>}
