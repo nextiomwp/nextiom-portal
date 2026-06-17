@@ -120,6 +120,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 992);
   const { toast } = useToast();
+  const [selectedNoteLicense, setSelectedNoteLicense] = useState(null);
 
   const bg = c?.bg || (isDark ? '#15161A' : '#f8f8f7');
   const card = c?.card || (isDark ? '#1C1E24' : '#fff');
@@ -825,6 +826,39 @@ export default function MyProductsPage({ user, isDark, c }) {
                           </div>
                         </div>
 
+                        {/* Col 4.5: Documentation / Order Note Button */}
+                        <div style={{ flex: 1.2, minWidth: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedNoteLicense(license);
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 8,
+                              background: `${brand}15`,
+                              border: `1.5px solid ${brand}30`,
+                              color: brand,
+                              cursor: 'pointer',
+                              fontSize: 10.5,
+                              fontWeight: 650,
+                              letterSpacing: '0.2px',
+                              transition: 'all 0.2s',
+                              whiteSpace: 'nowrap'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = `${brand}25`;
+                              e.currentTarget.style.borderColor = brand;
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = `${brand}15`;
+                              e.currentTarget.style.borderColor = `${brand}30`;
+                            }}
+                          >
+                            DOCUMENTATION / ORDER NOTE
+                          </button>
+                        </div>
+
                         {/* Col 5: Status Badge */}
                         <div style={{ flex: 0.8, minWidth: 90, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
                           <div style={{
@@ -1068,6 +1102,103 @@ export default function MyProductsPage({ user, isDark, c }) {
             }}
           >
             {renderDetailPanelContent(detailLicense)}
+          </div>
+        </div>
+      )}
+
+      {/* Documentation & Order Note Modal */}
+      {selectedNoteLicense && (
+        <div
+          onClick={() => setSelectedNoteLicense(null)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1100,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', background: card, borderRadius: 16,
+              width: '100%', maxWidth: 500, padding: 24,
+              border: `1px solid ${border}`, boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+              display: 'flex', flexDirection: 'column', gap: 16
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${border}`, paddingBottom: 12 }}>
+              <h3 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>
+                Documentation & Order Note
+              </h3>
+              <button
+                onClick={() => setSelectedNoteLicense(null)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 28, height: 28 }}
+                onMouseEnter={e => e.currentTarget.style.background = hover}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
+                  Product Name
+                </label>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: text }}>
+                  {selectedNoteLicense.name}
+                </span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
+                  Documentation Link
+                </label>
+                {selectedNoteLicense.product?.documentation ? (
+                  <a
+                    href={selectedNoteLicense.product.documentation.startsWith('http') ? selectedNoteLicense.product.documentation : `https://${selectedNoteLicense.product.documentation}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: brand, fontWeight: 600, textDecoration: 'none', fontSize: 13, wordBreak: 'break-all' }}
+                    onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                    onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                  >
+                    {selectedNoteLicense.product.documentation}
+                  </a>
+                ) : (
+                  <span style={{ fontSize: 13, color: sub, fontStyle: 'italic' }}>No documentation link available.</span>
+                )}
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
+                  Order Note
+                </label>
+                <div style={{
+                  color: text, fontSize: 13, lineHeight: '1.4', whiteSpace: 'pre-wrap',
+                  background: 'rgba(0,0,0,0.15)', border: `1px solid ${border}`, borderRadius: 8, padding: '10px 12px',
+                  maxHeight: 200, overflowY: 'auto'
+                }}>
+                  {selectedNoteLicense.product?.note?.trim() || 'No notes available.'}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <button
+                onClick={() => setSelectedNoteLicense(null)}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, background: panel, border: `1px solid ${border}`,
+                  color: text, cursor: 'pointer', fontSize: 13, fontWeight: 600
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = hover}
+                onMouseLeave={e => e.currentTarget.style.background = panel}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

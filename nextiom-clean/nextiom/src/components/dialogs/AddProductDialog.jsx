@@ -23,7 +23,9 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
     hasRenewal: false,
     renewalPercentage: '',
     licenseKey: '',
-    version: '1.0.0'
+    version: '1.0.0',
+    note: '',
+    documentation: ''
   });
 
   const [saving, setSaving] = useState(false);
@@ -53,7 +55,9 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
         hasRenewal: false,
         renewalPercentage: '',
         licenseKey: generateCustomKey(),
-        version: '1.0.0'
+        version: '1.0.0',
+        note: '',
+        documentation: ''
       });
     }
     prevOpenRef.current = open;
@@ -151,6 +155,8 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
         renewal_price: customForm.hasRenewal ? (parseFloat(getRenewalPrice()) || 0) : (parseFloat(customForm.price) || 0),
         renewal_period_days: customForm.duration === 'monthly' ? 30 : (customForm.duration === 'yearly' ? 365 : null),
         version: customForm.version.trim() || null,
+        note: customForm.note.trim() || null,
+        documentation: customForm.documentation.trim() || null,
         created_at: new Date().toISOString()
       };
 
@@ -431,6 +437,27 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
                   value={customForm.description}
                   onChange={(e) => setCustomForm(p => ({ ...p, description: e.target.value }))}
                   style={{ ...inpS, minHeight: 80 }}
+                />
+              </div>
+
+              <div>
+                <label style={labelS}>Note</label>
+                <textarea
+                  placeholder="Enter order note (optional)"
+                  value={customForm.note}
+                  onChange={(e) => setCustomForm(p => ({ ...p, note: e.target.value }))}
+                  style={{ ...inpS, minHeight: 60 }}
+                />
+              </div>
+
+              <div>
+                <label style={labelS}>Documentation Link</label>
+                <input
+                  type="text"
+                  placeholder="e.g., https://docs.example.com"
+                  value={customForm.documentation}
+                  onChange={(e) => setCustomForm(p => ({ ...p, documentation: e.target.value }))}
+                  style={inpS}
                 />
               </div>
             </div>
