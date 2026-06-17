@@ -181,7 +181,7 @@ export const REQUEST_TYPE = {
 
 export const getCustomers = async () => {
   const { data, error } = await supabase
-    .from('customers')
+    .from('admin_customers_view')
     .select('*')
     .order('created_at', { ascending: false });
 

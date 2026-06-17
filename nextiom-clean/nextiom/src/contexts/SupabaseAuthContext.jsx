@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }) => {
       }
       const { data: profile } = await supabase
         .from('customers')
-        .select('status')
+        .select('id, status')
         .eq('user_id', data.user.id)
         .single();
       if (profile?.status === 'pending') {
@@ -146,11 +146,13 @@ export const AuthProvider = ({ children }) => {
       }
       // Log successful customer login
       addNotification({
-        customer_id: data.user.id,
+        customer_id: profile?.id || null,
         type: 'customer_login',
         title: 'Customer Login',
         message: `${email} signed in to the portal.`,
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error('Failed to insert customer login notification:', err);
+      });
     }
     return { data, error: null };
   };

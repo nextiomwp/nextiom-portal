@@ -86,7 +86,6 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
         emailsResult,
         jobsResult,
         ticketsResult,
-        notificationsResult,
         invoicesResult
       ] = await Promise.allSettled([
         getCustomers(),
@@ -96,7 +95,6 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
         supabase.from('email_requests').select('customer_id, expiry_date, status'),
         supabase.from('jobs').select('customer_id, status'),
         supabase.from('tickets').select('customer_id, status'),
-        supabase.from('notifications').select('customer_id, created_at').order('created_at', { ascending: false }),
         supabase.from('invoices').select('client_email, status, due_date, total, paid_amount')
       ]);
 
@@ -107,7 +105,6 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
       const emailsData = emailsResult.status === 'fulfilled' && emailsResult.value.data ? emailsResult.value.data : [];
       const jobsData = jobsResult.status === 'fulfilled' && jobsResult.value.data ? jobsResult.value.data : [];
       const ticketsData = ticketsResult.status === 'fulfilled' && ticketsResult.value.data ? ticketsResult.value.data : [];
-      const notificationsData = notificationsResult.status === 'fulfilled' && notificationsResult.value.data ? notificationsResult.value.data : [];
       const invoicesData = invoicesResult.status === 'fulfilled' && invoicesResult.value.data ? invoicesResult.value.data : [];
 
       const licensesByCustomer = {};
@@ -116,7 +113,6 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
       const emailsByCustomer = {};
       const jobsByCustomer = {};
       const ticketsByCustomer = {};
-      const lastActivityByCustomer = {};
       const invoicesByEmail = {};
 
       licsData.forEach(lic => {
@@ -153,13 +149,6 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
         if (!t.customer_id) return;
         if (!ticketsByCustomer[t.customer_id]) ticketsByCustomer[t.customer_id] = [];
         ticketsByCustomer[t.customer_id].push(t);
-      });
-
-      notificationsData.forEach(n => {
-        if (!n.customer_id) return;
-        if (!lastActivityByCustomer[n.customer_id]) {
-          lastActivityByCustomer[n.customer_id] = n.created_at;
-        }
       });
 
       invoicesData.forEach(inv => {
@@ -233,7 +222,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
           health = '🟡 Attention';
         }
 
-        const lastActStr = lastActivityByCustomer[cu.id] || null;
+        const lastActStr = cu.last_activity || null;
 
         let ltv = 0;
         customerInvoices.forEach(inv => {
