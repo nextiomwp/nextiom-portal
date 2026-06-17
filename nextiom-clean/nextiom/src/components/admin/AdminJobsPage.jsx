@@ -216,6 +216,35 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
     }
   };
 
+  const renderTextWithLinks = (text) => {
+    if (!text) return '';
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, idx) => {
+      if (part.match(urlRegex)) {
+        const href = part.toLowerCase().startsWith('http') ? part : `https://${part}`;
+        return (
+          <a 
+            key={idx} 
+            href={href} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              color: c.brand || '#E87B35', 
+              textDecoration: 'underline',
+              fontWeight: 'inherit'
+            }}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   // Open sidebar for creating
   const handleOpenCreate = () => {
     setEditingJob(null);
@@ -1594,7 +1623,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
                                                   color: isDone ? c.subText : c.text,
                                                   fontWeight: 500
                                                 }}>
-                                                  {req.title}
+                                                  {renderTextWithLinks(req.title)}
                                                 </span>
                                                 <span style={{ fontSize: 9, color: c.subText }}>
                                                   Type: {req.type === 'upload' ? 'File Upload' : 'Provide Text'} ({req.status})
@@ -1610,7 +1639,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
                                                         View Uploaded File
                                                       </a>
                                                     ) : (
-                                                      <span>Value: "{req.value}"</span>
+                                                      <span>Value: "{renderTextWithLinks(req.value)}"</span>
                                                     )}
                                                   </div>
                                                 )}

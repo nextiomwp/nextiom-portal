@@ -7,6 +7,35 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { getCustomerJobs, getJobSettings, updateJob } from '@/lib/jobs';
 
+const renderTextWithLinks = (text, brandColor) => {
+  if (!text) return '';
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, idx) => {
+    if (part.match(urlRegex)) {
+      const href = part.toLowerCase().startsWith('http') ? part : `https://${part}`;
+      return (
+        <a 
+          key={idx} 
+          href={href} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          onClick={(e) => e.stopPropagation()}
+          style={{ 
+            color: brandColor || '#E87B35', 
+            textDecoration: 'underline',
+            fontWeight: 'inherit'
+          }}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 export default function CustomerJobsPage({ user, c, isDark }) {
   const { toast } = useToast();
   
@@ -548,7 +577,7 @@ function QueueDetailsContainer({
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{req.title}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{renderTextWithLinks(req.title, c.brand)}</div>
                           <div style={{ fontSize: 10, color: c.subText, marginTop: 2 }}>
                             Requirement: {req.type === 'upload' ? 'Upload document/asset' : 'Provide text details'}
                           </div>
@@ -633,7 +662,7 @@ function QueueDetailsContainer({
                           ) : (
                             <div>
                               <div style={{ fontSize: 10, color: c.subText }}>Submitted Text:</div>
-                              <div style={{ fontStyle: 'italic', marginTop: 2, color: c.text }}>"{req.value}"</div>
+                              <div style={{ fontStyle: 'italic', marginTop: 2, color: c.text }}>"{renderTextWithLinks(req.value, c.brand)}"</div>
                             </div>
                           )}
                           
