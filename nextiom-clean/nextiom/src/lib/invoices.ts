@@ -39,6 +39,7 @@ export interface Invoice {
   currency?: InvoiceCurrency
   created_at?: string
   items?: InvoiceItem[]
+  service_name?: string
 }
 
 export interface InvoiceSettings {

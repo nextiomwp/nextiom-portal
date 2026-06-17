@@ -38,6 +38,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [clientAddress, setClientAddress] = useState('')
   const [items, setItems] = useState<InvoiceItem[]>([newItem()])
   const [notes, setNotes] = useState('')
+  const [serviceName, setServiceName] = useState('')
   const [allCustomers, setAllCustomers] = useState<any[]>([])
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -105,6 +106,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         setClientAddress(existing.client_address ?? '')
         setItems(existing.items?.length ? existing.items : [newItem()])
         setNotes(existing.notes ?? '')
+        setServiceName(existing.service_name ?? '')
       } else {
         const no = await generateInvoiceNo()
         setAutoInvoiceNo(no)
@@ -154,6 +156,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
       invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: dueDate, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress, notes, total,
+      service_name: serviceName,
     }
     try {
       if (existing?.id) {
@@ -187,6 +190,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress,
       items: items.filter(i => i.description.trim()), notes, total, settings,
+      service_name: serviceName,
     }))
     window.open('/invoices/print', '_blank')
   }
@@ -260,13 +264,19 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                 <input type="date" style={inp} value={dueDate} onChange={e => setDueDate(e.target.value)} />
               </div>
             </div>
-            <div style={{ width: 160 }}>
-              <label style={lbl}>Status</label>
-              <select style={{ ...inp, cursor: 'pointer' }} value={status} onChange={e => setStatus(e.target.value as Invoice['status'])}>
-                <option value="unpaid">Unpaid</option>
-                <option value="paid">Paid</option>
-                <option value="overdue">Overdue</option>
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12 }}>
+              <div>
+                <label style={lbl}>Status</label>
+                <select style={{ ...inp, cursor: 'pointer' }} value={status} onChange={e => setStatus(e.target.value as Invoice['status'])}>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="paid">Paid</option>
+                  <option value="overdue">Overdue</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Service Name</label>
+                <input style={inp} placeholder="e.g. Web Development, Hosting" value={serviceName} onChange={e => setServiceName(e.target.value)} />
+              </div>
             </div>
           </div>
 

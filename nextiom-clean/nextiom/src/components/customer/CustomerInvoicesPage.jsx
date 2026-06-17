@@ -1080,7 +1080,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
               <tbody>
                 {pageItems.map((inv, i) => {
                   const firstItem = (inv.items || [])[0];
-                  const service = firstItem?.description || inv.invoice_no;
+                  const service = inv.service_name || firstItem?.description || inv.invoice_no;
                   const displayService = service.length > 10 ? service.substring(0, 10) + '...' : service;
                   const balance = (inv.total || 0) - (inv.paid_amount || 0);
                   return (
