@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink } from 'lucide-react'
+import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink, Clock } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl } from '@/lib/invoices'
+import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: 'Paid',    color: '#22c55e', bg: 'rgba(34,197,94,0.13)' },
@@ -213,8 +213,190 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
 }
 
 function dayKey(d: Date) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` }
-function monthKey(d: Date) { return `${d.getFullYear()}-${d.getMonth()}` }
 
+function TimelineDrawer({ invoice, c, isDark, onClose }: {
+  invoice: Invoice; c: any; isDark: boolean; onClose: () => void
+}) {
+  const [payments, setPayments] = useState<InvoicePayment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [active, setActive] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setActive(true), 10)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!invoice.id) return
+    setLoading(true)
+    getInvoicePayments(invoice.id)
+      .then(p => { setPayments(p); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [invoice.id])
+
+  const handleClose = () => {
+    setActive(false)
+    setTimeout(onClose, 250)
+  }
+
+  const events = useMemo(() => {
+    const list: Array<{
+      time: Date
+      title: string
+      desc: string
+      type: 'created' | 'submitted' | 'approved' | 'rejected' | 'info_requested'
+    }> = []
+
+    if (invoice.created_at) {
+      list.push({
+        time: new Date(invoice.created_at),
+        title: 'Invoice Created',
+        desc: `Invoice ${invoice.invoice_no} was created by Admin. Total: ${fmtCurrency(invoice.total, invoice.currency === 'USD' ? 'USD' : 'LKR')}`,
+        type: 'created'
+      })
+    }
+
+    payments.forEach(p => {
+      if (p.created_at) {
+        list.push({
+          time: new Date(p.created_at),
+          title: 'Payment Submitted',
+          desc: `Customer submitted payment of ${fmtCurrency(p.paid_amount, invoice.currency === 'USD' ? 'USD' : 'LKR')} (Ref: ${p.transaction_id}).${p.notes ? ` Notes: "${p.notes}"` : ''}`,
+          type: 'submitted'
+        })
+      }
+
+      if (p.status && p.status !== 'submitted' && p.updated_at) {
+        let title = ''
+        let desc = ''
+        if (p.status === 'approved') {
+          title = 'Payment Approved'
+          desc = `Admin approved the payment of ${fmtCurrency(p.paid_amount, invoice.currency === 'USD' ? 'USD' : 'LKR')}.`
+        } else if (p.status === 'rejected') {
+          title = 'Payment Rejected'
+          desc = `Admin rejected the payment. Reason: "${p.admin_reason || 'No reason provided'}"`
+        } else if (p.status === 'info_requested') {
+          title = 'Info Requested'
+          desc = `Admin requested additional information: "${p.admin_reason}"`
+        }
+
+        list.push({
+          time: new Date(p.updated_at),
+          title,
+          desc,
+          type: p.status
+        })
+      }
+    })
+
+    list.sort((a, b) => a.time.getTime() - b.time.getTime())
+    return list
+  }, [invoice, payments])
+
+  return (
+    <>
+      <div onClick={handleClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', zIndex: 400, opacity: active ? 1 : 0, transition: 'opacity 0.25s ease' }} />
+      <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 440, maxWidth: '100vw', background: c.card, borderLeft: `1px solid ${c.border}`, zIndex: 401, display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 40px rgba(0,0,0,0.25)', transform: active ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+        <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: c.text }}>Invoice Timeline</h3>
+            <p style={{ fontSize: 12, color: c.subText, margin: '2px 0 0' }}>History and payment progression</p>
+          </div>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 6, borderRadius: 8, transition: 'background 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ padding: 24, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ padding: 16, background: isDark ? '#22252C' : '#f8fafc', border: `1px solid ${c.border}`, borderRadius: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Invoice Summary</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: c.subText }}>Invoice No</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.text, fontFamily: 'monospace' }}>{invoice.invoice_no}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: c.subText }}>Status</div>
+                <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: STATUS[invoice.status]?.color, background: STATUS[invoice.status]?.bg, padding: '2px 6px', borderRadius: 4, marginTop: 2 }}>{STATUS[invoice.status]?.label}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: c.subText }}>Client</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: c.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{invoice.client_name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: c.subText }}>Grand Total</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.brand }}>{fmtCurrency(invoice.total, invoice.currency === 'USD' ? 'USD' : 'LKR')}</div>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: '20px 0' }}>
+              {[...Array(3)].map((_, i) => (
+                <div key={i} style={{ display: 'flex', gap: 14 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: c.border }} />
+                    <div style={{ width: 2, flex: 1, background: c.border, minHeight: 40 }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ height: 14, width: '40%', background: c.hover, borderRadius: 4, marginBottom: 6 }} />
+                    <div style={{ height: 12, width: '90%', background: c.hover, borderRadius: 4 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : events.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: c.subText, fontSize: 13, fontStyle: 'italic' }}>
+              No history records found for this invoice.
+            </div>
+          ) : (
+            <div style={{ position: 'relative', paddingLeft: 8 }}>
+              {events.map((ev, idx) => {
+                const isLast = idx === events.length - 1
+                let dotColor = '#94a3b8'
+                let dotBg = isDark ? '#1C1E24' : '#fff'
+                if (ev.type === 'created') {
+                  dotColor = '#6366f1'
+                } else if (ev.type === 'submitted') {
+                  dotColor = '#f59e0b'
+                } else if (ev.type === 'approved') {
+                  dotColor = '#22c55e'
+                } else if (ev.type === 'rejected') {
+                  dotColor = '#ef4444'
+                } else if (ev.type === 'info_requested') {
+                  dotColor = '#a855f7'
+                }
+
+                return (
+                  <div key={idx} style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+                      <div style={{ width: 14, height: 14, borderRadius: '50%', border: `3px solid ${dotColor}`, background: dotBg, zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                      {!isLast && (
+                        <div style={{ width: 2, position: 'absolute', top: 14, bottom: -20, background: c.borderStrong, zIndex: 1 }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                        <h4 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: c.text }}>{ev.title}</h4>
+                        <span style={{ fontSize: 10, color: c.subText, whiteSpace: 'nowrap' }}>
+                          {ev.time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {ev.time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 12, color: c.subText, margin: '6px 0 0', lineHeight: 1.5 }}>{ev.desc}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
 interface CalFilter { mode: 'none' | 'month' | 'day'; year?: number; month?: number; day?: number }
 
 function CalendarWidget({ invoices, calFilter, onDayClick, onMonthClick, c, isDark }: {
@@ -325,6 +507,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
   const [calFilter, setCalFilter] = useState<CalFilter>({ mode: 'none' })
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [reviewInvoice, setReviewInvoice] = useState<Invoice | null>(null)
+  const [timelineInvoice, setTimelineInvoice] = useState<Invoice | null>(null)
 
   useEffect(() => { load() }, [])
 
@@ -493,7 +676,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 75px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                 <span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
                 <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
               </div>
@@ -502,7 +685,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                 return (
                   <div
                     key={inv.id}
-                    style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 75px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
+                    style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
                   >
@@ -535,6 +718,9 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                       <button onClick={() => setDeleteId(inv.id!)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete">
                         <Trash2 size={14} />
                       </button>
+                      <button onClick={() => setTimelineInvoice(inv)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="History / Timeline">
+                        <Clock size={14} />
+                      </button>
                     </div>
                   </div>
                 )
@@ -561,6 +747,15 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
           isDark={isDark}
           onClose={() => setReviewInvoice(null)}
           onChanged={load}
+        />
+      )}
+
+      {timelineInvoice && (
+        <TimelineDrawer
+          invoice={timelineInvoice}
+          c={c}
+          isDark={isDark}
+          onClose={() => setTimelineInvoice(null)}
         />
       )}
 
