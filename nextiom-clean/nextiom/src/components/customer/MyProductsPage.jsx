@@ -447,10 +447,6 @@ export default function MyProductsPage({ user, isDark, c }) {
                 <span style={{ color: text }}>{dp.type || 'Plugin'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Membership Type</span>
-                <span style={{ color: text }}>{licenseTypeLabel}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Service Plan</span>
                 <span style={{ color: text }}>
                   {(dp.license_registration || dp.automatic_updates) ? 'License Registration' :
