@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2 } from 'lucide-react';
+import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle } from 'lucide-react';
 import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, deleteTicket, addNotification, editTicketMessage, deleteTicketMessage } from '@/lib/storage';
 import LinkPreviewCard from '@/components/shared/LinkPreviewCard';
 import { extractUrls } from '@/lib/linkPreview';
@@ -51,6 +51,11 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     code: false
   });
 
+  const [showScreenshotHelper, setShowScreenshotHelper] = useState(false);
+  const [screenshotInput, setScreenshotInput] = useState('');
+  const [screenshots, setScreenshots] = useState([]);
+  const [activePreviewUrl, setActivePreviewUrl] = useState(null);
+
   const isAdmin = true;
 
   useEffect(() => { load(); }, []);
@@ -67,6 +72,9 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       quote: false,
       code: false
     });
+    setScreenshots([]);
+    setScreenshotInput('');
+    setShowScreenshotHelper(false);
   }, [selected?.id, editingMsgId]);
 
   async function load() {
@@ -106,12 +114,19 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   }, []);
 
   async function handleSend() {
-    if (!reply.trim() || !selected) return;
+    const textToSend = reply.trim();
+    if ((!textToSend && screenshots.length === 0) || !selected) return;
     setSending(true);
     try {
-      const msg = await addTicketMessage(selected.id, 'admin', reply.trim());
+      let messageContent = textToSend;
+      if (screenshots.length > 0) {
+        messageContent += '\n\n--- SCREENSHOTS ---\n' + screenshots.map(url => `[Screenshot](${url})`).join('\n');
+      }
+      const msg = await addTicketMessage(selected.id, 'admin', messageContent.trim());
       setMessages(m => [...m, msg]);
       setReply('');
+      setScreenshots([]);
+      setShowScreenshotHelper(false);
       if (replyRef.current) { replyRef.current.innerHTML = ''; }
       // notify customer
       await addNotification({
@@ -124,6 +139,23 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       setTickets(ts => ts.map(t => t.id === selected.id ? { ...t, updated_at: new Date().toISOString(), ticket_messages: [...(t.ticket_messages || []), msg] } : t));
     } catch { toast({ title: 'Failed to send reply', variant: 'destructive' }); }
     finally { setSending(false); }
+  }
+
+  function handleAddScreenshot() {
+    if (!screenshotInput.trim()) return;
+    const url = screenshotInput.trim();
+    try {
+      new URL(url);
+    } catch (e) {
+      toast({ title: 'Invalid URL', description: 'Please enter a valid absolute URL.', variant: 'destructive' });
+      return;
+    }
+    setScreenshots(prev => [...prev, url]);
+    setScreenshotInput('');
+  }
+
+  function handleRemoveScreenshot(indexToRemove) {
+    setScreenshots(prev => prev.filter((_, idx) => idx !== indexToRemove));
   }
 
   async function handleClose() {
@@ -777,7 +809,22 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
 
   function renderMessageText(text, isOnBrand) {
     if (!text) return text;
-    const lines = text.split('\n');
+    
+    let bodyText = text;
+    let screenshotUrls = [];
+    
+    if (text.includes('--- SCREENSHOTS ---')) {
+      const parts = text.split('--- SCREENSHOTS ---');
+      bodyText = parts[0].trim();
+      const screenshotSection = parts[1] || '';
+      const matches = screenshotSection.match(/\[Screenshot\]\((https?:\/\/[^\s)]+)\)/g) || [];
+      screenshotUrls = matches.map(m => {
+        const urlMatch = m.match(/\((https?:\/\/[^\s)]+)\)/);
+        return urlMatch ? urlMatch[1] : null;
+      }).filter(Boolean);
+    }
+    
+    const lines = bodyText.split('\n');
     const out = [];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -812,7 +859,60 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
         }
       }
     }
-    return out;
+    
+    return (
+      <>
+        <div>{out}</div>
+        {screenshotUrls.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: `1.5px solid ${isOnBrand ? 'rgba(255,255,255,0.15)' : c.border}`, paddingTop: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: isOnBrand ? 'rgba(255,255,255,0.7)' : c.subText, display: 'block', marginBottom: 6 }}>
+              Attached Screenshots ({screenshotUrls.length})
+            </span>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {screenshotUrls.map((url, sIdx) => (
+                <div
+                  key={sIdx}
+                  onClick={() => setActivePreviewUrl(url)}
+                  style={{
+                    position: 'relative',
+                    width: 140,
+                    height: 90,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    border: `1px solid ${isOnBrand ? 'rgba(255,255,255,0.2)' : c.border}`,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    background: '#000'
+                  }}
+                  title="Click to view full image"
+                >
+                  <img
+                    src={url}
+                    alt="attachment"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://placehold.co/140x90/222/fff?text=Invalid+Image';
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0)',
+                    transition: 'background 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,0)'}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    );
   }
 
   function isUnread(ticket) {
@@ -1106,6 +1206,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                       setShowLinkModal(true);
                     })}
                     {tbBtn(Clipboard, 'Paste from Clipboard', handlePasteFromClipboard)}
+                    {tbBtn(Image, 'Add Screenshots', () => setShowScreenshotHelper(!showScreenshotHelper), showScreenshotHelper)}
                   </div>
                   <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: '0 0 10px 10px', borderTop: 'none', background: isDark ? '#22252C' : '#f5f5f5' }}>
                     <style>{`
@@ -1167,11 +1268,206 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                       }}
                     />
                   </div>
+                  {showScreenshotHelper && (
+                      <div style={{
+                        marginTop: 8,
+                        padding: 16,
+                        border: `1.5px solid ${c.border}`,
+                        borderRadius: 10,
+                        background: isDark ? '#1C1E24' : '#fafafa',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Add Screenshots (via image links)</span>
+                            <span title="Paste direct image URLs (ending with jpg, png, etc.) from image hosts like Imgur or Snipboard." style={{ cursor: 'help', color: c.subText, display: 'flex', alignItems: 'center' }}>
+                              <HelpCircle size={14} />
+                            </span>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 11, color: c.subText, marginTop: -4 }}>
+                          Paste image links from any image hosting service. Supported formats: JPG, PNG, WEBP, GIF
+                        </span>
+                        
+                        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, border: `1.5px solid ${c.border}`, borderRadius: 8, padding: '6px 10px', background: isDark ? '#22252C' : '#fff' }}>
+                            <Link2 size={14} style={{ color: c.subText }} />
+                            <input
+                              type="text"
+                              placeholder="Paste image link here..."
+                              value={screenshotInput}
+                              onChange={e => setScreenshotInput(e.target.value)}
+                              style={{
+                                flex: 1,
+                                border: 'none',
+                                background: 'transparent',
+                                outline: 'none',
+                                color: c.text,
+                                fontSize: 12
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddScreenshot();
+                                }
+                              }}
+                            />
+                          </div>
+                          <button
+                            onClick={handleAddScreenshot}
+                            style={{
+                              padding: '6px 14px',
+                              background: c.brand,
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            Add Link
+                          </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: c.subText }}>Recommended image hosting services</span>
+                          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <a
+                              href="https://imgur.com/upload"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '6px 12px',
+                                border: `1px solid ${c.border}`,
+                                borderRadius: 8,
+                                background: isDark ? 'rgba(255,255,255,0.03)' : '#f9f9f9',
+                                color: c.text,
+                                fontSize: 12,
+                                textDecoration: 'none',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <div style={{ width: 14, height: 14, borderRadius: 3, background: '#1bb76e', marginRight: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 'bold' }}>I</div>
+                              <span>Imgur</span>
+                              <ExternalLink size={12} style={{ marginLeft: 6, color: c.subText }} />
+                            </a>
+                            <a
+                              href="https://snipboard.io"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '6px 12px',
+                                border: `1px solid ${c.border}`,
+                                borderRadius: 8,
+                                background: isDark ? 'rgba(255,255,255,0.03)' : '#f9f9f9',
+                                color: c.text,
+                                fontSize: 12,
+                                textDecoration: 'none',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <div style={{ width: 14, height: 14, borderRadius: 3, background: '#8A3FFC', marginRight: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 'bold' }}>S</div>
+                              <span>Snipboard.io</span>
+                              <ExternalLink size={12} style={{ marginLeft: 6, color: c.subText }} />
+                            </a>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: c.subText, marginTop: 2 }}>
+                          <span style={{ color: c.brand }}>💡</span>
+                          <span>Tip: Upload your screenshots to Imgur or Snipboard and paste the image link above.</span>
+                        </div>
+
+                        {screenshots.length > 0 && (
+                          <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 12, marginTop: 4 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 8 }}>
+                              Added Images ({screenshots.length})
+                            </span>
+                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                              {screenshots.map((url, idx) => (
+                                  <div
+                                    key={idx}
+                                    style={{
+                                      position: 'relative',
+                                      width: 120,
+                                      height: 80,
+                                      borderRadius: 8,
+                                      border: `1.5px solid ${c.border}`,
+                                      overflow: 'hidden',
+                                      background: '#000',
+                                      cursor: 'pointer'
+                                    }}
+                                    onClick={() => setActivePreviewUrl(url)}
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`screenshot-${idx}`}
+                                      style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover'
+                                      }}
+                                      onError={(e) => {
+                                        e.currentTarget.src = 'https://placehold.co/120x80/222/fff?text=Invalid+Image';
+                                      }}
+                                    />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveScreenshot(idx);
+                                      }}
+                                      style={{
+                                        position: 'absolute',
+                                        top: 4,
+                                        right: 4,
+                                        background: 'rgba(0,0,0,0.6)',
+                                        color: '#fff',
+                                        border: 'none',
+                                        borderRadius: '50%',
+                                        width: 20,
+                                        height: 20,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.2s'
+                                      }}
+                                      title="Remove screenshot"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                    <div style={{
+                                      position: 'absolute',
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      background: 'rgba(0,0,0,0.5)',
+                                      color: '#fff',
+                                      fontSize: 10,
+                                      padding: '2px 0',
+                                      textAlign: 'center'
+                                    }}>
+                                      <span>Click to view</span>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
                 <button
                   onClick={handleSend}
-                  disabled={sending || !reply.trim()}
-                  style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: sending || !reply.trim() ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: sending || !reply.trim() ? 0.6 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
+                  disabled={sending || (!reply.trim() && screenshots.length === 0)}
+                  style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: sending || (!reply.trim() && screenshots.length === 0) ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, opacity: sending || (!reply.trim() && screenshots.length === 0) ? 0.6 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 }}
                 >
                   <Send size={14} /> Submit
                 </button>
@@ -1226,6 +1522,43 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
               <button onClick={() => setShowLinkModal(false)} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
               <button onClick={handleInsertLink} disabled={!linkUrl.trim() || !linkText.trim()} style={{ padding: '8px 16px', border: 'none', borderRadius: 8, background: c.brand, color: '#fff', cursor: !linkUrl.trim() || !linkText.trim() ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', opacity: !linkUrl.trim() || !linkText.trim() ? 0.6 : 1 }}>Insert</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activePreviewUrl && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', padding: 24 }}
+          onClick={() => setActivePreviewUrl(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ position: 'relative', background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, width: '90%', maxWidth: 800, boxShadow: '0 24px 64px rgba(0,0,0,0.4)', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: `1px solid ${c.border}` }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Screenshot Preview</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <a
+                  href={activePreviewUrl}
+                  download="screenshot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: c.brand, color: '#fff', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, textDecoration: 'none', cursor: 'pointer' }}
+                >
+                  Download
+                </a>
+                <button onClick={() => setActivePreviewUrl(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 6 }}>
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div style={{ padding: 20, display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#090a0f', maxHeight: '70vh', overflow: 'auto' }}>
+              <img
+                src={activePreviewUrl}
+                alt="Full Preview"
+                style={{ maxWidth: '100%', maxHeight: '60vh', objectFit: 'contain', borderRadius: 8 }}
+              />
             </div>
           </div>
         </div>

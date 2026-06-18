@@ -272,7 +272,8 @@ export default function InvoicePrintPage() {
                   <div>Name: {s.account_name}</div>
                   <div>Account number: {s.account_no}</div>
                   <div>Bank: {s.bank_name} </div>
-                  <div> Branch: {s.bank_branch}</div>
+                  <div> Branch: Gampaha</div>
+                  <div> Swift Code : CCEYLKLX </div>
                 </div>
                 {s.account_name && (
                   <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 6 }}>
