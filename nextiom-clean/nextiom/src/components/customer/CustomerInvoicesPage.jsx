@@ -728,7 +728,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
           <div>
             <div style={{ marginBottom: 14 }}>
               <label style={label}>Transaction ID / Reference *</label>
-              <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. TXN123456" />
+              <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. Bank/Paypal" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
