@@ -524,6 +524,29 @@ export default function MyProductsPage({ user, isDark, c }) {
                 <span style={{ color: sub }}>Service Plan</span>
                 <span style={{ color: text, fontWeight: 500 }}>{lic.membership_type || licenseTypeLabel}</span>
               </div>
+              {lic.domain && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
+                  <span style={{ color: sub }}>Domain</span>
+                  <span style={{ color: text, fontWeight: 500 }}>{lic.domain}</span>
+                </div>
+              )}
+              {(lic.notes?.trim() || dp.note?.trim() || dp.description?.trim()) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                  <span style={{ color: sub, fontSize: 12.5 }}>Description</span>
+                  <div style={{
+                    color: text,
+                    fontSize: 12,
+                    lineHeight: '1.4',
+                    whiteSpace: 'pre-wrap',
+                    background: 'rgba(0,0,0,0.15)',
+                    border: `1px solid ${border}`,
+                    borderRadius: 8,
+                    padding: '8px 10px'
+                  }}>
+                    {lic.notes?.trim() || dp.note?.trim() || dp.description?.trim()}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -817,7 +840,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                               {textLabel ? textLabel : <theme.icon size={20} />}
                             </div>
                             <div>
-                              <h4 style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>{license.name}</h4>
+                              <h4 style={{ color: text, fontSize: 12, fontWeight: 700, margin: 0 }}>{license.name}</h4>
                               <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>{dp.type || 'Plugin'} • {licenseTypeLabel}</p>
                             </div>
                           </div>
