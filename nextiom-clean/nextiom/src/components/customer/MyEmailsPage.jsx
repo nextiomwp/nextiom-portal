@@ -229,7 +229,6 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
                 ) : '—' },
                 { label: 'Auto Renew', value: viewEmail.auto_renew ? 'Enabled' : 'Disabled' },
                 { label: 'Notes', value: viewEmail.notes || '—' },
-                { label: 'Created', value: viewEmail.created_at ? new Date(viewEmail.created_at).toLocaleString() : '—' },
               ].map(({ label, value }) => (
                 <div key={label}>
                   <div style={{ fontSize: 11, color: subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>{label}</div>

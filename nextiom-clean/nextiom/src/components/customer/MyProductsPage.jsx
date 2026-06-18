@@ -442,7 +442,7 @@ export default function MyProductsPage({ user, isDark, c }) {
               <span style={{ fontSize: 11.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
             </div>
             {(() => {
-              const activeKey = lic.license_key || dp.license_key;
+              const activeKey = lic.license_key;
               return (
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -671,13 +671,13 @@ export default function MyProductsPage({ user, isDark, c }) {
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
-                    <span>Licenses</span>
+                    <span>License Registration</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
-                    <span>Automatic update</span>
+                    <span>Auto Updates</span>
                   </div>
                 </>
               )}
@@ -686,16 +686,26 @@ export default function MyProductsPage({ user, isDark, c }) {
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
-                  <span>Manual Update</span>
+                  <span>Manual Updates</span>
                 </div>
               )}
               {!dp.license_registration && !dp.automatic_updates && !dp.manual_updates && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span>One time purchase</span>
-                </div>
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    <span>No Updates</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    <span>No license</span>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -950,7 +960,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                               {(() => {
-                                const activeKey = license.license_key || dp.license_key;
+                                const activeKey = license.license_key;
                                 return (
                                   <div>
                                     <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
@@ -1103,7 +1113,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <span style={{ color: sub }}>License Key</span>
                               {(() => {
-                                const activeKey = license.license_key || dp.license_key;
+                                const activeKey = license.license_key;
                                 return (
                                   <span style={{ color: text, fontFamily: 'monospace', fontSize: 11.5 }}>
                                     {activeKey ? `${activeKey.substring(0, 10)}...` : '—'}
