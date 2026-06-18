@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download, Layers, Shield, RefreshCw, Calendar, Key, FileText, CheckCircle2, Clock, BadgeCheck, ExternalLink, Copy } from 'lucide-react';
+import { X, Download, Layers, Shield, RefreshCw, Calendar, Key, FileText, CheckCircle2, Clock, BadgeCheck, ExternalLink, Copy, Globe } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function ViewAssignedProductDialog({ open, onOpenChange, license, product, customer, c }) {
@@ -154,7 +154,7 @@ export default function ViewAssignedProductDialog({ open, onOpenChange, license,
                 <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Assignment Notes / Description</span>
               </div>
               <p style={{ fontSize: 13, color: text, margin: 0, lineHeight: 1.4, whiteSpace: 'pre-line' }}>
-                {license.notes || <span style={{ color: subText, fontStyle: 'italic' }}>No notes or custom descriptions set for this assignment.</span>}
+                {license.notes || product.note || product.description || <span style={{ color: subText, fontStyle: 'italic' }}>No notes or custom descriptions set for this assignment.</span>}
               </p>
             </div>
           </div>
@@ -182,6 +182,16 @@ export default function ViewAssignedProductDialog({ open, onOpenChange, license,
                 <span style={{ fontSize: 12, color: subText, display: 'flex', alignItems: 'center', gap: 6 }}><RefreshCw size={14} /> Version</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: text }}>{license.version || '1.0.0'}</span>
               </div>
+
+              {/* Domain (If exists) */}
+              {license.domain && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: subText, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Globe size={14} /> Domain
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: text }}>{license.domain}</span>
+                </div>
+              )}
 
               {/* License Key (If exists) */}
               {license.license_key && (

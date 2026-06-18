@@ -530,7 +530,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                   <span style={{ color: text, fontWeight: 500 }}>{lic.domain}</span>
                 </div>
               )}
-              {(lic.notes?.trim() || dp.note?.trim() || dp.description?.trim()) && (
+              {dp.description?.trim() && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
                   <span style={{ color: sub, fontSize: 12.5 }}>Description</span>
                   <div style={{
@@ -543,7 +543,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                     borderRadius: 8,
                     padding: '8px 10px'
                   }}>
-                    {lic.notes?.trim() || dp.note?.trim() || dp.description?.trim()}
+                    {dp.description.trim()}
                   </div>
                 </div>
               )}
@@ -559,10 +559,11 @@ export default function MyProductsPage({ user, isDark, c }) {
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Main Product File Download */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Main Product File</p>
-                    <p style={{ color: sub, fontSize: 11, margin: '1px 0 0' }}>Version {lic.version || dp.version || '1.0.0'}</p>
+                    <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>Version {dp.version || lic.version || '1.0.0'}</p>
                   </div>
                   <button
                     onClick={() => handleDownload(lic)}
@@ -586,6 +587,71 @@ export default function MyProductsPage({ user, isDark, c }) {
                     <span>Download Product</span>
                   </button>
                 </div>
+
+                {/* Documentation / Order Note Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px dashed ${border}`, paddingTop: 10 }}>
+                  <div>
+                    <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Documentation / Order Note</p>
+                    <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>Help resources & guides</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedNoteLicense(lic)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '6px 12px', borderRadius: 8,
+                      background: `${brand}15`, border: `1.5px solid ${brand}30`,
+                      color: brand, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = `${brand}25`;
+                      e.currentTarget.style.borderColor = brand;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = `${brand}15`;
+                      e.currentTarget.style.borderColor = `${brand}30`;
+                    }}
+                  >
+                    <FileText size={13} />
+                    <span>View Details</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isVirtual && (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
+                <FileText size={14} style={{ color: brand }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Resources</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Documentation / Order Note</p>
+                  <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>Help resources & guides</p>
+                </div>
+                <button
+                  onClick={() => setSelectedNoteLicense(lic)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 12px', borderRadius: 8,
+                    background: `${brand}15`, border: `1.5px solid ${brand}30`,
+                    color: brand, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = `${brand}25`;
+                    e.currentTarget.style.borderColor = brand;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = `${brand}15`;
+                    e.currentTarget.style.borderColor = `${brand}30`;
+                  }}
+                >
+                  <FileText size={13} />
+                  <span>View Details</span>
+                </button>
               </div>
             </div>
           )}
@@ -851,45 +917,12 @@ export default function MyProductsPage({ user, isDark, c }) {
                             <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Purchase Price</p>
                           </div>
 
-                          {/* Col 3: Renewal Price with stacked button */}
-                          <div style={{ flex: 1.6, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedNoteLicense(license);
-                                }}
-                                style={{
-                                  padding: '6px 12px',
-                                  borderRadius: 8,
-                                  background: `${brand}15`,
-                                  border: `1.5px solid ${brand}30`,
-                                  color: brand,
-                                  cursor: 'pointer',
-                                  fontSize: 10,
-                                  fontWeight: 650,
-                                  letterSpacing: '0.2px',
-                                  transition: 'all 0.2s',
-                                  whiteSpace: 'nowrap'
-                                }}
-                                onMouseEnter={e => {
-                                  e.currentTarget.style.background = `${brand}25`;
-                                  e.currentTarget.style.borderColor = brand;
-                                }}
-                                onMouseLeave={e => {
-                                  e.currentTarget.style.background = `${brand}15`;
-                                  e.currentTarget.style.borderColor = `${brand}30`;
-                                }}
-                              >
-                                DOCUMENTATION / ORDER NOTE
-                              </button>
-                            </div>
-                            <div>
-                              <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
-                                {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
-                              </p>
-                              <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Renewal Price</p>
-                            </div>
+                          {/* Col 3: Renewal Price */}
+                          <div style={{ flex: 1.6, minWidth: 160 }}>
+                            <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
+                              {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
+                            </p>
+                            <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Renewal Price</p>
                           </div>
 
                           {/* Col 4: Key & Expiry with stacked Status Badge */}
@@ -1170,69 +1203,8 @@ export default function MyProductsPage({ user, isDark, c }) {
               top: 80,
               maxHeight: 'calc(100vh - 120px)',
             }}>
-              {/* Sidebar Header */}
-              <div style={{ padding: '24px 24px 12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {(() => {
-                    const theme = getProductTheme(detailLicense.name);
-                    const Icon = theme.icon;
-                    let textLabel = null;
-                    const nameLower = (detailLicense.name || '').toLowerCase();
-                    if (nameLower.includes('woocommerce')) textLabel = 'Woo';
-                    else if (nameLower.includes('astra')) textLabel = 'A';
-                    else if (nameLower.includes('discount')) textLabel = 'D';
-                    return (
-                      <div style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        backgroundColor: theme.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#fff',
-                        fontWeight: 700,
-                        fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
-                        flexShrink: 0
-                      }}>
-                        {textLabel ? textLabel : <Icon size={20} />}
-                      </div>
-                    );
-                  })()}
-                  <div>
-                    <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {detailLicense.name}
-                    </h3>
-                    <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>
-                      {detailLicense.product?.type || 'Plugin'}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setDetailLicense(null)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: sub,
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '50%',
-                    width: 28,
-                    height: 28,
-                    transition: 'background 0.15s'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = hover}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1 }}>
-                {renderDetailPanelContent(detailLicense, false)}
+              <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1, paddingTop: 24 }}>
+                {renderDetailPanelContent(detailLicense, true)}
               </div>
             </div>
           )}
