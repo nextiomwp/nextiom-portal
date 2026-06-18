@@ -276,13 +276,13 @@ export default function MyProductsPage({ user, isDark, c }) {
   const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
-    if (detailLicense && !isMobile) {
+    if (detailLicense) {
       const existsInSorted = sorted.some(l => l.id === detailLicense.id);
       if (!existsInSorted) {
         setDetailLicense(null);
       }
     }
-  }, [search, statusFilter, licenses, isMobile]);
+  }, [search, statusFilter, licenses]);
 
   if (loading) {
     return (
@@ -390,14 +390,6 @@ export default function MyProductsPage({ user, isDark, c }) {
                 <span style={{ fontSize: 12.5, fontWeight: 500 }}>
                   {badgeCfg.expiryText}
                 </span>
-                <button
-                  onClick={() => setDetailLicense(null)}
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 26, height: 26 }}
-                  onMouseEnter={e => e.currentTarget.style.background = hover}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <X size={16} />
-                </button>
               </div>
             );
           })()}
@@ -681,11 +673,8 @@ export default function MyProductsPage({ user, isDark, c }) {
   };
 
   return (
-    <div style={{ padding: '0 0 8px' }}>
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-        
-        {/* Left Side (Products list) */}
-        <div style={{ flex: 1.5, minWidth: 320 }}>
+    <div style={{ padding: '0 0 8px', display: 'flex', justifyContent: 'center', width: '100%' }}>
+      <div style={{ width: '100%', maxWidth: 1000 }}>
           {/* Header */}
           <div style={{ marginBottom: 24 }}>
             <h2 style={{ color: text, fontSize: 24, fontWeight: 700, margin: 0 }}>My Products</h2>
@@ -1156,49 +1145,101 @@ export default function MyProductsPage({ user, isDark, c }) {
           )}
         </div>
 
-        {/* Right Details Sidebar (Desktop) */}
-        {!isMobile && detailLicense && (
-          <div 
-            className="no-scrollbar"
-            style={{
-              width: 420,
-              flexShrink: 0,
-              background: card,
-              border: `1px solid ${border}`,
-              borderRadius: 12,
-              position: 'sticky',
-              top: 24,
-              maxHeight: 'calc(100vh - 150px)',
-              overflowY: 'auto',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-            }}
-          >
-            {renderDetailPanelContent(detailLicense)}
-          </div>
-        )}
-      </div>
-
-      {/* Mobile Modal Overlay */}
-      {isMobile && detailLicense && (
+      {/* Product Details Modal Overlay (Unified for Desktop and Mobile) */}
+      {detailLicense && (
         <div
           onClick={() => setDetailLicense(null)}
           style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 16, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)'
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)'
           }}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
-              position: 'relative', background: card, borderRadius: 16,
-              width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto',
-              border: `1px solid ${border}`, boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+              position: 'relative',
+              background: card,
+              borderRadius: 24,
+              width: '100%',
+              maxWidth: 540,
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              border: `1px solid ${border}`,
+              boxShadow: '0 24px 80px rgba(0,0,0,0.35)'
             }}
           >
-            {renderDetailPanelContent(detailLicense)}
+            {/* Modal Header */}
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {(() => {
+                  const theme = getProductTheme(detailLicense.name);
+                  const Icon = theme.icon;
+                  let textLabel = null;
+                  const nameLower = (detailLicense.name || '').toLowerCase();
+                  if (nameLower.includes('woocommerce')) textLabel = 'Woo';
+                  else if (nameLower.includes('astra')) textLabel = 'A';
+                  else if (nameLower.includes('discount')) textLabel = 'D';
+                  return (
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      backgroundColor: theme.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
+                      flexShrink: 0
+                    }}>
+                      {textLabel ? textLabel : <Icon size={20} />}
+                    </div>
+                  );
+                })()}
+                <div>
+                  <h3 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>
+                    {detailLicense.name}
+                  </h3>
+                  <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>
+                    {detailLicense.product?.type || 'Plugin'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setDetailLicense(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: sub,
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%',
+                  width: 28,
+                  height: 28,
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = hover}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1 }}>
+              {renderDetailPanelContent(detailLicense)}
+            </div>
           </div>
         </div>
       )}
