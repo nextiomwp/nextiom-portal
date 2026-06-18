@@ -124,7 +124,8 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     status: 'Active',
     startDate: new Date().toISOString().split('T')[0],
     expiryDate: '',
-    notes: ''
+    notes: '',
+    domain: '',
   });
 
   const [saving, setSaving] = useState(false);
@@ -500,6 +501,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         download_url: customForm.downloadUrl || null,
         version: '1.0.0',
         notes: assignForm.notes || null,
+        domain: assignForm.domain?.trim() || null,
         price: parseFloat(customForm.price) || 0,
         renewal_price: customForm.hasRenewal ? (parseFloat(getRenewalPrice()) || 0) : (parseFloat(customForm.price) || 0),
         renewal_date: processed.expiry_date || null,
@@ -1694,6 +1696,18 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                         </div>
                       )}
                     </div>
+                  </div>
+
+                  {/* Domain */}
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={labelS}>Domain <span style={{ fontWeight: 400, color: subText, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>(Optional)</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. example.com or https://example.com"
+                      value={assignForm.domain}
+                      onChange={(e) => setAssignForm(p => ({ ...p, domain: e.target.value }))}
+                      style={inpS}
+                    />
                   </div>
 
                   {/* Notes */}

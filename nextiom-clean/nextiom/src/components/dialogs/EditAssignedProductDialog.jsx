@@ -88,6 +88,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
     expiryDate: '',
     downloadUrl: '',
     licenseKey: '',
+    domain: '',
     version: '1.0.0',
     status: 'Active',
     price: '0.00',
@@ -139,6 +140,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         expiryDate: license.expiry_date ? license.expiry_date.split('T')[0] : '',
         downloadUrl: license.download_url !== undefined && license.download_url !== null ? license.download_url : (product.download_url || ''),
         licenseKey: license.license_key || '',
+        domain: license.domain || '',
         version: license.version || '1.0.0',
         status: license.status || 'Active',
         price: basePrice,
@@ -263,6 +265,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         expiry_date: processed.expiry_date,
         download_url: assignForm.downloadUrl || null,
         license_key: processed.license_key,
+        domain: assignForm.domain?.trim() || null,
         version: assignForm.version || null,
         status: assignForm.status,
         notes: assignForm.notes || null, // Description saves to notes
@@ -645,6 +648,17 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                     </button>
                   )}
                 </div>
+              </div>
+
+              <div>
+                <label style={labelS}>Domain <span style={{ fontWeight: 400, color: subText, textTransform: 'none', letterSpacing: 0, fontSize: 11 }}>(Optional)</span></label>
+                <input
+                  type="text"
+                  placeholder="e.g. example.com or https://example.com"
+                  value={assignForm.domain}
+                  onChange={(e) => setAssignForm(p => ({ ...p, domain: e.target.value }))}
+                  style={inpS}
+                />
               </div>
 
               {customForm.category === 'digital' && (

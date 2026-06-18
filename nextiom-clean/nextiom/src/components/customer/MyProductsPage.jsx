@@ -548,12 +548,12 @@ export default function MyProductsPage({ user, isDark, c }) {
           </div>
 
           {/* Description Section */}
-          {(isVirtual || (!isVirtual && dp.description?.trim())) && (
+          {!isVirtual && dp.description?.trim() && (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
                 <FileText size={14} style={{ color: brand }} />
                 <span style={{ fontSize: 12, fontWeight: 600, color: text }}>
-                  {isVirtual ? 'Service Details' : 'Description'}
+                  Description
                 </span>
               </div>
               <div style={{
@@ -566,7 +566,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                 borderRadius: 8,
                 padding: '8px 10px'
               }}>
-                {dp.description?.trim() || '—'}
+                {dp.description.trim()}
               </div>
             </div>
           )}
