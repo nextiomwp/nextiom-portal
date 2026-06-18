@@ -1081,7 +1081,6 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 {pageItems.map((inv, i) => {
                   const firstItem = (inv.items || [])[0];
                   const service = inv.service_name || firstItem?.description || inv.invoice_no;
-                  const displayService = service.length > 10 ? service.substring(0, 10) + '...' : service;
                   const balance = (inv.total || 0) - (inv.paid_amount || 0);
                   return (
                     <tr key={inv.id}
@@ -1093,22 +1092,27 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       <td style={tdS}>
                         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: isDark ? '#93c5fd' : '#2563eb' }}>{inv.invoice_no}</span>
                       </td>
-                      <td style={tdS}>
+                      <td style={{ ...tdS, whiteSpace: 'normal' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ color: c.brand }}>{svcIcon('hosting', 14)}</span>
-                          <div style={{ minWidth: 0 }}>
+                          <div style={{ minWidth: 150, maxWidth: 280, flex: 1 }}>
                             <div
                               title={service}
                               style={{
                                 fontSize: 13,
                                 fontWeight: 500,
                                 color: c.text,
-                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
                                 overflow: 'hidden',
-                                whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                lineHeight: '1.4',
                               }}
                             >
-                              {displayService}
+                              {service}
                             </div>
                           </div>
                         </div>
