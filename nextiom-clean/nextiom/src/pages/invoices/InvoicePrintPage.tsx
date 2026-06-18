@@ -160,7 +160,7 @@ export default function InvoicePrintPage() {
               <div style={{ fontSize: 11, color: '#111', lineHeight: 1.6 }}>
                 <div><strong style={{ fontWeight: 700 }}>PHONE:</strong> {getDisplayPhone(s?.phone)}</div>
                 <div><strong style={{ fontWeight: 700 }}>E-MAIL:</strong> <a href={`mailto:${getDisplayEmail(s?.website)}`} style={{ color: '#0066cc', textDecoration: 'underline' }}>{getDisplayEmail(s?.website)}</a></div>
-                <div><strong style={{ fontWeight: 700 }}>WEB:</strong> <span style={{ color: '#6b7280' }}>{s?.website ?? 'https://nextiom.com/'}</span></div>
+                <div><strong style={{ fontWeight: 700 }}>WEB:</strong> <a href={s?.website ?? 'https://nextiom.com/'} target="_blank" rel="noopener noreferrer" style={{ color: '#0066cc', textDecoration: 'underline' }}>{s?.website ?? 'https://nextiom.com/'}</a></div>
               </div>
             </div>
 
