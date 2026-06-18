@@ -145,15 +145,28 @@ const getStatusBadgeConfig = (status, validity, lic, lt) => {
     };
   }
 
-  // All other states (Expired, Disabled, Suspended) get red badge styling
+  if (s === 'disabled') {
+    return {
+      bg: 'rgba(245,158,11,0.08)',
+      border: 'rgba(245,158,11,0.15)',
+      color: '#f59e0b',
+      text: 'DISABLED',
+      detailText: 'Expiring Soon',
+      icon: <AlertCircle size={15} />,
+      expiryText: 'Disabled',
+      standingBg: 'rgba(245,158,11,0.05)',
+      standingBorder: 'rgba(245,158,11,0.1)',
+      standingColor: '#f59e0b',
+      standingTitle: 'Your product expires soon.',
+      standingDesc: 'Please contact support soon to avoid service disruptions.'
+    };
+  }
+
+  // All other states (Expired, Suspended) get red badge styling
   let label = 'EXPIRED';
   let detailLabel = 'Expired License';
   let standingTitle = 'Your product is expired.';
-  if (s === 'disabled') {
-    label = 'DISABLED';
-    detailLabel = 'Disabled License';
-    standingTitle = 'Your product is disabled.';
-  } else if (s === 'suspended') {
+  if (s === 'suspended') {
     label = 'SUSPENDED';
     detailLabel = 'Suspended License';
     standingTitle = 'Your product is suspended.';
@@ -317,14 +330,12 @@ export default function MyProductsPage({ user, isDark, c }) {
     );
   };
 
-  const renderDetailPanelContent = (lic) => {
-    if (!lic) return null;
+  const renderDetailPanelContent = (lic, showClose = false) => {
     const dp = lic.product || {};
     const lt = lic.license_type || dp.license_type || 'one_time';
     const validity = getValidity(lic);
     const status = getLicenseStatus(lic);
     const theme = getProductTheme(lic.name);
-    const Icon = theme.icon;
 
     const licenseTypeLabel = 
       lt === 'lifetime' ? 'Lifetime License' :
@@ -342,37 +353,8 @@ export default function MyProductsPage({ user, isDark, c }) {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* Detail Panel Header
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: 20, borderBottom: `1px solid ${border}` }}>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 10,
-              backgroundColor: theme.color, display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700,
-              fontSize: textLabel ? (textLabel.length > 1 ? 14 : 20) : 18,
-              flexShrink: 0
-            }}>
-              {textLabel ? textLabel : <Icon size={24} />}
-            </div>
-            <div>
-              <h3 style={{ color: text, fontSize: 18, fontWeight: 700, margin: 0 }}>{lic.name}</h3>
-              <p style={{ color: sub, fontSize: 13, margin: '2px 0 0' }}>{dp.type || 'Plugin'} • {licenseTypeLabel}</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setDetailLicense(null)}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 28, height: 28 }}
-            onMouseEnter={e => e.currentTarget.style.background = hover}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            <X size={18} />
-          </button>
-        </div> */}
-
-        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '0 24px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Active Status Alert Banner */}
-          
           {(() => {
             const badgeCfg = getStatusBadgeConfig(status, validity, lic, lt);
             return (
@@ -387,9 +369,31 @@ export default function MyProductsPage({ user, isDark, c }) {
                   {badgeCfg.icon}
                   <span>{badgeCfg.detailText}</span>
                 </div>
-                <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-                  {badgeCfg.expiryText}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>
+                    {badgeCfg.expiryText}
+                  </span>
+                  {showClose && (
+                    <button
+                      onClick={() => setDetailLicense(null)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: badgeCfg.color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0,
+                        opacity: 0.8
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                      onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })()}
@@ -437,33 +441,38 @@ export default function MyProductsPage({ user, isDark, c }) {
               <Key size={14} style={{ color: brand }} />
               <span style={{ fontSize: 11.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
             </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '6px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.2)',
-              border: `1px solid ${border}`,
-            }}>
-              <span style={{ color: text, fontSize: 12.5, fontFamily: 'monospace', letterSpacing: 0.5 }}>
-                {lic.license_key || '—'}
-              </span>
-              {lic.license_key && (
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(lic.license_key);
-                    setCopiedKey(true);
-                    setTimeout(() => setCopiedKey(false), 2000);
-                    toast({ title: 'License key copied to clipboard' });
-                  }}
-                  style={{
-                    background: `${brand}18`, border: `1px solid ${brand}30`,
-                    color: brand, padding: '4px 10px', borderRadius: 6, display: 'flex',
-                    alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11.5, fontWeight: 500,
-                  }}
-                >
-                  {copiedKey ? <Check size={12} /> : <Copy size={12} />}
-                  <span>{copiedKey ? 'Copied' : 'Copy'}</span>
-                </button>
-              )}
-            </div>
+            {(() => {
+              const activeKey = lic.license_key || dp.license_key;
+              return (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '6px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.2)',
+                  border: `1px solid ${border}`,
+                }}>
+                  <span style={{ color: text, fontSize: 12.5, fontFamily: 'monospace', letterSpacing: 0.5 }}>
+                    {activeKey || '—'}
+                  </span>
+                  {activeKey && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(activeKey);
+                        setCopiedKey(true);
+                        setTimeout(() => setCopiedKey(false), 2000);
+                        toast({ title: 'License key copied to clipboard' });
+                      }}
+                      style={{
+                        background: `${brand}18`, border: `1px solid ${brand}30`,
+                        color: brand, padding: '4px 10px', borderRadius: 6, display: 'flex',
+                        alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11.5, fontWeight: 500,
+                      }}
+                    >
+                      {copiedKey ? <Check size={12} /> : <Copy size={12} />}
+                      <span>{copiedKey ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Subscription Details */}
@@ -496,72 +505,27 @@ export default function MyProductsPage({ user, isDark, c }) {
             </div>
           </div>
 
-          {/* Product Information */}
+          {/* Product Information Section */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
               <Package size={14} style={{ color: brand }} />
               <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Product Information</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Product Name</span>
-                <span style={{ color: text, fontWeight: 600 }}>{lic.name}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: 12.5 }}>
+                <span style={{ color: sub, flexShrink: 0 }}>Product Name</span>
+                <span style={{ color: text, fontWeight: 600, textAlign: 'right', paddingLeft: 12 }}>{lic.name}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Product Type</span>
-                <span style={{ color: text }}>{dp.type || 'Plugin'}</span>
+                <span style={{ color: text, fontWeight: 500 }}>{dp.type || 'Plugin'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Service Plan</span>
-                <span style={{ color: text }}>
-                  {(dp.license_registration && dp.automatic_updates) ? 'License Registration + Automatic Updates' :
-                   dp.manual_updates ? 'Manual Updates (No License Required)' : 'One-Time Purchase'}
-                </span>
+                <span style={{ color: text, fontWeight: 500 }}>{lic.membership_type || licenseTypeLabel}</span>
               </div>
-              {lic.domain && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: sub }}>
-                    <Globe size={11} />
-                    Domain
-                  </span>
-                  <a
-                    href={lic.domain.startsWith('http') ? lic.domain : `https://${lic.domain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: brand, fontWeight: 600, textDecoration: 'none', wordBreak: 'break-all', textAlign: 'right', maxWidth: '60%' }}
-                    onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                    onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
-                  >
-                    {lic.domain}
-                  </a>
-                </div>
-              )}
             </div>
           </div>
-
-          {/* Description Section */}
-          {!isVirtual && dp.description?.trim() && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
-                <FileText size={14} style={{ color: brand }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: text }}>
-                  Description
-                </span>
-              </div>
-              <div style={{
-                color: text,
-                fontSize: 12.5,
-                lineHeight: '1.4',
-                whiteSpace: 'pre-wrap',
-                background: 'rgba(0,0,0,0.15)',
-                border: `1px solid ${border}`,
-                borderRadius: 8,
-                padding: '8px 10px'
-              }}>
-                {dp.description.trim()}
-              </div>
-            </div>
-          )}
 
           {/* Downloads section - Hidden for Virtual services, documentation removed */}
           {!isVirtual && (
@@ -581,12 +545,21 @@ export default function MyProductsPage({ user, isDark, c }) {
                     onClick={() => handleDownload(lic)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '5px 10px', borderRadius: 6,
-                      background: `${brand}18`, border: `1px solid ${brand}30`,
-                      color: brand, cursor: 'pointer', fontSize: 11.5, fontWeight: 600
+                      padding: '6px 12px', borderRadius: 8,
+                      background: `${brand}15`, border: `1.5px solid ${brand}30`,
+                      color: brand, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = `${brand}25`;
+                      e.currentTarget.style.borderColor = brand;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = `${brand}15`;
+                      e.currentTarget.style.borderColor = `${brand}30`;
                     }}
                   >
-                    <Download size={12} />
+                    <Download size={13} />
                     <span>Download Product</span>
                   </button>
                 </div>
@@ -605,13 +578,13 @@ export default function MyProductsPage({ user, isDark, c }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {dp.license_registration && dp.automatic_updates && (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                     <span>Licenses</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
@@ -620,7 +593,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                 </>
               )}
               {dp.manual_updates && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
@@ -628,7 +601,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                 </div>
               )}
               {!dp.license_registration && !dp.automatic_updates && !dp.manual_updates && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: panel, border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
@@ -674,479 +647,576 @@ export default function MyProductsPage({ user, isDark, c }) {
 
   return (
     <div style={{ padding: '0 0 8px', display: 'flex', justifyContent: 'center', width: '100%' }}>
-      <div style={{ width: '100%', maxWidth: 1000 }}>
-          {/* Header */}
-          <div style={{ marginBottom: 24 }}>
-            <h2 style={{ color: text, fontSize: 24, fontWeight: 700, margin: 0 }}>My Products</h2>
-            <p style={{ color: sub, fontSize: 14, marginTop: 4 }}>Manage your licensed products, downloads and subscriptions.</p>
-          </div>
+      <div style={{ width: '100%', maxWidth: detailLicense && !isMobile ? 1280 : 1000, transition: 'max-width 0.2s ease' }}>
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ color: text, fontSize: 24, fontWeight: 700, margin: 0 }}>My Products</h2>
+          <p style={{ color: sub, fontSize: 14, marginTop: 4 }}>Manage your licensed products, downloads and subscriptions.</p>
+        </div>
 
-          {/* Search, Filter, Layout toggles row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 320, flexWrap: 'wrap' }}>
-              {/* Search */}
-              <div style={{ position: 'relative', flex: 1.2, minWidth: 200 }}>
-                <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: sub }} />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-                  style={{
-                    width: '100%', padding: '10px 14px 10px 36px', borderRadius: 8,
-                    border: `1px solid ${border}`, background: panel, color: text,
-                    outline: 'none', fontSize: 14,
-                  }}
-                />
+        <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+          {/* Main content column */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Search, Filter, Layout toggles row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 12, flex: 1, minWidth: 320, flexWrap: 'wrap' }}>
+                {/* Search */}
+                <div style={{ position: 'relative', flex: 1.2, minWidth: 200 }}>
+                  <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: sub }} />
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+                    style={{
+                      width: '100%', padding: '10px 14px 10px 36px', borderRadius: 8,
+                      border: `1px solid ${border}`, background: panel, color: text,
+                      outline: 'none', fontSize: 14,
+                    }}
+                  />
+                </div>
+
+                {/* Status Select */}
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={statusFilter}
+                    onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                    style={{
+                      padding: '10px 36px 10px 14px', borderRadius: 8, border: `1px solid ${border}`,
+                      background: panel, color: text, outline: 'none', fontSize: 14, cursor: 'pointer',
+                      appearance: 'none', WebkitAppearance: 'none', minWidth: 130
+                    }}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Expiring Soon">Expiring Soon</option>
+                    <option value="Expired">Expired</option>
+                    <option value="Disabled">Disabled</option>
+                    <option value="Suspended">Suspended</option>
+                  </select>
+                  <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: sub, pointerEvents: 'none' }} />
+                </div>
               </div>
 
-              {/* Status Select */}
-              <div style={{ position: 'relative' }}>
-                <select
-                  value={statusFilter}
-                  onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              {/* Grid/List View Toggles */}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => setViewMode('grid')}
                   style={{
-                    padding: '10px 36px 10px 14px', borderRadius: 8, border: `1px solid ${border}`,
-                    background: panel, color: text, outline: 'none', fontSize: 14, cursor: 'pointer',
-                    appearance: 'none', WebkitAppearance: 'none', minWidth: 130
+                    padding: 10, borderRadius: 8, border: `1px solid ${border}`,
+                    background: viewMode === 'grid' ? brand : panel,
+                    color: viewMode === 'grid' ? '#fff' : sub,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
                   }}
                 >
-                  <option value="all">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Expiring Soon">Expiring Soon</option>
-                  <option value="Expired">Expired</option>
-                  <option value="Disabled">Disabled</option>
-                  <option value="Suspended">Suspended</option>
-                </select>
-                <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: sub, pointerEvents: 'none' }} />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  style={{
+                    padding: 10, borderRadius: 8, border: `1px solid ${border}`,
+                    background: viewMode === 'list' ? brand : panel,
+                    color: viewMode === 'list' ? '#fff' : sub,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"></line>
+                    <line x1="8" y1="12" x2="21" y2="12"></line>
+                    <line x1="8" y1="18" x2="21" y2="18"></line>
+                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                  </svg>
+                </button>
               </div>
             </div>
 
-            {/* Grid/List View Toggles */}
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button
-                onClick={() => setViewMode('grid')}
-                style={{
-                  padding: 10, borderRadius: 8, border: `1px solid ${border}`,
-                  background: viewMode === 'grid' ? brand : panel,
-                  color: viewMode === 'grid' ? '#fff' : sub,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="3" width="7" height="7"></rect>
-                  <rect x="14" y="14" width="7" height="7"></rect>
-                  <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                style={{
-                  padding: 10, borderRadius: 8, border: `1px solid ${border}`,
-                  background: viewMode === 'list' ? brand : panel,
-                  color: viewMode === 'list' ? '#fff' : sub,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="8" y1="6" x2="21" y2="6"></line>
-                  <line x1="8" y1="12" x2="21" y2="12"></line>
-                  <line x1="8" y1="18" x2="21" y2="18"></line>
-                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
-              </button>
+            {/* Showing range */}
+            <div style={{ color: sub, fontSize: 13, marginBottom: 16 }}>
+              Showing {sorted.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, sorted.length)} of {sorted.length} products
             </div>
-          </div>
 
-          {/* Showing range */}
-          <div style={{ color: sub, fontSize: 13, marginBottom: 16 }}>
-            Showing {sorted.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, sorted.length)} of {sorted.length} products
-          </div>
+            {/* List or Empty State */}
+            {sorted.length === 0 ? (
+              <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, padding: 48, textAlign: 'center' }}>
+                <Package style={{ width: 40, height: 40, color: sub, margin: '0 auto 12px' }} />
+                <p style={{ color: text, fontWeight: 500, margin: 0 }}>
+                  {licenses.length === 0 ? 'No products assigned yet' : 'No products found'}
+                </p>
+                <p style={{ color: sub, fontSize: 13, marginTop: 4, margin: 0 }}>
+                  {licenses.length === 0 
+                    ? 'Products assigned to your account will appear here.' 
+                    : 'No products match your search criteria.'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {viewMode === 'list' ? (
+                  /* LIST VIEW */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {paginated.map(license => {
+                      const dp = license.product || {};
+                      const status = getLicenseStatus(license);
+                      const validity = getValidity(license);
+                      const lt = license.license_type || dp.license_type || 'one_time';
+                      const theme = getProductTheme(license.name);
+                      const isSelected = detailLicense && detailLicense.id === license.id;
 
-          {/* List or Empty State */}
-          {sorted.length === 0 ? (
-            <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 12, padding: 48, textAlign: 'center' }}>
-              <Package style={{ width: 40, height: 40, color: sub, margin: '0 auto 12px' }} />
-              <p style={{ color: text, fontWeight: 500, margin: 0 }}>
-                {licenses.length === 0 ? 'No products assigned yet' : 'No products found'}
-              </p>
-              <p style={{ color: sub, fontSize: 13, marginTop: 4, margin: 0 }}>
-                {licenses.length === 0 
-                  ? 'Products assigned to your account will appear here.' 
-                  : 'No products match your search criteria.'}
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {viewMode === 'list' ? (
-                /* LIST VIEW */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  {paginated.map(license => {
-                    const dp = license.product || {};
-                    const status = getLicenseStatus(license);
-                    const validity = getValidity(license);
-                    const lt = license.license_type || dp.license_type || 'one_time';
-                    const theme = getProductTheme(license.name);
-                    const isSelected = detailLicense && detailLicense.id === license.id;
+                      const licenseTypeLabel = 
+                        lt === 'lifetime' ? 'Lifetime License' :
+                        lt === 'yearly' ? 'Yearly Renewal' :
+                        lt === 'monthly' ? 'Monthly Renewal' : 'One Time Purchase';
 
-                    const licenseTypeLabel = 
-                      lt === 'lifetime' ? 'Lifetime License' :
-                      lt === 'yearly' ? 'Yearly Renewal' :
-                      lt === 'monthly' ? 'Monthly Renewal' : 'One Time Purchase';
+                      let textLabel = null;
+                      const nameLower = (license.name || '').toLowerCase();
+                      if (nameLower.includes('woocommerce')) textLabel = 'Woo';
+                      else if (nameLower.includes('astra')) textLabel = 'A';
+                      else if (nameLower.includes('discount')) textLabel = 'D';
 
-                    let textLabel = null;
-                    const nameLower = (license.name || '').toLowerCase();
-                    if (nameLower.includes('woocommerce')) textLabel = 'Woo';
-                    else if (nameLower.includes('astra')) textLabel = 'A';
-                    else if (nameLower.includes('discount')) textLabel = 'D';
+                      const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
 
-                    const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
-
-                    return (
-                      <div
-                        key={license.id}
-                        onClick={() => setDetailLicense(license)}
-                        style={{
-                          background: card,
-                          border: isSelected ? `1px solid ${brand}` : `1px solid ${border}`,
-                          borderRadius: 12,
-                          padding: 16,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 16,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: isSelected ? `0 0 0 1px ${brand}, 0 4px 12px rgba(232,123,53,0.08)` : 'none',
-                        }}
-                        onMouseEnter={e => {
-                          if (!isSelected) e.currentTarget.style.borderColor = `${brand}88`;
-                        }}
-                        onMouseLeave={e => {
-                          if (!isSelected) e.currentTarget.style.borderColor = border;
-                        }}
-                      >
-                        {/* Col 1: Icon + Name */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1.5, minWidth: 150 }}>
-                          <div style={{
-                            width: 40, height: 40, borderRadius: 8,
-                            backgroundColor: theme.color, display: 'flex',
-                            alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontWeight: 700,
-                            fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
-                            flexShrink: 0
-                          }}>
-                            {textLabel ? textLabel : <theme.icon size={20} />}
-                          </div>
-                          <div>
-                            <h4 style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>{license.name}</h4>
-                            <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>{dp.type || 'Plugin'} • {licenseTypeLabel}</p>
-                          </div>
-                        </div>
-
-                        {/* Col 2: Purchase Price */}
-                        <div style={{ flex: 1, minWidth: 80 }}>
-                          <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>{formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}</p>
-                          <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Purchase Price</p>
-                        </div>
-
-                        {/* Col 3: Renewal Price */}
-                        <div style={{ flex: 1.2, minWidth: 100 }}>
-                          <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
-                            {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
-                          </p>
-                          <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Renewal Price</p>
-                        </div>
-
-                        {/* Col 4: Key & Expiry */}
-                        <div style={{ flex: 2, minWidth: 150, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <div>
-                            <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-                              <span style={{ color: text, fontSize: 12.5, fontFamily: 'monospace', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
-                                {license.license_key || '—'}
-                              </span>
-                              {license.license_key && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(license.license_key);
-                                    toast({ title: 'License key copied' });
-                                  }}
-                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 2, display: 'flex', alignItems: 'center' }}
-                                  onMouseEnter={e => e.currentTarget.style.color = text}
-                                  onMouseLeave={e => e.currentTarget.style.color = sub}
-                                >
-                                  <Copy size={12} />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                              {['Expired', 'Disabled', 'Suspended'].includes(status) ? 'Expired on' : 'Expires on'}
-                            </span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
-                              <span style={{ color: text, fontSize: 12.5 }}>
-                                {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
-                              </span>
-                              <span style={{
-                                fontSize: 11, fontWeight: 600,
-                                color: status === 'Active' ? '#22c55e' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? '#ef4444' : '#f59e0b'
-                              }}>
-                                {lt === 'lifetime' ? 'Never expires' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? (license.expiry_date ? getExpiredText(license.expiry_date) : validity.label) : validity.days != null ? `${validity.days} days left` : validity.label}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Col 4.5: Documentation / Order Note Button */}
-                        <div style={{ flex: 1.2, minWidth: 140, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedNoteLicense(license);
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              borderRadius: 8,
-                              background: `${brand}15`,
-                              border: `1.5px solid ${brand}30`,
-                              color: brand,
-                              cursor: 'pointer',
-                              fontSize: 10.5,
-                              fontWeight: 650,
-                              letterSpacing: '0.2px',
-                              transition: 'all 0.2s',
-                              whiteSpace: 'nowrap'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.background = `${brand}25`;
-                              e.currentTarget.style.borderColor = brand;
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.background = `${brand}15`;
-                              e.currentTarget.style.borderColor = `${brand}30`;
-                            }}
-                          >
-                            DOCUMENTATION / ORDER NOTE
-                          </button>
-                        </div>
-
-                        {/* Col 5: Status Badge */}
-                        <div style={{ flex: 0.8, minWidth: 90, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
-                          {(() => {
-                            const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
-                            return (
-                              <div style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '6px 12px', borderRadius: 20,
-                                background: badgeCfg.bg,
-                                border: `1px solid ${badgeCfg.border}`,
-                                color: badgeCfg.color,
-                                fontSize: 12, fontWeight: 600
-                              }}>
-                                <span style={{
-                                  width: 6, height: 6, borderRadius: '50%',
-                                  backgroundColor: badgeCfg.color
-                                }} />
-                                <span>{badgeCfg.text}</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                /* GRID VIEW */
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-                  {paginated.map(license => {
-                    const dp = license.product || {};
-                    const status = getLicenseStatus(license);
-                    const validity = getValidity(license);
-                    const lt = license.license_type || dp.license_type || 'one_time';
-                    const theme = getProductTheme(license.name);
-                    const isSelected = detailLicense && detailLicense.id === license.id;
-
-                    const licenseTypeLabel = 
-                      lt === 'lifetime' ? 'Lifetime' :
-                      lt === 'yearly' ? 'Yearly' :
-                      lt === 'monthly' ? 'Monthly' : 'One-Time';
-
-                    let textLabel = null;
-                    const nameLower = (license.name || '').toLowerCase();
-                    if (nameLower.includes('woocommerce')) textLabel = 'Woo';
-                    else if (nameLower.includes('astra')) textLabel = 'A';
-                    else if (nameLower.includes('discount')) textLabel = 'D';
-
-                    const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
-
-                    return (
-                      <div
-                        key={license.id}
-                        onClick={() => setDetailLicense(license)}
-                        style={{
-                          background: card,
-                          border: isSelected ? `1px solid ${brand}` : `1px solid ${border}`,
-                          borderRadius: 12,
-                          padding: 16,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 14,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          boxShadow: isSelected ? `0 0 0 1px ${brand}, 0 4px 12px rgba(232,123,53,0.08)` : 'none',
-                        }}
-                        onMouseEnter={e => {
-                          if (!isSelected) e.currentTarget.style.borderColor = `${brand}88`;
-                        }}
-                        onMouseLeave={e => {
-                          if (!isSelected) e.currentTarget.style.borderColor = border;
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      return (
+                        <div
+                          key={license.id}
+                          onClick={() => setDetailLicense(license)}
+                          style={{
+                            background: card,
+                            border: isSelected ? `1px solid ${brand}` : `1px solid ${border}`,
+                            borderRadius: 12,
+                            padding: 16,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 16,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            boxShadow: isSelected ? `0 0 0 1px ${brand}, 0 4px 12px rgba(232,123,53,0.08)` : 'none',
+                          }}
+                          onMouseEnter={e => {
+                            if (!isSelected) e.currentTarget.style.borderColor = `${brand}88`;
+                          }}
+                          onMouseLeave={e => {
+                            if (!isSelected) e.currentTarget.style.borderColor = border;
+                          }}
+                        >
+                          {/* Col 1: Icon + Name */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1.5, minWidth: 150 }}>
                             <div style={{
-                              width: 36, height: 36, borderRadius: 8,
+                              width: 40, height: 40, borderRadius: 8,
                               backgroundColor: theme.color, display: 'flex',
                               alignItems: 'center', justifyContent: 'center',
                               color: '#fff', fontWeight: 700,
-                              fontSize: textLabel ? (textLabel.length > 1 ? 11 : 16) : 14,
+                              fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
                               flexShrink: 0
                             }}>
-                              {textLabel ? textLabel : <theme.icon size={16} />}
+                              {textLabel ? textLabel : <theme.icon size={20} />}
                             </div>
                             <div>
-                              <h4 style={{ color: text, fontSize: 14.5, fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>
-                                {license.name}
-                              </h4>
-                              <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>{dp.type || 'Plugin'} • {licenseTypeLabel}</p>
+                              <h4 style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>{license.name}</h4>
+                              <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>{dp.type || 'Plugin'} • {licenseTypeLabel}</p>
                             </div>
                           </div>
-                          
-                          {(() => {
-                            const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
-                            return (
-                              <div style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                padding: '4px 8px', borderRadius: 20,
-                                background: badgeCfg.bg,
-                                border: `1px solid ${badgeCfg.border}`,
-                                color: badgeCfg.color,
-                                fontSize: 10.5, fontWeight: 600
-                              }}>
-                                <span style={{
-                                  width: 5, height: 5, borderRadius: '50%',
-                                  backgroundColor: badgeCfg.color
-                                }} />
-                                <span>{badgeCfg.text}</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '10px 0', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
-                          <div>
-                            <p style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>{formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}</p>
-                            <p style={{ color: sub, fontSize: 10.5, margin: '1px 0 0' }}>Purchase</p>
+                          {/* Col 2: Purchase Price */}
+                          <div style={{ flex: 0.8, minWidth: 80 }}>
+                            <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>{formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}</p>
+                            <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Purchase Price</p>
                           </div>
-                          <div>
-                            <p style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>
-                              {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
-                            </p>
-                            <p style={{ color: sub, fontSize: 10.5, margin: '1px 0 0' }}>Renewal</p>
-                          </div>
-                        </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: sub }}>License Key</span>
-                            <span style={{ color: text, fontFamily: 'monospace', fontSize: 11.5 }}>
-                              {license.license_key ? `${license.license_key.substring(0, 10)}...` : '—'}
-                            </span>
+                          {/* Col 3: Renewal Price with stacked button */}
+                          <div style={{ flex: 1.6, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedNoteLicense(license);
+                                }}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: 8,
+                                  background: `${brand}15`,
+                                  border: `1.5px solid ${brand}30`,
+                                  color: brand,
+                                  cursor: 'pointer',
+                                  fontSize: 10,
+                                  fontWeight: 650,
+                                  letterSpacing: '0.2px',
+                                  transition: 'all 0.2s',
+                                  whiteSpace: 'nowrap'
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.background = `${brand}25`;
+                                  e.currentTarget.style.borderColor = brand;
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.background = `${brand}15`;
+                                  e.currentTarget.style.borderColor = `${brand}30`;
+                                }}
+                              >
+                                DOCUMENTATION / ORDER NOTE
+                              </button>
+                            </div>
+                            <div>
+                              <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
+                                {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
+                              </p>
+                              <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Renewal Price</p>
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: sub }}>Expires On</span>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                              <span style={{ color: text }}>
-                                {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
-                              </span>
-                              {['Expired', 'Disabled', 'Suspended'].includes(status) && license.expiry_date && (
-                                <span style={{ color: '#ef4444', fontSize: 10.5, fontWeight: 600, marginTop: 1 }}>
-                                  {status === 'Expired' ? getExpiredText(license.expiry_date) : validity.label}
+
+                          {/* Col 4: Key & Expiry with stacked Status Badge */}
+                          <div style={{ flex: 2.2, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                              {(() => {
+                                const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
+                                return (
+                                  <div style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '6px 12px', borderRadius: 8,
+                                    background: badgeCfg.bg,
+                                    border: `1px solid ${badgeCfg.border}`,
+                                    color: badgeCfg.color,
+                                    fontSize: 11, fontWeight: 600
+                                  }}>
+                                    <span style={{
+                                      width: 6, height: 6, borderRadius: 2,
+                                      backgroundColor: badgeCfg.color
+                                    }} />
+                                    <span>{badgeCfg.text}</span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              {(() => {
+                                const activeKey = license.license_key || dp.license_key;
+                                return (
+                                  <div>
+                                    <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                                      <span style={{ color: text, fontSize: 12.5, fontFamily: 'monospace', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
+                                        {activeKey || '—'}
+                                      </span>
+                                      {activeKey && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(activeKey);
+                                            toast({ title: 'License key copied' });
+                                          }}
+                                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 2, display: 'flex', alignItems: 'center' }}
+                                          onMouseEnter={e => e.currentTarget.style.color = text}
+                                          onMouseLeave={e => e.currentTarget.style.color = sub}
+                                        >
+                                          <Copy size={12} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                              <div>
+                                <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                  {['Expired', 'Disabled', 'Suspended'].includes(status) ? 'Expired on' : 'Expires on'}
                                 </span>
-                              )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
+                                  <span style={{ color: text, fontSize: 12.5 }}>
+                                    {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
+                                  </span>
+                                  <span style={{
+                                    fontSize: 11, fontWeight: 600,
+                                    color: status === 'Active' ? '#22c55e' : ['Expired', 'Suspended'].includes(status) ? '#ef4444' : '#f59e0b'
+                                  }}>
+                                    {lt === 'lifetime' ? 'Never expires' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? (license.expiry_date ? getExpiredText(license.expiry_date) : validity.label) : validity.days != null ? `${validity.days} days left` : validity.label}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* GRID VIEW */
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+                    {paginated.map(license => {
+                      const dp = license.product || {};
+                      const status = getLicenseStatus(license);
+                      const validity = getValidity(license);
+                      const lt = license.license_type || dp.license_type || 'one_time';
+                      const theme = getProductTheme(license.name);
+                      const isSelected = detailLicense && detailLicense.id === license.id;
+
+                      const licenseTypeLabel = 
+                        lt === 'lifetime' ? 'Lifetime' :
+                        lt === 'yearly' ? 'Yearly' :
+                        lt === 'monthly' ? 'Monthly' : 'One-Time';
+
+                      let textLabel = null;
+                      const nameLower = (license.name || '').toLowerCase();
+                      if (nameLower.includes('woocommerce')) textLabel = 'Woo';
+                      else if (nameLower.includes('astra')) textLabel = 'A';
+                      else if (nameLower.includes('discount')) textLabel = 'D';
+
+                      const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
+
+                      return (
+                        <div
+                          key={license.id}
+                          onClick={() => setDetailLicense(license)}
+                          style={{
+                            background: card,
+                            border: isSelected ? `1px solid ${brand}` : `1px solid ${border}`,
+                            borderRadius: 12,
+                            padding: 16,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 14,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            boxShadow: isSelected ? `0 0 0 1px ${brand}, 0 4px 12px rgba(232,123,53,0.08)` : 'none',
+                          }}
+                          onMouseEnter={e => {
+                            if (!isSelected) e.currentTarget.style.borderColor = `${brand}88`;
+                          }}
+                          onMouseLeave={e => {
+                            if (!isSelected) e.currentTarget.style.borderColor = border;
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{
+                                width: 36, height: 36, borderRadius: 8,
+                                backgroundColor: theme.color, display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                color: '#fff', fontWeight: 700,
+                                fontSize: textLabel ? (textLabel.length > 1 ? 11 : 16) : 14,
+                                flexShrink: 0
+                              }}>
+                                {textLabel ? textLabel : <theme.icon size={16} />}
+                              </div>
+                              <div>
+                                <h4 style={{ color: text, fontSize: 13, fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>
+                                  {license.name}
+                                </h4>
+                                <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>{dp.type || 'Plugin'} • {licenseTypeLabel}</p>
+                              </div>
+                            </div>
+                            
+                            {(() => {
+                              const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
+                              return (
+                                <div style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                  padding: '4px 8px', borderRadius: 6,
+                                  background: badgeCfg.bg,
+                                  border: `1px solid ${badgeCfg.border}`,
+                                  color: badgeCfg.color,
+                                  fontSize: 10.5, fontWeight: 600
+                                }}>
+                                  <span style={{
+                                    width: 5, height: 5, borderRadius: 1.5,
+                                    backgroundColor: badgeCfg.color
+                                  }} />
+                                  <span>{badgeCfg.text}</span>
+                                </div>
+                              );
+                            })()}
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '10px 0', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
+                            <div>
+                              <p style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>{formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}</p>
+                              <p style={{ color: sub, fontSize: 10.5, margin: '1px 0 0' }}>Purchase</p>
+                            </div>
+                            <div>
+                              <p style={{ color: text, fontSize: 13.5, fontWeight: 700, margin: 0 }}>
+                                {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
+                              </p>
+                              <p style={{ color: sub, fontSize: 10.5, margin: '1px 0 0' }}>Renewal</p>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: sub }}>License Key</span>
+                              {(() => {
+                                const activeKey = license.license_key || dp.license_key;
+                                return (
+                                  <span style={{ color: text, fontFamily: 'monospace', fontSize: 11.5 }}>
+                                    {activeKey ? `${activeKey.substring(0, 10)}...` : '—'}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: sub }}>Expires On</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <span style={{ color: text }}>
+                                  {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
+                                </span>
+                                {['Expired', 'Disabled', 'Suspended'].includes(status) && license.expiry_date && (
+                                  <span style={{ color: '#ef4444', fontSize: 10.5, fontWeight: 600, marginTop: 1 }}>
+                                    {status === 'Expired' ? getExpiredText(license.expiry_date) : validity.label}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Pagination controls */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24 }}>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 32, height: 32, borderRadius: 8, border: `1px solid ${border}`,
+                        background: panel, color: currentPage === 1 ? `${sub}50` : text,
+                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    
+                    {Array.from({ length: totalPages }).map((_, idx) => {
+                      const pageNum = idx + 1;
+                      const isActive = currentPage === pageNum;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 32, height: 32, borderRadius: 8,
+                            border: `1px solid ${isActive ? brand : border}`,
+                            background: isActive ? brand : panel,
+                            color: isActive ? '#fff' : text,
+                            fontWeight: isActive ? 600 : 400,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 32, height: 32, borderRadius: 8, border: `1px solid ${border}`,
+                        background: panel, color: currentPage === totalPages ? `${sub}50` : text,
+                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar Details Column for Desktop */}
+          {detailLicense && !isMobile && (
+            <div style={{
+              width: 420,
+              flexShrink: 0,
+              background: card,
+              borderRadius: 16,
+              border: `1px solid ${border}`,
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              position: 'sticky',
+              top: 80,
+              maxHeight: 'calc(100vh - 120px)',
+            }}>
+              {/* Sidebar Header */}
+              <div style={{ padding: '24px 24px 12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {(() => {
+                    const theme = getProductTheme(detailLicense.name);
+                    const Icon = theme.icon;
+                    let textLabel = null;
+                    const nameLower = (detailLicense.name || '').toLowerCase();
+                    if (nameLower.includes('woocommerce')) textLabel = 'Woo';
+                    else if (nameLower.includes('astra')) textLabel = 'A';
+                    else if (nameLower.includes('discount')) textLabel = 'D';
+                    return (
+                      <div style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        backgroundColor: theme.color,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
+                        flexShrink: 0
+                      }}>
+                        {textLabel ? textLabel : <Icon size={20} />}
                       </div>
                     );
-                  })}
+                  })()}
+                  <div>
+                    <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: 0, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {detailLicense.name}
+                    </h3>
+                    <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>
+                      {detailLicense.product?.type || 'Plugin'}
+                    </p>
+                  </div>
                 </div>
-              )}
+                <button
+                  onClick={() => setDetailLicense(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: sub,
+                    padding: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    width: 28,
+                    height: 28,
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = hover}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <X size={18} />
+                </button>
+              </div>
 
-              {/* Pagination controls */}
-              {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24 }}>
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: 32, height: 32, borderRadius: 8, border: `1px solid ${border}`,
-                      background: panel, color: currentPage === 1 ? `${sub}50` : text,
-                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  
-                  {Array.from({ length: totalPages }).map((_, idx) => {
-                    const pageNum = idx + 1;
-                    const isActive = currentPage === pageNum;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          width: 32, height: 32, borderRadius: 8,
-                          border: `1px solid ${isActive ? brand : border}`,
-                          background: isActive ? brand : panel,
-                          color: isActive ? '#fff' : text,
-                          fontWeight: isActive ? 600 : 400,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      width: 32, height: 32, borderRadius: 8, border: `1px solid ${border}`,
-                      background: panel, color: currentPage === totalPages ? `${sub}50` : text,
-                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
+              <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1 }}>
+                {renderDetailPanelContent(detailLicense, false)}
+              </div>
             </div>
           )}
         </div>
-
-      {/* Product Details Modal Overlay (Unified for Desktop and Mobile) */}
-      {detailLicense && (
+      </div>
+      {/* Product Details Modal Overlay (only on Mobile) */}
+      {detailLicense && isMobile && (
         <div
           onClick={() => setDetailLicense(null)}
           style={{
@@ -1177,7 +1247,7 @@ export default function MyProductsPage({ user, isDark, c }) {
             }}
           >
             {/* Modal Header */}
-            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '24px 24px 12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {(() => {
                   const theme = getProductTheme(detailLicense.name);
@@ -1206,7 +1276,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                   );
                 })()}
                 <div>
-                  <h3 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>
+                  <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: 0 }}>
                     {detailLicense.name}
                   </h3>
                   <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>
@@ -1238,7 +1308,7 @@ export default function MyProductsPage({ user, isDark, c }) {
             </div>
             
             <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1 }}>
-              {renderDetailPanelContent(detailLicense)}
+              {renderDetailPanelContent(detailLicense, false)}
             </div>
           </div>
         </div>
@@ -1265,7 +1335,7 @@ export default function MyProductsPage({ user, isDark, c }) {
           >
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${border}`, paddingBottom: 12 }}>
-              <h3 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>
+              <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: 0 }}>
                 Documentation & Order Note
               </h3>
               <button
