@@ -58,7 +58,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
       const clearedAt = customerRes?.data?.notifications_cleared_at;
       const clearedTime = clearedAt ? new Date(clearedAt).getTime() : 0;
 
-      let dbNotifications = Array.isArray(all) ? all : [];
+      let dbNotifications = (Array.isArray(all) ? all : []).filter(n => n.type !== 'customer_login');
       if (clearedTime > 0) {
         dbNotifications = dbNotifications.filter(n => !n.created_at || new Date(n.created_at).getTime() > clearedTime);
       }

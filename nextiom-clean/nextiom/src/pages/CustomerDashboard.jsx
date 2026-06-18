@@ -1,3 +1,4 @@
+/* eslint-disable import/no-unresolved */
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,7 +34,9 @@ import { cn } from '@/lib/utils';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
 import { getCustomerJobs } from '@/lib/jobs';
-import { getTicketsByCustomer } from '@/lib/storage';
+import { getTicketsByCustomer, getLicenses } from '@/lib/storage';
+import { getCustomerInvoices } from '@/lib/invoices';
+import { getCustomerQuotations } from '@/lib/quotations';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const OnProgressIcon = ({ size, className, style, color }) => {
@@ -69,6 +72,47 @@ const OnProgressIcon = ({ size, className, style, color }) => {
     />
   );
 };
+
+function getValidity(license) {
+  if (license.status === 'Disabled' || license.status === 'Suspended' || license.status === 'Expired') {
+    return { valid: false, label: license.status, days: null };
+  }
+  const lt = license.license_type || license.product?.license_type || 'one_time';
+  if (lt === 'lifetime') return { valid: true, label: 'Lifetime', days: null };
+  if (lt === 'one_time') {
+    const used = (license.download_count || 0) >= 1;
+    return { valid: !used, label: used ? 'Download Used' : 'One Time Download', days: null, downloadUsed: used };
+  }
+  if ((lt === 'yearly' || lt === 'monthly') && license.expiry_date) {
+    const days = Math.ceil((new Date(license.expiry_date) - new Date()) / 86400000);
+    if (days <= 0) return { valid: false, label: 'Expired', days: 0 };
+    return { valid: true, label: `${days}d remaining`, days };
+  }
+  return { valid: true, label: 'Active', days: null };
+}
+
+function getLicenseStatus(license) {
+  if (license.status === 'Disabled' || license.status === 'Suspended') {
+    return license.status;
+  }
+  if (license.status === 'Expired') {
+    return 'Expired';
+  }
+  const validity = getValidity(license);
+  const lt = license.license_type || license.product?.license_type || 'one_time';
+  if (lt === 'lifetime') {
+    return 'Active';
+  }
+  if (lt === 'one_time') {
+    return validity.downloadUsed ? 'Expired' : 'Active';
+  }
+  if (lt === 'yearly' || lt === 'monthly') {
+    if (validity.days <= 0) return 'Expired';
+    if (validity.days <= 5) return 'Expiring Soon';
+    return 'Active';
+  }
+  return 'Active';
+}
 
 const DARK = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
@@ -200,19 +244,52 @@ function CustomerDashboard() {
   const [activeJobsCount, setActiveJobsCount] = useState(0);
   const [waitingJobsCount, setWaitingJobsCount] = useState(0);
   const [activeTicketsCount, setActiveTicketsCount] = useState(0);
+  const [activeProductsCount, setActiveProductsCount] = useState(0);
+  const [hasUnpaidInvoices, setHasUnpaidInvoices] = useState(false);
+  const [hasActiveQuotations, setHasActiveQuotations] = useState(false);
 
   useEffect(() => {
     if (!customerProfile?.id) return;
 
     const fetchCounts = async () => {
       try {
-        const [jobsData, ticketsData] = await Promise.all([
+        const email = customerProfile.email || user.email;
+        const [jobsData, ticketsData, licensesData, invoicesData, quotationsData] = await Promise.all([
           getCustomerJobs(customerProfile.id).catch(() => []),
           getTicketsByCustomer(customerProfile.id).catch(() => []),
+          getLicenses(customerProfile.id).catch(() => []),
+          getCustomerInvoices(email).catch(() => []),
+          getCustomerQuotations(email).catch(() => []),
         ]);
         setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
         setWaitingJobsCount(jobsData.filter(j => j.status === 'Waiting').length);
         setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
+
+        // Count Active products
+        const activeLics = licensesData.filter(l => {
+          const status = getLicenseStatus(l);
+          return status === 'Active' || status === 'Expiring Soon';
+        });
+        setActiveProductsCount(activeLics.length);
+
+        // Check for unpaid invoices
+        const hasUnpaid = invoicesData.some(inv => 
+          inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid'
+        );
+        setHasUnpaidInvoices(hasUnpaid);
+
+        // Check for active quotations
+        const today = new Date();
+        const hasActiveQuotes = quotationsData.some(q => {
+          const status = q.status || 'active';
+          if (status === 'accepted') return true;
+          if (status === 'declined' || status === 'expired') return false;
+          if (!q.valid_until) return true;
+          const valid = new Date(q.valid_until + 'T23:59:59');
+          return valid >= today;
+        });
+        setHasActiveQuotations(hasActiveQuotes);
+
       } catch (error) {
         console.error('Error fetching dashboard counts:', error);
       }
@@ -236,12 +313,33 @@ function CustomerDashboard() {
           fetchCounts();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'licenses' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'invoices' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quotations' },
+        () => {
+          fetchCounts();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [customerProfile?.id]);
+  }, [customerProfile?.id, customerProfile?.email, user?.email]);
 
   const handleLogout = async () => {
     await signOut();
@@ -316,6 +414,8 @@ function CustomerDashboard() {
               }}
               badge={item.id === 'support' ? activeTicketsCount : 0}
               badgeColor="#16a34a"
+              showDot={item.id === 'billing' && hasUnpaidInvoices && hasActiveQuotations}
+              dotColor="#22c55e"
             >
               {item.children.map(child => (
                 <button
@@ -350,7 +450,7 @@ function CustomerDashboard() {
             c={c}
             isDark={isDark}
             onClick={() => navigate(item.id)}
-            badge={item.id === 'jobs' ? activeJobsCount : 0}
+            badge={item.id === 'jobs' ? activeJobsCount : (item.id === 'products' ? activeProductsCount : 0)}
             badgeColor="#16a34a"
             badgeTextColor="#ffffff"
             isBlinking={item.id === 'jobs' &&  waitingJobsCount > 0 }

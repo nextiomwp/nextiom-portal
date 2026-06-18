@@ -22,6 +22,8 @@ const CollapsibleMenuItem = ({
   badge2Color,
   badge2TextColor,
   isBlinking = false,
+  showDot = false,
+  dotColor,
 }) => {
   const brand = c.brand || '#E87B35';
   const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
@@ -77,6 +79,20 @@ const CollapsibleMenuItem = ({
                 >
                   {badge}
                 </span>
+              )}
+              {showDot && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    width: 8,
+                    height: 8,
+                    backgroundColor: dotColor || '#16a34a',
+                    borderRadius: '50%',
+                    boxShadow: '0 0 0 1.5px ' + (c.sidebar || (isDark ? '#1C1E24' : '#fff')),
+                  }}
+                />
               )}
               {badge2 > 0 && (
                 <span

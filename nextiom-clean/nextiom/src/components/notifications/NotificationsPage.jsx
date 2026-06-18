@@ -68,7 +68,7 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
         const clearedAt = customerRes?.data?.notifications_cleared_at;
         const clearedTime = clearedAt ? new Date(clearedAt).getTime() : 0;
 
-        let dbNotifications = dbRes.data || [];
+        let dbNotifications = (dbRes.data || []).filter(n => n.type !== 'customer_login');
         if (clearedTime > 0) {
           dbNotifications = dbNotifications.filter(n => !n.created_at || new Date(n.created_at).getTime() > clearedTime);
         }
