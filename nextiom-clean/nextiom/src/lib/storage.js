@@ -754,7 +754,8 @@ export const getEmailLogs = async () => {
 
 // --- Utils ---
 
-export const calculateExpiryStatus = (expiryDate) => {
+export const calculateExpiryStatus = (expiryDate, membershipType, isDisabled) => {
+  if (isDisabled) return { status: 'Disabled', daysLeft: null };
   if (!expiryDate) return { status: 'Active', daysLeft: null };
   const now = new Date();
   const expiry = new Date(expiryDate);

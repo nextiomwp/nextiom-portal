@@ -108,6 +108,73 @@ function getExpiredText(date) {
   return `Expired ${days} days ago`;
 }
 
+const getStatusBadgeConfig = (status, validity, lic, lt) => {
+  const s = String(status || '').toLowerCase();
+  
+  if (s === 'active') {
+    return {
+      bg: 'rgba(34,197,94,0.08)',
+      border: 'rgba(34,197,94,0.15)',
+      color: '#22c55e',
+      text: 'ACTIVE',
+      detailText: 'Active Product',
+      icon: <CheckCircle size={15} />,
+      expiryText: lt === 'lifetime' ? 'Never expires' : (validity && validity.days != null) ? `${validity.days} days remaining` : (validity ? validity.label : 'Active'),
+      standingBg: 'rgba(34,197,94,0.05)',
+      standingBorder: 'rgba(34,197,94,0.1)',
+      standingColor: '#22c55e',
+      standingTitle: 'Your product is active and in good standing.',
+      standingDesc: 'Thank you for being a valued customer!'
+    };
+  }
+  
+  if (s === 'expiring soon') {
+    return {
+      bg: 'rgba(245,158,11,0.08)',
+      border: 'rgba(245,158,11,0.15)',
+      color: '#f59e0b',
+      text: 'EXPIRING SOON',
+      detailText: 'Expiring Soon',
+      icon: <AlertCircle size={15} />,
+      expiryText: (validity && validity.days != null) ? `${validity.days} days remaining` : (validity ? validity.label : 'Expiring Soon'),
+      standingBg: 'rgba(245,158,11,0.05)',
+      standingBorder: 'rgba(245,158,11,0.1)',
+      standingColor: '#f59e0b',
+      standingTitle: 'Your product expires soon.',
+      standingDesc: 'Please contact support soon to avoid service disruptions.'
+    };
+  }
+
+  // All other states (Expired, Disabled, Suspended) get red badge styling
+  let label = 'EXPIRED';
+  let detailLabel = 'Expired License';
+  let standingTitle = 'Your product is expired.';
+  if (s === 'disabled') {
+    label = 'DISABLED';
+    detailLabel = 'Disabled License';
+    standingTitle = 'Your product is disabled.';
+  } else if (s === 'suspended') {
+    label = 'SUSPENDED';
+    detailLabel = 'Suspended License';
+    standingTitle = 'Your product is suspended.';
+  }
+
+  return {
+    bg: 'rgba(239,68,68,0.08)',
+    border: 'rgba(239,68,68,0.15)',
+    color: '#ef4444',
+    text: label,
+    detailText: detailLabel,
+    icon: <AlertCircle size={15} />,
+    expiryText: (lic && lic.expiry_date) ? getExpiredText(lic.expiry_date) : (validity ? validity.label : label),
+    standingBg: 'rgba(239,68,68,0.05)',
+    standingBorder: 'rgba(239,68,68,0.1)',
+    standingColor: '#ef4444',
+    standingTitle: standingTitle,
+    standingDesc: 'Please contact our support department to renew your product.'
+  };
+};
+
 export default function MyProductsPage({ user, isDark, c }) {
   const [licenses, setLicenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -306,29 +373,34 @@ export default function MyProductsPage({ user, isDark, c }) {
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Active Status Alert Banner */}
           
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '10px 14px', borderRadius: 8,
-            background: status === 'Active' ? 'rgba(34,197,94,0.08)' : status === 'Expired' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
-            border: `1px solid ${status === 'Active' ? 'rgba(34,197,94,0.15)' : status === 'Expired' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'}`,
-            color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
-              {status === 'Active' ? <CheckCircle size={15} /> : status === 'Expired' ? <AlertCircle size={15} /> : <AlertCircle size={15} />}
-              <span>{status === 'Active' ? 'Active Product' : status === 'Expired' ? 'Expired License' : 'Expiring Soon'}</span>
-            </div>
-            <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-              {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(lic.expiry_date) : validity.days != null ? `${validity.days} days remaining` : validity.label}
-            </span>
-            <button
-            onClick={() => setDetailLicense(null)}
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 26, height: 26 }}
-            onMouseEnter={e => e.currentTarget.style.background = hover}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >
-            <X size={16} />
-          </button>
-          </div>
+          {(() => {
+            const badgeCfg = getStatusBadgeConfig(status, validity, lic, lt);
+            return (
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '10px 14px', borderRadius: 8,
+                background: badgeCfg.bg,
+                border: `1px solid ${badgeCfg.border}`,
+                color: badgeCfg.color,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
+                  {badgeCfg.icon}
+                  <span>{badgeCfg.detailText}</span>
+                </div>
+                <span style={{ fontSize: 12.5, fontWeight: 500 }}>
+                  {badgeCfg.expiryText}
+                </span>
+                <button
+                  onClick={() => setDetailLicense(null)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', width: 26, height: 26 }}
+                  onMouseEnter={e => e.currentTarget.style.background = hover}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Pricing Metrics Box Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -425,7 +497,7 @@ export default function MyProductsPage({ user, isDark, c }) {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
                 <span style={{ color: sub }}>Days Left</span>
-                <span style={{ color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
+                <span style={{ color: status === 'Active' ? '#22c55e' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
                   {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(lic.expiry_date) : validity.days != null ? `${validity.days} days` : validity.label}
                 </span>
               </div>
@@ -575,29 +647,34 @@ export default function MyProductsPage({ user, isDark, c }) {
           </div>
 
           {/* Footer Standing Banner */}
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10,
-            background: status === 'Active' ? 'rgba(34,197,94,0.05)' : status === 'Expired' ? 'rgba(239,68,68,0.05)' : 'rgba(245,158,11,0.05)',
-            border: `1px solid ${status === 'Active' ? 'rgba(34,197,94,0.1)' : status === 'Expired' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'}`,
-            color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b'
-          }}>
-            {status === 'Active' ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                <polyline points="9 11 11 13 15 9"></polyline>
-              </svg>
-            ) : (
-              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-            )}
-            <div style={{ fontSize: 12.5 }}>
-              <p style={{ fontWeight: 600, margin: 0 }}>
-                {status === 'Active' ? 'Your product is active and in good standing.' : status === 'Expired' ? 'Your product is expired.' : 'Your product expires soon.'}
-              </p>
-              <p style={{ fontSize: 11, color: sub, margin: '2px 0 0' }}>
-                {status === 'Active' ? 'Thank you for being a valued customer!' : status === 'Expired' ? 'Please contact our support department to renew your product.' : 'Please contact support soon to avoid service disruptions.'}
-              </p>
-            </div>
-          </div>
+          {(() => {
+            const badgeCfg = getStatusBadgeConfig(status, validity, lic, lt);
+            return (
+              <div style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10,
+                background: badgeCfg.standingBg,
+                border: `1px solid ${badgeCfg.standingBorder}`,
+                color: badgeCfg.standingColor
+              }}>
+                {status === 'Active' ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    <polyline points="9 11 11 13 15 9"></polyline>
+                  </svg>
+                ) : (
+                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                )}
+                <div style={{ fontSize: 12.5 }}>
+                  <p style={{ fontWeight: 600, margin: 0 }}>
+                    {badgeCfg.standingTitle}
+                  </p>
+                  <p style={{ fontSize: 11, color: sub, margin: '2px 0 0' }}>
+                    {badgeCfg.standingDesc}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
@@ -649,6 +726,8 @@ export default function MyProductsPage({ user, isDark, c }) {
                   <option value="Active">Active</option>
                   <option value="Expiring Soon">Expiring Soon</option>
                   <option value="Expired">Expired</option>
+                  <option value="Disabled">Disabled</option>
+                  <option value="Suspended">Suspended</option>
                 </select>
                 <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: sub, pointerEvents: 'none' }} />
               </div>
@@ -818,7 +897,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                           </div>
                           <div>
                             <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                              {status === 'Expired' ? 'Expired on' : 'Expires on'}
+                              {['Expired', 'Disabled', 'Suspended'].includes(status) ? 'Expired on' : 'Expires on'}
                             </span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
                               <span style={{ color: text, fontSize: 12.5 }}>
@@ -826,9 +905,9 @@ export default function MyProductsPage({ user, isDark, c }) {
                               </span>
                               <span style={{
                                 fontSize: 11, fontWeight: 600,
-                                color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b'
+                                color: status === 'Active' ? '#22c55e' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? '#ef4444' : '#f59e0b'
                               }}>
-                                {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(license.expiry_date) : validity.days != null ? `${validity.days} days left` : validity.label}
+                                {lt === 'lifetime' ? 'Never expires' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? (license.expiry_date ? getExpiredText(license.expiry_date) : validity.label) : validity.days != null ? `${validity.days} days left` : validity.label}
                               </span>
                             </div>
                           </div>
@@ -869,20 +948,25 @@ export default function MyProductsPage({ user, isDark, c }) {
 
                         {/* Col 5: Status Badge */}
                         <div style={{ flex: 0.8, minWidth: 90, display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
-                          <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 20,
-                            background: status === 'Active' ? 'rgba(34,197,94,0.08)' : status === 'Expired' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
-                            border: `1px solid ${status === 'Active' ? 'rgba(34,197,94,0.15)' : status === 'Expired' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'}`,
-                            color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b',
-                            fontSize: 12, fontWeight: 600
-                          }}>
-                            <span style={{
-                              width: 6, height: 6, borderRadius: '50%',
-                              backgroundColor: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b'
-                            }} />
-                            <span>{status === 'Active' ? 'ACTIVE' : status === 'Expired' ? 'EXPIRED' : 'EXPIRING SOON'}</span>
-                          </div>
+                          {(() => {
+                            const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
+                            return (
+                              <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '6px 12px', borderRadius: 20,
+                                background: badgeCfg.bg,
+                                border: `1px solid ${badgeCfg.border}`,
+                                color: badgeCfg.color,
+                                fontSize: 12, fontWeight: 600
+                              }}>
+                                <span style={{
+                                  width: 6, height: 6, borderRadius: '50%',
+                                  backgroundColor: badgeCfg.color
+                                }} />
+                                <span>{badgeCfg.text}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -955,20 +1039,25 @@ export default function MyProductsPage({ user, isDark, c }) {
                             </div>
                           </div>
                           
-                          <div style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                            padding: '4px 8px', borderRadius: 20,
-                            background: status === 'Active' ? 'rgba(34,197,94,0.08)' : status === 'Expired' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
-                            border: `1px solid ${status === 'Active' ? 'rgba(34,197,94,0.15)' : status === 'Expired' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'}`,
-                            color: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b',
-                            fontSize: 10.5, fontWeight: 600
-                          }}>
-                            <span style={{
-                              width: 5, height: 5, borderRadius: '50%',
-                              backgroundColor: status === 'Active' ? '#22c55e' : status === 'Expired' ? '#ef4444' : '#f59e0b'
-                            }} />
-                            <span>{status === 'Active' ? 'ACTIVE' : status === 'Expired' ? 'EXPIRED' : 'EXPIRING SOON'}</span>
-                          </div>
+                          {(() => {
+                            const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
+                            return (
+                              <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '4px 8px', borderRadius: 20,
+                                background: badgeCfg.bg,
+                                border: `1px solid ${badgeCfg.border}`,
+                                color: badgeCfg.color,
+                                fontSize: 10.5, fontWeight: 600
+                              }}>
+                                <span style={{
+                                  width: 5, height: 5, borderRadius: '50%',
+                                  backgroundColor: badgeCfg.color
+                                }} />
+                                <span>{badgeCfg.text}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '10px 0', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
@@ -997,9 +1086,9 @@ export default function MyProductsPage({ user, isDark, c }) {
                               <span style={{ color: text }}>
                                 {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
                               </span>
-                              {status === 'Expired' && license.expiry_date && (
+                              {['Expired', 'Disabled', 'Suspended'].includes(status) && license.expiry_date && (
                                 <span style={{ color: '#ef4444', fontSize: 10.5, fontWeight: 600, marginTop: 1 }}>
-                                  {getExpiredText(license.expiry_date)}
+                                  {status === 'Expired' ? getExpiredText(license.expiry_date) : validity.label}
                                 </span>
                               )}
                             </div>
