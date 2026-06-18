@@ -13,6 +13,17 @@ function newItem(): InvoiceItem {
   return { description: '', qty: 1, unit_price: 0, discount: 0 }
 }
 
+function calculateDueDate(dateStr: string): string {
+  if (!dateStr) return ''
+  const [yr, mo, dy] = dateStr.split('-').map(Number)
+  const d = new Date(yr, mo - 1, dy)
+  d.setDate(d.getDate() + 7)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 interface Props {
   c: any
   isDark: boolean
@@ -28,7 +39,8 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [autoInvoiceNo, setAutoInvoiceNo] = useState('')
   const [isManual, setIsManual] = useState(false)
   const [invoiceDate, setInvoiceDate] = useState(todayISO())
-  const [dueDate, setDueDate] = useState(dueDateISO())
+  const [dueDate, setDueDate] = useState<string | null>(calculateDueDate(todayISO()))
+  const [hasDueDate, setHasDueDate] = useState(true)
   const [status, setStatus] = useState<Invoice['status']>('unpaid')
   const [currency, setCurrency] = useState<InvoiceCurrency>('LKR')
   const [clientName, setClientName] = useState('')
@@ -96,7 +108,13 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
       if (existing) {
         setInvoiceNo(existing.invoice_no)
         setInvoiceDate(existing.invoice_date)
-        setDueDate(existing.due_date)
+        if (existing.due_date) {
+          setHasDueDate(true)
+          setDueDate(existing.due_date.split('T')[0])
+        } else {
+          setHasDueDate(false)
+          setDueDate(calculateDueDate(existing.invoice_date))
+        }
         setStatus(existing.status)
         setCurrency(existing.currency ?? 'LKR')
         setClientName(existing.client_name)
@@ -112,6 +130,8 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         setAutoInvoiceNo(no)
         setInvoiceNo(no)
         setNotes(s.default_notes)
+        setHasDueDate(true)
+        setDueDate(calculateDueDate(todayISO()))
       }
     }
     init()
@@ -153,7 +173,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     setSaving(true)
     const validItems = items.filter(i => i.description.trim())
     const invoiceData: Invoice = {
-      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: dueDate, status, currency,
+      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: hasDueDate ? dueDate : null, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress, notes, total,
       service_name: serviceName,
@@ -169,11 +189,14 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         if (clientEmail) {
           const customer = await getCustomerByEmail(clientEmail).catch(() => null)
           if (customer?.id) {
+            const notificationMsg = hasDueDate && dueDate
+              ? `You have a new invoice of ${fmtCurrency(total, currency)} due by ${dueDate}. Please check your Invoices section.`
+              : `You have a new invoice of ${fmtCurrency(total, currency)}. Please check your Invoices section.`
             addNotification({
               customer_id: customer.id,
               type: 'invoice',
               title: `New invoice — ${invoiceNo}`,
-              message: `You have a new invoice of ${fmtCurrency(total, currency)} due by ${dueDate}. Please check your Invoices section.`,
+              message: notificationMsg,
             }).catch(() => {})
           }
         }
@@ -186,7 +209,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const handlePrint = () => {
     if (!clientName.trim()) { toast({ title: 'Fill in client name before printing', variant: 'destructive' }); return }
     localStorage.setItem('nxt_invoice_print', JSON.stringify({
-      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: dueDate, status, currency,
+      invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: hasDueDate ? dueDate : null, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress,
       items: items.filter(i => i.description.trim()), notes, total, settings,
@@ -257,11 +280,45 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
               </div>
               <div>
                 <label style={lbl}>Invoice date</label>
-                <input type="date" style={inp} value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
+                <input
+                  type="date"
+                  style={inp}
+                  value={invoiceDate}
+                  onChange={e => {
+                    const nextVal = e.target.value
+                    setInvoiceDate(nextVal)
+                    if (nextVal) {
+                      setDueDate(calculateDueDate(nextVal))
+                    }
+                  }}
+                />
               </div>
               <div>
-                <label style={lbl}>Due date</label>
-                <input type="date" style={inp} value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label style={{ ...lbl, marginBottom: 0 }}>Due date</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: c.subText, cursor: 'pointer', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={hasDueDate}
+                      onChange={e => {
+                        const checked = e.target.checked
+                        setHasDueDate(checked)
+                        if (checked && invoiceDate) {
+                          setDueDate(calculateDueDate(invoiceDate))
+                        }
+                      }}
+                      style={{ cursor: 'pointer', margin: 0 }}
+                    />
+                    Enable
+                  </label>
+                </div>
+                <input
+                  type="date"
+                  style={hasDueDate ? inp : { ...inp, background: isDark ? '#1C1E24' : '#f0f0f0', color: c.subText }}
+                  value={hasDueDate ? (dueDate || '') : ''}
+                  onChange={e => hasDueDate && setDueDate(e.target.value)}
+                  disabled={!hasDueDate}
+                />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12 }}>

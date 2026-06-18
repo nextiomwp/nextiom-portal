@@ -26,7 +26,7 @@ export interface Invoice {
   user_id?: string
   invoice_no: string
   invoice_date: string
-  due_date: string
+  due_date: string | null
   status: InvoiceStatus
   client_name: string
   client_company: string
