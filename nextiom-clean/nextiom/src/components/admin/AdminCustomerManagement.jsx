@@ -27,6 +27,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
   const [selectedCustomerIds, setSelectedCustomerIds] = useState([]);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [openMenuCustomerId, setOpenMenuCustomerId] = useState(null);
+  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [hoveredCustomer, setHoveredCustomer] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
 
@@ -1090,36 +1091,25 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                         >
                           Login As
                         </button>
-                        <div style={{ position: 'relative' }}>
+                        <div>
                           <button
-                            onClick={() => setOpenMenuCustomerId(openMenuCustomerId === customer.id ? null : customer.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              if (openMenuCustomerId === customer.id) {
+                                setOpenMenuCustomerId(null);
+                              } else {
+                                setOpenMenuCustomerId(customer.id);
+                                setMenuPos({
+                                  x: rect.right + window.scrollX,
+                                  y: rect.bottom + window.scrollY
+                                });
+                              }
+                            }}
                             style={{ background: 'transparent', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 8px', display: 'inline-flex' }}
                           >
                             <MoreVertical size={16} />
                           </button>
-                          {openMenuCustomerId === customer.id && (
-                            <>
-                              <div
-                                onClick={() => setOpenMenuCustomerId(null)}
-                                style={{ position: 'fixed', inset: 0, zIndex: 998 }}
-                              />
-                              <div style={{
-                                position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 999,
-                                background: c.card, border: `1px solid ${c.border}`, borderRadius: 8,
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: 180, display: 'flex',
-                                flexDirection: 'column', overflow: 'hidden'
-                              }}>
-                                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(customer); setAssignTargetType('product'); }} style={menuItemStyle(c)}>📦 Assign Product</button>
-                                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(customer); setAssignTargetType('hosting'); }} style={menuItemStyle(c)}>🖥 Assign Hosting</button>
-                                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(customer); setAssignTargetType('domain'); }} style={menuItemStyle(c)}>🌐 Assign Domain</button>
-                                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(customer); setAssignTargetType('email'); }} style={menuItemStyle(c)}>📧 Assign Email</button>
-                                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('create_job', customer); }} style={menuItemStyle(c)}>💼 Create Job</button>
-                                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('open_ticket', customer); }} style={menuItemStyle(c)}>🎫 Open Ticket</button>
-                                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('clear_notifs', customer); }} style={menuItemStyle(c)}>🔔 Clear Notifs</button>
-                                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('delete', customer); }} style={menuItemStyle(c, '#ef4444')}>🗑 Delete</button>
-                              </div>
-                            </>
-                          )}
                         </div>
                       </div>
                     </td>
@@ -1205,6 +1195,45 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
             </div>
           </div>
         </div>
+      )}
+
+      {/* Action Menu Dropdown */}
+      {openMenuCustomerId && (
+        (() => {
+          const menuCustomer = customers.find(cu => cu.id === openMenuCustomerId);
+          if (!menuCustomer) return null;
+          return (
+            <>
+              <div
+                onClick={() => setOpenMenuCustomerId(null)}
+                style={{ position: 'fixed', inset: 0, zIndex: 998 }}
+              />
+              <div style={{
+                position: 'absolute',
+                left: menuPos.x - 180,
+                top: menuPos.y + 4,
+                zIndex: 999,
+                background: c.card,
+                border: `1px solid ${c.border}`,
+                borderRadius: 8,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                minWidth: 180,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
+                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(menuCustomer); setAssignTargetType('product'); }} style={menuItemStyle(c)}>📦 Assign Product</button>
+                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(menuCustomer); setAssignTargetType('hosting'); }} style={menuItemStyle(c)}>🖥 Assign Hosting</button>
+                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(menuCustomer); setAssignTargetType('domain'); }} style={menuItemStyle(c)}>🌐 Assign Domain</button>
+                <button onClick={() => { setOpenMenuCustomerId(null); setAssigningCustomer(menuCustomer); setAssignTargetType('email'); }} style={menuItemStyle(c)}>📧 Assign Email</button>
+                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('create_job', menuCustomer); }} style={menuItemStyle(c)}>💼 Create Job</button>
+                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('open_ticket', menuCustomer); }} style={menuItemStyle(c)}>🎫 Open Ticket</button>
+                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('clear_notifs', menuCustomer); }} style={menuItemStyle(c)}>🔔 Clear Notifs</button>
+                <button onClick={() => { setOpenMenuCustomerId(null); handleAction('delete', menuCustomer); }} style={menuItemStyle(c, '#ef4444')}>🗑 Delete</button>
+              </div>
+            </>
+          );
+        })()
       )}
 
       {/* Assign Product Dialog */}
