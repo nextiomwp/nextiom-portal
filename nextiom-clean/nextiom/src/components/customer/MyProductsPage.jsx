@@ -210,6 +210,8 @@ export default function MyProductsPage({ user, isDark, c }) {
   const { toast } = useToast();
   const [selectedNoteLicense, setSelectedNoteLicense] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [hoveredTab, setHoveredTab] = useState(null);
+  const [showExpiredDownloadTip, setShowExpiredDownloadTip] = useState(false);
   const [showLicenseKey, setShowLicenseKey] = useState(false);
 
   const bg = c?.bg || (isDark ? '#15161A' : '#f8f8f7');
@@ -244,6 +246,11 @@ export default function MyProductsPage({ user, isDark, c }) {
   }
 
   const handleDownload = async (license) => {
+    const status = getLicenseStatus(license);
+    if (status === 'Expired') {
+      toast({ title: 'Your product is expired. Please renew to download.', variant: 'destructive' });
+      return;
+    }
     const downloadUrl = license.download_url || license.product?.download_url;
     if (!downloadUrl) {
       toast({ title: 'Download URL not available for this product', variant: 'destructive' });
@@ -343,6 +350,7 @@ export default function MyProductsPage({ user, isDark, c }) {
     const lt = lic.license_type || dp.license_type || 'one_time';
     const validity = getValidity(lic);
     const status = getLicenseStatus(lic);
+    const isExpired = status === 'Expired';
     const theme = getProductTheme(lic.name);
 
     const licenseTypeLabel = 
@@ -459,21 +467,29 @@ export default function MyProductsPage({ user, isDark, c }) {
               { id: 'downloads', label: 'Downloads' }
             ].map(tab => {
               const isActive = activeTab === tab.id;
+              const isHovered = hoveredTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
+                  onMouseEnter={() => setHoveredTab(tab.id)}
+                  onMouseLeave={() => setHoveredTab(null)}
                   style={{
                     flex: 1,
-                    background: 'transparent',
+                    background: isHovered 
+                      ? (isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)') 
+                      : 'transparent',
+                    backdropFilter: isHovered ? 'blur(8px)' : 'none',
+                    WebkitBackdropFilter: isHovered ? 'blur(8px)' : 'none',
                     border: 'none',
                     padding: '8px 4px',
-                    color: isActive ? brand : sub,
+                    borderRadius: '6px 6px 0 0',
+                    color: isActive ? brand : (isHovered ? text : sub),
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
                     position: 'relative',
-                    transition: 'all 0.2s',
+                    transition: 'all 0.2s ease',
                     outline: 'none',
                     textAlign: 'center'
                   }}
@@ -713,32 +729,73 @@ export default function MyProductsPage({ user, isDark, c }) {
                         <p style={{ color: text, fontSize: 13, fontWeight: 600, margin: 0 }}>Main product file</p>
                         <p style={{ color: sub, fontSize: 10.5, margin: '3px 0 0' }}>Version {dp.version || lic.version || '1.0.0'}</p>
                       </div>
-                      <button
-                        onClick={() => handleDownload(lic)}
-                        style={{
-                          background: 'transparent',
-                          border: `1.5px solid ${brand}`,
-                          color: brand,
-                          padding: '5px 12px',
-                          borderRadius: 6,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = `${brand}15`;
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                      <div 
+                        style={{ position: 'relative' }}
+                        onMouseEnter={() => { if (isExpired) setShowExpiredDownloadTip(true); }}
+                        onMouseLeave={() => { if (isExpired) setShowExpiredDownloadTip(false); }}
                       >
-                        <Download size={12} />
-                        <span>Download</span>
-                      </button>
+                        <button
+                          onClick={() => { if (!isExpired) handleDownload(lic); }}
+                          disabled={isExpired}
+                          style={{
+                            background: 'transparent',
+                            border: isExpired ? `1.5px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}` : `1.5px solid ${brand}`,
+                            color: isExpired ? sub : brand,
+                            padding: '5px 12px',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: isExpired ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            transition: 'all 0.2s',
+                            opacity: isExpired ? 0.5 : 1,
+                            pointerEvents: isExpired ? 'none' : 'auto'
+                          }}
+                          onMouseEnter={e => {
+                            if (!isExpired) e.currentTarget.style.background = `${brand}15`;
+                          }}
+                          onMouseLeave={e => {
+                            if (!isExpired) e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <Download size={12} />
+                          <span>Download</span>
+                        </button>
+
+                        {isExpired && showExpiredDownloadTip && (
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '100%',
+                            right: 0,
+                            marginBottom: 8,
+                            width: 220,
+                            background: '#ef4444',
+                            color: '#fff',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 500,
+                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.2)',
+                            zIndex: 10,
+                            lineHeight: 1.3,
+                            textAlign: 'left'
+                          }}>
+                            <div style={{
+                              position: 'absolute',
+                              top: '100%',
+                              right: 20,
+                              width: 0,
+                              height: 0,
+                              borderLeft: '5px solid transparent',
+                              borderRight: '5px solid transparent',
+                              borderTop: '5px solid #ef4444'
+                            }} />
+                            Your product is expired. Please renew to download.
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
