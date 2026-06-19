@@ -505,6 +505,9 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
   const [statusFilter, setStatusFilter] = useState(() => {
     return localStorage.getItem('nextiom_invoices_status_filter') || 'all'
   })
+  const [customerFilter, setCustomerFilter] = useState(() => {
+    return localStorage.getItem('nextiom_invoices_customer_filter') || 'all'
+  })
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [calFilter, setCalFilter] = useState<CalFilter>({ mode: 'none' })
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -547,6 +550,16 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
     finally { setLoading(false) }
   }
 
+  const uniqueClients = useMemo(() => {
+    const clients = new Set<string>()
+    invoices.forEach(inv => {
+      if (inv.client_name) {
+        clients.add(inv.client_name)
+      }
+    })
+    return Array.from(clients).sort()
+  }, [invoices])
+
   const filtered = useMemo(() => {
     let arr = invoices.filter(inv => {
       const q = search.toLowerCase()
@@ -555,7 +568,8 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
         || (inv.client_company ?? '').toLowerCase().includes(q)
         || (inv.service_name ?? '').toLowerCase().includes(q)
       const matchS = statusFilter === 'all' || inv.status === statusFilter
-      if (!matchQ || !matchS) return false
+      const matchC = customerFilter === 'all' || inv.client_name === customerFilter
+      if (!matchQ || !matchS || !matchC) return false
       if (calFilter.mode === 'day') {
         const d = inv.invoice_date ? new Date(inv.invoice_date) : null
         if (!d) return false
@@ -578,7 +592,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
       return sortDir === 'asc' ? da - db : db - da
     })
     return arr
-  }, [invoices, search, statusFilter, calFilter, sortDir, checkedIds])
+  }, [invoices, search, statusFilter, customerFilter, calFilter, sortDir, checkedIds])
 
   const totalBilled = formatCurrencyBreakdown(invoices)
   const totalPaid = formatCollectedCurrencyBreakdown(invoices)
@@ -678,6 +692,19 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
               <option value="overdue">Overdue</option>
               <option value="payment_submitted">Pending Review</option>
               <option value="partially_paid">Partially Paid</option>
+            </select>
+            <select
+              value={customerFilter}
+              onChange={e => {
+                setCustomerFilter(e.target.value)
+                localStorage.setItem('nextiom_invoices_customer_filter', e.target.value)
+              }}
+              style={{ ...inp, width: 180, cursor: 'pointer' }}
+            >
+              <option value="all">All customers</option>
+              {uniqueClients.map(client => (
+                <option key={client} value={client}>{client}</option>
+              ))}
             </select>
             <button
               onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
