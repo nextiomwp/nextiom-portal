@@ -1570,12 +1570,12 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                   <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
-                        <th style={thS}>Domain</th>
                         <th style={thS}>Package</th>
                         <th style={thS}>Start Date</th>
                         <th style={thS}>End Date</th>
                         <th style={thS}>Disk Usage</th>
                         <th style={thS}>Bandwidth</th>
+                        <th style={thS}>Price</th>
                         <th style={thS}>Status</th>
                         <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                       </tr>
@@ -1586,12 +1586,12 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                         const packageLabel = parsePackageSummary(h.package_type).name;
                         return (
                           <tr key={h.id}>
-                            <td style={row}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#3b82f6' }}>{h.domain || '—'}</span></td>
                             <td style={row}>{h.plan_name || packageLabel}</td>
-                            <td style={row}>{h.start_date ? format(new Date(h.start_date), 'MMM dd, yyyy') : '—'}</td>
-                            <td style={row}>{h.expiry_date ? format(new Date(h.expiry_date), 'MMM dd, yyyy') : '—'}</td>
+                            <td style={row}>{safeFormatDate(h.start_date)}</td>
+                            <td style={row}>{safeFormatDate(h.expiry_date)}</td>
                             <td style={row}>{h.disk_usage || '—'} / {h.disk_usage_limit || '—'}</td>
                             <td style={row}>{h.bandwidth_usage || '—'} / {h.bandwidth_limit || '—'}</td>
+                            <td style={row}>{formatPrice(h.price)}</td>
                             <td style={row}><StatusBadge status={h.status} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
@@ -1633,8 +1633,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                         <th style={thS}>Registrar</th>
                         <th style={thS}>Expiry Countdown</th>
                         <th style={thS}>Auto Renewal</th>
-                        <th style={thS}>Name Servers</th>
-                        <th style={thS}>WHOIS Privacy</th>
+                        <th style={thS}>Price</th>
                         <th style={thS}>Status</th>
                         <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
                       </tr>
@@ -1663,8 +1662,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                                 {d.auto_renew ? 'Auto Renewal Enabled' : 'Auto Renewal Disabled'}
                               </span>
                             </td>
-                            <td style={row}><span style={{ fontSize: 11, fontFamily: 'monospace' }}>{d.nameservers || 'ns1.nextiom.com, ns2.nextiom.com'}</span></td>
-                            <td style={row}>{d.whois_privacy || 'Disabled'}</td>
+                            <td style={row}>{formatPrice(d.price)}</td>
                             <td style={row}><StatusBadge status={d.status} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
@@ -1676,7 +1674,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                           </tr>
                         );
                       })}
-                      {filteredDomains.length === 0 && <tr><td colSpan={8} style={emptyS}>No domains assigned.</td></tr>}
+                      {filteredDomains.length === 0 && <tr><td colSpan={7} style={emptyS}>No domains assigned.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -2506,94 +2504,223 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
       {/* --- EDIT MODALS FOR ITEMS --- */}
 
       {/* View Hosting Details Modal */}
-      {viewingHosting && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Hosting Package Details</span>
-              <button onClick={() => setViewingHosting(null)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer' }}><X size={18} /></button>
-            </div>
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Domain</span>
-                  <span style={{ fontSize: 14, color: c.text, fontWeight: 500, fontFamily: 'monospace' }}>{viewingHosting.domain || '—'}</span>
-                </div>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Package / Plan</span>
-                  <span style={{ fontSize: 14, color: c.text, fontWeight: 500 }}>{viewingHosting.plan_name || parsePackageSummary(viewingHosting.package_type).name}</span>
-                </div>
+      {viewingHosting && (() => {
+        const cpanelInfo = parseJson(viewingHosting.cpanel);
+        const ftpInfo = parseJson(viewingHosting.ftp);
+        const creds = parseJson(viewingHosting.additional_credentials) || [];
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+              <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Hosting Package Details</span>
+                <button onClick={() => setViewingHosting(null)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer' }}><X size={18} /></button>
               </div>
+              <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Domain</span>
+                    <span style={{ fontSize: 14, color: c.text, fontWeight: 500, fontFamily: 'monospace' }}>{viewingHosting.domain || '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Package / Plan</span>
+                    <span style={{ fontSize: 14, color: c.text, fontWeight: 500 }}>{viewingHosting.plan_name || parsePackageSummary(viewingHosting.package_type).name}</span>
+                  </div>
+                </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Server Name</span>
-                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.server_name || 'Not Set'}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Server Name</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.server_name || 'Not Set'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Hosting Provider</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.hosting_provider || 'Not Set'}</span>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Hosting Provider</span>
-                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.hosting_provider || 'Not Set'}</span>
-                </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Disk Usage</span>
-                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.disk_usage || '—'} / {viewingHosting.disk_usage_limit || '—'}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Disk Usage</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.disk_usage || '—'} / {viewingHosting.disk_usage_limit || '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Bandwidth</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.bandwidth_usage || '—'} / {viewingHosting.bandwidth_limit || '—'}</span>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Bandwidth</span>
-                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.bandwidth_usage || '—'} / {viewingHosting.bandwidth_limit || '—'}</span>
-                </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Start Date</span>
-                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.start_date ? format(new Date(viewingHosting.start_date), 'MMM dd, yyyy') : '—'}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Start Date</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{safeFormatDate(viewingHosting.start_date)}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Expiry / End Date</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{safeFormatDate(viewingHosting.expiry_date)}</span>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Expiry / End Date</span>
-                  <span style={{ fontSize: 14, color: c.text }}>{viewingHosting.expiry_date ? format(new Date(viewingHosting.expiry_date), 'MMM dd, yyyy') : '—'}</span>
-                </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Renewal Cost</span>
-                  <span style={{ fontSize: 14, color: c.text }}>Rs. {viewingHosting.renewal_cost?.toLocaleString() || viewingHosting.next_renewal_price?.toLocaleString() || '—'}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Price</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{formatPrice(viewingHosting.price)}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Renewal Cost</span>
+                    <span style={{ fontSize: 14, color: c.text }}>{formatPrice(viewingHosting.renewal_cost || viewingHosting.next_renewal_price)}</span>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Status</span>
-                  <div style={{ marginTop: 4 }}><StatusBadge status={viewingHosting.status} /></div>
-                </div>
-              </div>
 
-              {viewingHosting.cpanel && (
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>cPanel URL</span>
-                  <a href={viewingHosting.cpanel} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: c.brand, textDecoration: 'none', wordBreak: 'break-all', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                    <ExternalLink size={12} /> {viewingHosting.cpanel}
-                  </a>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Billing Period</span>
+                    <span style={{ fontSize: 14, color: c.text, textTransform: 'capitalize' }}>{viewingHosting.billing_period || '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Status</span>
+                    <div style={{ marginTop: 4 }}><StatusBadge status={viewingHosting.status} /></div>
+                  </div>
                 </div>
-              )}
 
-              {viewingHosting.ftp && (
-                <div>
-                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>FTP Details</span>
-                  <pre style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, margin: '4px 0 0 0', fontSize: 12, color: c.text, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
-                    {viewingHosting.ftp}
-                  </pre>
+                {viewingHosting.cpanel && (() => {
+                  const info = cpanelInfo;
+                  if (info && typeof info === 'object') {
+                    const hasData = info.url || info.username || info.password || info.notes;
+                    if (!hasData) return null;
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>cPanel Credentials</span>
+                        <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {info.url && (
+                            <div>
+                              <span style={{ fontSize: 11, color: c.subText }}>URL: </span>
+                              <a href={info.url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: c.brand, textDecoration: 'none', wordBreak: 'break-all' }}>
+                                {info.url} <ExternalLink size={10} style={{ display: 'inline', marginLeft: 4 }} />
+                              </a>
+                            </div>
+                          )}
+                          {info.username && (
+                            <div style={{ fontSize: 12, color: c.text }}>
+                              <span style={{ color: c.subText }}>Username: </span>
+                              <strong>{info.username}</strong>
+                            </div>
+                          )}
+                          {info.password && (
+                            <div style={{ fontSize: 12, color: c.text }}>
+                              <span style={{ color: c.subText }}>Password: </span>
+                              <strong>{info.password}</strong>
+                            </div>
+                          )}
+                          {info.notes && (
+                            <div style={{ fontSize: 12, color: c.text, borderTop: `1px solid ${c.border}`, paddingTop: 6, marginTop: 4 }}>
+                              <span style={{ color: c.subText, display: 'block', fontSize: 11 }}>Notes:</span>
+                              <span style={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{info.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  } else if (typeof viewingHosting.cpanel === 'string') {
+                    return (
+                      <div>
+                        <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>cPanel URL</span>
+                        <a href={viewingHosting.cpanel} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: c.brand, textDecoration: 'none', wordBreak: 'break-all', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                          <ExternalLink size={12} /> {viewingHosting.cpanel}
+                        </a>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {viewingHosting.ftp && (() => {
+                  const info = ftpInfo;
+                  if (info && typeof info === 'object') {
+                    const hasData = info.host || info.username || info.password || info.port;
+                    if (!hasData) return null;
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>FTP Credentials</span>
+                        <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {info.host && (
+                            <div style={{ fontSize: 12, color: c.text }}>
+                              <span style={{ color: c.subText }}>Host: </span>
+                              <strong>{info.host}</strong>
+                            </div>
+                          )}
+                          {info.username && (
+                            <div style={{ fontSize: 12, color: c.text }}>
+                              <span style={{ color: c.subText }}>Username: </span>
+                              <strong>{info.username}</strong>
+                            </div>
+                          )}
+                          {info.password && (
+                            <div style={{ fontSize: 12, color: c.text }}>
+                              <span style={{ color: c.subText }}>Password: </span>
+                              <strong>{info.password}</strong>
+                            </div>
+                          )}
+                          {info.port && (
+                            <div style={{ fontSize: 12, color: c.text }}>
+                              <span style={{ color: c.subText }}>Port: </span>
+                              <strong>{info.port}</strong>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  } else if (typeof viewingHosting.ftp === 'string') {
+                    return (
+                      <div>
+                        <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>FTP Details</span>
+                        <pre style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, margin: '4px 0 0 0', fontSize: 12, color: c.text, overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                          {viewingHosting.ftp}
+                        </pre>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {creds.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Additional Credentials</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {creds.map((cred, idx) => (
+                        <div key={idx} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {cred.label && <strong style={{ fontSize: 12, color: c.brand }}>{cred.label}</strong>}
+                          {cred.username && (
+                            <div style={{ fontSize: 11, color: c.text }}>
+                              <span style={{ color: c.subText }}>Username: </span>
+                              {cred.username}
+                            </div>
+                          )}
+                          {cred.password && (
+                            <div style={{ fontSize: 11, color: c.text }}>
+                              <span style={{ color: c.subText }}>Password: </span>
+                              {cred.password}
+                            </div>
+                          )}
+                          {cred.notes && (
+                            <div style={{ fontSize: 11, color: c.subText, borderTop: `1px solid ${c.border}`, paddingTop: 4, marginTop: 2 }}>
+                              {cred.notes}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', marginTop: 8 }}>
+                  <button type="button" onClick={() => setViewingHosting(null)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
                 </div>
-              )}
-
-              <div style={{ display: 'flex', marginTop: 8 }}>
-                <button type="button" onClick={() => setViewingHosting(null)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Edit Hosting Modal */}
       {editingHosting && (
@@ -3018,5 +3145,32 @@ function parsePackage(packageType) {
   const billing = billingPart ? billingPart.replace('Billing:', '').trim().toLowerCase() : 'yearly';
   return { name, domain, billing };
 }
+
+const parseJson = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const safeFormatDate = (dateVal, formatStr = 'MMM dd, yyyy') => {
+  if (!dateVal) return '—';
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return '—';
+    return format(d, formatStr);
+  } catch (e) {
+    return '—';
+  }
+};
+
+const formatPrice = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  const num = Number(value);
+  return isNaN(num) ? '—' : `Rs. ${num.toLocaleString()}`;
+};
 
 export default CustomerProfileAdminView;
