@@ -97,6 +97,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   const [viewingLicense, setViewingLicense] = useState(null);
   const [editingLicense, setEditingLicense] = useState(null);
   const [viewingHosting, setViewingHosting] = useState(null);
+  const [viewingDomain, setViewingDomain] = useState(null);
   
   // Assign Modals (Create modes)
   const [isAssignProductOpen, setIsAssignProductOpen] = useState(false);
@@ -1630,8 +1631,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <thead>
                       <tr>
                         <th style={thS}>Domain</th>
-                        <th style={thS}>Registrar</th>
-                        <th style={thS}>Expiry Countdown</th>
+                        <th style={thS}>Start Date</th>
+                        <th style={thS}>End Date</th>
                         <th style={thS}>Auto Renewal</th>
                         <th style={thS}>Price</th>
                         <th style={thS}>Status</th>
@@ -1641,22 +1642,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <tbody>
                       {filteredDomains.map((d, i) => {
                         const row = i % 2 === 0 ? tdS : tdAlt;
-                        // Expiry countdown calculation
-                        const today = new Date();
-                        const expiry = d.expiry_date ? new Date(d.expiry_date) : null;
-                        const daysLeft = expiry ? Math.ceil((expiry - today) / 86400000) : null;
-                        const countdown = daysLeft !== null 
-                          ? (daysLeft > 0 ? `Expires in ${daysLeft} Days` : `Expired ${Math.abs(daysLeft)} Days ago`)
-                          : '—';
                         return (
                           <tr key={d.id}>
                             <td style={row}><span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#3b82f6' }}>{d.domain_name}</span></td>
-                            <td style={row}>{d.registrar || 'Not Assigned'}</td>
-                            <td style={row}>
-                              <span style={{ color: daysLeft !== null && daysLeft <= 30 ? '#f87171' : c.text, fontWeight: daysLeft !== null && daysLeft <= 30 ? 600 : 400 }}>
-                                {countdown}
-                              </span>
-                            </td>
+                            <td style={row}>{safeFormatDate(d.start_date)}</td>
+                            <td style={row}>{safeFormatDate(d.expiry_date)}</td>
                             <td style={row}>
                               <span style={{ color: d.auto_renew ? '#22c55e' : c.subText, fontSize: 12, fontWeight: 600 }}>
                                 {d.auto_renew ? 'Auto Renewal Enabled' : 'Auto Renewal Disabled'}
@@ -1666,6 +1656,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                             <td style={row}><StatusBadge status={d.status} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                                <button onClick={() => setViewingDomain(d)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View Details"><Eye size={14} /></button>
                                 <button onClick={() => setEditingDomain(d)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={14} /></button>
                                 <button onClick={() => sendExpiryReminder('domain', d)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Send Reminder"><Bell size={14} /></button>
                                 <button onClick={() => deleteItem('domain', d.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
@@ -2721,6 +2712,96 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
           </div>
         );
       })()}
+
+      {/* View Domain Details Modal */}
+      {viewingDomain && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Domain Details</span>
+              <button onClick={() => setViewingDomain(null)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Domain Name</span>
+                  <span style={{ fontSize: 14, color: c.text, fontWeight: 500, fontFamily: 'monospace' }}>{viewingDomain.domain_name || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Registrar</span>
+                  <span style={{ fontSize: 14, color: c.text, fontWeight: 500 }}>{viewingDomain.registrar || 'Not Assigned'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Start Date</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{safeFormatDate(viewingDomain.start_date)}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Expiry / End Date</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{safeFormatDate(viewingDomain.expiry_date)}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Price</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{formatPrice(viewingDomain.price)}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Registration Period</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingDomain.registration_period ? `${viewingDomain.registration_period} Year${viewingDomain.registration_period !== 1 ? 's' : ''}` : '—'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Auto Renewal</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingDomain.auto_renew ? 'Enabled' : 'Disabled'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>WHOIS Privacy</span>
+                  <span style={{ fontSize: 14, color: c.text }}>{viewingDomain.whois_privacy || 'Disabled'}</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Status</span>
+                  <div style={{ marginTop: 4 }}><StatusBadge status={viewingDomain.status} /></div>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Name Servers</span>
+                  <span style={{ fontSize: 12, color: c.text, fontFamily: 'monospace', wordBreak: 'break-all' }}>{viewingDomain.nameservers || 'ns1.nextiom.com, ns2.nextiom.com'}</span>
+                </div>
+              </div>
+
+              {viewingDomain.notes && (
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Customer Notes</span>
+                  <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, fontSize: 12, color: c.text, marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                    {viewingDomain.notes}
+                  </div>
+                </div>
+              )}
+
+              {viewingDomain.admin_reply && (
+                <div>
+                  <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, textTransform: 'uppercase', display: 'block' }}>Admin Reply</span>
+                  <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, fontSize: 12, color: c.text, marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                    {viewingDomain.admin_reply}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', marginTop: 8 }}>
+                <button type="button" onClick={() => setViewingDomain(null)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Hosting Modal */}
       {editingHosting && (
