@@ -108,6 +108,15 @@ function getExpiredText(date) {
   return `Expired ${days} days ago`;
 }
 
+function getTextLabel(name) {
+  const lower = (name || '').toLowerCase();
+  if (lower.includes('woocommerce') || lower.includes('woo')) return 'Woo';
+  if (lower.includes('elementor')) return 'E';
+  if (lower.includes('astra')) return 'A';
+  if (lower.includes('discount')) return 'D';
+  return null;
+}
+
 const getStatusBadgeConfig = (status, validity, lic, lt) => {
   const s = String(status || '').toLowerCase();
   
@@ -309,12 +318,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   const renderProductIcon = (name) => {
     const theme = getProductTheme(name);
     const Icon = theme.icon;
-    const lower = (name || '').toLowerCase();
-    
-    let textLabel = null;
-    if (lower.includes('woocommerce')) textLabel = 'Woo';
-    else if (lower.includes('astra')) textLabel = 'A';
-    else if (lower.includes('discount')) textLabel = 'D';
+    const textLabel = getTextLabel(name);
 
     return (
       <div style={{
@@ -342,11 +346,7 @@ export default function MyProductsPage({ user, isDark, c }) {
       lt === 'yearly' ? 'Yearly Renewal' :
       lt === 'monthly' ? 'Monthly Renewal' : 'One Time Purchase';
 
-    let textLabel = null;
-    const nameLower = (lic.name || '').toLowerCase();
-    if (nameLower.includes('woocommerce')) textLabel = 'Woo';
-    else if (nameLower.includes('astra')) textLabel = 'A';
-    else if (nameLower.includes('discount')) textLabel = 'D';
+    const textLabel = getTextLabel(lic.name);
 
     const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
     const isVirtual = dp.category === 'virtual';
@@ -872,13 +872,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                         lt === 'yearly' ? 'Yearly Renewal' :
                         lt === 'monthly' ? 'Monthly Renewal' : 'One Time Purchase';
 
-                      let textLabel = null;
-                      const nameLower = (license.name || '').toLowerCase();
-                      if (nameLower.includes('woocommerce')) textLabel = 'Woo';
-                      else if (nameLower.includes('astra')) textLabel = 'A';
-                      else if (nameLower.includes('discount')) textLabel = 'D';
-
-                      const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
+                      const textLabel = getTextLabel(license.name);
 
                       return (
                         <div
@@ -886,11 +880,12 @@ export default function MyProductsPage({ user, isDark, c }) {
                           onClick={() => setDetailLicense(license)}
                           style={{
                             background: card,
-                            border: isSelected ? `1px solid ${brand}` : `1px solid ${border}`,
+                            border: isSelected ? `1.5px solid ${brand}` : `1px solid ${border}`,
                             borderRadius: 12,
                             padding: 16,
                             display: 'flex',
                             alignItems: 'center',
+                            justifyContent: 'space-between',
                             gap: 16,
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
@@ -903,8 +898,8 @@ export default function MyProductsPage({ user, isDark, c }) {
                             if (!isSelected) e.currentTarget.style.borderColor = border;
                           }}
                         >
-                          {/* Col 1: Icon + Name */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1.5, minWidth: 150 }}>
+                          {/* Col 1: Icon + Name & Subtitle */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
                             <div style={{
                               width: 40, height: 40, borderRadius: 8,
                               backgroundColor: theme.color, display: 'flex',
@@ -915,93 +910,50 @@ export default function MyProductsPage({ user, isDark, c }) {
                             }}>
                               {textLabel ? textLabel : <theme.icon size={20} />}
                             </div>
-                            <div>
-                              <h4 style={{ color: text, fontSize: 12, fontWeight: 700, margin: 0 }}>{license.name}</h4>
-                              <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>{dp.type || 'Plugin'} • {licenseTypeLabel}</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                              <h4 style={{ color: text, fontSize: 14.5, fontWeight: 700, margin: 0, lineHeight: 1.3, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                {license.name}
+                              </h4>
+                              <p style={{ color: sub, fontSize: 12.5, margin: 0 }}>
+                                {dp.type || 'Plugin'} · {licenseTypeLabel}
+                              </p>
                             </div>
                           </div>
 
-                          {/* Col 2: Purchase Price */}
-                          <div style={{ flex: 0.8, minWidth: 80 }}>
-                            <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>{formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}</p>
-                            <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Purchase Price</p>
-                          </div>
+                          {/* Col 2: Price and Status */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+                            {/* Price */}
+                            <div style={{ textAlign: 'right' }}>
+                              <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
+                                {formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}
+                              </p>
+                              <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>
+                                Purchase price
+                              </p>
+                            </div>
 
-                          {/* Col 3: Renewal Price */}
-                          <div style={{ flex: 1.6, minWidth: 160 }}>
-                            <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
-                              {showRenewal ? `${formatPrice(license.renewal_price !== undefined && license.renewal_price !== null ? license.renewal_price : dp.renewal_price, license.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
-                            </p>
-                            <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>Renewal Price</p>
-                          </div>
-
-                          {/* Col 4: Key & Expiry with stacked Status Badge */}
-                          <div style={{ flex: 2.2, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            {/* Status */}
+                            <div>
                               {(() => {
                                 const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
                                 return (
                                   <div style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    padding: '6px 12px', borderRadius: 8,
+                                    padding: '6px 12px', borderRadius: 20,
                                     background: badgeCfg.bg,
                                     border: `1px solid ${badgeCfg.border}`,
                                     color: badgeCfg.color,
-                                    fontSize: 11, fontWeight: 600
+                                    fontSize: 11, fontWeight: 700,
+                                    letterSpacing: 0.5,
                                   }}>
                                     <span style={{
-                                      width: 6, height: 6, borderRadius: 2,
+                                      width: 6, height: 6, borderRadius: '50%',
                                       backgroundColor: badgeCfg.color
                                     }} />
                                     <span>{badgeCfg.text}</span>
                                   </div>
                                 );
                               })()}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              {(() => {
-                                const activeKey = license.license_key;
-                                return (
-                                  <div>
-                                    <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1 }}>
-                                      <span style={{ color: text, fontSize: 12.5, fontFamily: 'monospace', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
-                                        {activeKey || '—'}
-                                      </span>
-                                      {activeKey && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            navigator.clipboard.writeText(activeKey);
-                                            toast({ title: 'License key copied' });
-                                          }}
-                                          style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: sub, padding: 2, display: 'flex', alignItems: 'center' }}
-                                          onMouseEnter={e => e.currentTarget.style.color = text}
-                                          onMouseLeave={e => e.currentTarget.style.color = sub}
-                                        >
-                                          <Copy size={12} />
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                              <div>
-                                <span style={{ color: sub, fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                  {['Expired', 'Disabled', 'Suspended'].includes(status) ? 'Expired on' : 'Expires on'}
-                                </span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
-                                  <span style={{ color: text, fontSize: 12.5 }}>
-                                    {lt === 'lifetime' ? 'Lifetime' : formatDate(license.expiry_date)}
-                                  </span>
-                                  <span style={{
-                                    fontSize: 11, fontWeight: 600,
-                                    color: status === 'Active' ? '#22c55e' : ['Expired', 'Suspended'].includes(status) ? '#ef4444' : '#f59e0b'
-                                  }}>
-                                    {lt === 'lifetime' ? 'Never expires' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? (license.expiry_date ? getExpiredText(license.expiry_date) : validity.label) : validity.days != null ? `${validity.days} days left` : validity.label}
-                                  </span>
-                                </div>
-                              </div>
                             </div>
                           </div>
                         </div>
@@ -1024,11 +976,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                         lt === 'yearly' ? 'Yearly' :
                         lt === 'monthly' ? 'Monthly' : 'One-Time';
 
-                      let textLabel = null;
-                      const nameLower = (license.name || '').toLowerCase();
-                      if (nameLower.includes('woocommerce')) textLabel = 'Woo';
-                      else if (nameLower.includes('astra')) textLabel = 'A';
-                      else if (nameLower.includes('discount')) textLabel = 'D';
+                      const textLabel = getTextLabel(license.name);
 
                       const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
 
@@ -1257,11 +1205,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                 {(() => {
                   const theme = getProductTheme(detailLicense.name);
                   const Icon = theme.icon;
-                  let textLabel = null;
-                  const nameLower = (detailLicense.name || '').toLowerCase();
-                  if (nameLower.includes('woocommerce')) textLabel = 'Woo';
-                  else if (nameLower.includes('astra')) textLabel = 'A';
-                  else if (nameLower.includes('discount')) textLabel = 'D';
+                  const textLabel = getTextLabel(detailLicense.name);
                   return (
                     <div style={{
                       width: 40,
