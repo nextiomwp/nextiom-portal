@@ -339,36 +339,16 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
           )}
 
           {/* Recent Requests */}
-          <div>
-            <p style={{ color: text, fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Recent Requests</p>
-            {requests.length > 0 ? (
-              <div style={{ border: `1px solid ${border}`, borderRadius: 12, overflow: 'hidden' }}>
-                {requests.slice(0, 5).map((req, i) => (
-                  <div key={req.id} style={{
-                    padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    borderBottom: i < Math.min(requests.length, 5) - 1 ? `1px solid ${border}` : 'none',
-                    transition: 'background 0.12s',
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = hover}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div>
-                      <p style={{ color: text, fontSize: 13, fontWeight: 600 }}>{req.type}</p>
-                      <p style={{ color: subText, fontSize: 11 }}>{req.created_at ? new Date(req.created_at).toLocaleDateString() : '—'}</p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {getReqIcon(req.status)}
-                      <span style={{ color: subText, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>{req.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: subText, fontSize: 13, fontStyle: 'italic', textAlign: 'center', padding: '16px', border: `1px dashed ${border}`, borderRadius: 12 }}>
-                No requests found.
-              </p>
-            )}
-          </div>
+          {requests.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, paddingRight: 4 }}>
+              {requests.slice(0, 5).map((req) => (
+                <div key={req.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {getReqIcon(req.status)}
+                  <span style={{ color: subText, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>{req.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Footer */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 4 }}>
