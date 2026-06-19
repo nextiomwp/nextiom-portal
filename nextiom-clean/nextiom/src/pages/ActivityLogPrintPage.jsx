@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { parseISO } from 'date-fns';
+import { format } from '@/lib/supabaseHelpers';
 
 const ACTION_LABELS = {
   new_registration: 'New Registration',

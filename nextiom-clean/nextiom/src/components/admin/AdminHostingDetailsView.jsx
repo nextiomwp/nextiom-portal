@@ -3,7 +3,7 @@ import { ArrowLeft, Save, Mail, Trash2, Shield, Eye, EyeOff, Server, HardDrive, 
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { format } from 'date-fns';
+import { format } from '@/lib/supabaseHelpers';
 import {
   updateHostingPackage,
   HOSTING_STATUS,

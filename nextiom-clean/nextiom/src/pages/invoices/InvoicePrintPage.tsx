@@ -7,7 +7,16 @@ import { fmtCurrency, InvoiceCurrency, resolveLogoUrl } from '@/lib/invoices'
 
 function formatPrintDate(value?: string) {
   if (!value) return ''
-  return value.split('T')[0]
+  const date = new Date(value)
+  if (isNaN(date.getTime())) return value
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ]
+  const month = monthNames[date.getMonth()]
+  const day = date.getDate()
+  const year = date.getFullYear()
+  return `${month} /  ${day} / ${year}`
 }
 
 function formatAddressLines(address?: string): string[] {

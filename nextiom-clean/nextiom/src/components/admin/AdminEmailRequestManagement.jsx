@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Trash2, AlertTriangle, Key, User as UserIcon, Loader2, FileText, X } from 'lucide-react';
 import { getEmailRequests, updateEmailRequest, deleteEmailRequest, REQUEST_STATUS, getCustomers, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
-import { format } from 'date-fns';
+import { format } from '@/lib/supabaseHelpers';
 import { getAdminRequestDocumentUrl } from '@/lib/requestDocuments';
 
 function DeleteModal({ open, onCancel, onConfirm, loading }) {

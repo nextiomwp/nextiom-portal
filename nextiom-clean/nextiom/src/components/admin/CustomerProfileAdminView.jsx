@@ -43,7 +43,7 @@ import {
 
 import { getCustomerInvoices, createInvoice, generateInvoiceNo, todayISO } from '@/lib/invoices';
 import { getCustomerJobs, createJob, updateJob, deleteJob } from '@/lib/jobs';
-import { format } from 'date-fns';
+import { format } from '@/lib/supabaseHelpers';
 import { useToast } from '@/components/ui/use-toast';
 
 function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate }) {

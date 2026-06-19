@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Activity, Search, Download, RefreshCw, Shield, Users, Zap, AlertTriangle, TrendingUp, FileText, HelpCircle, Database, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
-import { format, subDays, isWithinInterval, parseISO } from 'date-fns';
+import { subDays, isWithinInterval, parseISO } from 'date-fns';
+import { format } from '@/lib/supabaseHelpers';
 
 const ACTION_MAP = {
   new_registration: { label: 'New Registration', color: '#60a5fa', bg: '#1a3052' },

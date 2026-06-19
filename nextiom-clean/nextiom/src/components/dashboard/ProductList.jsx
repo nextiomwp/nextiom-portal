@@ -602,12 +602,12 @@ export default function ProductList({ products, licenses = [], customers = [], o
                             <div style={{ fontSize: 11.5, color: text, marginTop: 3 }}>
                               <div style={{ display: 'flex', gap: 4 }}>
                                 <span style={{ color: sub }}>Assigned:</span>
-                                <span>{lic.start_date ? lic.start_date.split('T')[0] : 'N/A'}</span>
+                                <span>{lic.start_date ? new Date(lic.start_date).toLocaleDateString() : 'N/A'}</span>
                               </div>
                               {lic.expiry_date && (
                                 <div style={{ display: 'flex', gap: 4, marginTop: 2 }}>
                                   <span style={{ color: sub }}>Expires:</span>
-                                  <span>{lic.expiry_date.split('T')[0]}</span>
+                                  <span>{new Date(lic.expiry_date).toLocaleDateString()}</span>
                                 </div>
                               )}
                             </div>

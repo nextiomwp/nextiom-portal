@@ -3,7 +3,7 @@ import { FileText, CheckCircle, XCircle, User, Package, Trash2, AlertTriangle } 
 import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
 import { getHostingRequests, updateHostingRequest, deleteHostingRequest, REQUEST_STATUS, getCustomers, addNotification, buildHostingRequestUpdatePayload } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
-import { format } from 'date-fns';
+import { format } from '@/lib/supabaseHelpers';
 
 function DeleteModal({ open, onCancel, onConfirm, loading }) {
   if (!open) return null;

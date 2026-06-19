@@ -277,11 +277,14 @@ export default function MyProductsPage({ user, isDark, c }) {
     if (!dateStr) return '—';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return '—';
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const month = monthNames[d.getMonth()];
     const day = d.getDate();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[d.getMonth()];
     const year = d.getFullYear();
-    return `${day} ${month} ${year}`;
+    return `${month} /  ${day} / ${year}`;
   };
 
   const filtered = licenses
