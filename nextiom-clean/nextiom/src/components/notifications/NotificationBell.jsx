@@ -4,11 +4,46 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
 
+const playNotificationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Play a beautiful, modern double-tone chime
+    const playTone = (freq, time, duration, volume) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+      
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(volume, time + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(time);
+      osc.stop(time + duration);
+    };
+    
+    const now = ctx.currentTime;
+    // Premium soft chime sound (C5 then E5)
+    playTone(523.25, now, 0.4, 0.15);
+    playTone(659.25, now + 0.10, 0.5, 0.15);
+  } catch (err) {
+    console.error('Failed to play notification sound:', err);
+  }
+};
+
 function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {} }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [recentNotifications, setRecentNotifications] = useState([]);
   const dropdownRef = useRef(null);
+  const knownIdsRef = useRef(new Set());
 
   const brand = c.brand || '#E87B35';
   const card = c.card || '#fff';
@@ -123,6 +158,17 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
         .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
         .map(applyReadState);
 
+      if (knownIdsRef.current.size > 0) {
+        const hasNewUnread = combined.some(n => !n.read_status && !knownIdsRef.current.has(n.id));
+        if (hasNewUnread) {
+          playNotificationSound();
+        }
+      }
+
+      for (const n of combined) {
+        if (n.id) knownIdsRef.current.add(n.id);
+      }
+
       setUnreadCount(combined.filter(n => !n.read_status).length);
       setRecentNotifications(combined.slice(0, 5));
     } catch (error) {
@@ -134,7 +180,36 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     if (userId) {
       loadNotifications();
       const interval = setInterval(loadNotifications, 10000);
-      return () => clearInterval(interval);
+
+      const channel = supabase
+        .channel(`cust-notif-${userId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications', filter: `customer_id=eq.${userId}` },
+          () => {
+            loadNotifications();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'domain_requests', filter: `customer_id=eq.${userId}` },
+          () => {
+            loadNotifications();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'hosting_requests', filter: `customer_id=eq.${userId}` },
+          () => {
+            loadNotifications();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        clearInterval(interval);
+        supabase.removeChannel(channel);
+      };
     }
   }, [userId]);
 
