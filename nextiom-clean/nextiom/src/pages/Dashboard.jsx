@@ -119,6 +119,40 @@ const isAdminInternalNotification = (notification) => {
   return text.startsWith('admin ') || text.includes(' administrator ');
 };
 
+const playNotificationSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    // Play a beautiful, modern double-tone chime
+    const playTone = (freq, time, duration, volume) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, time);
+      
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(volume, time + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start(time);
+      osc.stop(time + duration);
+    };
+    
+    const now = ctx.currentTime;
+    // Premium soft chime sound (C5 then E5)
+    playTone(523.25, now, 0.4, 0.15);
+    playTone(659.25, now + 0.10, 0.5, 0.15);
+  } catch (err) {
+    console.error('Failed to play notification sound:', err);
+  }
+};
+
 function Dashboard({ onLogout }) {
   const [active, setActive] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -164,6 +198,10 @@ function Dashboard({ onLogout }) {
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('adminNotifReadIds') || '[]'); } catch { return []; }
   });
+
+  const readNotifIdsRef = useRef(readNotifIds);
+  readNotifIdsRef.current = readNotifIds;
+  const knownIdsRef = useRef(new Set());
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -242,6 +280,54 @@ function Dashboard({ onLogout }) {
   }, []);
 
   useEffect(() => {
+    const channel = supabase
+      .channel('admin-dashboard-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        (payload) => {
+          // If it's a notification for admins (customer_id is null)
+          if (!payload.new || payload.new.customer_id === null) {
+            loadData(false, true);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customers' },
+        () => {
+          loadData(false, true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'domain_requests' },
+        () => {
+          loadData(false, true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hosting_requests' },
+        () => {
+          loadData(false, true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_requests' },
+        () => {
+          loadData(false, true);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
     document.documentElement.classList.toggle('dashboard-dark', isDark);
     document.documentElement.classList.toggle('dark', isDark);
     document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
@@ -257,22 +343,17 @@ function Dashboard({ onLogout }) {
     }
   }, [active]);
 
-  const loadData = async (isManualRefresh = false) => {
+  const loadData = async (isManualRefresh = false, isBackground = false) => {
     if (isManualRefresh) {
       setIsRefreshing(true);
-    } else {
+    } else if (!isBackground) {
       setIsLoading(true);
     }
     try {
       const [cus, prd, lic, sts, lgs, emailReqs, domReq, hostReq, hostPkg, adminN, hostPlans] = await Promise.all([
         getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getEmailRequests(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications(), getHostingPlans()
       ]);
-      setAdminNotifs(adminN || []);
-      const utc = await getUnreadTicketCount().catch(() => 0);
-      setUnreadTicketCount(utc);
-      setCustomers(cus || []); setProducts(prd || []); setLicenses(lic || []);
-      setStats(sts || {}); setEmailLogs(lgs || []);
-      setEmailRequests(emailReqs || []);
+      
       const domainReqRows = (domReq || []).map(r => ({
         ...r,
         source: 'domain',
@@ -298,6 +379,61 @@ function Dashboard({ onLogout }) {
       const allReq = [...domainReqRows, ...hostingReqRows, ...emailReqRows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       const pendingReqRows = allReq.filter(r => String(r.status || '').toLowerCase() === 'pending');
 
+      // Check for new unread notifications/requests/customers and play sound
+      const fetchedIds = new Set([
+        ...(cus || []).map(c => 'cust_' + c.id),
+        ...(allReq || []).map(r => r.id),
+        ...(adminN || []).map(n => 'notif_' + n.id)
+      ]);
+
+      if (knownIdsRef.current.size > 0) {
+        let hasNewUnread = false;
+
+        // check pending customers
+        for (const c of (cus || [])) {
+          if (c.status === 'pending' && !knownIdsRef.current.has('cust_' + c.id) && !readNotifIdsRef.current.includes('cust_' + c.id)) {
+            hasNewUnread = true;
+            break;
+          }
+        }
+
+        // check pending requests
+        if (!hasNewUnread) {
+          for (const r of pendingReqRows) {
+            if (r.id && !knownIdsRef.current.has(r.id) && !readNotifIdsRef.current.includes(r.id)) {
+              hasNewUnread = true;
+              break;
+            }
+          }
+        }
+
+        // check admin notifications
+        if (!hasNewUnread) {
+          const adminNotifsForDropdown = (adminN || []).filter(n => !isAdminInternalNotification(n));
+          for (const n of adminNotifsForDropdown) {
+            if (n.id && !knownIdsRef.current.has('notif_' + n.id) && !readNotifIdsRef.current.includes('notif_' + n.id)) {
+              hasNewUnread = true;
+              break;
+            }
+          }
+        }
+
+        if (hasNewUnread) {
+          playNotificationSound();
+        }
+      }
+
+      // Update the known IDs
+      for (const id of fetchedIds) {
+        if (id) knownIdsRef.current.add(id);
+      }
+
+      setAdminNotifs(adminN || []);
+      const utc = await getUnreadTicketCount().catch(() => 0);
+      setUnreadTicketCount(utc);
+      setCustomers(cus || []); setProducts(prd || []); setLicenses(lic || []);
+      setStats(sts || {}); setEmailLogs(lgs || []);
+      setEmailRequests(emailReqs || []);
       setRequests(allReq);
       setPendingRequests(pendingReqRows);
       setPendingRequestsCount(pendingReqRows.length);
@@ -860,7 +996,7 @@ function Dashboard({ onLogout }) {
                           const r = item.data;
                           return (
                             <div key={'rq' + (r.id || i)} style={rowStyle}
-                              onClick={() => { markNotifRead(item.key); setActive(r.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
+                              onClick={() => { markNotifRead(item.key); setActive(r.source === 'domain' ? 'domainsRequests' : r.source === 'email' ? 'emailRequests' : 'hostingRequests'); setIsNotificationsOpen(false); }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 {dot}
                                 <span style={titleStyle}>{r.n} — {r.reqType}</span>
@@ -1227,13 +1363,13 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
   );
 
   const allItems = [
-    ...pendingReqs.map(r => ({ type: 'request', source: r.source, title: `${r.n} — ${r.reqType}`, sub: r.source === 'domain' ? 'Domain Request' : 'Hosting Request', date: r.created_at, id: r.id })),
+    ...pendingReqs.map(r => ({ type: 'request', source: r.source, title: `${r.n} — ${r.reqType}`, sub: r.source === 'domain' ? 'Domain Request' : r.source === 'email' ? 'Email Request' : 'Hosting Request', date: r.created_at, id: r.id })),
     ...recentCustomers.map(cu => ({ type: 'customer', title: `New Customer: ${cu.name}`, sub: cu.email || '', date: cu.created_at, id: cu.id, customer: cu })),
     ...filteredNotifications.map(n => ({ type: 'notification', title: n.title || 'Notification', sub: n.message || '', date: n.created_at, id: n.id, nType: n.type })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const typeColor = t => t === 'request' ? '#8b5cf6' : t === 'customer' ? '#639922' : '#378ADD';
-  const typeLabel = item => item.type === 'request' ? (item.source === 'domain' ? 'Domain' : 'Hosting') : item.type === 'customer' ? 'New User' : 'Notification';
+  const typeLabel = item => item.type === 'request' ? (item.source === 'domain' ? 'Domain' : item.source === 'email' ? 'Email' : 'Hosting') : item.type === 'customer' ? 'New User' : 'Notification';
 
   return (
     <div>
@@ -1266,7 +1402,7 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
               onClick={() => { 
                 if (item.type === 'request') {
                   if (markNotifRead) markNotifRead(item.id);
-                  onNavigate(item.source === 'domain' ? 'domainsRequests' : 'hostingRequests'); 
+                  onNavigate(item.source === 'domain' ? 'domainsRequests' : item.source === 'email' ? 'emailRequests' : 'hostingRequests'); 
                 } else if (item.type === 'customer') {
                   if (markNotifRead) markNotifRead('cust_' + item.id);
                   onNavigate('customers'); 

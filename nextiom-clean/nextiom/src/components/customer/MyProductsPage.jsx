@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, X, Key, Calendar, DollarSign, Shield, Zap, Tag, MoreVertical, Search, ChevronDown, ChevronLeft, ChevronRight, Check, Copy, FileText, Globe } from 'lucide-react';
+import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, EyeOff, X, Key, Calendar, DollarSign, Shield, Zap, Tag, MoreVertical, Search, ChevronDown, ChevronLeft, ChevronRight, Check, Copy, FileText, Globe } from 'lucide-react';
 import { getLicenses, incrementDownloadCount } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -16,8 +16,7 @@ function getValidity(license) {
   const lt = license.license_type || license.product?.license_type || 'one_time';
   if (lt === 'lifetime') return { valid: true, label: 'Lifetime', days: null };
   if (lt === 'one_time') {
-    const used = (license.download_count || 0) >= 1;
-    return { valid: !used, label: used ? 'Download Used' : 'One Time Download', days: null, downloadUsed: used };
+    return { valid: true, label: 'One Time Purchase', days: null, downloadUsed: false };
   }
   if ((lt === 'yearly' || lt === 'monthly') && license.expiry_date) {
     const days = Math.ceil((new Date(license.expiry_date) - new Date()) / 86400000);
@@ -40,7 +39,7 @@ function getLicenseStatus(license) {
     return 'Active';
   }
   if (lt === 'one_time') {
-    return validity.downloadUsed ? 'Expired' : 'Active';
+    return 'Active';
   }
   if (lt === 'yearly' || lt === 'monthly') {
     if (validity.days <= 0) return 'Expired';
@@ -210,6 +209,8 @@ export default function MyProductsPage({ user, isDark, c }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 992);
   const { toast } = useToast();
   const [selectedNoteLicense, setSelectedNoteLicense] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [showLicenseKey, setShowLicenseKey] = useState(false);
 
   const bg = c?.bg || (isDark ? '#15161A' : '#f8f8f7');
   const card = c?.card || (isDark ? '#1C1E24' : '#fff');
@@ -293,9 +294,7 @@ export default function MyProductsPage({ user, isDark, c }) {
     return sortDir === 'desc' ? db - da : da - db;
   });
 
-  const itemsPerPage = 5;
-  const totalPages = Math.ceil(sorted.length / itemsPerPage);
-  const paginated = sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginated = sorted;
 
   useEffect(() => {
     if (detailLicense) {
@@ -305,6 +304,11 @@ export default function MyProductsPage({ user, isDark, c }) {
       }
     }
   }, [search, statusFilter, licenses]);
+
+  useEffect(() => {
+    setActiveTab('overview');
+    setShowLicenseKey(false);
+  }, [detailLicense?.id]);
 
   if (loading) {
     return (
@@ -346,396 +350,459 @@ export default function MyProductsPage({ user, isDark, c }) {
       lt === 'yearly' ? 'Yearly Renewal' :
       lt === 'monthly' ? 'Monthly Renewal' : 'One Time Purchase';
 
-    const textLabel = getTextLabel(lic.name);
-
     const showRenewal = dp.renewal_enabled && (lt === 'yearly' || lt === 'monthly');
     const isVirtual = dp.category === 'virtual';
+    const badgeCfg = getStatusBadgeConfig(status, validity, lic, lt);
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{ padding: '0 24px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Active Status Alert Banner */}
-          {(() => {
-            const badgeCfg = getStatusBadgeConfig(status, validity, lic, lt);
-            return (
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px 14px', borderRadius: 8,
-                background: badgeCfg.bg,
-                border: `1px solid ${badgeCfg.border}`,
-                color: badgeCfg.color,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, fontWeight: 600 }}>
-                  {badgeCfg.icon}
-                  <span>{badgeCfg.detailText}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-                    {badgeCfg.expiryText}
-                  </span>
-                  {showClose && (
-                    <button
-                      onClick={() => setDetailLicense(null)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: badgeCfg.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 0,
-                        opacity: 0.8
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                      onMouseLeave={e => e.currentTarget.style.opacity = 0.8}
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
+        <div style={{ padding: '0 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Header row with Status pill and Close button */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '3px 10px',
+              borderRadius: 20,
+              background: badgeCfg.bg,
+              border: `1px solid ${badgeCfg.border}`,
+              color: badgeCfg.color,
+              fontSize: 11.5,
+              fontWeight: 600,
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: badgeCfg.color, display: 'inline-block' }} />
+              <span>
+                {badgeCfg.text === 'ACTIVE' ? 'Active' : 
+                 badgeCfg.text === 'EXPIRING SOON' ? 'Expiring Soon' : 
+                 badgeCfg.text === 'DISABLED' ? 'Disabled' : 
+                 badgeCfg.text === 'SUSPENDED' ? 'Suspended' : 'Expired'}
+              </span>
+              <span style={{ opacity: 0.5 }}>•</span>
+              <span>{badgeCfg.expiryText}</span>
+            </div>
+            {showClose && (
+              <button
+                onClick={() => setDetailLicense(null)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: sub,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 4,
+                  borderRadius: '50%',
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = hover}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Product Title and Sub-label */}
+          <div style={{ marginTop: 2 }}>
+            <h3 style={{ color: text, fontSize: 17, fontWeight: 700, margin: 0, lineHeight: 1.3 }}>
+              {lic.name}
+            </h3>
+            <p style={{ color: sub, fontSize: 12.5, margin: '3px 0 0', fontWeight: 500 }}>
+              {dp.type || 'Plugin'} • {licenseTypeLabel}
+            </p>
+          </div>
 
           {/* Pricing Metrics Box Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10,
-              background: panel, border: `1px solid ${border}`
-            }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%', background: `${brand}20`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: brand, flexShrink: 0
-              }}>
-                <DollarSign size={14} />
-              </div>
-              <div>
-                <p style={{ color: sub, fontSize: 10.5, fontWeight: 500, margin: 0 }}>Purchase Price</p>
-                <p style={{ color: text, fontSize: 14, fontWeight: 700, margin: '1px 0 0' }}>{formatPrice(lic.price !== undefined && lic.price !== null ? lic.price : dp.price, lic.currency || dp.currency)}</p>
-              </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            borderRadius: 10,
+            border: `1px solid ${border}`,
+            background: 'rgba(255,255,255,0.01)',
+            overflow: 'hidden',
+            marginTop: 2
+          }}>
+            {/* Purchase Price */}
+            <div style={{ padding: '10px 14px', borderRight: `1px solid ${border}` }}>
+              <span style={{ color: sub, fontSize: 10.5, fontWeight: 500, display: 'block' }}>Purchase price</span>
+              <span style={{ color: text, fontSize: 14.5, fontWeight: 700, display: 'block', marginTop: 3 }}>
+                {formatPrice(lic.price !== undefined && lic.price !== null ? lic.price : dp.price, lic.currency || dp.currency)}
+              </span>
             </div>
-
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10,
-              background: panel, border: `1px solid ${border}`
-            }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: '50%', background: 'rgba(34,197,94,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', flexShrink: 0
+            {/* Renewal Price */}
+            <div style={{ padding: '10px 14px' }}>
+              <span style={{ color: sub, fontSize: 10.5, fontWeight: 500, display: 'block' }}>Renewal price</span>
+              <span style={{
+                color: showRenewal ? brand : '#22c55e',
+                fontSize: 14.5,
+                fontWeight: 700,
+                display: 'block',
+                marginTop: 3
               }}>
-                <RefreshCw size={13} />
-              </div>
-              <div>
-                <p style={{ color: sub, fontSize: 10.5, fontWeight: 500, margin: 0 }}>Renewal Price</p>
-                <p style={{ color: text, fontSize: 14, fontWeight: 700, margin: '1px 0 0' }}>
-                  {showRenewal ? `${formatPrice(lic.renewal_price !== undefined && lic.renewal_price !== null ? lic.renewal_price : dp.renewal_price, lic.currency || dp.currency)} / ${lt === 'yearly' ? 'Year' : 'Month'}` : 'Not Required'}
-                </p>
-              </div>
+                {showRenewal ? `${formatPrice(lic.renewal_price !== undefined && lic.renewal_price !== null ? lic.renewal_price : dp.renewal_price, lic.currency || dp.currency)}` : 'Not required'}
+              </span>
             </div>
           </div>
 
-          {/* License Key Section */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Key size={14} style={{ color: brand }} />
-              <span style={{ fontSize: 11.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5 }}>License Key</span>
-            </div>
-            {(() => {
-              const activeKey = lic.license_key;
+          {/* Tabs Navigation */}
+          <div style={{
+            display: 'flex',
+            borderBottom: `1px solid ${border}`,
+            margin: '2px 0 10px',
+            position: 'relative'
+          }}>
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'subscription', label: 'Subscription' },
+              { id: 'downloads', label: 'Downloads' }
+            ].map(tab => {
+              const isActive = activeTab === tab.id;
               return (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '6px 10px', borderRadius: 8, background: 'rgba(0,0,0,0.2)',
-                  border: `1px solid ${border}`,
-                }}>
-                  <span style={{ color: text, fontSize: 12.5, fontFamily: 'monospace', letterSpacing: 0.5 }}>
-                    {activeKey || '—'}
-                  </span>
-                  {activeKey && (
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(activeKey);
-                        setCopiedKey(true);
-                        setTimeout(() => setCopiedKey(false), 2000);
-                        toast({ title: 'License key copied to clipboard' });
-                      }}
-                      style={{
-                        background: `${brand}18`, border: `1px solid ${brand}30`,
-                        color: brand, padding: '4px 10px', borderRadius: 6, display: 'flex',
-                        alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11.5, fontWeight: 500,
-                      }}
-                    >
-                      {copiedKey ? <Check size={12} /> : <Copy size={12} />}
-                      <span>{copiedKey ? 'Copied' : 'Copy'}</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
-
-          {/* Subscription Details */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
-              <Calendar size={14} style={{ color: brand }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Subscription Details</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Start Date</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: text }}>
-                  <span>{formatDate(lic.start_date || lic.created_at)}</span>
-                  <Calendar size={12} style={{ color: sub }} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Expiry Date</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: text }}>
-                  <span>{lt === 'lifetime' ? 'Lifetime' : formatDate(lic.expiry_date)}</span>
-                  <Calendar size={12} style={{ color: sub }} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Days Left</span>
-                <span style={{ color: status === 'Active' ? '#22c55e' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>
-                  {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(lic.expiry_date) : validity.days != null ? `${validity.days} days` : validity.label}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Product Information Section */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
-              <Package size={14} style={{ color: brand }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Product Information</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontSize: 12.5 }}>
-                <span style={{ color: sub, flexShrink: 0 }}>Product Name</span>
-                <span style={{ color: text, fontWeight: 600, textAlign: 'right', paddingLeft: 12 }}>{lic.name}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Product Type</span>
-                <span style={{ color: text, fontWeight: 500 }}>{dp.type || 'Plugin'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                <span style={{ color: sub }}>Service Plan</span>
-                <span style={{ color: text, fontWeight: 500 }}>{lic.membership_type || licenseTypeLabel}</span>
-              </div>
-              {lic.domain && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12.5 }}>
-                  <span style={{ color: sub }}>Domain</span>
-                  <span style={{ color: text, fontWeight: 500 }}>{lic.domain}</span>
-                </div>
-              )}
-              {dp.description?.trim() && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                  <span style={{ color: sub, fontSize: 12.5 }}>Description</span>
-                  <div style={{
-                    color: text,
-                    fontSize: 12,
-                    lineHeight: '1.4',
-                    whiteSpace: 'pre-wrap',
-                    background: 'rgba(0,0,0,0.15)',
-                    border: `1px solid ${border}`,
-                    borderRadius: 8,
-                    padding: '8px 10px'
-                  }}>
-                    {dp.description.trim()}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Downloads section - Hidden for Virtual services, documentation removed */}
-          {!isVirtual && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
-                <Download size={14} style={{ color: brand }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Downloads</span>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {/* Main Product File Download */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Main Product File</p>
-                    <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>Version {dp.version || lic.version || '1.0.0'}</p>
-                  </div>
-                  <button
-                    onClick={() => handleDownload(lic)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 8,
-                      background: `${brand}15`, border: `1.5px solid ${brand}30`,
-                      color: brand, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = `${brand}25`;
-                      e.currentTarget.style.borderColor = brand;
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = `${brand}15`;
-                      e.currentTarget.style.borderColor = `${brand}30`;
-                    }}
-                  >
-                    <Download size={13} />
-                    <span>Download Product</span>
-                  </button>
-                </div>
-
-                {/* Documentation / Order Note Row */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px dashed ${border}`, paddingTop: 10 }}>
-                  <div>
-                    <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Documentation / Order Note</p>
-                    <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>Help resources & guides</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedNoteLicense(lic)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '6px 12px', borderRadius: 8,
-                      background: `${brand}15`, border: `1.5px solid ${brand}30`,
-                      color: brand, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = `${brand}25`;
-                      e.currentTarget.style.borderColor = brand;
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = `${brand}15`;
-                      e.currentTarget.style.borderColor = `${brand}30`;
-                    }}
-                  >
-                    <FileText size={13} />
-                    <span>View Details</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isVirtual && (
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
-                <FileText size={14} style={{ color: brand }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Resources</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ color: text, fontSize: 12.5, fontWeight: 600, margin: 0 }}>Documentation / Order Note</p>
-                  <p style={{ color: sub, fontSize: 11, margin: '2px 0 0' }}>Help resources & guides</p>
-                </div>
                 <button
-                  onClick={() => setSelectedNoteLicense(lic)}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '6px 12px', borderRadius: 8,
-                    background: `${brand}15`, border: `1.5px solid ${brand}30`,
-                    color: brand, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = `${brand}25`;
-                    e.currentTarget.style.borderColor = brand;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = `${brand}15`;
-                    e.currentTarget.style.borderColor = `${brand}30`;
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '8px 4px',
+                    color: isActive ? brand : sub,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    position: 'relative',
+                    transition: 'all 0.2s',
+                    outline: 'none',
+                    textAlign: 'center'
                   }}
                 >
-                  <FileText size={13} />
-                  <span>View Details</span>
+                  {tab.label}
+                  {isActive && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: -1,
+                      left: 0,
+                      right: 0,
+                      height: 2,
+                      backgroundColor: brand,
+                      borderRadius: '2px 2px 0 0'
+                    }} />
+                  )}
                 </button>
+              );
+            })}
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'overview' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* License Key Section */}
+              {lic.license_key && (
+                <div>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 4 }}>License Key</span>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(0,0,0,0.12)',
+                    border: `1px solid ${border}`
+                  }}>
+                    <span style={{
+                      color: text,
+                      fontSize: 12,
+                      fontFamily: showLicenseKey ? 'monospace' : 'sans-serif',
+                      letterSpacing: showLicenseKey ? 0.5 : 3,
+                      userSelect: showLicenseKey ? 'all' : 'none'
+                    }}>
+                      {showLicenseKey ? lic.license_key : '••••••••••••••••••••'}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        onClick={() => setShowLicenseKey(!showLicenseKey)}
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${border}`,
+                          color: sub,
+                          borderRadius: 6,
+                          width: 26,
+                          height: 26,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = text}
+                        onMouseLeave={e => e.currentTarget.style.color = sub}
+                      >
+                        {showLicenseKey ? <EyeOff size={13} /> : <Eye size={13} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(lic.license_key);
+                          setCopiedKey(true);
+                          setTimeout(() => setCopiedKey(false), 2000);
+                          toast({ title: 'License key copied to clipboard' });
+                        }}
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${border}`,
+                          color: sub,
+                          borderRadius: 6,
+                          width: 26,
+                          height: 26,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = text}
+                        onMouseLeave={e => e.currentTarget.style.color = sub}
+                      >
+                        {copiedKey ? <Check size={13} style={{ color: '#22c55e' }} /> : <Copy size={13} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Product Information Section */}
+              <div style={{ marginTop: 2 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 2 }}>Product Information</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
+                    <span style={{ color: sub, fontSize: 12.5 }}>Product type</span>
+                    <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{dp.type || 'Plugin'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
+                    <span style={{ color: sub, fontSize: 12.5 }}>Service plan</span>
+                    <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{lic.membership_type || licenseTypeLabel}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
+                    <span style={{ color: sub, fontSize: 12.5 }}>Version</span>
+                    <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{dp.version || lic.version || '1.0.0'}</span>
+                  </div>
+                  {lic.domain && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
+                      <span style={{ color: sub, fontSize: 12.5 }}>Domain</span>
+                      <a
+                        href={lic.domain.startsWith('http') ? lic.domain : `https://${lic.domain}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: brand,
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          transition: 'text-decoration 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                        onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                      >
+                        {lic.domain}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Features section */}
+              <div style={{ marginTop: 2 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Features</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {dp.license_registration && dp.automatic_updates && (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 11.5, fontWeight: 600, color: '#22c55e' }}>
+                        <span>✓ License Registration</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 11.5, fontWeight: 600, color: '#22c55e' }}>
+                        <span>✓ Auto Updates</span>
+                      </div>
+                    </>
+                  )}
+                  {dp.manual_updates && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 11.5, fontWeight: 600, color: '#22c55e' }}>
+                      <span>✓ Manual Updates</span>
+                    </div>
+                  )}
+                  {!dp.license_registration && !dp.automatic_updates && !dp.manual_updates && (
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', fontSize: 11.5, fontWeight: 600, color: '#ef4444' }}>
+                        <span>✗ No Updates</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 20, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', fontSize: 11.5, fontWeight: 600, color: '#ef4444' }}>
+                        <span>✗ No license</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Description Section */}
+              {(lic.notes?.trim() || dp.description?.trim()) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>Description</span>
+                  <div style={{
+                    color: text,
+                    fontSize: 11.5,
+                    lineHeight: '1.4',
+                    whiteSpace: 'pre-wrap',
+                    background: 'rgba(0,0,0,0.12)',
+                    border: `1px solid ${border}`,
+                    borderRadius: 8,
+                    padding: '6px 8px'
+                  }}>
+                    {lic.notes?.trim() || dp.description?.trim()}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'subscription' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 2 }}>Subscription Details</span>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
+                    <span style={{ color: sub, fontSize: 12.5 }}>Start date</span>
+                    <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{formatDate(lic.start_date || lic.created_at)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
+                    <span style={{ color: sub, fontSize: 12.5 }}>Expiry date</span>
+                    <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{lt === 'lifetime' ? 'Lifetime' : formatDate(lic.expiry_date)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
+                    <span style={{ color: sub, fontSize: 12.5 }}>Days left</span>
+                    <span style={{
+                      color: status === 'Active' ? '#22c55e' : ['Expired', 'Disabled', 'Suspended'].includes(status) ? '#ef4444' : '#f59e0b',
+                      fontSize: 12.5,
+                      fontWeight: 600
+                    }}>
+                      {lt === 'lifetime' ? 'Never expires' : status === 'Expired' ? getExpiredText(lic.expiry_date) : validity.days != null ? `${validity.days} days` : validity.label}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Features section */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={brand} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-              </svg>
-              <span style={{ fontSize: 12, fontWeight: 600, color: text }}>Features</span>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {dp.license_registration && dp.automatic_updates && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    <span>License Registration</span>
+          {activeTab === 'downloads' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
+                  {isVirtual ? 'RESOURCES' : 'FILES & RESOURCES'}
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {!isVirtual && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      background: 'rgba(255,255,255,0.01)',
+                      border: `1px solid ${border}`
+                    }}>
+                      <div>
+                        <p style={{ color: text, fontSize: 13, fontWeight: 600, margin: 0 }}>Main product file</p>
+                        <p style={{ color: sub, fontSize: 10.5, margin: '3px 0 0' }}>Version {dp.version || lic.version || '1.0.0'}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDownload(lic)}
+                        style={{
+                          background: 'transparent',
+                          border: `1.5px solid ${brand}`,
+                          color: brand,
+                          padding: '5px 12px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = `${brand}15`;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <Download size={12} />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.01)',
+                    border: `1px solid ${border}`
+                  }}>
+                    <div>
+                      <p style={{ color: text, fontSize: 13, fontWeight: 600, margin: 0 }}>Documentation / order note</p>
+                      <p style={{ color: sub, fontSize: 10.5, margin: '3px 0 0' }}>Help resources & guides</p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedNoteLicense(lic)}
+                      style={{
+                        background: 'transparent',
+                        border: `1.5px solid ${brand}`,
+                        color: brand,
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = `${brand}15`;
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <span>View</span>
+                    </button>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    <span>Auto Updates</span>
-                  </div>
-                </>
-              )}
-              {dp.manual_updates && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <span>Manual Updates</span>
                 </div>
-              )}
-              {!dp.license_registration && !dp.automatic_updates && !dp.manual_updates && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                    <span>No Updates</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}`, fontSize: 11.5, color: text }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                    <span>No license</span>
-                  </div>
-                </>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Footer Standing Banner */}
           {(() => {
-            const badgeCfg = getStatusBadgeConfig(status, validity, lic, lt);
             return (
               <div style={{
-                display: 'flex', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 10,
+                padding: '10px 12px',
+                borderRadius: 8,
                 background: badgeCfg.standingBg,
                 border: `1px solid ${badgeCfg.standingBorder}`,
-                color: badgeCfg.standingColor
+                color: badgeCfg.standingColor,
+                marginTop: 4
               }}>
-                {status === 'Active' ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    <polyline points="9 11 11 13 15 9"></polyline>
-                  </svg>
-                ) : (
-                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
-                )}
-                <div style={{ fontSize: 12.5 }}>
-                  <p style={{ fontWeight: 600, margin: 0 }}>
-                    {badgeCfg.standingTitle}
-                  </p>
-                  <p style={{ fontSize: 11, color: sub, margin: '2px 0 0' }}>
-                    {badgeCfg.standingDesc}
-                  </p>
-                </div>
+                <p style={{ fontSize: 12, fontWeight: 600, margin: 0 }}>
+                  {badgeCfg.standingTitle}
+                </p>
+                <p style={{ fontSize: 11, opacity: 0.8, margin: '2px 0 0' }}>
+                  {badgeCfg.standingDesc}
+                </p>
               </div>
             );
           })()}
@@ -838,7 +905,7 @@ export default function MyProductsPage({ user, isDark, c }) {
 
             {/* Showing range */}
             <div style={{ color: sub, fontSize: 13, marginBottom: 16 }}>
-              Showing {sorted.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, sorted.length)} of {sorted.length} products
+              Showing {sorted.length} {sorted.length === 1 ? 'product' : 'products'}
             </div>
 
             {/* List or Empty State */}
@@ -855,7 +922,14 @@ export default function MyProductsPage({ user, isDark, c }) {
                 </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="no-scrollbar" style={{
+                maxHeight: 'calc(100vh - 290px)',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                paddingRight: 4
+              }}>
                 {viewMode === 'list' ? (
                   /* LIST VIEW */
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -1088,59 +1162,6 @@ export default function MyProductsPage({ user, isDark, c }) {
                     })}
                   </div>
                 )}
-
-                {/* Pagination controls */}
-                {totalPages > 1 && (
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 24 }}>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 32, height: 32, borderRadius: 8, border: `1px solid ${border}`,
-                        background: panel, color: currentPage === 1 ? `${sub}50` : text,
-                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    
-                    {Array.from({ length: totalPages }).map((_, idx) => {
-                      const pageNum = idx + 1;
-                      const isActive = currentPage === pageNum;
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: 32, height: 32, borderRadius: 8,
-                            border: `1px solid ${isActive ? brand : border}`,
-                            background: isActive ? brand : panel,
-                            color: isActive ? '#fff' : text,
-                            fontWeight: isActive ? 600 : 400,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 32, height: 32, borderRadius: 8, border: `1px solid ${border}`,
-                        background: panel, color: currentPage === totalPages ? `${sub}50` : text,
-                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
-                      }}
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -1158,8 +1179,8 @@ export default function MyProductsPage({ user, isDark, c }) {
               flexDirection: 'column',
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               position: 'sticky',
-              top: 80,
-              maxHeight: 'calc(100vh - 120px)',
+              top: 16,
+              maxHeight: 'calc(100vh - 140px)',
             }}>
               <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1, paddingTop: 24 }}>
                 {renderDetailPanelContent(detailLicense, true)}
@@ -1196,68 +1217,12 @@ export default function MyProductsPage({ user, isDark, c }) {
               display: 'flex',
               flexDirection: 'column',
               border: `1px solid ${border}`,
-              boxShadow: '0 24px 80px rgba(0,0,0,0.35)'
+              boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+              paddingTop: 24
             }}
           >
-            {/* Modal Header */}
-            <div style={{ padding: '24px 24px 12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {(() => {
-                  const theme = getProductTheme(detailLicense.name);
-                  const Icon = theme.icon;
-                  const textLabel = getTextLabel(detailLicense.name);
-                  return (
-                    <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      backgroundColor: theme.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontWeight: 700,
-                      fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
-                      flexShrink: 0
-                    }}>
-                      {textLabel ? textLabel : <Icon size={20} />}
-                    </div>
-                  );
-                })()}
-                <div>
-                  <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: 0 }}>
-                    {detailLicense.name}
-                  </h3>
-                  <p style={{ color: sub, fontSize: 12, margin: '2px 0 0' }}>
-                    {detailLicense.product?.type || 'Plugin'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setDetailLicense(null)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: sub,
-                  padding: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: '50%',
-                  width: 28,
-                  height: 28,
-                  transition: 'background 0.15s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = hover}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            
             <div className="no-scrollbar" style={{ overflowY: 'auto', flex: 1 }}>
-              {renderDetailPanelContent(detailLicense, false)}
+              {renderDetailPanelContent(detailLicense, true)}
             </div>
           </div>
         </div>

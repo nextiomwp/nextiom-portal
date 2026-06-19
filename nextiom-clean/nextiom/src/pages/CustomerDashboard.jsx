@@ -80,8 +80,7 @@ function getValidity(license) {
   const lt = license.license_type || license.product?.license_type || 'one_time';
   if (lt === 'lifetime') return { valid: true, label: 'Lifetime', days: null };
   if (lt === 'one_time') {
-    const used = (license.download_count || 0) >= 1;
-    return { valid: !used, label: used ? 'Download Used' : 'One Time Download', days: null, downloadUsed: used };
+    return { valid: true, label: 'One Time Purchase', days: null, downloadUsed: false };
   }
   if ((lt === 'yearly' || lt === 'monthly') && license.expiry_date) {
     const days = Math.ceil((new Date(license.expiry_date) - new Date()) / 86400000);
@@ -104,7 +103,7 @@ function getLicenseStatus(license) {
     return 'Active';
   }
   if (lt === 'one_time') {
-    return validity.downloadUsed ? 'Expired' : 'Active';
+    return 'Active';
   }
   if (lt === 'yearly' || lt === 'monthly') {
     if (validity.days <= 0) return 'Expired';

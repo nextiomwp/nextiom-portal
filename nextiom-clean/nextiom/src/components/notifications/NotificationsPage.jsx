@@ -15,6 +15,8 @@ function getIconData(type, isDark) {
       return { Icon: Globe, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.15)' : '#ede9fe' };
     case 'hosting_request':
       return { Icon: Server, color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.15)' : '#cffafe' };
+    case 'email_request':
+      return { Icon: Mail, color: '#e87b35', bg: isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.1)' };
     default:
       return { Icon: Mail, color: '#64748b', bg: isDark ? 'rgba(100,116,139,0.15)' : '#f1f5f9' };
   }

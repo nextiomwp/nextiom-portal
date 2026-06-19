@@ -257,8 +257,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
 
     if (lt === 'lifetime') return 'Active';
     if (lt === 'one_time') {
-      const used = (lic.download_count || 0) >= 1;
-      return used ? 'Expired' : 'Active';
+      return 'Active';
     }
     if ((lt === 'yearly' || lt === 'monthly') && lic.expiry_date) {
       const days = Math.ceil((new Date(lic.expiry_date) - new Date()) / 86400000);

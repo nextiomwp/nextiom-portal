@@ -37,8 +37,7 @@ export default function ProductList({ products, licenses = [], customers = [], o
       } else if (lic.start_date && new Date() < new Date(lic.start_date)) {
         status = 'Pending';
       } else if (lt === 'one_time') {
-        const used = (lic.download_count || 0) >= 1;
-        status = used ? 'Expired' : 'Active';
+        status = 'Active';
       } else if ((lt === 'yearly' || lt === 'monthly') && lic.expiry_date) {
         const days = Math.ceil((new Date(lic.expiry_date) - new Date()) / 86400000);
         if (days <= 0) {
@@ -503,8 +502,7 @@ export default function ProductList({ products, licenses = [], customers = [], o
                     } else if (lic.start_date && new Date() < new Date(lic.start_date)) {
                       calculatedStatus = 'Pending';
                     } else if (lt === 'one_time') {
-                      const used = (lic.download_count || 0) >= 1;
-                      calculatedStatus = used ? 'Expired' : 'Active';
+                      calculatedStatus = 'Active';
                     } else if ((lt === 'yearly' || lt === 'monthly') && lic.expiry_date) {
                       const days = Math.ceil((new Date(lic.expiry_date) - new Date()) / 86400000);
                       if (days <= 0) {
