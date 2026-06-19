@@ -339,14 +339,17 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
           )}
 
           {/* Recent Requests */}
-          {requests.length > 0 && (
+          {requests.filter(req => String(req.status || '').toLowerCase() !== 'approved').length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, paddingRight: 4 }}>
-              {requests.slice(0, 5).map((req) => (
-                <div key={req.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {getReqIcon(req.status)}
-                  <span style={{ color: subText, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>{req.status}</span>
-                </div>
-              ))}
+              {requests
+                .filter(req => String(req.status || '').toLowerCase() !== 'approved')
+                .slice(0, 5)
+                .map((req) => (
+                  <div key={req.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {getReqIcon(req.status)}
+                    <span style={{ color: subText, fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>{req.status}</span>
+                  </div>
+                ))}
             </div>
           )}
 
