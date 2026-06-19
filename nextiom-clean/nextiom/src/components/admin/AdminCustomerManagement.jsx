@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff, ShieldCheck, ShieldOff, MoreVertical, Download, Users, Building, HelpCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications, updateCustomer, createTicket, addTicketMessage } from '@/lib/storage';
@@ -14,10 +14,16 @@ import { useNavigate } from 'react-router-dom';
 
 function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigate }) {
   const [customers, setCustomers] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [companyFilter, setCompanyFilter] = useState('All');
-  const [dateFilter, setDateFilter] = useState('All Time');
+  const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('admin_customer_search_term') || '');
+  const [statusFilter, setStatusFilter] = useState(() => localStorage.getItem('admin_customer_status_filter') || 'All');
+  const [companyFilter, setCompanyFilter] = useState(() => localStorage.getItem('admin_customer_company_filter') || 'All');
+  const [dateFilter, setDateFilter] = useState(() => localStorage.getItem('admin_customer_date_filter') || 'All Time');
+  const [customerFilter, setCustomerFilter] = useState(() => localStorage.getItem('admin_customer_name_filter') || 'All');
+
+  const customerNames = useMemo(() => {
+    const names = customers.map(cu => cu.name).filter(Boolean);
+    return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+  }, [customers]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [assigningCustomer, setAssigningCustomer] = useState(null);
@@ -75,6 +81,39 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
     media.addListener(onChange);
     return () => media.removeListener(onChange);
   }, []);
+
+  useEffect(() => {
+    if (!openMenuCustomerId) return;
+    const handleScrollOrResize = () => {
+      setOpenMenuCustomerId(null);
+    };
+    window.addEventListener('scroll', handleScrollOrResize, { capture: true, passive: true });
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [openMenuCustomerId]);
+
+  useEffect(() => {
+    localStorage.setItem('admin_customer_search_term', searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    localStorage.setItem('admin_customer_status_filter', statusFilter);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('admin_customer_company_filter', companyFilter);
+  }, [companyFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('admin_customer_date_filter', dateFilter);
+  }, [dateFilter]);
+
+  useEffect(() => {
+    localStorage.setItem('admin_customer_name_filter', customerFilter);
+  }, [customerFilter]);
 
   const loadCustomers = async () => {
     try {
@@ -698,6 +737,9 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
     // Status Filter
     if (statusFilter !== 'All' && cu.status !== statusFilter) return false;
 
+    // Customer Name Filter
+    if (customerFilter !== 'All' && cu.name !== customerFilter) return false;
+
     // Company Filter
     if (companyFilter === 'Company' && !cu.company) return false;
     if (companyFilter === 'Individual' && cu.company) return false;
@@ -878,6 +920,18 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
+
+          {/* Customer Filter */}
+          <select
+            value={customerFilter}
+            onChange={e => setCustomerFilter(e.target.value)}
+            style={{ padding: '8px 12px', background: c.bg, border: `1.5px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 13, outline: 'none', cursor: 'pointer', maxWidth: 200 }}
+          >
+            <option value="All">All Customers</option>
+            {customerNames.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
 
           {/* Status Filter */}
           <select
@@ -1099,10 +1153,13 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                               if (openMenuCustomerId === customer.id) {
                                 setOpenMenuCustomerId(null);
                               } else {
+                                const spaceBelow = window.innerHeight - rect.bottom;
+                                const openAbove = spaceBelow < 320 && rect.top > spaceBelow;
                                 setOpenMenuCustomerId(customer.id);
                                 setMenuPos({
-                                  x: rect.right + window.scrollX,
-                                  y: rect.bottom + window.scrollY
+                                  x: rect.right,
+                                  y: openAbove ? rect.top : rect.bottom,
+                                  openAbove
                                 });
                               }
                             }}
@@ -1209,9 +1266,10 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                 style={{ position: 'fixed', inset: 0, zIndex: 998 }}
               />
               <div style={{
-                position: 'absolute',
+                position: 'fixed',
                 left: menuPos.x - 180,
-                top: menuPos.y + 4,
+                top: menuPos.y + (menuPos.openAbove ? -4 : 4),
+                transform: menuPos.openAbove ? 'translateY(-100%)' : 'none',
                 zIndex: 999,
                 background: c.card,
                 border: `1px solid ${c.border}`,
