@@ -823,11 +823,11 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                       <button onClick={() => onEdit(inv.id!)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Edit">
                         <Edit3 size={14} />
                       </button>
-                      <button onClick={() => setDeleteId(inv.id!)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete">
-                        <Trash2 size={14} />
-                      </button>
                       <button onClick={() => setTimelineInvoice(inv)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="History / Timeline">
                         <Clock size={14} />
+                      </button>
+                      <button onClick={() => setDeleteId(inv.id!)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete">
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
