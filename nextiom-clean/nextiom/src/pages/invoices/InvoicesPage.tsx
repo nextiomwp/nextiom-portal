@@ -502,12 +502,30 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    return localStorage.getItem('nextiom_invoices_status_filter') || 'all'
+  })
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc')
   const [calFilter, setCalFilter] = useState<CalFilter>({ mode: 'none' })
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [reviewInvoice, setReviewInvoice] = useState<Invoice | null>(null)
   const [timelineInvoice, setTimelineInvoice] = useState<Invoice | null>(null)
+  const [checkedIds, setCheckedIds] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('nextiom_checked_invoices')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  const handleToggleCheck = (id: string, checked: boolean) => {
+    setCheckedIds(prev => {
+      const next = checked ? [...prev, id] : prev.filter(x => x !== id)
+      localStorage.setItem('nextiom_checked_invoices', JSON.stringify(next))
+      return next
+    })
+  }
 
   useEffect(() => { load() }, [])
 
@@ -535,6 +553,7 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
       const matchQ = !q || inv.invoice_no.toLowerCase().includes(q)
         || inv.client_name.toLowerCase().includes(q)
         || (inv.client_company ?? '').toLowerCase().includes(q)
+        || (inv.service_name ?? '').toLowerCase().includes(q)
       const matchS = statusFilter === 'all' || inv.status === statusFilter
       if (!matchQ || !matchS) return false
       if (calFilter.mode === 'day') {
@@ -548,13 +567,18 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
       }
       return true
     })
+
+    if (checkedIds.length > 0 && !search.trim()) {
+      arr = arr.filter(inv => checkedIds.includes(inv.id!))
+    }
+
     arr.sort((a, b) => {
       const da = a.invoice_date ? new Date(a.invoice_date).getTime() : 0
       const db = b.invoice_date ? new Date(b.invoice_date).getTime() : 0
       return sortDir === 'asc' ? da - db : db - da
     })
     return arr
-  }, [invoices, search, statusFilter, calFilter, sortDir])
+  }, [invoices, search, statusFilter, calFilter, sortDir, checkedIds])
 
   const totalBilled = formatCurrencyBreakdown(invoices)
   const totalPaid = formatCollectedCurrencyBreakdown(invoices)
@@ -640,7 +664,14 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
               <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText, pointerEvents: 'none' }} />
               <input style={{ ...inp, paddingLeft: 30, width: '100%' }} placeholder="Search by client, company, or invoice no…" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ ...inp, width: 160, cursor: 'pointer' }}>
+            <select
+              value={statusFilter}
+              onChange={e => {
+                setStatusFilter(e.target.value)
+                localStorage.setItem('nextiom_invoices_status_filter', e.target.value)
+              }}
+              style={{ ...inp, width: 160, cursor: 'pointer' }}
+            >
               <option value="all">All status</option>
               <option value="paid">Paid</option>
               <option value="unpaid">Unpaid</option>
@@ -656,6 +687,43 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
               <ArrowUpDown size={13} /> {sortDir === 'desc' ? 'Newest' : 'Oldest'}
             </button>
           </div>
+
+          {checkedIds.length > 0 && !search.trim() && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              background: isDark ? 'rgba(232, 123, 53, 0.12)' : 'rgba(232, 123, 53, 0.08)',
+              border: `1.5px solid ${c.brandLight || 'rgba(232, 123, 53, 0.2)'}`,
+              borderRadius: 8,
+              marginBottom: 14,
+              fontSize: 12,
+              color: c.text
+            }}>
+              <span>
+                Showing only <strong>{checkedIds.length}</strong> checked {checkedIds.length === 1 ? 'invoice' : 'invoices'}. Other invoices are hidden until you uncheck them.
+              </span>
+              <button
+                onClick={() => {
+                  setCheckedIds([])
+                  localStorage.removeItem('nextiom_checked_invoices')
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: c.brand,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  padding: '2px 6px',
+                  fontFamily: 'inherit'
+                }}
+              >
+                Clear all
+              </button>
+            </div>
+          )}
 
           {/* List */}
           {loading ? (
@@ -676,8 +744,8 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                <span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <span></span><span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
                 <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
               </div>
               {filtered.map(inv => {
@@ -685,10 +753,23 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
                 return (
                   <div
                     key={inv.id}
-                    style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
+                    style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
                   >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={checkedIds.includes(inv.id!)}
+                        onChange={(e) => handleToggleCheck(inv.id!, e.target.checked)}
+                        style={{
+                          cursor: 'pointer',
+                          width: 14,
+                          height: 14,
+                          accentColor: c.brand,
+                        }}
+                      />
+                    </div>
                     <span style={{ fontFamily: 'monospace', fontSize: 12, color: c.subText }}>{inv.invoice_no}</span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.service_name || ''}>
