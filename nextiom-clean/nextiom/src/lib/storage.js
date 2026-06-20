@@ -567,11 +567,43 @@ export const getCustomerServices = async (customerId) => {
     ]);
 
     return [
-      ...domains.map(d => ({ ...d, type: 'domain', name: d.name || 'Domain' })),
-      ...domainReqs.map(r => ({ ...r, type: 'domain request', name: r.domain_name || 'Domain', isRequest: true })),
-      ...hosting.map(h => ({ ...h, type: 'hosting', name: h.package_name || 'Hosting' })),
-      ...hostingReqs.map(r => ({ ...r, type: 'hosting request', name: r.package_type?.split('|')[0]?.trim() || r.package_name || 'Hosting', isRequest: true })),
-      ...licenses.map(l => ({ ...l, type: 'license', name: 'Software License' }))
+      ...domains.map(d => ({ ...d, type: 'Domain', name: d.name || 'Domain' })),
+      ...domainReqs.map(r => ({ ...r, type: 'Domain Request', name: r.domain_name || 'Domain', isRequest: true })),
+      ...hosting.map(h => ({ ...h, type: 'Hosting', name: h.package_name || 'Hosting' })),
+      ...hostingReqs.map(r => ({ ...r, type: 'Hosting Request', name: r.package_type?.split('|')[0]?.trim() || r.package_name || 'Hosting', isRequest: true })),
+      ...licenses.map(l => {
+        const prod = l.product || {};
+        const prodType = (prod.type || '').toLowerCase();
+        const category = (prod.category || '').toLowerCase();
+        
+        let displayCategory = '';
+        if (prodType.includes('theme') || category.includes('theme')) {
+          displayCategory = 'THEME.';
+        } else if (prodType.includes('plugin') || category.includes('plugin')) {
+          displayCategory = 'PLUGIN';
+        } else if (prod.type) {
+          displayCategory = prod.type.toUpperCase();
+        } else {
+          displayCategory = 'LICENSE';
+        }
+        
+        let updateType = '';
+        if (prod.manual_updates) {
+          updateType = 'manual updates';
+        } else if (prod.license_registration || prod.automatic_updates) {
+          updateType = 'licence register';
+        }
+        
+        const typeStr = displayCategory && updateType 
+          ? `${displayCategory} - ${updateType}` 
+          : displayCategory;
+
+        return {
+          ...l,
+          type: typeStr,
+          name: l.name || 'Software License'
+        };
+      })
     ];
   } catch (error) {
     console.error('getCustomerServices error:', error);

@@ -123,7 +123,7 @@ function MyServicesPage({ user, isDark = false, c = {} }) {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <td style={{ padding: '12px 20px', color: text, fontWeight: 600, fontSize: 13 }}>{s.name}</td>
-                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13, textTransform: 'capitalize' }}>{s.type}</td>
+                    <td style={{ padding: '12px 20px', color: subText, fontSize: 13 }}>{s.type}</td>
                     <td style={{ padding: '12px 20px' }}>
                       <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
                         {label}
