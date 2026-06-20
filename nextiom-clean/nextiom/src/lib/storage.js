@@ -578,24 +578,25 @@ export const getCustomerServices = async (customerId) => {
         
         let displayCategory = '';
         if (prodType.includes('theme') || category.includes('theme')) {
-          displayCategory = 'THEME.';
+          displayCategory = 'Theme';
         } else if (prodType.includes('plugin') || category.includes('plugin')) {
-          displayCategory = 'PLUGIN';
+          displayCategory = 'Plugin';
         } else if (prod.type) {
-          displayCategory = prod.type.toUpperCase();
+          // Capitalize first letter of each word
+          displayCategory = prod.type.replace(/\b\w/g, char => char.toUpperCase());
         } else {
-          displayCategory = 'LICENSE';
+          displayCategory = 'License';
         }
         
         let updateType = '';
         if (prod.manual_updates) {
-          updateType = 'manual updates';
+          updateType = 'Manual Updates';
         } else if (prod.license_registration || prod.automatic_updates) {
-          updateType = 'licence register';
+          updateType = 'Licence Register';
         }
         
         const typeStr = displayCategory && updateType 
-          ? `${displayCategory} - ${updateType}` 
+          ? `${displayCategory} – ${updateType}` 
           : displayCategory;
 
         return {
