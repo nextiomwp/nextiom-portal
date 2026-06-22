@@ -289,7 +289,15 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
 
   const applyTemplate = (tpl: InvoiceTemplate) => {
     const imported = tpl.items.length
-      ? tpl.items.map(item => ({ description: item.description, qty: 1, unit_price: 0, discount: 0, ...(item.link_url !== undefined ? { link_url: item.link_url } : {}) }))
+      ? tpl.items.map(item => ({
+          description: item.description,
+          qty: 1,
+          unit_price: 0,
+          discount: 0,
+          is_package: item.is_package || false,
+          sub_items: item.sub_items || [],
+          ...(item.link_url !== undefined ? { link_url: item.link_url } : {})
+        }))
       : [newItem()]
     setItems(imported)
     setShowImportTemplate(false)
@@ -528,11 +536,11 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
 
           <div style={{ marginBottom: 10 }}>
             {items.map((item, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'start', marginBottom: 6 }}>
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'start', marginBottom: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
                   <input
                     style={inp}
-                    placeholder="Service or product (Shift+Enter for link)"
+                    placeholder={item.is_package ? "Package name" : "Service or product (Shift+Enter for link)"}
                     value={item.description}
                     onChange={e => updateItem(i, 'description', e.target.value)}
                     onKeyDown={e => handleDescriptionKeyDown(e, i)}
@@ -544,6 +552,45 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                       value={item.link_url || ''}
                       onChange={e => updateItem(i, 'link_url', e.target.value)}
                     />
+                  )}
+                  {item.is_package && (
+                    <div style={{ paddingLeft: 12, borderLeft: `2px solid ${c.brand}`, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sub-items</span>
+                      {(item.sub_items || []).map((sub, subIdx) => (
+                        <div key={subIdx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <input
+                            style={{ ...inp, padding: '4px 8px', fontSize: 12, border: `1px solid ${c.border}` }}
+                            placeholder={`Sub-item ${subIdx + 1} description`}
+                            value={sub}
+                            onChange={e => {
+                              const newSubs = [...(item.sub_items || [])]
+                              newSubs[subIdx] = e.target.value
+                              updateItem(i, 'sub_items', newSubs)
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSubs = (item.sub_items || []).filter((_, sIdx) => sIdx !== subIdx)
+                              updateItem(i, 'sub_items', newSubs)
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSubs = [...(item.sub_items || []), '']
+                          updateItem(i, 'sub_items', newSubs)
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: c.brand, cursor: 'pointer', fontSize: 11, padding: '2px 0', alignSelf: 'flex-start', fontWeight: 600 }}
+                      >
+                        <Plus size={10} /> Add Sub-item
+                      </button>
+                    </div>
                   )}
                 </div>
                 <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
@@ -559,9 +606,14 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
             ))}
           </div>
 
-          <button onClick={() => setItems(p => [...p, newItem()])} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-            <Plus size={13} /> Add item
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setItems(p => [...p, newItem()])} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+              <Plus size={13} /> Add item
+            </button>
+            <button onClick={() => setItems(p => [...p, { ...newItem(), is_package: true, sub_items: [''] }])} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+              <Plus size={13} /> Add Package
+            </button>
+          </div>
 
           {/* Totals */}
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${c.border}` }}>
@@ -772,9 +824,18 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                         {/* Line items preview */}
                         <div style={{ padding: '10px 14px' }}>
                           {tpl.items.map((item, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', padding: '4px 0', borderBottom: idx < tpl.items.length - 1 ? `1px solid ${c.border}` : 'none', gap: 6 }}>
-                              <span style={{ fontSize: 12, color: c.text, flex: 1 }}>{item.description}</span>
-                              {item.link_url && <span style={{ fontSize: 11, color: c.brand }}>🔗</span>}
+                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', padding: '4px 0', borderBottom: idx < tpl.items.length - 1 ? `1px solid ${c.border}` : 'none', gap: 2 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 12, color: c.text, flex: 1, fontWeight: item.is_package ? 600 : 'normal' }}>{item.description}</span>
+                                {item.link_url && <span style={{ fontSize: 11, color: c.brand }}>🔗</span>}
+                              </div>
+                              {item.is_package && item.sub_items && item.sub_items.length > 0 && (
+                                <div style={{ paddingLeft: 12, fontSize: 10, color: c.subText, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                  {item.sub_items.map((sub, sIdx) => (
+                                    <span key={sIdx}>- {sub}</span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

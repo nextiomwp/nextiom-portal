@@ -470,7 +470,16 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                 {items.map((item, i) => (
                   <tr key={item.id || i} style={{ borderBottom: '1px solid #e8e5e0' }}>
                     <td style={{ padding: '9px 10px', fontSize: 13 }}>
-                      <div>{item.description}</div>
+                      <div style={{ fontWeight: item.is_package ? 600 : 'normal' }}>{item.description}</div>
+                      {item.is_package && item.sub_items && item.sub_items.length > 0 && (
+                        <div style={{ marginTop: 4, paddingLeft: 16, fontSize: 11, color: c.subText, lineHeight: 1.4 }}>
+                          {item.sub_items.map((sub, subIdx) => (
+                            <div key={subIdx} style={{ whiteSpace: 'pre-wrap' }}>
+                              {sub}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {item.link_url && (
                         <div style={{ marginTop: 3 }}>
                           <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#e87b35', textDecoration: 'underline', wordBreak: 'break-all' }}>

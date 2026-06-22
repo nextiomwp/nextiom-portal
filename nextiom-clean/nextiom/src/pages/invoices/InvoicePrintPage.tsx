@@ -221,7 +221,16 @@ export default function InvoicePrintPage() {
               {items.map((item: any, i: number) => (
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '11px 10px', fontSize: 13 }}>
-                    <div>{item.description}</div>
+                    <div style={{ fontWeight: item.is_package ? 600 : 'normal' }}>{item.description}</div>
+                    {item.is_package && item.sub_items && item.sub_items.length > 0 && (
+                      <div style={{ marginTop: 4, paddingLeft: 16, fontSize: 11, color: '#4b5563', lineHeight: 1.4 }}>
+                        {item.sub_items.map((sub: string, subIdx: number) => (
+                          <div key={subIdx} style={{ whiteSpace: 'pre-wrap' }}>
+                            {sub}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {item.link_url && (
                       <div style={{ marginTop: 3 }}>
                         <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#e8650a', textDecoration: 'underline', wordBreak: 'break-all' }}>

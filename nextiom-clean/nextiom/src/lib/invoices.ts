@@ -16,6 +16,8 @@ export interface InvoiceItem {
   link_url?: string
   amount?: number
   sort_order?: number
+  is_package?: boolean
+  sub_items?: string[]
 }
 
 export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted' | 'partially_paid'
@@ -235,6 +237,47 @@ export async function getInvoices(): Promise<Invoice[]> {
   return data ?? []
 }
 
+function deserializeItem(item: any): InvoiceItem {
+  try {
+    if (item.description && item.description.startsWith('{')) {
+      const parsed = JSON.parse(item.description)
+      if (parsed && parsed.is_package) {
+        return {
+          ...item,
+          description: parsed.name || '',
+          is_package: true,
+          sub_items: parsed.sub_items || []
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore JSON parse errors
+  }
+  return {
+    ...item,
+    is_package: false,
+    sub_items: []
+  }
+}
+
+function serializeItem(item: InvoiceItem): any {
+  let desc = item.description
+  if (item.is_package) {
+    desc = JSON.stringify({
+      is_package: true,
+      name: item.description,
+      sub_items: item.sub_items || []
+    })
+  }
+  return {
+    description: desc,
+    qty: item.qty,
+    unit_price: item.unit_price,
+    discount: item.discount || 0,
+    link_url: item.link_url || null,
+  }
+}
+
 export async function getCustomerInvoices(email: string): Promise<Invoice[]> {
   if (!email) return []
   const { data, error } = await supabase
@@ -244,7 +287,7 @@ export async function getCustomerInvoices(email: string): Promise<Invoice[]> {
     .order('invoice_date', { ascending: false })
 
   if (error) throw error
-  return (data ?? []).map((inv: any) => ({ ...inv, items: inv.invoice_items ?? [] }))
+  return (data ?? []).map((inv: any) => ({ ...inv, items: (inv.invoice_items ?? []).map(deserializeItem) }))
 }
 
 export async function getInvoice(id: string): Promise<Invoice | null> {
@@ -262,7 +305,7 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
     .eq('invoice_id', id)
     .order('sort_order')
 
-  return { ...invoice, items: items ?? [] }
+  return { ...invoice, items: (items ?? []).map(deserializeItem) }
 }
 
 export async function createInvoice(invoice: Invoice, items: InvoiceItem[]): Promise<string> {
@@ -282,11 +325,7 @@ export async function createInvoice(invoice: Invoice, items: InvoiceItem[]): Pro
   if (items.length) {
     await supabase.from('invoice_items').insert(
       items.map((item, i) => ({
-        description: item.description,
-        qty: item.qty,
-        unit_price: item.unit_price,
-        discount: item.discount || 0,
-        link_url: item.link_url || null,
+        ...serializeItem(item),
         invoice_id: data.id,
         sort_order: i,
       }))
@@ -311,11 +350,7 @@ export async function updateInvoice(id: string, invoice: Partial<Invoice>, items
   if (items.length) {
     const { error: itemsError } = await supabase.from('invoice_items').insert(
       items.map((item, i) => ({
-        description: item.description,
-        qty: item.qty,
-        unit_price: item.unit_price,
-        discount: item.discount || 0,
-        link_url: item.link_url || null,
+        ...serializeItem(item),
         invoice_id: id,
         sort_order: i,
       }))
