@@ -152,13 +152,13 @@ const NAV_STRUCTURE = [
     ],
   },
   {
-    id: 'billing', label: 'Billing', icon: CreditCard, type: 'group',
+    id: 'billing', label: 'Billing Center', icon: CreditCard, type: 'group',
     children: [
       { id: 'invoices', label: 'Invoices' },
       { id: 'quotations', label: 'Quotations' },
+      { id: 'agreements', label: 'Agreements' },
     ],
   },
-  { id: 'agreements', label: 'Agreements', icon: FileText, type: 'item' },
   {
     id: 'support', label: 'Ticket', icon: MessageSquare, type: 'group',
     children: [
