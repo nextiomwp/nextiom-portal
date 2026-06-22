@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Trash2, Printer, Save, ArrowLeft } from 'lucide-react'
+import { Plus, Trash2, Printer, Save, ArrowLeft, BookTemplate, Download, X, FileText, Search, Pencil, Check } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
 import {
   Invoice, InvoiceCurrency, InvoiceItem, InvoiceSettings,
@@ -23,6 +23,31 @@ function calculateDueDate(dateStr: string): string {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+
+// ── Template helpers (localStorage) ────────────────────────────────────────
+
+const TEMPLATE_KEY = 'nxt_invoice_templates'
+
+export interface InvoiceTemplate {
+  id: string
+  name: string
+  items: InvoiceItem[]
+  createdAt: string
+}
+
+function loadTemplates(): InvoiceTemplate[] {
+  try {
+    return JSON.parse(localStorage.getItem(TEMPLATE_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveTemplates(templates: InvoiceTemplate[]): void {
+  localStorage.setItem(TEMPLATE_KEY, JSON.stringify(templates))
+}
+
+// ── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   c: any
@@ -55,6 +80,15 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [suggestions, setSuggestions] = useState<any[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const nameRef = useRef<HTMLDivElement>(null)
+
+  // Template modal state
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false)
+  const [showImportTemplate, setShowImportTemplate] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [templates, setTemplates] = useState<InvoiceTemplate[]>([])
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
+  const [editingTemplateName, setEditingTemplateName] = useState('')
 
   useEffect(() => {
     getCustomers().then(data => setAllCustomers(data || []))
@@ -218,6 +252,73 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     window.open('/invoices/print', '_blank')
   }
 
+  const handleSaveTemplate = () => {
+    const validItems = items.filter(i => i.description.trim())
+    if (!validItems.length) {
+      toast({ title: 'Add at least one line item to save as template', variant: 'destructive' })
+      return
+    }
+    setTemplateName('')
+    setShowSaveTemplate(true)
+  }
+
+  const confirmSaveTemplate = () => {
+    if (!templateName.trim()) {
+      toast({ title: 'Template name is required', variant: 'destructive' })
+      return
+    }
+    const validItems = items.filter(i => i.description.trim()).map(({ id: _id, invoice_id: _inv, ...rest }) => rest)
+    const tpl: InvoiceTemplate = {
+      id: `tpl_${Date.now()}`,
+      name: templateName.trim(),
+      items: validItems,
+      createdAt: new Date().toISOString(),
+    }
+    const updated = [...loadTemplates(), tpl]
+    saveTemplates(updated)
+    setTemplates(updated)
+    setShowSaveTemplate(false)
+    setTemplateName('')
+    toast({ title: `Template "${tpl.name}" saved` })
+  }
+
+  const handleImportTemplate = () => {
+    setTemplates(loadTemplates())
+    setShowImportTemplate(true)
+  }
+
+  const applyTemplate = (tpl: InvoiceTemplate) => {
+    const imported = tpl.items.length
+      ? tpl.items.map(item => ({ description: item.description, qty: 1, unit_price: 0, discount: 0, ...(item.link_url !== undefined ? { link_url: item.link_url } : {}) }))
+      : [newItem()]
+    setItems(imported)
+    setShowImportTemplate(false)
+    toast({ title: `Template "${tpl.name}" imported` })
+  }
+
+  const deleteTemplate = (id: string) => {
+    const updated = loadTemplates().filter(t => t.id !== id)
+    saveTemplates(updated)
+    setTemplates(updated)
+  }
+
+  const startRenameTemplate = (tpl: InvoiceTemplate) => {
+    setEditingTemplateId(tpl.id)
+    setEditingTemplateName(tpl.name)
+  }
+
+  const confirmRenameTemplate = () => {
+    if (!editingTemplateId || !editingTemplateName.trim()) return
+    const updated = loadTemplates().map(t =>
+      t.id === editingTemplateId ? { ...t, name: editingTemplateName.trim() } : t
+    )
+    saveTemplates(updated)
+    setTemplates(updated)
+    setEditingTemplateId(null)
+    setEditingTemplateName('')
+    toast({ title: 'Template renamed' })
+  }
+
   const card: React.CSSProperties = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }
   const lbl: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 600, color: c.subText, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }
   const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', border: `1px solid ${c.borderStrong}`, borderRadius: 8, color: c.text, fontSize: 13, background: isDark ? '#22252C' : '#fff', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }
@@ -241,6 +342,20 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={handleSaveTemplate}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            title="Save current line items as a reusable template"
+          >
+            <BookTemplate size={15} /> Save as Template
+          </button>
+          <button
+            onClick={handleImportTemplate}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            title="Import line items from a saved template"
+          >
+            <Download size={15} /> Import Template
+          </button>
           <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
             <Printer size={15} /> Print / PDF
           </button>
@@ -479,6 +594,199 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         </div>
 
       </div>
+
+      {/* ── Save as Template Modal ─────────────────────────────────── */}
+      {showSaveTemplate && (
+        <>
+          <div
+            onClick={() => setShowSaveTemplate(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', zIndex: 400 }}
+          />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+            width: 440, background: c.card, border: `1px solid ${c.border}`,
+            borderRadius: 14, zIndex: 401, boxShadow: '0 16px 56px rgba(0,0,0,0.45)',
+            overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <BookTemplate size={17} style={{ color: c.brand }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Save as Template</span>
+              </div>
+              <button onClick={() => setShowSaveTemplate(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={17} /></button>
+            </div>
+            {/* Body */}
+            <div style={{ padding: '20px' }}>
+              <p style={{ fontSize: 12, color: c.subText, marginBottom: 14, lineHeight: 1.6 }}>
+                Only the <strong style={{ color: c.text }}>line items</strong> from this invoice will be saved. You can import them later into any invoice.
+              </p>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: c.subText, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Template Name</label>
+              <input
+                autoFocus
+                placeholder="e.g. Web Development Package"
+                value={templateName}
+                onChange={e => setTemplateName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && confirmSaveTemplate()}
+                style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${c.borderStrong}`, borderRadius: 8, color: c.text, fontSize: 13, background: isDark ? '#22252C' : '#fff', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              />
+              <div style={{ marginTop: 10, fontSize: 12, color: c.subText }}>
+                {items.filter(i => i.description.trim()).length} line item(s) will be saved
+              </div>
+            </div>
+            {/* Footer */}
+            <div style={{ padding: '12px 20px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setShowSaveTemplate(false)} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={confirmSaveTemplate} style={{ padding: '8px 20px', border: 'none', background: c.brand, color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit' }}>Save Template</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Import Template Modal ──────────────────────────────────── */}
+      {showImportTemplate && (
+        <>
+          <div
+            onClick={() => { setShowImportTemplate(false); setTemplateSearch(''); setEditingTemplateId(null) }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', zIndex: 400 }}
+          />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+            width: 580, maxHeight: '82vh', background: c.card, border: `1px solid ${c.border}`,
+            borderRadius: 14, zIndex: 401, boxShadow: '0 16px 56px rgba(0,0,0,0.45)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ padding: '16px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Download size={17} style={{ color: c.brand }} />
+                <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Import Template</span>
+                <span style={{ fontSize: 12, color: c.subText, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)', borderRadius: 20, padding: '2px 8px' }}>{templates.length}</span>
+              </div>
+              <button onClick={() => { setShowImportTemplate(false); setTemplateSearch(''); setEditingTemplateId(null) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={17} /></button>
+            </div>
+
+            {/* Search bar */}
+            {templates.length > 0 && (
+              <div style={{ padding: '12px 20px', borderBottom: `1px solid ${c.border}`, flexShrink: 0 }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText, pointerEvents: 'none' }} />
+                  <input
+                    autoFocus
+                    placeholder="Search templates by name or item…"
+                    value={templateSearch}
+                    onChange={e => setTemplateSearch(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px 8px 30px', border: `1px solid ${c.borderStrong}`, borderRadius: 8, color: c.text, fontSize: 13, background: isDark ? '#22252C' : '#fff', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                  {templateSearch && (
+                    <button onClick={() => setTemplateSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 2 }}>
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Body */}
+            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
+              {(() => {
+                const q = templateSearch.toLowerCase().trim()
+                const filtered = q
+                  ? templates.filter(t =>
+                      t.name.toLowerCase().includes(q) ||
+                      t.items.some(i => i.description.toLowerCase().includes(q))
+                    )
+                  : templates
+
+                if (templates.length === 0) return (
+                  <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                    <FileText size={40} style={{ color: c.subText, display: 'block', margin: '0 auto 12px' }} />
+                    <p style={{ color: c.subText, fontSize: 13 }}>No templates saved yet.</p>
+                    <p style={{ color: c.subText, fontSize: 12, marginTop: 4 }}>Use "Save as Template" on any invoice to create one.</p>
+                  </div>
+                )
+
+                if (filtered.length === 0) return (
+                  <div style={{ textAlign: 'center', padding: '32px 20px' }}>
+                    <Search size={32} style={{ color: c.subText, display: 'block', margin: '0 auto 10px' }} />
+                    <p style={{ color: c.subText, fontSize: 13 }}>No templates match "{templateSearch}"</p>
+                  </div>
+                )
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {filtered.map(tpl => (
+                      <div key={tpl.id} style={{ border: `1px solid ${c.border}`, borderRadius: 10, overflow: 'hidden', background: isDark ? '#22252C' : '#fafafa' }}>
+                        {/* Template header */}
+                        <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}`, gap: 10 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {editingTemplateId === tpl.id ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <input
+                                  autoFocus
+                                  value={editingTemplateName}
+                                  onChange={e => setEditingTemplateName(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') confirmRenameTemplate(); if (e.key === 'Escape') setEditingTemplateId(null) }}
+                                  style={{ flex: 1, padding: '5px 9px', border: `1.5px solid ${c.brand}`, borderRadius: 6, color: c.text, fontSize: 13, fontWeight: 700, background: isDark ? '#15161A' : '#fff', outline: 'none', fontFamily: 'inherit' }}
+                                />
+                                <button onClick={confirmRenameTemplate} style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', border: 'none', background: c.brand, color: '#fff', borderRadius: 6, cursor: 'pointer' }}>
+                                  <Check size={13} />
+                                </button>
+                                <button onClick={() => setEditingTemplateId(null)} style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 6, cursor: 'pointer' }}>
+                                  <X size={13} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tpl.name}</div>
+                                <button
+                                  onClick={() => startRenameTemplate(tpl)}
+                                  title="Rename template"
+                                  style={{ display: 'flex', alignItems: 'center', padding: 4, border: 'none', background: 'none', color: c.subText, cursor: 'pointer', borderRadius: 4, flexShrink: 0 }}
+                                  onMouseEnter={e => (e.currentTarget.style.color = c.brand)}
+                                  onMouseLeave={e => (e.currentTarget.style.color = c.subText)}
+                                >
+                                  <Pencil size={12} />
+                                </button>
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11, color: c.subText, marginTop: 2 }}>
+                              {tpl.items.length} item(s) · Saved {new Date(tpl.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                            <button
+                              onClick={() => deleteTemplate(tpl.id)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', border: `1px solid rgba(239,68,68,0.3)`, background: 'rgba(239,68,68,0.08)', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                            >
+                              <Trash2 size={12} /> Delete
+                            </button>
+                            <button
+                              onClick={() => applyTemplate(tpl)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', border: 'none', background: c.brand, color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}
+                            >
+                              <Download size={12} /> Import
+                            </button>
+                          </div>
+                        </div>
+                        {/* Line items preview */}
+                        <div style={{ padding: '10px 14px' }}>
+                          {tpl.items.map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', padding: '4px 0', borderBottom: idx < tpl.items.length - 1 ? `1px solid ${c.border}` : 'none', gap: 6 }}>
+                              <span style={{ fontSize: 12, color: c.text, flex: 1 }}>{item.description}</span>
+                              {item.link_url && <span style={{ fontSize: 11, color: c.brand }}>🔗</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

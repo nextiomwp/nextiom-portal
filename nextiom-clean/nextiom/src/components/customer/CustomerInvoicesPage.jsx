@@ -532,7 +532,8 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
         <div style={{ padding: '14px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <button
             onClick={() => {
-              localStorage.setItem('nxt_invoice_print', JSON.stringify({ ...invoice, settings }));
+              const items = invoice.items || invoice.invoice_items || [];
+              localStorage.setItem('nxt_invoice_print', JSON.stringify({ ...invoice, items, settings }));
               window.open('/invoices/print', '_blank');
             }}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
@@ -926,7 +927,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   };
 
   const handleDownload = (inv) => {
-    localStorage.setItem('nxt_invoice_print', JSON.stringify({ ...inv, settings }));
+    const items = inv.items || inv.invoice_items || [];
+    localStorage.setItem('nxt_invoice_print', JSON.stringify({ ...inv, items, settings }));
     window.open('/invoices/print', '_blank');
     // Toast-like notification
     const el = document.createElement('div');
