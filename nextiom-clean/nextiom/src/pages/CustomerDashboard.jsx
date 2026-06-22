@@ -1,4 +1,3 @@
-/* eslint-disable import/no-unresolved */
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,12 +5,14 @@ import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
-  CreditCard, FileText, Info, Briefcase,
+  CreditCard, FileText, Info, Briefcase, Megaphone,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 import DashboardPage from '@/components/customer/DashboardPage';
+import AnnouncementsPage from '@/components/customer/AnnouncementsPage';
 import MyServicesPage from '@/components/customer/MyServicesPage';
+import OrderHistoryPage from '@/components/customer/OrderHistoryPage';
 import ProfilePage from '@/components/customer/ProfilePage';
 import NotificationsPage from '@/components/notifications/NotificationsPage';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -153,6 +154,7 @@ const NAV_STRUCTURE = [
     id: 'orders', label: 'Orders', icon: ShoppingCart, type: 'group',
     children: [
       { id: 'services', label: 'My Subscriptions' },
+      { id: 'order_history', label: 'Order History' },
     ],
   },
   {
@@ -171,6 +173,7 @@ const NAV_STRUCTURE = [
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
+  { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
     id: 'about', label: 'About Us', icon: Info, type: 'group',
     children: [
@@ -200,7 +203,7 @@ function getGreeting() {
   return 'Good morning';
 }
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
+const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
 
 function CustomerDashboard() {
   useDisableRightClick();
@@ -246,6 +249,7 @@ function CustomerDashboard() {
   const [activeProductsCount, setActiveProductsCount] = useState(0);
   const [hasUnpaidInvoices, setHasUnpaidInvoices] = useState(false);
   const [hasActiveQuotations, setHasActiveQuotations] = useState(false);
+  const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
 
   useEffect(() => {
     if (!customerProfile?.id) return;
@@ -253,16 +257,22 @@ function CustomerDashboard() {
     const fetchCounts = async () => {
       try {
         const email = customerProfile.email || user.email;
-        const [jobsData, ticketsData, licensesData, invoicesData, quotationsData] = await Promise.all([
+        const [jobsData, ticketsData, licensesData, invoicesData, quotationsData, announcementsCountRes] = await Promise.all([
           getCustomerJobs(customerProfile.id).catch(() => []),
           getTicketsByCustomer(customerProfile.id).catch(() => []),
           getLicenses(customerProfile.id).catch(() => []),
           getCustomerInvoices(email).catch(() => []),
           getCustomerQuotations(email).catch(() => []),
+          supabase.from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('customer_id', customerProfile.id)
+            .eq('type', 'announcement')
+            .eq('read_status', false),
         ]);
         setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
         setWaitingJobsCount(jobsData.filter(j => j.status === 'Waiting').length);
         setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
+        setUnreadAnnouncementsCount(announcementsCountRes?.count || 0);
 
         // Count Active products
         const activeLics = licensesData.filter(l => {
@@ -329,6 +339,13 @@ function CustomerDashboard() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'quotations' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `customer_id=eq.${customerProfile.id}` },
         () => {
           fetchCounts();
         }
@@ -449,8 +466,8 @@ function CustomerDashboard() {
             c={c}
             isDark={isDark}
             onClick={() => navigate(item.id)}
-            badge={item.id === 'jobs' ? activeJobsCount : (item.id === 'products' ? activeProductsCount : 0)}
-            badgeColor="#16a34a"
+            badge={item.id === 'jobs' ? activeJobsCount : (item.id === 'products' ? activeProductsCount : (item.id === 'announcements' ? unreadAnnouncementsCount : 0))}
+            badgeColor={item.id === 'announcements' ? '#f97316' : '#16a34a'}
             badgeTextColor="#ffffff"
             isBlinking={item.id === 'jobs' &&  waitingJobsCount > 0 }
           />
@@ -533,10 +550,12 @@ function CustomerDashboard() {
     return (
       <>
         {mountedTabs.has('dashboard') && wrap('dashboard', <DashboardPage user={userProp} {...theme} onNavigate={navigate} />)}
+        {mountedTabs.has('announcements') && wrap('announcements', <AnnouncementsPage user={userProp} {...theme} />)}
         {mountedTabs.has('hosting_my') && wrap('hosting_my', <MyHostingPackagesPage user={userProp} {...theme} />)}
         {mountedTabs.has('domains_my') && wrap('domains_my', <MyDomainsPage user={userProp} {...theme} />)}
         {mountedTabs.has('emails_my') && wrap('emails_my', <MyEmailsPage user={userProp} {...theme} />)}
         {mountedTabs.has('services') && wrap('services', <MyServicesPage user={userProp} {...theme} />)}
+        {mountedTabs.has('order_history') && wrap('order_history', <OrderHistoryPage user={userProp} {...theme} />)}
         {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />)}
