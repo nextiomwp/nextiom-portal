@@ -155,6 +155,14 @@ const playNotificationSound = () => {
   }
 };
 
+const getInvoiceNoFromTitle = (title) => {
+  if (!title) return null;
+  const match = title.match(/(?:Payment Submitted|Payment Info Updated):\s*([A-Za-z0-9-]+)/i);
+  if (match) return match[1];
+  const genMatch = title.match(/(INV-[A-Za-z0-9-]+)/i);
+  return genMatch ? genMatch[1] : null;
+};
+
 function Dashboard({ onLogout }) {
   const [active, setActive] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -227,6 +235,7 @@ function Dashboard({ onLogout }) {
   const notifRef = useRef(null);
   const [invoiceView, setInvoiceView] = useState('list');
   const [editInvoiceId, setEditInvoiceId] = useState(null);
+  const [highlightInvoiceNo, setHighlightInvoiceNo] = useState(null);
   const [quotationView, setQuotationView] = useState('list');
   const [editQuotationId, setEditQuotationId] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -593,7 +602,21 @@ function Dashboard({ onLogout }) {
       case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={navigateTo} onViewCustomer={cu => { setSelectedCustomer(cu); navigateTo('customerProfile'); }} onConfirmCustomer={handleConfirmCustomer} onRejectCustomer={handleRejectCustomer} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
       case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} onNavigate={navigateTo} /> : null;
-      case 'adminNotifications': return <AllAdminNotificationsPage notifications={adminNotifs} requests={requests} customers={customers} onNavigate={navigateTo} c={c} isDark={isDark} isMobile={isMobile} markNotifRead={markNotifRead} />;
+      case 'adminNotifications': return (
+        <AllAdminNotificationsPage 
+          notifications={adminNotifs} 
+          requests={requests} 
+          customers={customers} 
+          onNavigate={navigateTo} 
+          c={c} 
+          isDark={isDark} 
+          isMobile={isMobile} 
+          markNotifRead={markNotifRead}
+          setHighlightInvoiceNo={setHighlightInvoiceNo}
+          setInvoiceView={setInvoiceView}
+          setEditInvoiceId={setEditInvoiceId}
+        />
+      );
       case 'customers': return <AdminCustomerManagement key={refreshKey} products={products} onSuccess={loadData} isDark={isDark} onNavigate={navigateTo} />;
       case 'domains': return <AdminDomainManagement key={refreshKey} isDark={isDark} />;
       case 'approvedHostings': return <AdminDomainManagement key={refreshKey} isDark={isDark} />;
@@ -609,7 +632,18 @@ function Dashboard({ onLogout }) {
         if (invoiceView === 'new') return <NewInvoicePage c={c} isDark={isDark} onBack={goList} />;
         if (invoiceView === 'edit' && editInvoiceId) return <EditInvoicePage c={c} isDark={isDark} invoiceId={editInvoiceId} onBack={goList} />;
         if (invoiceView === 'settings') return <InvoiceSettingsPage c={c} isDark={isDark} onBack={goList} />;
-        return <InvoicesPage key={refreshKey} c={c} isDark={isDark} onNew={() => setInvoiceView('new')} onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} onSettings={() => setInvoiceView('settings')} />;
+        return (
+          <InvoicesPage 
+            key={refreshKey} 
+            c={c} 
+            isDark={isDark} 
+            highlightInvoiceNo={highlightInvoiceNo}
+            clearHighlightInvoiceNo={() => setHighlightInvoiceNo(null)}
+            onNew={() => setInvoiceView('new')} 
+            onEdit={id => { setEditInvoiceId(id); setInvoiceView('edit'); }} 
+            onSettings={() => setInvoiceView('settings')} 
+          />
+        );
       }
       case 'quotations': {
         const goList = () => { setEditQuotationId(null); setQuotationView('list'); };
@@ -1017,6 +1051,14 @@ function Dashboard({ onLogout }) {
                               const isEmailRequest = n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email request') || String(n.title || '').toLowerCase().includes('email');
                               const isTicket = n.type === 'ticket' || String(n.title || '').toLowerCase().includes('ticket');
                               const isQuotation = n.type === 'quotation' || String(n.title || '').toLowerCase().includes('quotation');
+                              if (isPayment) {
+                                const invNo = getInvoiceNoFromTitle(n.title);
+                                if (invNo) {
+                                  setHighlightInvoiceNo(invNo);
+                                }
+                                setInvoiceView('list');
+                                setEditInvoiceId(null);
+                              }
                               setActive(
                                 isTicket ? 'logs' : 
                                 isEmailRequest ? 'emailRequests' : 
@@ -1356,7 +1398,7 @@ function AdminProfileContent({ c, isDark }) {
   );
 }
 
-function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark, isMobile = false, markNotifRead }) {
+function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark, isMobile = false, markNotifRead, setHighlightInvoiceNo, setInvoiceView, setEditInvoiceId }) {
   const pendingReqs = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
   const recentCustomers = customers.filter(c => c.status === 'pending').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -1411,6 +1453,14 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
                   onNavigate('customers'); 
                 } else if (item.type === 'notification' && isClickable) {
                   if (markNotifRead) markNotifRead('notif_' + item.id);
+                  if (isPayment) {
+                    const invNo = getInvoiceNoFromTitle(item.title);
+                    if (invNo) {
+                      setHighlightInvoiceNo(invNo);
+                    }
+                    setInvoiceView('list');
+                    setEditInvoiceId(null);
+                  }
                   onNavigate(
                     isTicket ? 'logs' : 
                     isEmailRequest ? 'emailRequests' : 

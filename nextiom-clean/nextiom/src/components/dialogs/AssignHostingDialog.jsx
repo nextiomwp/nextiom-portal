@@ -24,6 +24,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
   const [billingPeriod, setBillingPeriod] = useState('Monthly');
   const [domain, setDomain] = useState('');
   const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState('LKR');
   const [notes, setNotes] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [diskUsageLimit, setDiskUsageLimit] = useState('');
@@ -75,6 +76,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       setBillingPeriod(request.billing_period || parsed.billingPeriod || 'Monthly');
       setDomain(request.domain || parsed.domain || '');
       setPrice(request.price != null ? String(request.price) : '');
+      setCurrency(request.currency || 'LKR');
       setNotes(request.notes || parsed.notes || '');
       setStartDate(request.start_date ? new Date(request.start_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
       setDiskUsageLimit(request.disk_usage_limit || '');
@@ -105,6 +107,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       setBillingPeriod('Monthly');
       setDomain('');
       setPrice('');
+      setCurrency('LKR');
       setNotes('');
       setStartDate(new Date().toISOString().split('T')[0]);
       setDiskUsageLimit('');
@@ -230,6 +233,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
         domain: domain.trim() || null,
         notes: notes.trim() || null,
         price: finalPrice,
+        currency: currency,
         start_date: startDate ? new Date(startDate).toISOString() : null,
         disk_usage_limit: enableResourceOverride ? diskUsageLimit.trim() || null : null,
         bandwidth_limit: enableResourceOverride ? bandwidthLimit.trim() || null : null,
@@ -281,6 +285,7 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           domain: domain.trim() || null,
           notes: notes.trim() || null,
           price: finalPrice,
+          currency,
           startDate,
           diskUsageLimit: enableResourceOverride ? diskUsageLimit.trim() || null : null,
           bandwidthLimit: enableResourceOverride ? bandwidthLimit.trim() || null : null,
@@ -414,23 +419,34 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           </div>
 
           {autoRenew && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label style={labelS}>Renewal Percentage (%)</label>
                 <input className={fieldClass} style={fieldStyle} type="number" min="0" max="100" step="0.1" placeholder="e.g. 10" value={renewalPercentage} onChange={e => setRenewalPercentage(e.target.value)} />
               </div>
               <div>
-                <label style={labelS}>Price (LKR, optional)</label>
+                <label style={labelS}>Currency</label>
+                <select className={fieldClass} style={fieldStyle} value={currency} onChange={e => setCurrency(e.target.value)}>
+                  <option value="LKR">LKR</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelS}>Price (optional)</label>
                 <div style={{ position: 'relative' }}>
-                  <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
-                  <input className={`${fieldClass} pl-8`} style={fieldStyle} type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
+                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13, fontWeight: 600 }}>
+                    {currency === 'USD' ? '$' : 'Rs.'}
+                  </span>
+                  <input className={`${fieldClass} ${currency === 'USD' ? 'pl-8' : 'pl-11'}`} style={fieldStyle} type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
                 </div>
               </div>
               <div>
-                <label style={labelS}>Next Renewal Price (LKR)</label>
+                <label style={labelS}>Next Renewal Price</label>
                 <div style={{ position: 'relative' }}>
-                  <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
-                  <input className={`${fieldClass} pl-8`} style={{ ...disabledFieldStyle }} type="text" readOnly value={nextRenewalPrice ? `LKR ${parseFloat(nextRenewalPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'} />
+                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13, fontWeight: 600 }}>
+                    {currency === 'USD' ? '$' : 'Rs.'}
+                  </span>
+                  <input className={`${fieldClass} ${currency === 'USD' ? 'pl-8' : 'pl-11'}`} style={{ ...disabledFieldStyle }} type="text" readOnly value={nextRenewalPrice ? `${currency} ${parseFloat(nextRenewalPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'} />
                 </div>
                 {price && renewalPercentage && nextRenewalPrice && (
                   <div style={{ fontSize: 11, color: subText, marginTop: 4, textAlign: 'right' }}>
@@ -442,12 +458,21 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           )}
 
           {!autoRenew && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label style={labelS}>Currency</label>
+                <select className={fieldClass} style={fieldStyle} value={currency} onChange={e => setCurrency(e.target.value)}>
+                  <option value="LKR">LKR</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
               <div className="md:col-span-2">
-                <label style={labelS}>Price (LKR, optional)</label>
+                <label style={labelS}>Price (optional)</label>
                 <div style={{ position: 'relative' }}>
-                  <DollarSign size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText }} />
-                  <input className={`${fieldClass} pl-8`} style={fieldStyle} type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
+                  <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: subText, fontSize: 13, fontWeight: 600 }}>
+                    {currency === 'USD' ? '$' : 'Rs.'}
+                  </span>
+                  <input className={`${fieldClass} ${currency === 'USD' ? 'pl-8' : 'pl-11'}`} style={fieldStyle} type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={e => setPrice(e.target.value)} />
                 </div>
               </div>
             </div>

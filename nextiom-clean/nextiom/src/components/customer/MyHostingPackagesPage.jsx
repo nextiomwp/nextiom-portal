@@ -128,6 +128,7 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
           expiry_date: pkg.expiry_date || linkedRequest?.expiry_date || null,
           disk_usage_limit: pkg.disk_usage_limit || linkedRequest?.disk_usage_limit || null,
           bandwidth_limit: pkg.bandwidth_limit || linkedRequest?.bandwidth_limit || null,
+          currency: pkg.currency || linkedRequest?.currency || 'LKR',
           relatedRequests: linkedRequest ? [linkedRequest] : [],
           linkedRequestId: linkedRequest?.id || null,
           isRequest: false,
@@ -154,6 +155,7 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
             expiry_date: r.expiry_date || null,
             disk_usage_limit: r.disk_usage_limit || null,
             bandwidth_limit: r.bandwidth_limit || null,
+            currency: r.currency || 'LKR',
             isRequest: true,
           };
         }),

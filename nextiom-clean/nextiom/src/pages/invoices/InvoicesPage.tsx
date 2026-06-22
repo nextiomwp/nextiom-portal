@@ -492,12 +492,14 @@ function CalendarWidget({ invoices, calFilter, onDayClick, onMonthClick, c, isDa
 interface Props {
   c: any
   isDark: boolean
+  highlightInvoiceNo?: string | null
+  clearHighlightInvoiceNo?: () => void
   onNew: () => void
   onEdit: (id: string) => void
   onSettings: () => void
 }
 
-export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: Props) {
+export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighlightInvoiceNo, onNew, onEdit, onSettings }: Props) {
   const { toast } = useToast()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -531,6 +533,34 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
   }
 
   useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    if (highlightInvoiceNo && invoices.length > 0) {
+      const found = invoices.find(inv => inv.invoice_no.toLowerCase() === highlightInvoiceNo.toLowerCase())
+      if (found) {
+        setSearch('')
+        setStatusFilter('all')
+        setCustomerFilter('all')
+        setCalFilter({ mode: 'none' })
+        setCheckedIds([])
+      }
+    }
+  }, [highlightInvoiceNo, invoices])
+
+  useEffect(() => {
+    if (highlightInvoiceNo && !loading && invoices.length > 0) {
+      const found = invoices.find(inv => inv.invoice_no.toLowerCase() === highlightInvoiceNo.toLowerCase())
+      if (found) {
+        const timer = setTimeout(() => {
+          const element = document.getElementById(`invoice-row-${found.invoice_no}`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 300)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [highlightInvoiceNo, loading, invoices])
 
   async function load() {
     setLoading(true)
@@ -637,8 +667,29 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
     }
   }
 
+  const pulseStyle = `
+    @keyframes invoice-highlight-pulse {
+      0% {
+        background-color: ${c.card};
+        border-color: ${c.border};
+        box-shadow: 0 0 0 rgba(232, 123, 53, 0);
+      }
+      50% {
+        background-color: ${isDark ? 'rgba(232, 123, 53, 0.18)' : 'rgba(232, 123, 53, 0.12)'};
+        border-color: ${c.brand};
+        box-shadow: 0 0 12px rgba(232, 123, 53, 0.35);
+      }
+      100% {
+        background-color: ${c.card};
+        border-color: ${c.border};
+        box-shadow: 0 0 0 rgba(232, 123, 53, 0);
+      }
+    }
+  `
+
   return (
     <div>
+      <style>{pulseStyle}</style>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
@@ -777,12 +828,43 @@ export default function InvoicesPage({ c, isDark, onNew, onEdit, onSettings }: P
               </div>
               {filtered.map(inv => {
                 const st = STATUS[inv.status] ?? STATUS.unpaid
+                const isHighlighted = !!(highlightInvoiceNo && inv.invoice_no.toLowerCase() === highlightInvoiceNo.toLowerCase())
                 return (
                   <div
                     key={inv.id}
-                    style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
-                    onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
-                    onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
+                    id={`invoice-row-${inv.invoice_no}`}
+                    style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', 
+                      gap: 12, 
+                      alignItems: 'center', 
+                      padding: '12px 14px', 
+                      background: c.card, 
+                      border: `1px solid ${isHighlighted ? c.brand : c.border}`, 
+                      borderRadius: 10, 
+                      marginBottom: 6, 
+                      transition: 'border-color 0.15s, box-shadow 0.15s',
+                      ...(isHighlighted ? {
+                        animation: 'invoice-highlight-pulse 1.8s infinite ease-in-out',
+                        position: 'relative',
+                        zIndex: 10
+                      } : {})
+                    }}
+                    onClick={() => {
+                      if (isHighlighted && clearHighlightInvoiceNo) {
+                        clearHighlightInvoiceNo()
+                      }
+                    }}
+                    onMouseEnter={e => {
+                      if (!isHighlighted) {
+                        ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isHighlighted) {
+                        ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)
+                      }
+                    }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <input

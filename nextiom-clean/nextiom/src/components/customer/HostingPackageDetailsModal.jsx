@@ -92,6 +92,7 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
       notes: pkg?.notes || parseRequestField(raw, 'Notes') || 'None',
       expiryDate: pkg?.expiry_date || pkg?.expiryDate || null,
       price: pkg?.price || null,
+      currency: pkg?.currency || 'LKR',
     };
   }, [pkg]);
 
@@ -220,12 +221,12 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
             </div>
             <div style={infoPanel}>
               <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{isAutoRenew ? 'Price (1st payment)' : 'Price'}</p>
-              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.price ? `LKR ${requestMeta.price}` : 'N/A'}</p>
+              <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{requestMeta.price ? `${requestMeta.currency} ${requestMeta.price}` : 'N/A'}</p>
             </div>
             {isAutoRenew && renewalPrice != null && (
               <div style={infoPanel}>
                 <p style={{ color: subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Renewal Price</p>
-                <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{`LKR ${renewalPrice}`}</p>
+                <p style={{ color: text, fontWeight: 700, fontSize: 14 }}>{`${requestMeta.currency} ${renewalPrice}`}</p>
               </div>
             )}
             <div style={infoPanel}>
