@@ -4,23 +4,26 @@ import { motion } from 'framer-motion';
 import {
   LogOut, Clock, AlertTriangle, LayoutDashboard, Globe, Server, Mail,
   ShoppingCart, MessageSquare, Package, User, Loader2, Menu, X,
-  CreditCard, FileText, Info, BellOff, Briefcase,
+  CreditCard, FileText, Info, BellOff, Briefcase, Megaphone,
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
-import { clearCustomerNotifications } from '@/lib/storage';
+import { clearCustomerNotifications, getTicketsByCustomer, getLicenses } from '@/lib/storage';
 
 import { getCustomerJobs } from '@/lib/jobs';
-import { getTicketsByCustomer } from '@/lib/storage';
+import { getCustomerInvoices } from '@/lib/invoices';
+import { getCustomerQuotations } from '@/lib/quotations';
 
 // Re-use real customer components
 import DashboardPage from '@/components/customer/DashboardPage';
+import AnnouncementsPage from '@/components/customer/AnnouncementsPage';
 import NotificationsPage from '@/components/notifications/NotificationsPage';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import MyDomainsPage from '@/components/customer/MyDomainsPage';
 import MyHostingPackagesPage from '@/components/customer/MyHostingPackagesPage';
 import MyEmailsPage from '@/components/customer/MyEmailsPage';
 import MyServicesPage from '@/components/customer/MyServicesPage';
+import OrderHistoryPage from '@/components/customer/OrderHistoryPage';
 import CustomerInvoicesPage from '@/components/customer/CustomerInvoicesPage';
 import CustomerQuotationsPage from '@/components/customer/CustomerQuotationsPage';
 import MyTicketsPage from '@/components/customer/MyTicketsPage';
@@ -33,6 +36,7 @@ import NewEmailRequestPage from '@/components/customer/NewEmailRequestPage';
 import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
+import CustomerAgreementManagement from '@/components/customer/CustomerAgreementManagement';
 import useDisableRightClick from '@/hooks/useDisableRightClick';
 
 const OnProgressIcon = ({ size, className, style, color }) => {
@@ -76,6 +80,46 @@ const c = {
   brand: '#E87B35', brandLight: 'rgba(232,123,53,0.15)',
 };
 
+function getValidity(license) {
+  if (license.status === 'Disabled' || license.status === 'Suspended' || license.status === 'Expired') {
+    return { valid: false, label: license.status, days: null };
+  }
+  const lt = license.license_type || license.product?.license_type || 'one_time';
+  if (lt === 'lifetime') return { valid: true, label: 'Lifetime', days: null };
+  if (lt === 'one_time') {
+    return { valid: true, label: 'One Time Purchase', days: null, downloadUsed: false };
+  }
+  if ((lt === 'yearly' || lt === 'monthly') && license.expiry_date) {
+    const days = Math.ceil((new Date(license.expiry_date) - new Date()) / 86400000);
+    if (days <= 0) return { valid: false, label: 'Expired', days: 0 };
+    return { valid: true, label: `${days}d remaining`, days };
+  }
+  return { valid: true, label: 'Active', days: null };
+}
+
+function getLicenseStatus(license) {
+  if (license.status === 'Disabled' || license.status === 'Suspended') {
+    return license.status;
+  }
+  if (license.status === 'Expired') {
+    return 'Expired';
+  }
+  const validity = getValidity(license);
+  const lt = license.license_type || license.product?.license_type || 'one_time';
+  if (lt === 'lifetime') {
+    return 'Active';
+  }
+  if (lt === 'one_time') {
+    return 'Active';
+  }
+  if (lt === 'yearly' || lt === 'monthly') {
+    if (validity.days <= 0) return 'Expired';
+    if (validity.days <= 5) return 'Expiring Soon';
+    return 'Active';
+  }
+  return 'Active';
+}
+
 const NAV_STRUCTURE = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, type: 'item' },
   {
@@ -104,6 +148,7 @@ const NAV_STRUCTURE = [
     id: 'orders', label: 'Orders', icon: ShoppingCart, type: 'group',
     children: [
       { id: 'services', label: 'My Subscriptions' },
+      { id: 'order_history', label: 'Order History' },
     ],
   },
   {
@@ -113,6 +158,7 @@ const NAV_STRUCTURE = [
       { id: 'quotations', label: 'Quotations' },
     ],
   },
+  { id: 'agreements', label: 'Agreements', icon: FileText, type: 'item' },
   {
     id: 'support', label: 'Ticket', icon: MessageSquare, type: 'group',
     children: [
@@ -122,6 +168,7 @@ const NAV_STRUCTURE = [
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
+  { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
     id: 'about', label: 'About Us', icon: Info, type: 'group',
     children: [
@@ -132,7 +179,7 @@ const NAV_STRUCTURE = [
   },
 ];
 
-const KEEP_ALIVE_TABS = ['dashboard', 'hosting_my', 'domains_my', 'emails_my', 'services', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
+const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements'];
 
 function ImpersonationDashboard() {
   useDisableRightClick();
@@ -154,19 +201,61 @@ function ImpersonationDashboard() {
   const [activeJobsCount, setActiveJobsCount] = useState(0);
   const [waitingJobsCount, setWaitingJobsCount] = useState(0);
   const [activeTicketsCount, setActiveTicketsCount] = useState(0);
+  const [activeProductsCount, setActiveProductsCount] = useState(0);
+  const [hasUnpaidInvoices, setHasUnpaidInvoices] = useState(false);
+  const [hasActiveQuotations, setHasActiveQuotations] = useState(false);
+  const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
 
   useEffect(() => {
     if (!customerProfile?.id) return;
 
     const fetchCounts = async () => {
       try {
-        const [jobsData, ticketsData] = await Promise.all([
+        const email = customerProfile.email || impersonatedUser.email;
+        const [
+          jobsData, ticketsData, licensesData, invoicesData, quotationsData, announcementsCountRes
+        ] = await Promise.all([
           getCustomerJobs(customerProfile.id).catch(() => []),
           getTicketsByCustomer(customerProfile.id).catch(() => []),
+          getLicenses(customerProfile.id).catch(() => []),
+          getCustomerInvoices(email).catch(() => []),
+          getCustomerQuotations(email).catch(() => []),
+          supabase.from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('customer_id', customerProfile.id)
+            .eq('type', 'announcement')
+            .eq('read_status', false),
         ]);
         setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
         setWaitingJobsCount(jobsData.filter(j => j.status === 'Waiting').length);
         setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
+        setUnreadAnnouncementsCount(announcementsCountRes?.count || 0);
+
+        // Count Active products
+        const activeLics = licensesData.filter(l => {
+          const status = getLicenseStatus(l);
+          return status === 'Active' || status === 'Expiring Soon';
+        });
+        setActiveProductsCount(activeLics.length);
+
+        // Check for unpaid invoices
+        const hasUnpaid = invoicesData.some(inv => 
+          inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid'
+        );
+        setHasUnpaidInvoices(hasUnpaid);
+
+        // Check for active quotations
+        const today = new Date();
+        const hasActiveQuotes = quotationsData.some(q => {
+          const status = q.status || 'active';
+          if (status === 'accepted') return true;
+          if (status === 'declined' || status === 'expired') return false;
+          if (!q.valid_until) return true;
+          const valid = new Date(q.valid_until + 'T23:59:59');
+          return valid >= today;
+        });
+        setHasActiveQuotations(hasActiveQuotes);
+
       } catch (error) {
         console.error('Error fetching impersonated dashboard counts:', error);
       }
@@ -190,12 +279,68 @@ function ImpersonationDashboard() {
           fetchCounts();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'licenses' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'invoices' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quotations' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'domains' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hosting_packages' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'domain_requests' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hosting_requests' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `customer_id=eq.${customerProfile.id}` },
+        () => {
+          fetchCounts();
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [customerProfile?.id]);
+  }, [customerProfile?.id, impersonatedUser?.email]);
 
   // Read impersonation data
   useEffect(() => {
@@ -409,10 +554,12 @@ function ImpersonationDashboard() {
     return (
       <>
         {mountedTabs.has('dashboard') && wrap('dashboard', <DashboardPage user={userProp} {...theme} onNavigate={switchTab} />)}
+        {mountedTabs.has('announcements') && wrap('announcements', <AnnouncementsPage user={userProp} {...theme} />)}
         {mountedTabs.has('hosting_my') && wrap('hosting_my', <MyHostingPackagesPage user={userProp} {...theme} />)}
         {mountedTabs.has('domains_my') && wrap('domains_my', <MyDomainsPage user={userProp} {...theme} />)}
         {mountedTabs.has('emails_my') && wrap('emails_my', <MyEmailsPage user={userProp} {...theme} />)}
         {mountedTabs.has('services') && wrap('services', <MyServicesPage user={userProp} {...theme} />)}
+        {mountedTabs.has('order_history') && wrap('order_history', <OrderHistoryPage user={userProp} {...theme} />)}
         {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark c={c} onNavigate={setActiveTab} />)}
@@ -422,6 +569,7 @@ function ImpersonationDashboard() {
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} {...theme} />)}
         {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
         {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}
+        {mountedTabs.has('agreements') && wrap('agreements', <CustomerAgreementManagement user={userProp} isDark c={c} />)}
       </>
     );
   };
@@ -452,6 +600,8 @@ function ImpersonationDashboard() {
               }}
               badge={item.id === 'support' ? activeTicketsCount : 0}
               badgeColor="#16a34a"
+              showDot={item.id === 'billing' && hasUnpaidInvoices && hasActiveQuotations}
+              dotColor="#22c55e"
             >
               {item.children.map((child) => (
                 <button
@@ -487,8 +637,8 @@ function ImpersonationDashboard() {
             c={c}
             isDark={true}
             onClick={() => switchTab(item.id)}
-            badge={item.id === 'jobs' ? activeJobsCount : 0}
-            badgeColor="#16a34a"
+            badge={item.id === 'jobs' ? activeJobsCount : (item.id === 'products' ? activeProductsCount : (item.id === 'announcements' ? unreadAnnouncementsCount : 0))}
+            badgeColor={item.id === 'announcements' ? '#f97316' : '#16a34a'}
             badgeTextColor="#ffffff"
             isBlinking={item.id === 'jobs' && waitingJobsCount > 0}
           />

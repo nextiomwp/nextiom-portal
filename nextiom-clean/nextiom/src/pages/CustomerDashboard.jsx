@@ -5,7 +5,7 @@ import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
-  CreditCard, FileText, Info, Briefcase, Megaphone,
+  CreditCard, FileText, Info, Briefcase, Megaphone, Search
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -34,6 +34,7 @@ import useDisableRightClick from '@/hooks/useDisableRightClick';
 import { cn } from '@/lib/utils';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
+import CustomerAgreementManagement from '@/components/customer/CustomerAgreementManagement';
 import { getCustomerJobs } from '@/lib/jobs';
 import { getTicketsByCustomer, getLicenses } from '@/lib/storage';
 import { getCustomerInvoices } from '@/lib/invoices';
@@ -164,6 +165,7 @@ const NAV_STRUCTURE = [
       { id: 'quotations', label: 'Quotations' },
     ],
   },
+  { id: 'agreements', label: 'Agreements', icon: FileText, type: 'item' },
   {
     id: 'support', label: 'Ticket', icon: MessageSquare, type: 'group',
     children: [
@@ -203,7 +205,7 @@ function getGreeting() {
   return 'Good morning';
 }
 
-const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact'];
+const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements'];
 
 function CustomerDashboard() {
   useDisableRightClick();
@@ -251,13 +253,69 @@ function CustomerDashboard() {
   const [hasActiveQuotations, setHasActiveQuotations] = useState(false);
   const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
 
+  // States for search datasets and modal
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [ticketsList, setTicketsList] = useState([]);
+  const [licensesList, setLicensesList] = useState([]);
+  const [invoicesList, setInvoicesList] = useState([]);
+  const [domainsList, setDomainsList] = useState([]);
+  const [hostingPackagesList, setHostingPackagesList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const getSearchResults = () => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return { products: [], domains: [], hosting: [], tickets: [], invoices: [] };
+
+    const filteredProducts = licensesList.filter(l => 
+      String(l.products?.name || l.name || '').toLowerCase().includes(q) ||
+      String(l.license_key || '').toLowerCase().includes(q)
+    );
+
+    const filteredDomains = domainsList.filter(d => 
+      String(d.domain_name || '').toLowerCase().includes(q) ||
+      String(d.status || '').toLowerCase().includes(q)
+    );
+
+    const filteredHosting = hostingPackagesList.filter(h => 
+      String(h.package_type || '').toLowerCase().includes(q) ||
+      String(h.domain_name || '').toLowerCase().includes(q) ||
+      String(h.status || '').toLowerCase().includes(q)
+    );
+
+    const filteredTickets = ticketsList.filter(t => 
+      String(t.subject || '').toLowerCase().includes(q) ||
+      String(t.ticket_number || '').toLowerCase().includes(q) ||
+      String(t.status || '').toLowerCase().includes(q)
+    );
+
+    const filteredInvoices = invoicesList.filter(i => 
+      String(i.invoice_number || '').toLowerCase().includes(q) ||
+      String(i.status || '').toLowerCase().includes(q) ||
+      String(i.total || '').toLowerCase().includes(q)
+    );
+
+    return {
+      products: filteredProducts.slice(0, 4),
+      domains: filteredDomains.slice(0, 4),
+      hosting: filteredHosting.slice(0, 4),
+      tickets: filteredTickets.slice(0, 4),
+      invoices: filteredInvoices.slice(0, 4),
+    };
+  };
+
+  const searchResults = getSearchResults();
+  const hasResults = Object.values(searchResults).some(arr => arr.length > 0);
+
   useEffect(() => {
     if (!customerProfile?.id) return;
 
     const fetchCounts = async () => {
       try {
         const email = customerProfile.email || user.email;
-        const [jobsData, ticketsData, licensesData, invoicesData, quotationsData, announcementsCountRes] = await Promise.all([
+        const [
+          jobsData, ticketsData, licensesData, invoicesData, quotationsData, announcementsCountRes,
+          domainsDataRes, hostingPackagesDataRes, domainRequestsRes, hostingRequestsRes
+        ] = await Promise.all([
           getCustomerJobs(customerProfile.id).catch(() => []),
           getTicketsByCustomer(customerProfile.id).catch(() => []),
           getLicenses(customerProfile.id).catch(() => []),
@@ -268,11 +326,81 @@ function CustomerDashboard() {
             .eq('customer_id', customerProfile.id)
             .eq('type', 'announcement')
             .eq('read_status', false),
+          supabase.from('domains')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
+          supabase.from('hosting_packages')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
+          supabase.from('domain_requests')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
+          supabase.from('hosting_requests')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
         ]);
         setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
         setWaitingJobsCount(jobsData.filter(j => j.status === 'Waiting').length);
         setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
         setUnreadAnnouncementsCount(announcementsCountRes?.count || 0);
+
+        setTicketsList(ticketsData);
+        setLicensesList(licensesData);
+        setInvoicesList(invoicesData);
+
+        // Deduplicate and combine domains for search
+        const seenDomains = new Set();
+        const combinedDomains = [];
+        (domainsDataRes?.data || []).forEach(d => {
+          const name = d.domain_name || d.domain || d.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            seenDomains.add(key);
+            combinedDomains.push({ ...d, domain_name: name });
+          }
+        });
+        (domainRequestsRes?.data || []).forEach(d => {
+          const name = d.domain_name || d.domain || d.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            if (!seenDomains.has(key)) {
+              seenDomains.add(key);
+              combinedDomains.push({ ...d, domain_name: name });
+            }
+          }
+        });
+        setDomainsList(combinedDomains);
+
+        // Deduplicate and combine hosting packages for search
+        const seenHostings = new Set();
+        const combinedHostings = [];
+        (hostingPackagesDataRes?.data || []).forEach(h => {
+          const pkgName = h.package_name || h.package_type || h.packageName;
+          const domName = h.domain_name || h.domain;
+          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
+          if (pkgName || domName) {
+            seenHostings.add(key);
+            combinedHostings.push({
+              ...h,
+              package_type: pkgName,
+              domain_name: domName
+            });
+          }
+        });
+        (hostingRequestsRes?.data || []).forEach(h => {
+          const pkgName = h.package_name || h.package_type || h.packageName;
+          const domName = h.domain_name || h.domain;
+          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
+          if (!seenHostings.has(key) && (pkgName || domName)) {
+            seenHostings.add(key);
+            combinedHostings.push({
+              ...h,
+              package_type: pkgName,
+              domain_name: domName
+            });
+          }
+        });
+        setHostingPackagesList(combinedHostings);
 
         // Count Active products
         const activeLics = licensesData.filter(l => {
@@ -345,6 +473,34 @@ function CustomerDashboard() {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'domains' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hosting_packages' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'domain_requests' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'hosting_requests' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `customer_id=eq.${customerProfile.id}` },
         () => {
           fetchCounts();
@@ -356,6 +512,17 @@ function CustomerDashboard() {
       supabase.removeChannel(channel);
     };
   }, [customerProfile?.id, customerProfile?.email, user?.email]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -565,6 +732,7 @@ function CustomerDashboard() {
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} onNavigate={setActiveTab} {...theme} />)}
         {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
         {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}
+        {mountedTabs.has('agreements') && wrap('agreements', <CustomerAgreementManagement user={userProp} isDark={isDark} c={c} />)}
       </>
     );
   };
@@ -659,7 +827,37 @@ function CustomerDashboard() {
               : getActiveLabel(activeTab)}
           </div>
 
+          {/* Desktop Search Button */}
+          <div className="hidden md:flex flex-1 max-w-sm mx-4">
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-all text-left cursor-pointer hover:opacity-85"
+              style={{
+                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                borderColor: c.border,
+                color: c.subText,
+              }}
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Search products, domains, hosting...</span>
+              <span className="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold border" style={{ borderColor: c.border, background: c.hover }}>
+                ⌘K
+              </span>
+            </button>
+          </div>
+
           <div className="flex items-center gap-3">
+            {/* Mobile Search Button */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="md:hidden p-2 rounded-full transition-colors"
+              style={{ color: c.subText, background: 'transparent' }}
+              title="Search"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Search className="w-4 h-4" />
+            </button>
             {/* Status button — always cositive green pulse */}
             <div className="pulse-green">
               <a
@@ -736,6 +934,187 @@ function CustomerDashboard() {
           </div>
         </div>
       </main>
+
+      {/* Global Search Dialog Modal */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-start justify-center pt-[10vh] px-4"
+              onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: -20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: -20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                className="w-full max-w-xl rounded-2xl overflow-hidden flex flex-col shadow-2xl border"
+                style={{ background: c.card, borderColor: c.border }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Search Input Area */}
+                <div className="flex items-center gap-3 px-4 py-3.5 border-b" style={{ borderColor: c.border }}>
+                  <Search className="w-5 h-5" style={{ color: c.brand }} />
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Search products, domains, hosting, tickets, invoices..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-sm font-medium"
+                    style={{ color: c.text }}
+                  />
+                  <button 
+                    onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}
+                    className="p-1 rounded-md hover:bg-red-500/10 text-red-500 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Search Results Area */}
+                <div className="max-h-[60vh] overflow-y-auto p-4 flex flex-col gap-4">
+                  {!searchQuery ? (
+                    <div className="text-center py-8 text-xs" style={{ color: c.subText }}>
+                      <Search className="w-8 h-8 mx-auto mb-2 opacity-25 animate-pulse" style={{ color: c.brand }} />
+                      Type to search across Nextiom Portal...
+                    </div>
+                  ) : !hasResults ? (
+                    <div className="text-center py-8 text-xs" style={{ color: c.subText }}>
+                      No results found for <span className="font-semibold" style={{ color: c.text }}>"{searchQuery}"</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Products */}
+                      {searchResults.products.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <Package className="w-3 h-3" /> Products ({searchResults.products.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.products.map(l => (
+                              <button
+                                key={l.id}
+                                onClick={() => { navigate('products'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>{l.products?.name || l.name}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{l.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Domains */}
+                      {searchResults.domains.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <Globe className="w-3 h-3" /> Domains ({searchResults.domains.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.domains.map(d => (
+                              <button
+                                key={d.id}
+                                onClick={() => { navigate('domains_my'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>{d.domain_name}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{d.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Hosting */}
+                      {searchResults.hosting.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <Server className="w-3 h-3" /> Hosting Packages ({searchResults.hosting.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.hosting.map(h => (
+                              <button
+                                key={h.id}
+                                onClick={() => { navigate('hosting_my'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>{h.package_type?.split('|')[0]}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{h.domain_name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tickets */}
+                      {searchResults.tickets.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <MessageSquare className="w-3 h-3" /> Support Tickets ({searchResults.tickets.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.tickets.map(t => (
+                              <button
+                                key={t.id}
+                                onClick={() => { navigate('support_tickets'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold truncate max-w-[70%]" style={{ color: c.text }}>{t.subject}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>#{t.ticket_number || t.id?.slice(0, 8)} - {t.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Invoices */}
+                      {searchResults.invoices.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <CreditCard className="w-3 h-3" /> Invoices ({searchResults.invoices.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.invoices.map(i => (
+                              <button
+                                key={i.id || i.invoice_number}
+                                onClick={() => { navigate('invoices'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>#{i.invoice_number || 'INV'}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{i.currency} {i.total} - {i.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

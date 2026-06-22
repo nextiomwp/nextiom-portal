@@ -31,6 +31,7 @@ import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
 import AdminJobsPage from '@/components/admin/AdminJobsPage';
+import AdminAgreementManagement from '@/components/admin/AdminAgreementManagement';
 
 const OnProgressIcon = ({ size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -89,6 +90,7 @@ const NAV = [
   { section: 'header', label: 'BILLING' },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'quotations', label: 'Quotations', icon: FileText },
+  { id: 'agreements', label: 'Agreements', icon: FileText },
   { section: 'header', label: 'SYSTEM' },
   { id: 'maintenance', label: 'Maintenance', icon: Shield },
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
@@ -617,6 +619,7 @@ function Dashboard({ onLogout }) {
       }
       case 'maintenance': return <MaintenanceModePage key={refreshKey} isDark={isDark} />;
       case 'activityLog': return <AdminActivityLogPage key={refreshKey} isDark={isDark} />;
+      case 'agreements': return <AdminAgreementManagement key={refreshKey} isDark={isDark} />;
       case 'emailRequests': return <AdminEmailRequestManagement key={refreshKey} isDark={isDark} />;
       case 'approvedEmailsActive': return <AdminApprovedEmails key={refreshKey} isDark={isDark} />;
       case 'activeHosting': return <AdminApprovedHostings key={refreshKey} isDark={isDark} />;

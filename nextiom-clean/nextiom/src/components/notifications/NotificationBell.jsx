@@ -315,9 +315,11 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
           <span
-            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full border-2"
+            className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[8px] font-bold text-white border-2 animate-pulse"
             style={{ backgroundColor: '#ef4444', borderColor: card }}
-          />
+          >
+            {unreadCount}
+          </span>
         )}
       </button>
 
