@@ -97,18 +97,18 @@ function LineChart({ data, c, isDark }) {
 
 function ActivityIcon({ type, isDark }) {
   const map = {
-    domain: { Icon: Globe, color: '#7c3aed', bg: isDark ? 'rgba(124,58,237,0.2)' : '#ede9fe' },
-    hosting: { Icon: Server, color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.2)' : '#cffafe' },
-    email: { Icon: Mail, color: '#e87b35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
-    login: { Icon: Shield, color: '#3b82f6', bg: isDark ? 'rgba(59,130,246,0.2)' : '#dbeafe' },
-    product: { Icon: Package, color: '#ec4899', bg: isDark ? 'rgba(236,72,153,0.2)' : '#fce7f3' },
-    invoice: { Icon: CreditCard, color: '#10b981', bg: isDark ? 'rgba(16,185,129,0.2)' : '#d1fae5' },
-    ticket: { Icon: MessageSquare, color: '#14b8a6', bg: isDark ? 'rgba(20,184,166,0.2)' : '#ccfbf1' },
+    domain: { Icon: Globe, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    hosting: { Icon: Server, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    email: { Icon: Mail, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    login: { Icon: Shield, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    product: { Icon: Package, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    invoice: { Icon: CreditCard, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    ticket: { Icon: MessageSquare, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
     expiration: { Icon: Clock, color: '#f59e0b', bg: isDark ? 'rgba(245,158,11,0.2)' : '#fef3c7' },
-    update: { Icon: Settings, color: '#6366f1', bg: isDark ? 'rgba(99,102,241,0.2)' : '#e0e7ff' },
+    update: { Icon: Settings, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
     announcement: { Icon: Megaphone, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.2)' : '#fee2e2' },
   };
-  const item = map[type] || { Icon: Bell, color: '#e87b35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' };
+  const item = map[type] || { Icon: Bell, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' };
   const Icon = item.Icon;
   return (
     <div style={{ width: 38, height: 38, borderRadius: 10, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -378,6 +378,7 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
+  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
 
   const profileFields = ['name', 'phone', 'company', 'country'];
   let filledFields = 0;
@@ -460,11 +461,11 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
         overflow: 'hidden',
       }}
     >
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #3b82f6, #10b981)', borderRadius: '20px 20px 0 0' }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'rgba(59,130,246,0.15)' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <ShieldCheck style={{ width: 16, height: 16, color: '#3b82f6' }} />
+        <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ShieldCheck style={{ width: 16, height: 16, color: brand }} />
         </div>
         <span style={{ color: text, fontWeight: 700, fontSize: 15 }}>Account Status</span>
       </div>
@@ -507,8 +508,8 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
           {/* Details list */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
             {[
-              { label: 'Profile Setup', pct: profileCompletePct, color: '#3b82f6', bg: isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff' },
-              { label: 'Invoices Paid', pct: invoicesPaidPct, color: '#10b981', bg: isDark ? 'rgba(16,185,129,0.1)' : '#ecfdf5' },
+              { label: 'Profile Setup', pct: profileCompletePct, color: brand, bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff7ed' },
+              { label: 'Invoices Paid', pct: invoicesPaidPct, color: brand, bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff7ed' },
               { label: 'Services Active', pct: servicesActivePct, color: brand, bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff7ed' }
             ].map(({ label, pct, color, bg }) => (
               <div key={label} style={{
@@ -682,6 +683,7 @@ function InvoiceSummaryCard({ invoiceSummary, onNavigate, c, isDark }) {
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
+  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
 
   const rows = [
     { label: 'Paid', key: 'paid', color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4', dot: '#16a34a' },
@@ -716,8 +718,8 @@ function InvoiceSummaryCard({ invoiceSummary, onNavigate, c, isDark }) {
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'rgba(16,185,129,0.15)' : '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CreditCard style={{ width: 16, height: 16, color: '#10b981' }} />
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CreditCard style={{ width: 16, height: 16, color: brand }} />
           </div>
           <span style={{ color: text, fontWeight: 700, fontSize: 15 }}>Invoice Summary</span>
         </div>
@@ -1107,28 +1109,28 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       gradient: `linear-gradient(90deg, ${brand}, #f59e0b)`,
     },
     {
-      icon: CheckCircle2, iconBg: isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7', iconColor: '#16a34a',
-      label: 'Approved Orders', value: data.approvedOrders, valueColor: '#16a34a',
+      icon: CheckCircle2, iconBg: isDark ? 'rgba(232,123,53,0.12)' : '#fff7ed', iconColor: brand,
+      label: 'Approved Orders', value: data.approvedOrders, valueColor: brand,
       description: 'All active & completed services',
       quickActionText: 'Manage services',
       onClick: () => onNavigate('order_history'),
-      gradient: 'linear-gradient(90deg, #16a34a, #10b981)',
+      gradient: `linear-gradient(90deg, ${brand}, #f59e0b)`,
     },
     {
-      icon: Package, iconBg: isDark ? 'rgba(124,58,237,0.15)' : '#ede9fe', iconColor: '#7c3aed',
+      icon: Package, iconBg: isDark ? 'rgba(232,123,53,0.12)' : '#fff7ed', iconColor: brand,
       label: 'Total Products', value: data.totalProducts,
       description: 'Licensed software & downloads',
       quickActionText: 'Manage licenses',
       onClick: () => onNavigate('products'),
-      gradient: 'linear-gradient(90deg, #7c3aed, #6366f1)',
+      gradient: `linear-gradient(90deg, ${brand}, #f59e0b)`,
     },
     {
-      icon: DollarSign, iconBg: isDark ? 'rgba(59,130,246,0.15)' : '#dbeafe', iconColor: '#2563eb',
+      icon: DollarSign, iconBg: isDark ? 'rgba(232,123,53,0.12)' : '#fff7ed', iconColor: brand,
       label: 'Total Spend', value: data.totalSpend,
       description: 'Paid invoices to date',
       quickActionText: 'View invoices',
       onClick: () => onNavigate('invoices'),
-      gradient: 'linear-gradient(90deg, #2563eb, #06b6d4)',
+      gradient: `linear-gradient(90deg, ${brand}, #f59e0b)`,
     },
   ];
 
@@ -1256,10 +1258,10 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
         {/* Recent Activity */}
         <div className="lg:col-span-2" style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', borderRadius: '20px 20px 0 0' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'rgba(99,102,241,0.15)' : '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Bell style={{ width: 16, height: 16, color: '#6366f1' }} />
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell style={{ width: 16, height: 16, color: brand }} />
             </div>
             <span style={{ color: text, fontWeight: 700, fontSize: 15 }}>Recent Activity</span>
           </div>
@@ -1354,11 +1356,11 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
         <div className="lg:col-span-2 h-full">
           <div style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 16, height: '100%', boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #10b981, #06b6d4)', borderRadius: '20px 20px 0 0' }} />
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
             
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'rgba(16,185,129,0.15)' : '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Zap style={{ width: 16, height: 16, color: '#10b981' }} />
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Zap style={{ width: 16, height: 16, color: brand }} />
               </div>
               <div>
                 <h3 style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>Need Help?</h3>
@@ -1481,10 +1483,10 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
         {/* Contact Information */}
         <div style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #3b82f6, #06b6d4)', borderRadius: '20px 20px 0 0' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 11, background: isDark ? 'rgba(59,130,246,0.15)' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Phone style={{ width: 16, height: 16, color: '#3b82f6' }} />
+            <div style={{ width: 36, height: 36, borderRadius: 11, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Phone style={{ width: 16, height: 16, color: brand }} />
             </div>
             <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>Contact Information</span>
           </div>
@@ -1507,8 +1509,8 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
               </div>
             ))}
           </div>
-          <button onClick={() => onNavigate('about_contact')} style={{ padding: '9px 18px', borderRadius: 10, background: 'transparent', color: '#3b82f6', border: '1.5px solid #3b82f6', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', textAlign: 'center' }}
-            onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff'; }}
+          <button onClick={() => onNavigate('about_contact')} style={{ padding: '9px 18px', borderRadius: 10, background: 'transparent', color: brand, border: `1.5px solid ${brand}`, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s', textAlign: 'center' }}
+            onMouseEnter={e => { e.currentTarget.style.background = brandLight; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}>
             View All Contact Options
           </button>
@@ -1516,10 +1518,10 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
         {/* Quick Links */}
         <div style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #7c3aed, #6366f1)', borderRadius: '20px 20px 0 0' }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 11, background: isDark ? 'rgba(124,58,237,0.15)' : '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Layers style={{ width: 16, height: 16, color: '#7c3aed' }} />
+            <div style={{ width: 36, height: 36, borderRadius: 11, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Layers style={{ width: 16, height: 16, color: brand }} />
             </div>
             <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>Quick Links</span>
           </div>
@@ -1538,7 +1540,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.borderColor = 'transparent'; }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <link.Icon style={{ width: 14, height: 14, color: '#7c3aed' }} />
+                  <link.Icon style={{ width: 14, height: 14, color: brand }} />
                   <span style={{ color: text, fontSize: 12, fontWeight: 600 }}>{link.label}</span>
                 </div>
                 <ChevronRight style={{ width: 14, height: 14, color: subText }} />
