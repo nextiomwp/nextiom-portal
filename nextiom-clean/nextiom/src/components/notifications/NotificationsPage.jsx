@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Bell, AlertCircle, Info, ShoppingBag, Mail, CheckCircle, ChevronDown, ChevronUp, Globe, Server } from 'lucide-react';
+import { Loader2, Bell, AlertCircle, Info, ShoppingBag, Mail, CheckCircle, ChevronDown, ChevronUp, Globe, Server, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { markAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 
 function getIconData(type, isDark) {
   switch (String(type || '').toLowerCase()) {
+    case 'job':
+    case 'job_update':
+      return { Icon: Briefcase, color: '#e87b35', bg: isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.1)' };
     case 'expiration':
       return { Icon: AlertCircle, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2' };
     case 'new_product':
@@ -316,6 +319,28 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                               >
                                 Go to Quotations
+                              </button>
+                            )}
+                            {(n.type === 'job' || n.type === 'job_update' || String(n.title || '').toLowerCase().includes('information required')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) {
+                                    await handleRead(e, n);
+                                  }
+                                  const jobTitle = n.title.includes('—') ? n.title.split('—')[1].trim() : '';
+                                  if (jobTitle) {
+                                    sessionStorage.setItem('auto_select_job_title', jobTitle);
+                                  }
+                                  sessionStorage.setItem('scroll_to_checklist', 'true');
+                                  onNavigate('jobs');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Project Checklist
                               </button>
                             )}
                           </div>

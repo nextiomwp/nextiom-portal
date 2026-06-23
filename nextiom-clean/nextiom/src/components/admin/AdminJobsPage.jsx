@@ -67,6 +67,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
   const [customerViewNotesText, setCustomerViewNotesText] = useState('');
   const [newRequirementText, setNewRequirementText] = useState('');
   const [newRequirementType, setNewRequirementType] = useState('text');
+  const [newRequirementHours, setNewRequirementHours] = useState('24');
 
   const isQueuePositionDirty = useRef(false);
 
@@ -564,20 +565,37 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
     if (!newRequirementText.trim()) return;
     try {
       const requirements = Array.isArray(job.customer_requirements) ? [...job.customer_requirements] : [];
+      const hours = Number(newRequirementHours) || 24;
       const newItem = {
         id: `req-${Date.now()}`,
         title: newRequirementText,
         status: 'pending',
         type: newRequirementType,
-        value: ''
+        value: '',
+        due_hours: hours,
+        due_date: new Date(Date.now() + hours * 60 * 60 * 1000).toISOString(),
+        created_at: new Date().toISOString()
       };
       
       const updatedRequirements = [...requirements, newItem];
       await updateJob(job.id, { customer_requirements: updatedRequirements });
       
+      // Send a notification to customer
+      try {
+        await supabase.from('notifications').insert([{
+          customer_id: job.customer_id,
+          type: 'email_request',
+          title: `Information Required — ${job.title}`,
+          message: `Please provide "${newRequirementText}" within ${hours} hours.`,
+        }]);
+      } catch (nErr) {
+        console.error('Error adding notification:', nErr);
+      }
+      
       const updatedJobs = jobs.map(j => j.id === job.id ? { ...j, customer_requirements: updatedRequirements } : j);
       setJobs(updatedJobs);
       setNewRequirementText('');
+      setNewRequirementHours('24');
       toast({ title: 'Requirement added', description: 'Required action added for customer' });
     } catch (error) {
       toast({ title: 'Error adding requirement', description: error.message, variant: 'destructive' });
@@ -1572,11 +1590,22 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
                                       <option value="text">Provide Text</option>
                                       <option value="upload">Upload File</option>
                                     </select>
+                                    <input 
+                                      type="number" 
+                                      min="1"
+                                      value={newRequirementHours}
+                                      onChange={e => setNewRequirementHours(e.target.value)}
+                                      placeholder="Hours (default 24)"
+                                      style={{
+                                        width: 120, padding: '5px 8px', background: c.bg, border: `1px solid ${c.border}`, 
+                                        borderRadius: 6, color: c.text, fontSize: 12
+                                      }}
+                                    />
                                     <button 
                                       onClick={() => handleAddRequirement(job)}
                                       style={{ 
                                         background: c.brand, border: 'none', color: '#fff', 
-                                        borderRadius: 6, padding: '0 8px', cursor: 'pointer' 
+                                        borderRadius: 6, padding: '0 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600
                                       }}
                                     >
                                       Add
@@ -1626,7 +1655,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
                                                   {renderTextWithLinks(req.title)}
                                                 </span>
                                                 <span style={{ fontSize: 9, color: c.subText }}>
-                                                  Type: {req.type === 'upload' ? 'File Upload' : 'Provide Text'} ({req.status})
+                                                  Type: {req.type === 'upload' ? 'File Upload' : 'Provide Text'} ({req.status}) {req.due_hours && ` • Due in ${req.due_hours}h`}
                                                 </span>
                                                 {req.value && (
                                                   <div style={{ 

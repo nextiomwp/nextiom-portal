@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Mail, AlertCircle, ShoppingBag, Info, Receipt } from 'lucide-react';
+import { Bell, X, Mail, AlertCircle, ShoppingBag, Info, Receipt, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -243,6 +243,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     const title = (notification.title || '').toLowerCase();
     const type = (notification.type || '').toLowerCase();
     if (type === 'announcement') return null;
+    if (type === 'job' || type === 'job_update' || title.includes('information required') || title.includes('checklist')) return 'jobs';
     if (type === 'quotation' || title.includes('quotation')) return 'quotations';
     if (type === 'product_assigned' || title.includes('product')) return 'products';
     if (type === 'invoice' || type.startsWith('payment_') || title.includes('invoice') || title.includes('payment')) return 'invoices';
@@ -270,6 +271,13 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     
     // Navigate to target page
     const target = getNavTarget(notification);
+    if (target === 'jobs') {
+      const jobTitle = notification.title.includes('—') ? notification.title.split('—')[1].trim() : '';
+      if (jobTitle) {
+        sessionStorage.setItem('auto_select_job_title', jobTitle);
+      }
+      sessionStorage.setItem('scroll_to_checklist', 'true');
+    }
     setIsOpen(false);
     if (target && onNavigate) onNavigate(target);
   };
@@ -280,6 +288,9 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
       case 'new_product': return <ShoppingBag className="w-3.5 h-3.5 text-green-500" />;
       case 'update': return <Info className="w-3.5 h-3.5 text-blue-500" />;
       case 'invoice': return <Receipt className="w-3.5 h-3.5 text-purple-500" />;
+      case 'job':
+      case 'job_update':
+        return <Briefcase className="w-3.5 h-3.5" style={{ color: brand }} />;
       default: return <Mail className="w-3.5 h-3.5" style={{ color: subText }} />;
     }
   };
@@ -291,6 +302,9 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
         case 'new_product': return 'rgba(34,197,94,0.15)';
         case 'update': return 'rgba(59,130,246,0.15)';
         case 'invoice': return 'rgba(168,85,247,0.15)';
+        case 'job':
+        case 'job_update':
+          return 'rgba(232,123,53,0.15)';
         default: return 'rgba(100,116,139,0.15)';
       }
     }
@@ -299,6 +313,9 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
       case 'new_product': return '#dcfce7';
       case 'update': return '#dbeafe';
       case 'invoice': return '#f3e8ff';
+      case 'job':
+      case 'job_update':
+        return 'rgba(232,123,53,0.1)';
       default: return '#f1f5f9';
     }
   };

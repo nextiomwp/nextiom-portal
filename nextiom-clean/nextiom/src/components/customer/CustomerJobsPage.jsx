@@ -6,6 +6,9 @@ import {
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { getCustomerJobs, getJobSettings, updateJob } from '@/lib/jobs';
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger 
+} from '@/components/ui/dialog';
 
 const renderTextWithLinks = (text, brandColor) => {
   if (!text) return '';
@@ -34,6 +37,88 @@ const renderTextWithLinks = (text, brandColor) => {
     }
     return part;
   });
+};
+
+const formatRequirementDueDate = (req) => {
+  if (!req.due_date) return '';
+  const dueDate = new Date(req.due_date);
+  const now = new Date();
+  const diffMs = dueDate.getTime() - now.getTime();
+  
+  const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+  const formattedDate = dueDate.toLocaleString('en-US', options);
+  
+  if (diffMs <= 0) {
+    const absDiffMs = Math.abs(diffMs);
+    const hours = Math.floor(absDiffMs / 3600000);
+    const mins = Math.floor((absDiffMs % 3600000) / 60000);
+    return `Overdue by ${hours}h ${mins}m — was due by ${formattedDate}`;
+  } else {
+    const hours = Math.floor(diffMs / 3600000);
+    const mins = Math.floor((diffMs % 3600000) / 60000);
+    return `Due in ${hours}h ${mins}m — reply by ${formattedDate}`;
+  }
+};
+
+const getPhaseHeadline = (stepName, job) => {
+  if (job.status === 'Completed' || stepName === 'Completed') {
+    return "Project Completed";
+  }
+  if (job.status === 'On Hold') {
+    return "Project On Hold";
+  }
+  
+  switch (stepName) {
+    case 'Request Submitted':
+      return "Request Submitted";
+    case 'Under Review':
+      return "Reviewing Your Project";
+    case 'Waiting for Customer':
+      return "Action Required from You";
+    case 'Job Created':
+      return "Project Initialized";
+    case 'Design Phase':
+      return "We're designing your website";
+    case 'Development':
+      return "We're building your website";
+    case 'Testing':
+      return "Testing & Quality Assurance";
+    case 'Client Review':
+      return "Ready for Your Review";
+    default:
+      return `Phase: ${stepName}`;
+  }
+};
+
+const getPhaseDesc = (stepName, job) => {
+  if (job.status === 'Completed' || stepName === 'Completed') {
+    return "Your project has been successfully delivered and completed.";
+  }
+  if (job.status === 'On Hold') {
+    return "This project is currently paused. Contact support for more details.";
+  }
+
+  const teamName = job.assign_to && job.assign_to !== 'None' ? job.assign_to : "our team";
+  switch (stepName) {
+    case 'Request Submitted':
+      return "We have received your project details and are preparing for review.";
+    case 'Under Review':
+      return `${teamName} is reviewing the project requirements and resources.`;
+    case 'Waiting for Customer':
+      return "Please check the checklist below and provide the requested details to avoid delays.";
+    case 'Job Created':
+      return "Your project setup is complete and is scheduled for work.";
+    case 'Design Phase':
+      return `${teamName} and the team are working on the designs now.`;
+    case 'Development':
+      return `${teamName} and the team are coding the features now.`;
+    case 'Testing':
+      return "We are running test cases to ensure everything works flawlessly.";
+    case 'Client Review':
+      return "Please look over the current deliverables and let us know your feedback.";
+    default:
+      return `${teamName} is working on this phase now.`;
+  }
 };
 
 export default function CustomerJobsPage({ user, c, isDark }) {
@@ -86,6 +171,18 @@ export default function CustomerJobsPage({ user, c, isDark }) {
     };
   }, [user?.id]);
 
+  useEffect(() => {
+    if (selectedJob && sessionStorage.getItem('scroll_to_checklist') === 'true') {
+      sessionStorage.removeItem('scroll_to_checklist');
+      setTimeout(() => {
+        const element = document.getElementById('customer-requirements-checklist-card');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 600);
+    }
+  }, [selectedJob]);
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -101,8 +198,16 @@ export default function CustomerJobsPage({ user, c, isDark }) {
       setJobs(jobsData);
 
       if (jobsData.length > 0) {
-        // Select first job by default if none selected or if previously selected is not in current list
-        if (!selectedJob) {
+        const autoSelectTitle = sessionStorage.getItem('auto_select_job_title');
+        let matchedJob = null;
+        if (autoSelectTitle) {
+          matchedJob = jobsData.find(j => j.title.toLowerCase().trim() === autoSelectTitle.toLowerCase().trim());
+          sessionStorage.removeItem('auto_select_job_title');
+        }
+
+        if (matchedJob) {
+          setSelectedJob(matchedJob);
+        } else if (!selectedJob) {
           setSelectedJob(jobsData[0]);
         } else {
           const updatedSelected = jobsData.find(j => j.id === selectedJob.id);
@@ -336,6 +441,69 @@ function QueueDetailsContainer({
 }) {
   const { toast } = useToast();
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [policyHovered, setPolicyHovered] = useState(false);
+  const [hoveredMetric, setHoveredMetric] = useState(null);
+
+  const renderMetricCard = (title, value, valueColor, tooltipText, id) => {
+    const isHovered = hoveredMetric === id;
+    return (
+      <div 
+        style={{ 
+          position: 'relative',
+          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', 
+          padding: 16, 
+          borderRadius: 10, 
+          border: `1px solid ${c.border}`,
+          cursor: 'help',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={() => setHoveredMetric(id)}
+        onMouseLeave={() => setHoveredMetric(null)}
+      >
+        <div style={{ fontSize: 10, color: c.subText, fontWeight: 600, letterSpacing: '0.5px' }}>{title}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, marginTop: 6 }}>
+          {value}
+        </div>
+
+        {isHovered && (
+          <div style={{
+            position: 'absolute',
+            bottom: '100%',
+            left: '50%',
+            transform: 'translateX(-50%) translateY(-10px)',
+            background: isDark ? '#2E323D' : '#1E293B',
+            color: '#fff',
+            border: `1px solid ${c.borderStrong || 'rgba(255,255,255,0.1)'}`,
+            padding: '8px 12px',
+            borderRadius: 8,
+            fontSize: 11,
+            fontWeight: 500,
+            width: 220,
+            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.4), 0 8px 10px -6px rgba(0,0,0,0.4)',
+            zIndex: 50,
+            textAlign: 'center',
+            lineHeight: 1.4,
+            pointerEvents: 'none',
+            whiteSpace: 'normal'
+          }}>
+            {tooltipText}
+            {/* Arrow */}
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderTop: `6px solid ${isDark ? '#2E323D' : '#1E293B'}`
+            }} />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -435,30 +603,23 @@ function QueueDetailsContainer({
     );
   }
 
-  // Calculate Progress percentage
-  // Total queue size = Active count + Waiting count
-  const totalQueueSize = positionState.activeCount + positionState.waitingCount;
-  
-  // Progress bar logic:
-  // If active, show 100% or high progress
-  // If waiting, position determines progress. E.g. progress = (Total - Position) / Total
-  // Let's create a beautiful custom progress bar representing where the customer's job is!
-  let progressPercent = 100;
-  if (job.status === 'Waiting' && typeof positionState.ahead === 'number') {
-    const position = positionState.ahead + 1;
-    // Projects ahead / Total waiting
-    progressPercent = Math.max(5, Math.round(((totalQueueSize - position) / totalQueueSize) * 100));
-  } else if (job.status === 'On Hold') {
-    progressPercent = 30;
-  } else if (job.status === 'Completed') {
-    progressPercent = 100;
-  }
+  // Calculate Progress percentage based on project milestone timeline
+  const progressPercent = Math.round((job.progress_step / (progressSteps.length - 1)) * 100);
 
-  // Let's format progress characters like: [====================-------]
-  const barLength = 30;
-  const equalsCount = Math.round((progressPercent / 100) * barLength);
-  const hyphenCount = Math.max(0, barLength - equalsCount);
-  const progressBarText = `[${'='.repeat(equalsCount)}${'-'.repeat(hyphenCount)}]`;
+  // Calculate dynamic expected next update text based on customer checklist deadlines
+  const pendingChecklistItems = job.customer_requirements?.filter(r => r.status === 'pending' && r.due_date) || [];
+  let nextUpdateText = job.estimated_start || '3–5 Business Days';
+  if (pendingChecklistItems.length > 0) {
+    const earliestItem = pendingChecklistItems.reduce((earliest, current) => {
+      return new Date(current.due_date) < new Date(earliest.due_date) ? current : earliest;
+    }, pendingChecklistItems[0]);
+
+    if (earliestItem && earliestItem.due_date) {
+      const dueDate = new Date(earliestItem.due_date);
+      const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true };
+      nextUpdateText = `Reply before ${dueDate.toLocaleString('en-US', options)}`;
+    }
+  }
 
   function renderJobDetailsAndChecklist() {
     return (
@@ -550,7 +711,7 @@ function QueueDetailsContainer({
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, gridTemplateRows: 'auto' }}>
           
           {/* Information checklist */}
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
+          <div id="customer-requirements-checklist-card" style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, color: c.text }}>
               <ListTodo size={16} className="text-orange-500" /> Information Required From You
             </h4>
@@ -581,6 +742,12 @@ function QueueDetailsContainer({
                           <div style={{ fontSize: 10, color: c.subText, marginTop: 2 }}>
                             Requirement: {req.type === 'upload' ? 'Upload document/asset' : 'Provide text details'}
                           </div>
+                          {!isSubmitted && req.due_date && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 11, fontWeight: 600, color: '#e87b35' }}>
+                              <Clock size={12} />
+                              <span>{formatRequirementDueDate(req)}</span>
+                            </div>
+                          )}
                         </div>
                         <span style={{
                           fontSize: 10,
@@ -726,30 +893,61 @@ function QueueDetailsContainer({
         padding: 24,
         boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${c.border}`, paddingBottom: 16, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${c.border}`, paddingBottom: 16, marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
           <div>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: c.brand, textTransform: 'uppercase' }}>
-              YOUR PROJECT QUEUE STATUS
+              JOB #{job.id.substring(0, 8).toUpperCase()}
             </span>
-            <h3 style={{ fontSize: 18, fontWeight: 700, margin: '4px 0 0', color: c.text }}>{job.title}</h3>
+            <h3 style={{ fontSize: 20, fontWeight: 700, margin: '4px 0 0', color: c.text }}>{job.title}</h3>
             {job.service_package && job.service_package.trim() !== '' && (
-              <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
-                <span>Service/Package: <strong style={{ color: c.text }}>{job.service_package}</strong></span>
+              <div style={{ fontSize: 12, color: c.subText, marginTop: 6 }}>
+                Service/Package: <span style={{ fontWeight: 600 }}>{renderTextWithLinks(job.service_package, c.brand)}</span>
               </div>
             )}
-            {job.assign_to && job.assign_to !== 'None' && job.assign_to.trim() !== '' && (
-              <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
-                <span>Assigned to: <strong style={{ color: c.text }}>{job.assign_to}</strong></span>
-              </div>
-            )}
-            {job.created_date && (
-              <div style={{ fontSize: 12, color: c.subText, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand }} />
-                <span>Job Start Date: <strong style={{ color: c.text }}>{new Date(job.created_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</strong></span>
-              </div>
-            )}
+          </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'center', flex: 1, minWidth: 260 }}>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button
+                  onMouseEnter={() => setPolicyHovered(true)}
+                  onMouseLeave={() => setPolicyHovered(false)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    background: policyHovered ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.03)',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <AlertCircle size={12} />
+                  Project Information & Response Policy
+                </button>
+              </DialogTrigger>
+              <DialogContent style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text, border: `1px solid ${c.borderStrong || c.border}`, maxWidth: 600, borderRadius: 16 }}>
+                <DialogHeader>
+                  <DialogTitle style={{ color: c.text, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AlertCircle size={18} style={{ color: '#ef4444' }} />
+                    Project Information & Response Policy
+                  </DialogTitle>
+                </DialogHeader>
+                <div style={{ color: c.text, fontSize: 14, lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
+                  <p>To ensure all projects are completed on time, customers must provide the required information, content, approvals, and access details requested by our team before or during the project.</p>
+                  <p>If the required information is not received within 24 hours of our request, the project will be temporarily moved to the pending queue, and our team will continue working on other scheduled projects.</p>
+                  <p>As we manage multiple local and international customer projects simultaneously, we are unable to keep resources allocated to a project indefinitely while waiting for customer responses.</p>
+                  <p>Once the requested information is received, the project will be re-scheduled based on our current workload and project queue. This may affect the originally estimated completion date.</p>
+                  <p>To avoid delays, we kindly request that customers provide all required information as soon as possible and respond promptly to project-related communications.</p>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
           
           <span style={{ 
@@ -764,74 +962,114 @@ function QueueDetailsContainer({
           </span>
         </div>
 
+        {/* Circular Progress & Current Phase Details */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, margin: '20px 0', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+          {/* Circular Progress Wheel */}
+          <div style={{ position: 'relative', width: 80, height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle 
+                cx="40" 
+                cy="40" 
+                r="34" 
+                fill="none" 
+                stroke={isDark ? 'rgba(255,255,255,0.06)' : '#e2e8f0'} 
+                strokeWidth="6" 
+              />
+              <circle 
+                cx="40" 
+                cy="40" 
+                r="34" 
+                fill="none" 
+                stroke={c.brand} 
+                strokeWidth="6" 
+                strokeDasharray={`${2 * Math.PI * 34}`}
+                strokeDashoffset={`${2 * Math.PI * 34 * (1 - progressPercent / 100)}`}
+                strokeLinecap="round"
+                transform="rotate(-90 40 40)"
+                style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }}
+              />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: c.text }}>
+              {progressPercent}%
+            </div>
+          </div>
+
+          {/* Current Phase Description */}
+          <div>
+            <h4 style={{ fontSize: 20, fontWeight: 700, color: c.text, margin: 0 }}>
+              {getPhaseHeadline(progressSteps[job.progress_step], job)}
+            </h4>
+            <p style={{ fontSize: 13, color: c.subText, margin: '4px 0 0', lineHeight: 1.4 }}>
+              {getPhaseDesc(progressSteps[job.progress_step], job)}
+            </p>
+          </div>
+        </div>
+
         {/* Metrics Grid */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', 
           gap: 16, 
-          marginBottom: 24 
+          margin: '20px 0 0'
         }}>
+          {renderMetricCard(
+            'YOUR POSITION',
+            job.status === 'Waiting' ? positionState.position : 'Active',
+            c.text,
+            job.status === 'Waiting' 
+              ? `You are waiting in ${positionState.position} position in our queue.` 
+              : "Your project is currently active and under production.",
+            'position'
+          )}
           
-          {/* Metric 1: Your Position */}
-          {settings?.display_queue_position && (
-            <div style={{ background: c.bg, padding: 16, borderRadius: 10, border: `1px solid ${c.border}` }}>
-              <div style={{ fontSize: 11, color: c.subText, fontWeight: 500 }}>YOUR POSITION</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: c.text, marginTop: 4 }}>
-                {job.status === 'Waiting' ? positionState.position : 'Active'}
-              </div>
-            </div>
+          {renderMetricCard(
+            'PROJECTS AHEAD',
+            job.status === 'Waiting' ? positionState.ahead : 0,
+            c.text,
+            job.status === 'Waiting' 
+              ? `There are ${positionState.ahead} projects ahead of you in the queue.` 
+              : "Your project is active, so there are no queue items ahead of it.",
+            'ahead'
           )}
 
-          {/* Metric 2: Projects Ahead */}
-          {settings?.display_queue_position && (
-            <div style={{ background: c.bg, padding: 16, borderRadius: 10, border: `1px solid ${c.border}` }}>
-              <div style={{ fontSize: 11, color: c.subText, fontWeight: 500 }}>PROJECTS AHEAD</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: c.text, marginTop: 4 }}>
-                {job.status === 'Waiting' ? positionState.ahead : 0}
-              </div>
-            </div>
+          {renderMetricCard(
+            'ACTIVE WORKLOAD',
+            `${positionState.activeCount} Jobs`,
+            c.brand,
+            `We are currently managing ${positionState.activeCount} active client projects simultaneously.`,
+            'workload'
           )}
 
-          {/* Metric 3: Active Jobs */}
-          {settings?.display_active_job_count && (
-            <div style={{ background: c.bg, padding: 16, borderRadius: 10, border: `1px solid ${c.border}` }}>
-              <div style={{ fontSize: 11, color: c.subText, fontWeight: 500 }}>ACTIVE WORKLOAD</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: c.brand, marginTop: 4 }}>
-                {positionState.activeCount} Jobs
-              </div>
-            </div>
+          {renderMetricCard(
+            'ESTIMATED START',
+            job.estimated_start || '1-3 Business Days',
+            '#10b981',
+            `Estimated time until our team begins active work on your project: ${job.estimated_start || '1-3 business days'}.`,
+            'estStart'
           )}
-
-          {/* Metric 4: Est. Start */}
-          <div style={{ background: c.bg, padding: 16, borderRadius: 10, border: `1px solid ${c.border}` }}>
-            <div style={{ fontSize: 11, color: c.subText, fontWeight: 500 }}>ESTIMATED START</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981', marginTop: 6, display: 'flex', alignItems: 'center' }}>
-              {job.estimated_start || '3–5 days'}
-            </div>
-          </div>
-
         </div>
 
-        {/* Queue Progress Bar */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: c.subText, marginBottom: 8 }}>
-            <span>Queue Progress Tracker</span>
-            <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{progressBarText} {progressPercent}%</span>
+        {/* Divider and Bottom Metadata */}
+        <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16, marginTop: 16, display: 'flex', gap: 48, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11, color: c.subText, fontWeight: 500, textTransform: 'uppercase' }}>Started</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: c.text, marginTop: 4 }}>
+              {job.created_date ? new Date(job.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+            </div>
           </div>
           
-          <div style={{ width: '100%', height: 8, background: c.bg, borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
-            <div style={{ width: `${progressPercent}%`, height: '100%', background: c.brand, borderRadius: 4, transition: 'width 0.4s' }} />
+          <div>
+            <div style={{ fontSize: 11, color: c.subText, fontWeight: 500, textTransform: 'uppercase' }}>Expected next update</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: c.text, marginTop: 4 }}>
+              {nextUpdateText}
+            </div>
           </div>
-          
-          <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 11, color: c.subText }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.brand }} />
-              {positionState.activeCount} Active Jobs
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }} />
-              {positionState.waitingCount} Waiting
-            </span>
+
+          <div>
+            <div style={{ fontSize: 11, color: c.subText, fontWeight: 500, textTransform: 'uppercase' }}>Your contact</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: c.text, marginTop: 4 }}>
+              {job.assign_to && job.assign_to !== 'None' ? job.assign_to : 'Support Team'}
+            </div>
           </div>
         </div>
 
