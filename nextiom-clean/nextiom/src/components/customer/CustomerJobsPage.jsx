@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, CheckCircle, Clock, AlertCircle, FileText, 
-  Upload, Check, ChevronRight, HelpCircle, ListTodo, MessageSquare, Info 
+  Upload, Check, ChevronRight, HelpCircle, ListTodo, MessageSquare, Info,
+  User, Layers, Calendar
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -444,7 +445,7 @@ function QueueDetailsContainer({
   const [policyHovered, setPolicyHovered] = useState(false);
   const [hoveredMetric, setHoveredMetric] = useState(null);
 
-  const renderMetricCard = (title, value, valueColor, tooltipText, id) => {
+  const renderMetricCard = (title, value, valueColor, tooltipText, id, icon) => {
     const isHovered = hoveredMetric === id;
     return (
       <div 
@@ -455,15 +456,33 @@ function QueueDetailsContainer({
           borderRadius: 10, 
           border: `1px solid ${c.border}`,
           cursor: 'help',
-          transition: 'all 0.2s'
+          transition: 'all 0.2s',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12
         }}
         onMouseEnter={() => setHoveredMetric(id)}
         onMouseLeave={() => setHoveredMetric(null)}
       >
-        <div style={{ fontSize: 10, color: c.subText, fontWeight: 600, letterSpacing: '0.5px' }}>{title}</div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, marginTop: 6 }}>
-          {value}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: c.subText, fontWeight: 600, letterSpacing: '0.5px' }}>{title}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {value}
+          </div>
         </div>
+
+        {icon && (
+          <div style={{ 
+            color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            {icon}
+          </div>
+        )}
 
         {isHovered && (
           <div style={{
@@ -473,7 +492,7 @@ function QueueDetailsContainer({
             transform: 'translateX(-50%) translateY(-10px)',
             background: isDark ? '#2E323D' : '#1E293B',
             color: '#fff',
-            border: `1px solid ${c.borderStrong || 'rgba(255,255,255,0.1)'}`,
+            border: '1px solid #E87B35',
             padding: '8px 12px',
             borderRadius: 8,
             fontSize: 11,
@@ -1020,7 +1039,8 @@ function QueueDetailsContainer({
             job.status === 'Waiting' 
               ? `You are waiting in ${positionState.position} position in our queue.` 
               : "Your project is currently active and under production.",
-            'position'
+            'position',
+            <User size={28} />
           )}
           
           {renderMetricCard(
@@ -1030,7 +1050,8 @@ function QueueDetailsContainer({
             job.status === 'Waiting' 
               ? `There are ${positionState.ahead} projects ahead of you in the queue.` 
               : "Your project is active, so there are no queue items ahead of it.",
-            'ahead'
+            'ahead',
+            <Layers size={28} />
           )}
 
           {renderMetricCard(
@@ -1038,7 +1059,8 @@ function QueueDetailsContainer({
             `${positionState.activeCount} Jobs`,
             c.brand,
             `We are currently managing ${positionState.activeCount} active client projects simultaneously.`,
-            'workload'
+            'workload',
+            <Briefcase size={28} />
           )}
 
           {renderMetricCard(
@@ -1046,7 +1068,8 @@ function QueueDetailsContainer({
             job.estimated_start || '1-3 Business Days',
             '#10b981',
             `Estimated time until our team begins active work on your project: ${job.estimated_start || '1-3 business days'}.`,
-            'estStart'
+            'estStart',
+            <Calendar size={28} />
           )}
         </div>
 
