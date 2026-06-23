@@ -893,61 +893,18 @@ function QueueDetailsContainer({
         padding: 24,
         boxShadow: '0 10px 30px rgba(0, 0, 0, 0.04)'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${c.border}`, paddingBottom: 16, marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: `1px solid ${c.border}`, paddingBottom: 16, marginBottom: 20, flexWrap: 'wrap', gap: 16 }}>
           <div>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.5, color: c.brand, textTransform: 'uppercase' }}>
               JOB #{job.id.substring(0, 8).toUpperCase()}
             </span>
             <h3 style={{ fontSize: 20, fontWeight: 700, margin: '4px 0 0', color: c.text }}>{job.title}</h3>
+
             {job.service_package && job.service_package.trim() !== '' && (
-              <div style={{ fontSize: 12, color: c.subText, marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: c.subText, marginTop: 8 }}>
                 Service/Package: <span style={{ fontWeight: 600 }}>{renderTextWithLinks(job.service_package, c.brand)}</span>
               </div>
             )}
-          </div>
-          
-          <div style={{ display: 'flex', justifyContent: 'center', flex: 1, minWidth: 260 }}>
-            <Dialog>
-              <DialogTrigger asChild>
-                <button
-                  onMouseEnter={() => setPolicyHovered(true)}
-                  onMouseLeave={() => setPolicyHovered(false)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    color: '#ef4444',
-                    border: '1px solid rgba(239, 68, 68, 0.25)',
-                    background: policyHovered ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.03)',
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  <AlertCircle size={12} />
-                  Project Information & Response Policy
-                </button>
-              </DialogTrigger>
-              <DialogContent style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text, border: `1px solid ${c.borderStrong || c.border}`, maxWidth: 600, borderRadius: 16 }}>
-                <DialogHeader>
-                  <DialogTitle style={{ color: c.text, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <AlertCircle size={18} style={{ color: '#ef4444' }} />
-                    Project Information & Response Policy
-                  </DialogTitle>
-                </DialogHeader>
-                <div style={{ color: c.text, fontSize: 14, lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
-                  <p>To ensure all projects are completed on time, customers must provide the required information, content, approvals, and access details requested by our team before or during the project.</p>
-                  <p>If the required information is not received within 24 hours of our request, the project will be temporarily moved to the pending queue, and our team will continue working on other scheduled projects.</p>
-                  <p>As we manage multiple local and international customer projects simultaneously, we are unable to keep resources allocated to a project indefinitely while waiting for customer responses.</p>
-                  <p>Once the requested information is received, the project will be re-scheduled based on our current workload and project queue. This may affect the originally estimated completion date.</p>
-                  <p>To avoid delays, we kindly request that customers provide all required information as soon as possible and respond promptly to project-related communications.</p>
-                </div>
-              </DialogContent>
-            </Dialog>
           </div>
           
           <span style={{ 
@@ -1002,6 +959,50 @@ function QueueDetailsContainer({
             <p style={{ fontSize: 13, color: c.subText, margin: '4px 0 0', lineHeight: 1.4 }}>
               {getPhaseDesc(progressSteps[job.progress_step], job)}
             </p>
+            
+            <div style={{ marginTop: 12 }}>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button
+                    onMouseEnter={() => setPolicyHovered(true)}
+                    onMouseLeave={() => setPolicyHovered(false)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      color: '#ef4444',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      background: policyHovered ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.03)',
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <AlertCircle size={12} />
+                    Project Information & Response Policy
+                  </button>
+                </DialogTrigger>
+                <DialogContent style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text, border: `1px solid ${c.borderStrong || c.border}`, maxWidth: 600, borderRadius: 16 }}>
+                  <DialogHeader>
+                    <DialogTitle style={{ color: c.text, fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <AlertCircle size={18} style={{ color: '#ef4444' }} />
+                      Project Information & Response Policy
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div style={{ color: c.text, fontSize: 14, lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
+                    <p>To ensure all projects are completed on time, customers must provide the required information, content, approvals, and access details requested by our team before or during the project.</p>
+                    <p>If the required information is not received within 24 hours of our request, the project will be temporarily moved to the pending queue, and our team will continue working on other scheduled projects.</p>
+                    <p>As we manage multiple local and international customer projects simultaneously, we are unable to keep resources allocated to a project indefinitely while waiting for customer responses.</p>
+                    <p>Once the requested information is received, the project will be re-scheduled based on our current workload and project queue. This may affect the originally estimated completion date.</p>
+                    <p>To avoid delays, we kindly request that customers provide all required information as soon as possible and respond promptly to project-related communications.</p>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </div>
 
@@ -1066,7 +1067,7 @@ function QueueDetailsContainer({
           </div>
 
           <div>
-            <div style={{ fontSize: 11, color: c.subText, fontWeight: 500, textTransform: 'uppercase' }}>Your contact</div>
+            <div style={{ fontSize: 11, color: c.subText, fontWeight: 500, textTransform: 'uppercase' }}>Assign To</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: c.text, marginTop: 4 }}>
               {job.assign_to && job.assign_to !== 'None' ? job.assign_to : 'Support Team'}
             </div>
