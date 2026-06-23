@@ -880,7 +880,7 @@ function QueueDetailsContainer({
           {/* Job Queue Information (Customer View Notes) */}
           <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column' }}>
             <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6, color: c.text }}>
-              <MessageSquare size={16} className="text-orange-500" /> Notes from Project Team
+              <MessageSquare size={16} className="text-orange-500" /> Notes from Development Team / Admin Notice
             </h4>
             <div style={{ 
               flex: 1, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, 
