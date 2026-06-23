@@ -122,7 +122,7 @@ function HostingTypeCard({ type, isSelected, onClick, theme }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: 'relative', padding: '20px 16px', borderRadius: 16, cursor: 'pointer',
+        position: 'relative', padding: '14px 12px', borderRadius: 12, cursor: 'pointer',
         border: `2px solid ${isSelected ? theme.brand : hovered ? 'rgba(232,123,53,0.4)' : theme.border}`,
         background: isSelected
           ? 'linear-gradient(135deg,rgba(232,123,53,0.18),rgba(232,123,53,0.06))'
@@ -136,21 +136,21 @@ function HostingTypeCard({ type, isSelected, onClick, theme }) {
       }}
     >
       {isSelected && (
-        <div style={{ position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: '50%', background: theme.brand, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <CheckCircle size={13} color="#fff" />
+        <div style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: theme.brand, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CheckCircle size={11} color="#fff" />
         </div>
       )}
       <div style={{
-        width: 52, height: 52, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        margin: '0 auto 12px',
+        width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 8px',
         background: isSelected ? gradient : theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
         transition: 'background 0.25s',
-        boxShadow: isSelected ? '0 4px 16px rgba(0,0,0,0.3)' : 'none',
+        boxShadow: isSelected ? '0 4px 12px rgba(0,0,0,0.2)' : 'none',
       }}>
-        <Icon size={22} color={isSelected ? '#fff' : theme.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)'} />
+        <Icon size={16} color={isSelected ? '#fff' : theme.isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)'} />
       </div>
-      <p style={{ color: isSelected ? theme.brand : theme.text, fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{type}</p>
-      <p style={{ color: theme.subText, fontSize: 11, lineHeight: 1.4 }}>{desc}</p>
+      <p style={{ color: isSelected ? theme.brand : theme.text, fontWeight: 700, fontSize: 12, marginBottom: 2 }}>{type}</p>
+      <p style={{ color: theme.subText, fontSize: 10, lineHeight: 1.3 }}>{desc}</p>
     </div>
   );
 }
@@ -175,7 +175,7 @@ function PlanCard({ plan, isSelected, billingPeriod, onClick, theme }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        position: 'relative', padding: '20px 18px', borderRadius: 16, cursor: 'pointer',
+        position: 'relative', padding: '14px 14px', borderRadius: 12, cursor: 'pointer',
         border: `2px solid ${isSelected ? theme.brand : isPopular ? 'rgba(232,123,53,0.3)' : hovered ? 'rgba(232,123,53,0.3)' : theme.border}`,
         background: isSelected
           ? 'linear-gradient(160deg,rgba(232,123,53,0.18),rgba(232,123,53,0.05))'
@@ -191,59 +191,59 @@ function PlanCard({ plan, isSelected, billingPeriod, onClick, theme }) {
     >
       {isPopular && (
         <div style={{
-          position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)',
           background: `linear-gradient(90deg,${theme.brand},#f59e0b)`, color: '#fff', borderRadius: 20,
-          padding: '3px 12px', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,
-          whiteSpace: 'nowrap', boxShadow: `0 4px 12px ${theme.brand}60`,
+          padding: '2px 8px', fontSize: 8, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3,
+          whiteSpace: 'nowrap', boxShadow: `0 4px 10px ${theme.brand}50`,
         }}>
-          <Star size={9} fill="#fff" /> MOST POPULAR
+          <Star size={8} fill="#fff" /> MOST POPULAR
         </div>
       )}
       {isSelected && (
-        <div style={{ position: 'absolute', top: 12, right: 12 }}>
-          <CheckCircle size={18} color={theme.brand} />
+        <div style={{ position: 'absolute', top: 10, right: 10 }}>
+          <CheckCircle size={14} color={theme.brand} />
         </div>
       )}
 
-      <div style={{ marginBottom: 14 }}>
-        <p style={{ color: isSelected ? theme.brand : theme.text, fontWeight: 800, fontSize: 15, marginBottom: 6 }}>
+      <div style={{ marginBottom: 10 }}>
+        <p style={{ color: isSelected ? theme.brand : theme.text, fontWeight: 800, fontSize: 13, marginBottom: 4 }}>
           {plan.plan_name}
         </p>
         {hasPrice ? (
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ fontSize: 26, fontWeight: 900, color: isSelected ? theme.brand : theme.text, lineHeight: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
+            <span style={{ fontSize: 20, fontWeight: 900, color: isSelected ? theme.brand : theme.text, lineHeight: 1 }}>
               ${price.toFixed(2)}
             </span>
-            <span style={{ fontSize: 12, color: theme.subText, fontWeight: 500 }}>/mo</span>
+            <span style={{ fontSize: 11, color: theme.subText, fontWeight: 500 }}>/mo</span>
           </div>
         ) : (
-          <div style={{ color: theme.subText, fontSize: 13, fontStyle: 'italic' }}>Custom Pricing</div>
+          <div style={{ color: theme.subText, fontSize: 12, fontStyle: 'italic' }}>Custom Pricing</div>
         )}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7, borderTop: `1px solid ${theme.border}`, paddingTop: 14 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, borderTop: `1px solid ${theme.border}`, paddingTop: 10 }}>
         {plan.storage && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <HardDrive size={12} color={theme.brand} />
-            <span style={{ fontSize: 12, color: theme.subText }}>{plan.storage} Storage</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <HardDrive size={11} color={theme.brand} />
+            <span style={{ fontSize: 11, color: theme.subText }}>{plan.storage} Storage</span>
           </div>
         )}
         {plan.bandwidth && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Wifi size={12} color={theme.brand} />
-            <span style={{ fontSize: 12, color: theme.subText }}>{plan.bandwidth} Bandwidth</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Wifi size={11} color={theme.brand} />
+            <span style={{ fontSize: 11, color: theme.subText }}>{plan.bandwidth} Bandwidth</span>
           </div>
         )}
         {plan.websites && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Monitor size={12} color={theme.brand} />
-            <span style={{ fontSize: 12, color: theme.subText }}>{plan.websites} Website{plan.websites !== '1' ? 's' : ''}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Monitor size={11} color={theme.brand} />
+            <span style={{ fontSize: 11, color: theme.subText }}>{plan.websites} Website{plan.websites !== '1' ? 's' : ''}</span>
           </div>
         )}
         {(plan.features || []).slice(0, 3).map(f => (
-          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CheckCircle size={12} color="#22c55e" />
-            <span style={{ fontSize: 12, color: theme.subText }}>{f}</span>
+          <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <CheckCircle size={11} color="#22c55e" />
+            <span style={{ fontSize: 11, color: theme.subText }}>{f}</span>
           </div>
         ))}
       </div>
@@ -703,7 +703,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
                 <p style={{ color: theme.subText, fontSize: 12 }}>Choose the type of hosting that works best for you.</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {hostingTypes.map(type => (
                 <HostingTypeCard
                   key={type}
@@ -756,7 +756,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
                 No plans available for this hosting type.
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {currentPlans.map(plan => (
                   <PlanCard
                     key={plan.id}
