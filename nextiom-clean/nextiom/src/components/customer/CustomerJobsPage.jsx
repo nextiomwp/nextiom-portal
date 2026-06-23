@@ -298,7 +298,7 @@ export default function CustomerJobsPage({ user, c, isDark }) {
 
   if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: c.subText }}>
+      <div className="customer-jobs-page" style={{ padding: 40, textAlign: 'center', color: c.subText }}>
         <Clock className="animate-spin text-orange-500" style={{ margin: '0 auto 10px' }} />
         Loading your projects and queue status...
       </div>
@@ -307,7 +307,7 @@ export default function CustomerJobsPage({ user, c, isDark }) {
 
   if (jobs.length === 0) {
     return (
-      <div style={{ 
+      <div className="customer-jobs-page" style={{ 
         background: c.card, 
         border: `1px solid ${c.border}`, 
         borderRadius: 12, 
@@ -349,7 +349,7 @@ export default function CustomerJobsPage({ user, c, isDark }) {
   // This is beautiful and extremely accurate! Let's write that.
   
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 60 }}>
+    <div className="customer-jobs-page" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 60 }}>
       {/* Title */}
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: c.text }}>
@@ -606,7 +606,7 @@ function QueueDetailsContainer({
   
   if (!displayQueue) {
     return (
-      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 32, textAlign: 'center' }}>
+      <div className="customer-jobs-page" style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 32, textAlign: 'center' }}>
         <Info size={36} color={c.brand} style={{ margin: '0 auto 12px', opacity: 0.8 }} />
         <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: c.text }}>Project Queue Temporarily Hidden</h3>
         <p style={{ fontSize: 13, color: c.subText }}>
@@ -813,7 +813,8 @@ function QueueDetailsContainer({
                                 placeholder="Type the requested details here..."
                                 style={{
                                   width: '100%', padding: '6px 10px', background: c.bg, border: `1px solid ${c.border}`,
-                                  borderRadius: 6, color: c.text, fontSize: 12, minHeight: 60, resize: 'none'
+                                  borderRadius: 6, color: c.text, fontSize: 12, minHeight: 60, resize: 'none',
+                                  cursor: 'text'
                                 }}
                               />
                               <button

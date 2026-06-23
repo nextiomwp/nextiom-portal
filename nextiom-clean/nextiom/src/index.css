@@ -155,3 +155,36 @@
 .pulse-green::after {
   animation: pulse-ring-2 2s cubic-bezier(0.4, 0, 0.6, 1) 0.4s infinite;
 }
+
+/* Customer Jobs Page cursor styling: prevent I-beam cursor on static elements */
+.customer-jobs-page {
+  cursor: default;
+}
+
+.customer-jobs-page * {
+  cursor: default;
+}
+
+/* Maintain proper pointer cursor on interactive elements */
+.customer-jobs-page a,
+.customer-jobs-page button,
+.customer-jobs-page select,
+.customer-jobs-page [role="button"],
+.customer-jobs-page label,
+.customer-jobs-page label * {
+  cursor: pointer;
+}
+
+/* Maintain help cursor on elements that specify it */
+.customer-jobs-page [style*="cursor: help"],
+.customer-jobs-page [style*="cursor:help"] {
+  cursor: help;
+}
+
+/* Maintain text I-beam cursor exclusively in typing/input areas */
+.customer-jobs-page input,
+.customer-jobs-page textarea,
+.customer-jobs-page input[type="text"],
+.customer-jobs-page textarea * {
+  cursor: text !important;
+}
