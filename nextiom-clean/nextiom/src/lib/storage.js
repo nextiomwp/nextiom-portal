@@ -872,6 +872,29 @@ export const deleteHostingPlan = async (id) => {
   return true;
 };
 
+export const deleteHostingType = async (hostingType) => {
+  const { error } = await supabase
+    .from('hosting_plans')
+    .delete()
+    .eq('hosting_type', hostingType);
+  if (error) handleSupabaseError(error, 'deleteHostingType');
+  return true;
+};
+
+export const renameHostingType = async (oldName, newName) => {
+  const newKey = newName.toUpperCase().replace(/\s+/g, '_');
+  const { error } = await supabase
+    .from('hosting_plans')
+    .update({ 
+      hosting_type: newName, 
+      hosting_type_key: newKey,
+      updated_at: new Date().toISOString() 
+    })
+    .eq('hosting_type', oldName);
+  if (error) handleSupabaseError(error, 'renameHostingType');
+  return true;
+};
+
 // --- Requests (Real Supabase) ---
 
 export const addDomainRequest = async (requestData) => {

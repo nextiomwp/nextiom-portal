@@ -252,6 +252,7 @@ function CustomerDashboard() {
   const [hasUnpaidInvoices, setHasUnpaidInvoices] = useState(false);
   const [hasActiveQuotations, setHasActiveQuotations] = useState(false);
   const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
+  const [emailsCount, setEmailsCount] = useState(0);
 
   // States for search datasets and modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -314,7 +315,7 @@ function CustomerDashboard() {
         const email = customerProfile.email || user.email;
         const [
           jobsData, ticketsData, licensesData, invoicesData, quotationsData, announcementsCountRes,
-          domainsDataRes, hostingPackagesDataRes, domainRequestsRes, hostingRequestsRes
+          domainsDataRes, hostingPackagesDataRes, domainRequestsRes, hostingRequestsRes, emailRequestsRes
         ] = await Promise.all([
           getCustomerJobs(customerProfile.id).catch(() => []),
           getTicketsByCustomer(customerProfile.id).catch(() => []),
@@ -338,11 +339,15 @@ function CustomerDashboard() {
           supabase.from('hosting_requests')
             .select('*')
             .eq('customer_id', customerProfile.id),
+          supabase.from('email_requests')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
         ]);
         setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
         setWaitingJobsCount(jobsData.filter(j => j.status === 'Waiting').length);
         setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
         setUnreadAnnouncementsCount(announcementsCountRes?.count || 0);
+        setEmailsCount(emailRequestsRes?.data?.length || 0);
 
         setTicketsList(ticketsData);
         setLicensesList(licensesData);
@@ -501,6 +506,13 @@ function CustomerDashboard() {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_requests' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications', filter: `customer_id=eq.${customerProfile.id}` },
         () => {
           fetchCounts();
@@ -595,30 +607,53 @@ function CustomerDashboard() {
                 if (collapsed) navigate(item.children[0].id);
                 else toggleMenu(item.id);
               }}
-              badge={item.id === 'support' ? activeTicketsCount : 0}
+              badge={
+                item.id === 'support' ? activeTicketsCount :
+                item.id === 'hosting' ? hostingPackagesList.length :
+                item.id === 'domains' ? domainsList.length :
+                item.id === 'emails' ? emailsCount : 0
+              }
               badgeColor="#16a34a"
               showDot={item.id === 'billing' && hasUnpaidInvoices && hasActiveQuotations}
               dotColor="#22c55e"
             >
-              {item.children.map(child => (
-                <button
-                  key={child.id}
-                  onClick={() => navigate(child.id)}
-                  className="w-full text-left px-3 py-2 rounded-md text-sm mb-0.5 transition-colors"
-                  style={{
-                    color: activeTab === child.id ? c.brand : c.subText,
-                    backgroundColor: activeTab === child.id ? c.brandLight : 'transparent',
-                  }}
-                  onMouseEnter={e => {
-                    if (activeTab !== child.id) e.currentTarget.style.backgroundColor = c.hover;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.backgroundColor = activeTab === child.id ? c.brandLight : 'transparent';
-                  }}
-                >
-                  {child.label}
-                </button>
-              ))}
+              {item.children.map(child => {
+                let displayCount = null;
+                if (child.id === 'hosting_my') displayCount = hostingPackagesList.length;
+                if (child.id === 'domains_my') displayCount = domainsList.length;
+                if (child.id === 'emails_my') displayCount = emailsCount;
+
+                return (
+                  <button
+                    key={child.id}
+                    onClick={() => navigate(child.id)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm mb-0.5 transition-colors"
+                    style={{
+                      color: activeTab === child.id ? c.brand : c.subText,
+                      backgroundColor: activeTab === child.id ? c.brandLight : 'transparent',
+                    }}
+                    onMouseEnter={e => {
+                      if (activeTab !== child.id) e.currentTarget.style.backgroundColor = c.hover;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.backgroundColor = activeTab === child.id ? c.brandLight : 'transparent';
+                    }}
+                  >
+                    <span>{child.label}</span>
+                    {displayCount !== null && (
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-semibold font-mono"
+                        style={{
+                          backgroundColor: activeTab === child.id ? c.brand : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
+                          color: activeTab === child.id ? '#ffffff' : c.subText,
+                        }}
+                      >
+                        {displayCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </CollapsibleMenuItem>
           );
         }
@@ -705,7 +740,7 @@ function CustomerDashboard() {
     const theme = { isDark, c };
 
     // Form pages — rendered fresh each visit (no keep-alive)
-    if (activeTab === 'hosting_new') return <NewHostingOrderPage onSuccess={() => setActiveTab('hosting_my')} {...theme} />;
+    if (activeTab === 'hosting_new') return <NewHostingOrderPage onSuccess={() => setActiveTab('hosting_my')} onNavigate={setActiveTab} {...theme} />;
     if (activeTab === 'domains_new') return <NewDomainRequestPage onSuccess={() => setActiveTab('domains_my')} {...theme} />;
     if (activeTab === 'emails_new') return <NewEmailRequestPage onSuccess={() => setActiveTab('emails_my')} {...theme} />;
     if (activeTab === 'support_create') return <CreateTicketPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;

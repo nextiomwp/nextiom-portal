@@ -258,30 +258,39 @@ function AdminHostingRequestManagement({ isDark = true }) {
             </tr>
           </thead>
           <tbody>
-            {filteredRequests.map((req, i) => (
-              <tr key={req.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedRequest(req)}>
-                <td style={i % 2 === 0 ? tdS : tdAlt}>
-                  <span style={{ fontWeight: 600, display: 'block' }}>New Request</span>
-                  <span style={{ fontSize: 12, color: c.subText }}>{req.domain || req.notes || 'Hosting Order'}</span>
-                </td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}>
-                  <span style={{ fontWeight: 500, display: 'block' }}>{req.customers?.name || getCustomerName(req.customer_id)}</span>
-                  <span style={{ fontSize: 12, color: c.subText }}>{req.package_name}</span>
-                </td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}>
-                  <span style={{ color: c.subText, fontSize: 13 }}>{req.created_at ? format(new Date(req.created_at), 'MMM dd, HH:mm') : '—'}</span>
-                </td>
-                <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={req.status} /></td>
-                <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <Btn color="#8b5cf6" onClick={() => setSelectedRequest(req)}>View →</Btn>
-                    <Btn color="#ef4444" onClick={(e) => { e.stopPropagation(); setDeleteTarget(req.id); }} title="Delete request">
-                      <Trash2 size={12} /> Delete
-                    </Btn>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {filteredRequests.map((req, i) => {
+              const parsed = parsePkg(req.package_type);
+              const plan = req.plan_name || parsed.plan;
+              const billing = req.billing_period || parsed.billing;
+              const domainVal = req.domain || parsed.domain;
+              return (
+                <tr key={req.id} style={{ cursor: 'pointer' }} onClick={() => setSelectedRequest(req)}>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ fontWeight: 600, display: 'block' }}>New Request</span>
+                    <span style={{ fontSize: 12, color: c.subText }}>{domainVal || req.notes || 'Hosting Order'}</span>
+                  </td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ fontWeight: 500, display: 'block' }}>{req.customers?.name || getCustomerName(req.customer_id)}</span>
+                    <span style={{ fontSize: 12, color: c.subText }}>
+                      {plan} ({billing})
+                      {req.price != null ? ` | ${req.currency === 'USD' ? '$' : 'Rs.'}${Number(req.price).toFixed(2)}` : ''}
+                    </span>
+                  </td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}>
+                    <span style={{ color: c.subText, fontSize: 13 }}>{req.created_at ? format(new Date(req.created_at), 'MMM dd, HH:mm') : '—'}</span>
+                  </td>
+                  <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={req.status} /></td>
+                  <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <Btn color="#8b5cf6" onClick={() => setSelectedRequest(req)}>View →</Btn>
+                      <Btn color="#ef4444" onClick={(e) => { e.stopPropagation(); setDeleteTarget(req.id); }} title="Delete request">
+                        <Trash2 size={12} /> Delete
+                      </Btn>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {filteredRequests.length === 0 && <tr><td colSpan={5} style={emptyS}>No requests found</td></tr>}
           </tbody>
         </table>

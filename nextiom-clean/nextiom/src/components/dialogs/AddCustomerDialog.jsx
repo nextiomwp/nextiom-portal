@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
@@ -11,7 +11,7 @@ import { addNotification } from '@/lib/storage';
 const SUPABASE_URL = 'https://fewhvlsqkbsmqbrqclya.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZld2h2bHNxa2JzbXFicnFjbHlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDEwMjI4MSwiZXhwIjoyMDg1Njc4MjgxfQ.O7JlivddOXH2oElVnJ8LWzdDbpL-X4OP8GGdK_UYlhM';
 
-const EMPTY = { name: '', email: '', phone: '', company: '', country: '', password: '', confirmPassword: '', domains: [''] };
+const EMPTY = { name: '', email: '', phone: '', company: '', country: 'Sri Lanka', password: '', confirmPassword: '', domains: [''] };
 
 function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
   const [formData, setFormData] = useState(EMPTY);
@@ -19,12 +19,19 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (open) {
+      setFormData(EMPTY);
+      setShowPassword(false);
+    }
+  }, [open]);
+
   const inp = 'w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all text-sm';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.phone || !formData.country || !formData.password) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
       toast({ title: 'Error', description: 'Please fill in all required fields.', variant: 'destructive' });
       return;
     }
@@ -71,7 +78,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
           name: formData.name,
           phone: formData.phone,
           company: formData.company || null,
-          country: formData.country,
+          country: formData.country || null,
           status: 'active',
           created_at: new Date().toISOString(),
         })
@@ -141,8 +148,8 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
               <input id="phone" type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={inp} required />
             </div>
             <div>
-              <Label htmlFor="country">Country *</Label>
-              <input id="country" type="text" value={formData.country} onChange={e => setFormData({ ...formData, country: e.target.value })} className={inp} required />
+              <Label htmlFor="country">Country</Label>
+              <input id="country" type="text" value={formData.country} onChange={e => setFormData({ ...formData, country: e.target.value })} className={inp} />
             </div>
             <div className="md:col-span-2">
               <Label htmlFor="company">Company Name</Label>

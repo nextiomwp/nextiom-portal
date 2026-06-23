@@ -198,6 +198,8 @@ function Dashboard({ onLogout }) {
   const [autoRefreshInterval, setAutoRefreshInterval] = useState(0); // 0 = off, seconds
   const [showAutoRefreshMenu, setShowAutoRefreshMenu] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [isToggleHovered, setIsToggleHovered] = useState(false);
   const autoRefreshMenuRef = useRef(null);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
@@ -377,7 +379,7 @@ function Dashboard({ onLogout }) {
         source: 'hosting',
         reqType: 'Hosting request',
         n: r.customers?.name || 'Unknown',
-        detailsLabel: r.package_name || '-'
+        detailsLabel: r.plan_name || r.package_type?.split('|')[0]?.trim() || '-'
       }));
 
       const emailReqRows = (emailReqs || []).map(r => ({
@@ -670,24 +672,45 @@ function Dashboard({ onLogout }) {
       <div style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: '55%', height: '55%', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.12)', filter: 'blur(130px)', zIndex: 0, pointerEvents: 'none' }} />
 
       {!isMobile && (
-        <div style={{
-          width: sidebarOpen ? 240 : 80,
-          background: isDark ? 'rgba(28, 30, 36, 0.55)' : 'rgba(255, 255, 255, 0.55)',
-          backdropFilter: 'blur(30px)',
-          WebkitBackdropFilter: 'blur(30px)',
-          borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'width 0.2s',
-          zIndex: 10,
-          flexShrink: 0
-        }}>
+        <div
+          onMouseEnter={() => setIsSidebarHovered(true)}
+          onMouseLeave={() => setIsSidebarHovered(false)}
+          style={{
+            width: sidebarOpen ? 240 : 80,
+            background: isDark
+              ? (isSidebarHovered ? 'rgba(28, 30, 36, 0.75)' : 'rgba(28, 30, 36, 0.55)')
+              : (isSidebarHovered ? 'rgba(255, 255, 255, 0.75)' : 'rgba(255, 255, 255, 0.55)'),
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
+            borderRight: `1px solid ${isDark ? (isSidebarHovered ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.08)') : (isSidebarHovered ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.08)')}`,
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'all 0.25s ease',
+            zIndex: 10,
+            flexShrink: 0,
+            boxShadow: isSidebarHovered ? '4px 0 24px rgba(0,0,0,0.12)' : 'none'
+          }}
+        >
           <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
               {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>}
             </div>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', display: 'flex', padding: 2 }}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              onMouseEnter={() => setIsToggleHovered(true)}
+              onMouseLeave={() => setIsToggleHovered(false)}
+              style={{
+                background: isToggleHovered ? c.hover : 'none',
+                border: 'none',
+                color: isToggleHovered ? c.brand : c.subText,
+                cursor: 'pointer',
+                display: 'flex',
+                padding: 4,
+                borderRadius: 6,
+                transition: 'all 0.2s'
+              }}
+            >
               {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
             </button>
           </div>
@@ -696,7 +719,7 @@ function Dashboard({ onLogout }) {
               if (item.section === 'divider') return <div key={`div-${i}`} style={{ height: 12 }} />;
               if (item.section === 'header') {
                 if (!sidebarOpen) return <div key={`h-${i}`} style={{ height: 4 }} />;
-                return <div key={`h-${i}`} style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
+                return <div key={`h-${i}`} style={{ fontSize: 10, color: '#E87B35', padding: '0 12px 8px', fontWeight: 700, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
               }
               const isItem = item;
               let badge = 0;
@@ -768,7 +791,7 @@ function Dashboard({ onLogout }) {
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
               {NAV.map((item, i) => {
                 if (item.section === 'divider') return <div key={`mdiv-${i}`} style={{ height: 12 }} />;
-                if (item.section === 'header') return <div key={`mh-${i}`} style={{ fontSize: 10, color: c.subText, padding: '0 12px 8px', fontWeight: 600, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
+                if (item.section === 'header') return <div key={`mh-${i}`} style={{ fontSize: 10, color: '#E87B35', padding: '0 12px 8px', fontWeight: 700, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
                 let badge = 0;
                 let dot = false;
                 let badgeColor = c.brand;
@@ -1112,9 +1135,9 @@ function Dashboard({ onLogout }) {
 
 function NavItem({ item, active, setActive, open, c, badge = 0, badgeColor, dot = false, onSelectMobile }) {
   const isActive = active === item.id;
-  const color = isActive ? c.text : c.subText;
   const bc = badgeColor || c.brand;
   const [isHovered, setIsHovered] = useState(false);
+  const color = isActive ? c.text : (isHovered ? c.text : c.subText);
 
   return (
     <div
@@ -1136,19 +1159,19 @@ function NavItem({ item, active, setActive, open, c, badge = 0, badgeColor, dot 
         justifyContent: open ? 'space-between' : 'center',
         padding: open ? '10px 12px' : '10px 0',
         width: '100%',
-        background: isActive ? c.hover : 'transparent',
+        background: isActive ? c.hover : (isHovered ? c.hover : 'transparent'),
         borderRadius: 8,
         cursor: 'pointer',
         borderLeft: isActive ? `3px solid ${c.brand}` : '3px solid transparent',
         marginBottom: 4,
-        transition: 'all 0.1s',
+        transition: 'all 0.15s ease',
         outline: 'none',
         boxSizing: 'border-box',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
         <div style={{ position: 'relative', flexShrink: 0, marginLeft: open ? 0 : -3 }}>
-          <item.icon size={18} color={isActive ? c.brand : c.subText} />
+          <item.icon size={18} color={isActive ? c.brand : (isHovered ? c.brand : c.subText)} />
           {badge > 0 && <span style={{ position: 'absolute', top: -5, right: -6, width: 14, height: 14, background: bc, borderRadius: '50%', fontSize: 9, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{badge > 9 ? '9+' : badge}</span>}
           {dot && badge === 0 && <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, background: c.brand, borderRadius: '50%', border: `2px solid ${c.sidebar}` }} />}
         </div>

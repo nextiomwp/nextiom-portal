@@ -206,9 +206,25 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
   const handlePlanChange = (val) => {
     setPlanName(val);
     const plan = plans.find(p => p.hosting_type === hostingType && p.plan_name === val);
-    if (plan && !enableResourceOverride) {
-      setDiskUsageLimit(plan.storage || '');
-      setBandwidthLimit(plan.bandwidth || '');
+    if (plan) {
+      if (!enableResourceOverride) {
+        setDiskUsageLimit(plan.storage || '');
+        setBandwidthLimit(plan.bandwidth || '');
+      }
+      if (plan.renewal_percentage != null) {
+        setRenewalPercentage(String(plan.renewal_percentage));
+      }
+      if (plan.price_monthly != null) {
+        let calculatedPrice = plan.price_monthly;
+        if (billingPeriod === 'Yearly') {
+          const discount = plan.discount_yearly || 0;
+          calculatedPrice = plan.price_monthly * (1 - discount / 100);
+        } else if (billingPeriod === '2 Years') {
+          const discount = plan.discount_2years || 0;
+          calculatedPrice = plan.price_monthly * (1 - discount / 100);
+        }
+        setPrice(calculatedPrice.toFixed(2));
+      }
     }
   };
 
@@ -388,7 +404,22 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
             </div>
              <div>
               <label style={labelS}>Billing Period</label>
-              <select className={fieldClass} style={fieldStyle} value={billingPeriod} onChange={e => setBillingPeriod(e.target.value)} disabled={isRequestMode && !isEditMode}>
+              <select className={fieldClass} style={fieldStyle} value={billingPeriod} onChange={e => {
+                const nextPeriod = e.target.value;
+                setBillingPeriod(nextPeriod);
+                const plan = plans.find(p => p.hosting_type === hostingType && p.plan_name === planName);
+                if (plan && plan.price_monthly != null) {
+                  let calculatedPrice = plan.price_monthly;
+                  if (nextPeriod === 'Yearly') {
+                    const discount = plan.discount_yearly || 0;
+                    calculatedPrice = plan.price_monthly * (1 - discount / 100);
+                  } else if (nextPeriod === '2 Years') {
+                    const discount = plan.discount_2years || 0;
+                    calculatedPrice = plan.price_monthly * (1 - discount / 100);
+                  }
+                  setPrice(calculatedPrice.toFixed(2));
+                }
+              }} disabled={isRequestMode && !isEditMode}>
                 {['Monthly', 'Quarterly (3mo)', 'Semi-Annual (6mo)', 'Yearly', '2 Years'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
               </select>
             </div>

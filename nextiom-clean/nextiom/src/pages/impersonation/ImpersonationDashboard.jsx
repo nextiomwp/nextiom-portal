@@ -205,6 +205,9 @@ function ImpersonationDashboard() {
   const [hasUnpaidInvoices, setHasUnpaidInvoices] = useState(false);
   const [hasActiveQuotations, setHasActiveQuotations] = useState(false);
   const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
+  const [emailsCount, setEmailsCount] = useState(0);
+  const [domainsCount, setDomainsCount] = useState(0);
+  const [hostingCount, setHostingCount] = useState(0);
 
   useEffect(() => {
     if (!customerProfile?.id) return;
@@ -213,7 +216,8 @@ function ImpersonationDashboard() {
       try {
         const email = customerProfile.email || impersonatedUser.email;
         const [
-          jobsData, ticketsData, licensesData, invoicesData, quotationsData, announcementsCountRes
+          jobsData, ticketsData, licensesData, invoicesData, quotationsData, announcementsCountRes,
+          domainsDataRes, hostingPackagesDataRes, domainRequestsRes, hostingRequestsRes, emailRequestsRes
         ] = await Promise.all([
           getCustomerJobs(customerProfile.id).catch(() => []),
           getTicketsByCustomer(customerProfile.id).catch(() => []),
@@ -225,6 +229,21 @@ function ImpersonationDashboard() {
             .eq('customer_id', customerProfile.id)
             .eq('type', 'announcement')
             .eq('read_status', false),
+          supabase.from('domains')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
+          supabase.from('hosting_packages')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
+          supabase.from('domain_requests')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
+          supabase.from('hosting_requests')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
+          supabase.from('email_requests')
+            .select('*')
+            .eq('customer_id', customerProfile.id),
         ]);
         setActiveJobsCount(jobsData.filter(j => j.status === 'Active').length);
         setWaitingJobsCount(jobsData.filter(j => j.status === 'Waiting').length);
@@ -255,6 +274,59 @@ function ImpersonationDashboard() {
           return valid >= today;
         });
         setHasActiveQuotations(hasActiveQuotes);
+
+        // Deduplicate and combine domains
+        const seenDomains = new Set();
+        let combinedDomainsCount = 0;
+        (domainsDataRes?.data || []).forEach(d => {
+          const name = d.domain_name || d.domain || d.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            if (!seenDomains.has(key)) {
+              seenDomains.add(key);
+              combinedDomainsCount++;
+            }
+          }
+        });
+        (domainRequestsRes?.data || []).forEach(d => {
+          const name = d.domain_name || d.domain || d.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            if (!seenDomains.has(key)) {
+              seenDomains.add(key);
+              combinedDomainsCount++;
+            }
+          }
+        });
+        setDomainsCount(combinedDomainsCount);
+
+        // Deduplicate and combine hosting packages
+        const seenHostings = new Set();
+        let combinedHostingsCount = 0;
+        (hostingPackagesDataRes?.data || []).forEach(h => {
+          const pkgName = h.package_name || h.package_type || h.packageName;
+          const domName = h.domain_name || h.domain;
+          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
+          if (pkgName || domName) {
+            if (!seenHostings.has(key)) {
+              seenHostings.add(key);
+              combinedHostingsCount++;
+            }
+          }
+        });
+        (hostingRequestsRes?.data || []).forEach(h => {
+          const pkgName = h.package_name || h.package_type || h.packageName;
+          const domName = h.domain_name || h.domain;
+          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
+          if (!seenHostings.has(key) && (pkgName || domName)) {
+            seenHostings.add(key);
+            combinedHostingsCount++;
+          }
+        });
+        setHostingCount(combinedHostingsCount);
+
+        // Emails count
+        setEmailsCount(emailRequestsRes?.data?.length || 0);
 
       } catch (error) {
         console.error('Error fetching impersonated dashboard counts:', error);
@@ -324,6 +396,13 @@ function ImpersonationDashboard() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hosting_requests' },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'email_requests' },
         () => {
           fetchCounts();
         }
@@ -538,7 +617,7 @@ function ImpersonationDashboard() {
 
     // Form pages — render fresh each visit (no keep-alive for these)
     if (activeTab === 'hosting_new')
-      return <NewHostingOrderPage onSuccess={() => setActiveTab('hosting_my')} user={userProp} {...theme} />;
+      return <NewHostingOrderPage onSuccess={() => setActiveTab('hosting_my')} user={userProp} onNavigate={setActiveTab} {...theme} />;
     if (activeTab === 'domains_new')
       return <NewDomainRequestPage onSuccess={() => setActiveTab('domains_my')} user={userProp} {...theme} />;
     if (activeTab === 'emails_new')
@@ -598,31 +677,54 @@ function ImpersonationDashboard() {
                 if (collapsed) switchTab(item.children[0].id);
                 else toggleMenu(item.id);
               }}
-              badge={item.id === 'support' ? activeTicketsCount : 0}
+              badge={
+                item.id === 'support' ? activeTicketsCount :
+                item.id === 'hosting' ? hostingCount :
+                item.id === 'domains' ? domainsCount :
+                item.id === 'emails' ? emailsCount : 0
+              }
               badgeColor="#16a34a"
               showDot={item.id === 'billing' && hasUnpaidInvoices && hasActiveQuotations}
               dotColor="#22c55e"
             >
-              {item.children.map((child) => (
-                <button
-                  key={child.id}
-                  onClick={() => switchTab(child.id)}
-                  className="w-full text-left px-3 py-2 rounded-md text-sm mb-0.5 transition-colors"
-                  style={{
-                    color: activeTab === child.id ? c.brand : c.subText,
-                    backgroundColor: activeTab === child.id ? c.brandLight : 'transparent',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== child.id) e.currentTarget.style.backgroundColor = c.hover;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      activeTab === child.id ? c.brandLight : 'transparent';
-                  }}
-                >
-                  {child.label}
-                </button>
-              ))}
+              {item.children.map((child) => {
+                let displayCount = null;
+                if (child.id === 'hosting_my') displayCount = hostingCount;
+                if (child.id === 'domains_my') displayCount = domainsCount;
+                if (child.id === 'emails_my') displayCount = emailsCount;
+
+                return (
+                  <button
+                    key={child.id}
+                    onClick={() => switchTab(child.id)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-md text-sm mb-0.5 transition-colors"
+                    style={{
+                      color: activeTab === child.id ? c.brand : c.subText,
+                      backgroundColor: activeTab === child.id ? c.brandLight : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeTab !== child.id) e.currentTarget.style.backgroundColor = c.hover;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor =
+                        activeTab === child.id ? c.brandLight : 'transparent';
+                    }}
+                  >
+                    <span>{child.label}</span>
+                    {displayCount !== null && (
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-semibold font-mono"
+                        style={{
+                          backgroundColor: activeTab === child.id ? c.brand : 'rgba(255,255,255,0.1)',
+                          color: activeTab === child.id ? '#ffffff' : c.subText,
+                        }}
+                      >
+                        {displayCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </CollapsibleMenuItem>
           );
         }
