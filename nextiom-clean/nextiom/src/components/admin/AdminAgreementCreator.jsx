@@ -349,7 +349,8 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: 'a4'
+        format: 'a4',
+        compress: true
       });
 
       const margin = 15;
