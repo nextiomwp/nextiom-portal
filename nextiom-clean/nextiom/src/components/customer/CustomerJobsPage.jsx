@@ -263,6 +263,23 @@ export default function CustomerJobsPage({ user, c, isDark }) {
       });
 
       await updateJob(job.id, { customer_requirements: updated });
+
+      // Find the requirement title
+      const reqItem = requirements.find(r => r.id === reqId);
+      const reqTitle = reqItem ? reqItem.title : 'Requirement';
+
+      // Insert notification for admin (customer_id must be null so RLS allows admin to read it)
+      const { error: notifError } = await supabase.from('notifications').insert([{
+        type: `job_detail_submission:${job.id}:${reqId}`,
+        title: `Job Details Submitted: ${job.title || 'Project'}`,
+        message: `${job.customers?.name || 'Customer'} submitted details for: "${reqTitle}"`,
+        customer_id: null,
+        read_status: false,
+        created_at: new Date().toISOString()
+      }]);
+
+      if (notifError) throw notifError;
+
       toast({ title: 'Success', description: 'File uploaded and submitted successfully.' });
       loadData();
     } catch (error) {
@@ -287,6 +304,23 @@ export default function CustomerJobsPage({ user, c, isDark }) {
       });
 
       await updateJob(job.id, { customer_requirements: updated });
+
+      // Find the requirement title
+      const reqItem = requirements.find(r => r.id === reqId);
+      const reqTitle = reqItem ? reqItem.title : 'Requirement';
+
+      // Insert notification for admin (customer_id must be null so RLS allows admin to read it)
+      const { error: notifError } = await supabase.from('notifications').insert([{
+        type: `job_detail_submission:${job.id}:${reqId}`,
+        title: `Job Details Submitted: ${job.title || 'Project'}`,
+        message: `${job.customers?.name || 'Customer'} submitted details for: "${reqTitle}"`,
+        customer_id: null,
+        read_status: false,
+        created_at: new Date().toISOString()
+      }]);
+
+      if (notifError) throw notifError;
+
       toast({ title: 'Success', description: 'Information submitted.' });
       setTextInputVal('');
       setSubmittingReqId(null);

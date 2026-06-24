@@ -571,7 +571,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
         title: 'New Hosting Request',
         message: `Hosting requested: ${planLabel} (${billingPeriod}) for domain: ${fullDomain}`,
         customer_id: customerId,
-        is_read: false,
+        read_status: false,
         created_at: new Date().toISOString(),
       }]);
 

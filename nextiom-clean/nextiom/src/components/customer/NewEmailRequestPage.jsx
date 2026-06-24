@@ -99,7 +99,7 @@ function NewEmailRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         title: 'New Email Request',
         message: `Email order requested: ${emailName}${extension} (${period} Year${period !== '1' ? 's' : ''})${notes ? ` - Notes: ${notes}` : ''}${documentUrl ? ' - Document attached' : ''}`,
         customer_id: customerId,
-        is_read: false,
+        read_status: false,
         created_at: new Date().toISOString(),
       }]);
 

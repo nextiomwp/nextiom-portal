@@ -97,7 +97,7 @@ function NewDomainRequestPage({ onSuccess, user, isDark = false, c = {} }) {
         title: 'New Domain Request',
         message: `Domain registration requested: ${domainName}${extension} (${period} Year${period !== '1' ? 's' : ''})${notes ? ` - Notes: ${notes}` : ''}${documentUrl ? ' - Document attached' : ''}`,
         customer_id: customerId,
-        is_read: false,
+        read_status: false,
         created_at: new Date().toISOString(),
       }]);
 

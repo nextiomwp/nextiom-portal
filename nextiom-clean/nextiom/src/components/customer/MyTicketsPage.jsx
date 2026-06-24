@@ -243,24 +243,51 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
       const text = await navigator.clipboard.readText();
       if (text) {
         const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          range.deleteContents();
-          
-          const lines = text.split('\n');
-          const fragment = document.createDocumentFragment();
-          lines.forEach((line, index) => {
-            if (index > 0) fragment.appendChild(document.createElement('br'));
-            fragment.appendChild(document.createTextNode(line));
-          });
-          
-          range.insertNode(fragment);
+        const urlRegex = /^(https?:\/\/[^\s]+|www\.[^\s]+)$/i;
+        if (urlRegex.test(text.trim())) {
+          const url = text.trim();
+          let href = url;
+          if (url.toLowerCase().startsWith('www.')) {
+            href = 'https://' + url;
+          }
+          const a = document.createElement('a');
+          a.href = href;
+          a.textContent = url;
+          a.target = '_blank';
+          if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(a);
+            const suffixNode = document.createTextNode('\u200B');
+            a.parentNode.insertBefore(suffixNode, a.nextSibling);
+            const newRange = document.createRange();
+            newRange.setStart(suffixNode, 1);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          } else if (replyRef.current) {
+            replyRef.current.appendChild(a);
+          }
           const md = htmlToMarkdown(replyRef.current);
           setReply(md);
-        } else if (replyRef.current) {
-          replyRef.current.appendChild(document.createTextNode(text));
-          const md = htmlToMarkdown(replyRef.current);
-          setReply(md);
+        } else {
+          if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            const lines = text.split('\n');
+            const fragment = document.createDocumentFragment();
+            lines.forEach((line, index) => {
+              if (index > 0) fragment.appendChild(document.createElement('br'));
+              fragment.appendChild(document.createTextNode(line));
+            });
+            range.insertNode(fragment);
+            const md = htmlToMarkdown(replyRef.current);
+            setReply(md);
+          } else if (replyRef.current) {
+            replyRef.current.appendChild(document.createTextNode(text));
+            const md = htmlToMarkdown(replyRef.current);
+            setReply(md);
+          }
         }
       }
     } catch {
@@ -345,7 +372,35 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   const handlePaste = (e) => {
     e.preventDefault();
     const text = e.clipboardData.getData('text/plain');
-    document.execCommand('insertText', false, text);
+    const urlRegex = /^(https?:\/\/[^\s]+|www\.[^\s]+)$/i;
+    if (urlRegex.test(text.trim())) {
+      const url = text.trim();
+      let href = url;
+      if (url.toLowerCase().startsWith('www.')) {
+        href = 'https://' + url;
+      }
+      const a = document.createElement('a');
+      a.href = href;
+      a.textContent = url;
+      a.target = '_blank';
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(a);
+        const suffixNode = document.createTextNode('\u200B');
+        a.parentNode.insertBefore(suffixNode, a.nextSibling);
+        const newRange = document.createRange();
+        newRange.setStart(suffixNode, 1);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      } else {
+        e.currentTarget.appendChild(a);
+      }
+    } else {
+      document.execCommand('insertText', false, text);
+    }
     const target = e.currentTarget;
     const md = htmlToMarkdown(target);
     if (target === replyRef.current) {
@@ -683,15 +738,66 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     return processedLines.join('\n');
   }
 
-  function renderDomNode(node, isOnBrand, key = 'r') {
+  function linkifyText(text, isOnBrand, key) {
+    if (!text) return text;
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const parts = text.split(urlRegex);
+    if (parts.length === 1) {
+      return text;
+    }
+    return parts.map((part, index) => {
+      if (part.match(/^https?:\/\//i) || part.match(/^www\./i)) {
+        let href = part;
+        let cleanText = part;
+        let trailing = '';
+        const trailingMatch = part.match(/([.,!?;:]+)$/);
+        if (trailingMatch) {
+          trailing = trailingMatch[1];
+          cleanText = part.slice(0, -trailing.length);
+          href = cleanText;
+        }
+        if (cleanText.endsWith(')')) {
+          const openCount = (cleanText.match(/\(/g) || []).length;
+          const closeCount = (cleanText.match(/\)/g) || []).length;
+          if (closeCount > openCount) {
+            trailing = ')' + trailing;
+            cleanText = cleanText.slice(0, -1);
+            href = cleanText;
+          }
+        }
+        if (href.toLowerCase().startsWith('www.')) {
+          href = 'https://' + href;
+        }
+        return (
+          <React.Fragment key={`${key}-link-${index}`}>
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: isOnBrand ? '#b3d9ff' : '#60a5fa', textDecoration: 'underline', wordBreak: 'break-all' }}
+            >
+              {cleanText}
+            </a>
+            {trailing}
+          </React.Fragment>
+        );
+      }
+      return part;
+    });
+  }
+
+  function renderDomNode(node, isOnBrand, key = 'r', inLink = false) {
     if (node.nodeType === Node.TEXT_NODE) {
-      return node.nodeValue;
+      if (inLink) {
+        return node.nodeValue;
+      }
+      return linkifyText(node.nodeValue, isOnBrand, key);
     }
     
     if (node.nodeType === Node.ELEMENT_NODE) {
       const tagName = node.tagName.toLowerCase();
       const children = Array.from(node.childNodes).map((child, index) => 
-        renderDomNode(child, isOnBrand, `${key}-${index}`)
+        renderDomNode(child, isOnBrand, `${key}-${index}`, inLink || tagName === 'a')
       );
       
       switch (tagName) {

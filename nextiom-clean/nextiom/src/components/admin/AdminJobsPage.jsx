@@ -12,7 +12,7 @@ import {
   getJobSettings, updateJobSettings 
 } from '@/lib/jobs';
 
-export default function AdminJobsPage({ c, isDark, isMobile }) {
+export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, highlightReqId, clearHighlightJobId }) {
   const { toast } = useToast();
   
   // Data State
@@ -182,6 +182,39 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
       setSidebarOpen(true);
     }
   }, [customers]);
+
+  useEffect(() => {
+    if (highlightJobId && jobs.length > 0) {
+      setActiveTab('All');
+      setExpandedJobId(highlightJobId);
+      
+      setTimeout(() => {
+        const elementId = highlightReqId ? `admin-req-${highlightReqId}` : `admin-job-${highlightJobId}`;
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Highlight flash effect
+          const originalOutline = element.style.outline;
+          const originalBoxShadow = element.style.boxShadow;
+          const originalTransition = element.style.transition;
+          
+          element.style.outline = '2px solid #E87B35';
+          element.style.boxShadow = '0 0 15px rgba(232,123,53,0.5)';
+          element.style.transition = 'all 0.5s ease';
+          
+          setTimeout(() => {
+            element.style.outline = originalOutline || 'none';
+            element.style.boxShadow = originalBoxShadow || 'none';
+            element.style.transition = originalTransition || 'none';
+          }, 3000);
+        }
+      }, 600);
+
+      if (clearHighlightJobId) {
+        clearHighlightJobId();
+      }
+    }
+  }, [highlightJobId, jobs, highlightReqId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -1141,6 +1174,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
                           </tr>
                         )}
                         <tr 
+                          id={`admin-job-${job.id}`}
                           style={{ 
                             borderBottom: `1px solid ${c.border}`,
                             background: isExpanded 
@@ -1623,6 +1657,7 @@ export default function AdminJobsPage({ c, isDark, isMobile }) {
                                         const isDone = req.status === 'completed' || req.status === 'provided';
                                         return (
                                           <div 
+                                            id={`admin-req-${req.id}`}
                                             key={req.id} 
                                             style={{ 
                                               display: 'flex', 

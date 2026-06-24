@@ -248,6 +248,8 @@ function Dashboard({ onLogout }) {
   const [invoiceView, setInvoiceView] = useState('list');
   const [editInvoiceId, setEditInvoiceId] = useState(null);
   const [highlightInvoiceNo, setHighlightInvoiceNo] = useState(null);
+  const [highlightJobId, setHighlightJobId] = useState(null);
+  const [highlightReqId, setHighlightReqId] = useState(null);
   const [quotationView, setQuotationView] = useState('list');
   const [editQuotationId, setEditQuotationId] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -627,6 +629,8 @@ function Dashboard({ onLogout }) {
           setHighlightInvoiceNo={setHighlightInvoiceNo}
           setInvoiceView={setInvoiceView}
           setEditInvoiceId={setEditInvoiceId}
+          setHighlightJobId={setHighlightJobId}
+          setHighlightReqId={setHighlightReqId}
         />
       );
       case 'customers': return <AdminCustomerManagement key={refreshKey} products={products} onSuccess={loadData} isDark={isDark} onNavigate={navigateTo} />;
@@ -638,7 +642,20 @@ function Dashboard({ onLogout }) {
       case 'products': return <ProductList key={refreshKey} products={products} licenses={licenses} customers={customers} onUpdate={loadData} isDark={isDark} c={c} />;
       case 'notifications': return <AdminNotificationManagement key={refreshKey} isDark={isDark} isMobile={isMobile} />;
       case 'logs': return <AdminTicketsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
-      case 'jobs': return <AdminJobsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
+      case 'jobs': return (
+        <AdminJobsPage 
+          key={refreshKey} 
+          c={c} 
+          isDark={isDark} 
+          isMobile={isMobile} 
+          highlightJobId={highlightJobId}
+          highlightReqId={highlightReqId}
+          clearHighlightJobId={() => {
+            setHighlightJobId(null);
+            setHighlightReqId(null);
+          }}
+        />
+      );
       case 'invoices': {
         const goList = () => { setEditInvoiceId(null); setInvoiceView('list'); };
         if (invoiceView === 'new') return <NewInvoicePage c={c} isDark={isDark} onBack={goList} />;
@@ -1077,6 +1094,7 @@ function Dashboard({ onLogout }) {
                         }
                         const n = item.data;
                         const isPayment = n.type === 'payment_submitted';
+                        const isJobSubmission = String(n.type || '').startsWith('job_detail_submission:');
                         return (
                           <div key={'notif' + (n.id || i)} style={rowStyle}
                             onClick={() => {
@@ -1092,11 +1110,17 @@ function Dashboard({ onLogout }) {
                                 setInvoiceView('list');
                                 setEditInvoiceId(null);
                               }
+                              if (isJobSubmission) {
+                                const parts = String(n.type).split(':');
+                                setHighlightJobId(parts[1] || null);
+                                setHighlightReqId(parts[2] || null);
+                              }
                               setActive(
                                 isTicket ? 'logs' : 
                                 isEmailRequest ? 'emailRequests' : 
                                 isPayment ? 'invoices' : 
                                 isQuotation ? 'quotations' : 
+                                isJobSubmission ? 'jobs' :
                                 'adminNotifications'
                               );
                               setIsNotificationsOpen(false);
@@ -1431,7 +1455,7 @@ function AdminProfileContent({ c, isDark }) {
   );
 }
 
-function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark, isMobile = false, markNotifRead, setHighlightInvoiceNo, setInvoiceView, setEditInvoiceId }) {
+function AllAdminNotificationsPage({ notifications, requests, customers, onNavigate, c, isDark, isMobile = false, markNotifRead, setHighlightInvoiceNo, setInvoiceView, setEditInvoiceId, setHighlightJobId, setHighlightReqId }) {
   const pendingReqs = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
   const recentCustomers = customers.filter(c => c.status === 'pending').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -1454,7 +1478,7 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
         <button onClick={() => onNavigate('overview')} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '6px 8px', borderRadius: 8, display: 'flex', alignItems: 'center', fontSize: 13 }}>← Back</button>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: c.text }}>All Notifications</h2>
+          <h2 style={{ fontSize: 20, fontW: 700, margin: 0, color: c.text }}>All Notifications</h2>
           <p style={{ fontSize: 13, color: c.subText, marginTop: 2 }}>Pending requests, new customers, and system notifications</p>
         </div>
       </div>
@@ -1472,8 +1496,9 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
           const isTicket = nType === 'ticket' || titleLower.includes('ticket');
           const isPayment = nType === 'payment_submitted' || titleLower.includes('payment');
           const isQuotation = nType === 'quotation' || titleLower.includes('quotation');
+          const isJobSubmission = nType.startsWith('job_detail_submission:');
 
-          const isClickable = item.type !== 'notification' || isEmailRequest || isTicket || isPayment || isQuotation;
+          const isClickable = item.type !== 'notification' || isEmailRequest || isTicket || isPayment || isQuotation || isJobSubmission;
 
           return (
             <div key={item.id + i} 
@@ -1494,11 +1519,17 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
                     setInvoiceView('list');
                     setEditInvoiceId(null);
                   }
+                  if (isJobSubmission) {
+                    const parts = String(item.nType).split(':');
+                    setHighlightJobId(parts[1] || null);
+                    setHighlightReqId(parts[2] || null);
+                  }
                   onNavigate(
                     isTicket ? 'logs' : 
                     isEmailRequest ? 'emailRequests' : 
                     isPayment ? 'invoices' : 
                     isQuotation ? 'quotations' : 
+                    isJobSubmission ? 'jobs' :
                     'adminNotifications'
                   );
                 }

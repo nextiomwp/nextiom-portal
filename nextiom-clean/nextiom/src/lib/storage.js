@@ -637,6 +637,7 @@ export const getNotifications = async (userId) => {
     .from('notifications')
     .select('*')
     .eq('customer_id', userId)
+    .not('type', 'like', 'job_detail_submission:%')
     .order('created_at', { ascending: false });
 
   if (error) handleSupabaseError(error, 'getNotifications');
@@ -923,7 +924,7 @@ export const addDomainRequest = async (requestData) => {
     title: 'New Domain Request',
     message: `Domain registration requested: ${requestData.details?.domain} (${period} Year${period !== '1' ? 's' : ''})${notes}`,
     customer_id: requestData.customerId,
-    is_read: false,
+    read_status: false,
     created_at: new Date().toISOString()
   }]);
 
@@ -967,7 +968,7 @@ export const addHostingRequest = async (requestData) => {
     title: 'New Hosting Request',
     message: `Hosting package requested: ${packageLabel}`,
     customer_id: requestData.customerId,
-    is_read: false,
+    read_status: false,
     created_at: new Date().toISOString()
   }]);
 
