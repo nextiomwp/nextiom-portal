@@ -1351,10 +1351,10 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
       {/* ── Row 5: News + Need Help ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-3 h-full">
+        <div className="lg:col-span-3 flex flex-col" style={{ height: '100%' }}>
           <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
         </div>
-        <div className="lg:col-span-2 h-full">
+        <div className="lg:col-span-2 flex flex-col" style={{ height: '100%' }}>
           <div style={{ 
             ...cardStyle, 
             padding: 24, 
@@ -1408,168 +1408,187 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
               </div>
             </div>
 
-            {/* Action Button: Create Support Ticket */}
-            <button
-              onClick={() => onNavigate('support_create')}
-              style={{ 
-                alignSelf: 'center',
-                padding: '8px 20px', 
-                borderRadius: 10, 
-                background: brand, 
-                border: 'none', 
-                color: '#fff', 
-                fontSize: 13, 
-                fontWeight: 600, 
-                cursor: 'pointer', 
-                boxShadow: `0 2px 10px ${brand}25`, 
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginTop: 4,
-                marginBottom: 4
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 4px 16px ${brand}40`; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 2px 10px ${brand}25`; }}
-            >
-              <Ticket style={{ width: 14, height: 14 }} />
-              Create Support Ticket
-            </button>
-
-            {/* Separator */}
-            <div style={{ textAlign: 'center', margin: '4px 0' }}>
-              <span style={{ color: subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.6 }}>— OR REACH OUT —</span>
-            </div>
-
-            {/* Reach Out Grid: Call Us & WhatsApp */}
-            <div className="grid grid-cols-2 gap-4 w-full" style={{ marginTop: 'auto' }}>
-              {/* Call Us Box */}
-              <a href="tel:+94702032323"
+            {/* Reach Out Section Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full" style={{ marginTop: 'auto' }}>
+              {/* Left Box: Create Support Ticket Card */}
+              <div 
+                onClick={() => onNavigate('support_create')}
                 style={{ 
-                  display: 'flex', 
+                  cursor: 'pointer',
+                  display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'center', 
+                  alignItems: 'center',
                   justifyContent: 'center',
-                  textAlign: 'center',
-                  gap: 10,
-                  padding: '20px 12px', 
-                  borderRadius: 16, 
-                  border: `1px solid ${border}`, 
-                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', 
-                  textDecoration: 'none', 
-                  transition: 'all 0.2s ease-in-out' 
+                  gap: 12,
+                  padding: '24px 16px',
+                  borderRadius: 16,
+                  border: `1px solid ${brand}30`,
+                  background: isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.02)',
+                  transition: 'all 0.2s ease-in-out',
+                  height: '100%',
+                  boxSizing: 'border-box'
                 }}
-                onMouseEnter={e => { 
-                  e.currentTarget.style.borderColor = brand; 
-                  e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)';
+                onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.borderColor = brand;
+                  e.currentTarget.style.boxShadow = `0 6px 20px ${brand}20`;
                 }}
-                onMouseLeave={e => { 
-                  e.currentTarget.style.borderColor = border; 
-                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
+                onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.borderColor = `${brand}30`;
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                {/* Icon Container */}
-                <div style={{ 
-                  width: 44, 
-                  height: 44, 
-                  borderRadius: '50%', 
-                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.4)'}`,
-                  background: isDark ? 'rgba(232,123,53,0.04)' : '#fff',
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center' 
-                }}>
-                  <Phone style={{ width: 18, height: 18, color: brand }} />
-                </div>
-                
-                {/* Title & Phone */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ color: text, fontSize: 14, fontWeight: 700 }}>Call Us</span>
-                  <span style={{ color: subText, fontSize: 12 }}>+94 70 203 2323</span>
-                </div>
-
-                {/* Status/Time Pill */}
-                <div style={{ 
+                <div style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  background: brand,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 12px',
-                  borderRadius: 99,
-                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.3)'}`,
-                  background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
-                  marginTop: 4
-                }}>
-                  <Clock style={{ width: 12, height: 12, color: brand }} />
-                  <span style={{ color: brand, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>Mon – Fri | 9:00 AM – 6:00 PM</span>
-                </div>
-              </a>
-
-              {/* WhatsApp Box */}
-              <a href="https://wa.me/message/GSCYIITXTDGXO1" target="_blank" rel="noopener noreferrer"
-                style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center', 
                   justifyContent: 'center',
-                  textAlign: 'center',
-                  gap: 10,
-                  padding: '20px 12px', 
-                  borderRadius: 16, 
-                  border: `1px solid ${border}`, 
-                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', 
-                  textDecoration: 'none', 
-                  transition: 'all 0.2s ease-in-out' 
-                }}
-                onMouseEnter={e => { 
-                  e.currentTarget.style.borderColor = brand; 
-                  e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={e => { 
-                  e.currentTarget.style.borderColor = border; 
-                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                {/* Icon Container */}
-                <div style={{ 
-                  width: 44, 
-                  height: 44, 
-                  borderRadius: '50%', 
-                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.4)'}`,
-                  background: isDark ? 'rgba(232,123,53,0.04)' : '#fff',
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center' 
+                  boxShadow: `0 4px 12px ${brand}30`
                 }}>
-                  <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, fill: brand }}>
-                    <path d="M12.031 2c-5.51 0-9.99 4.48-9.99 9.99 0 2.062.626 3.979 1.698 5.568l-1.116 4.093 4.205-1.103c1.517.927 3.308 1.465 5.203 1.465 5.51 0 9.99-4.48 9.99-9.99S17.541 2 12.031 2zm0 1.662c4.595 0 8.328 3.733 8.328 8.328S16.626 20.318 12.031 20.318c-1.83 0-3.528-.592-4.912-1.597l-.353-.255-2.434.638.653-2.395-.286-.399c-1.144-1.593-1.821-3.535-1.821-5.637.001-4.595 3.734-8.328 8.329-8.328zm-3.328 3.864c-.144 0-.361.054-.541.252-.18.198-.685.67-.685 1.632 0 .963.702 1.892.8 2.025.099.135 1.352 2.158 3.298 2.977.463.195.825.312 1.107.402.465.147.888.126 1.222.076.372-.056 1.145-.468 1.306-.921.161-.453.161-.842.113-.923-.048-.081-.18-.129-.379-.228-.198-.099-1.145-.565-1.321-.629-.177-.064-.306-.096-.437.099-.13.195-.504.629-.617.755-.113.127-.225.142-.424.043-.198-.099-.838-.309-1.597-.986-.591-.527-.989-1.18-.105-1.328.099-.165.198-.243.297-.342.099-.099.13-.165.198-.297.066-.132.033-.249-.016-.348-.049-.099-.437-1.053-.598-1.442-.157-.38-.33-.328-.453-.334l-.387-.008z" />
-                  </svg>
+                  <Ticket style={{ width: 20, height: 20, color: '#fff' }} />
                 </div>
-                
-                {/* Title & WhatsApp Status */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ color: text, fontSize: 14, fontWeight: 700 }}>WhatsApp</span>
-                  <span style={{ color: subText, fontSize: 12 }}>Chat Now (Sri Lanka)</span>
+                <div style={{ textAlign: 'center' }}>
+                  <span style={{ color: text, fontSize: 15, fontWeight: 700, display: 'block' }}>Create Ticket</span>
+                  <span style={{ color: subText, fontSize: 11, marginTop: 4, display: 'block' }}>Submit support ticket</span>
                 </div>
+              </div>
 
-                {/* Status/Time Pill */}
-                <div style={{ 
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 12px',
-                  borderRadius: 99,
-                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.3)'}`,
-                  background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
-                  marginTop: 4
-                }}>
-                  <Clock style={{ width: 12, height: 12, color: brand }} />
-                  <span style={{ color: brand, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>Mon – Fri | 9:00 AM – 6:00 PM</span>
-                </div>
-              </a>
+              {/* Right Box: Vertical stack of Call Us & WhatsApp */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, justifyContent: 'center' }}>
+                {/* Call Us Row */}
+                <a href="tel:+94702032323"
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 12,
+                    padding: '12px 14px', 
+                    borderRadius: 16, 
+                    border: `1px solid ${border}`, 
+                    background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', 
+                    textDecoration: 'none', 
+                    transition: 'all 0.2s ease-in-out' 
+                  }}
+                  onMouseEnter={e => { 
+                    e.currentTarget.style.borderColor = brand; 
+                    e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={e => { 
+                    e.currentTarget.style.borderColor = border; 
+                    e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {/* Icon */}
+                  <div style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: '50%', 
+                    border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.4)'}`,
+                    background: isDark ? 'rgba(232,123,53,0.04)' : '#fff',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Phone style={{ width: 16, height: 16, color: brand }} />
+                  </div>
+                  
+                  {/* Title & Number */}
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
+                    <span style={{ color: text, fontSize: 13, fontWeight: 700 }}>Call Us</span>
+                    <span style={{ color: subText, fontSize: 11 }}>+94 70 203 2323</span>
+                  </div>
+
+                  {/* Business Hours Pill */}
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '4px 8px',
+                    borderRadius: 99,
+                    border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.25)'}`,
+                    background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: brand,
+                    whiteSpace: 'nowrap'
+                  }}>
+                    <Clock style={{ width: 10, height: 10, color: brand }} />
+                    <span>Mon–Fri | 9AM–6PM</span>
+                  </div>
+                </a>
+
+                {/* WhatsApp Row */}
+                <a href="https://wa.me/message/GSCYIITXTDGXO1" target="_blank" rel="noopener noreferrer"
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 12,
+                    padding: '12px 14px', 
+                    borderRadius: 16, 
+                    border: `1px solid ${border}`, 
+                    background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', 
+                    textDecoration: 'none', 
+                    transition: 'all 0.2s ease-in-out' 
+                  }}
+                  onMouseEnter={e => { 
+                    e.currentTarget.style.borderColor = brand; 
+                    e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={e => { 
+                    e.currentTarget.style.borderColor = border; 
+                    e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  {/* Icon */}
+                  <div style={{ 
+                    width: 36, 
+                    height: 36, 
+                    borderRadius: '50%', 
+                    border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.4)'}`,
+                    background: isDark ? 'rgba(232,123,53,0.04)' : '#fff',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <svg viewBox="0 0 24 24" style={{ width: 16, height: 16, fill: brand }}>
+                      <path d="M12.031 2c-5.51 0-9.99 4.48-9.99 9.99 0 2.062.626 3.979 1.698 5.568l-1.116 4.093 4.205-1.103c1.517.927 3.308 1.465 5.203 1.465 5.51 0 9.99-4.48 9.99-9.99S17.541 2 12.031 2zm0 1.662c4.595 0 8.328 3.733 8.328 8.328S16.626 20.318 12.031 20.318c-1.83 0-3.528-.592-4.912-1.597l-.353-.255-2.434.638.653-2.395-.286-.399c-1.144-1.593-1.821-3.535-1.821-5.637.001-4.595 3.734-8.328 8.329-8.328zm-3.328 3.864c-.144 0-.361.054-.541.252-.18.198-.685.67-.685 1.632 0 .963.702 1.892.8 2.025.099.135 1.352 2.158 3.298 2.977.463.195.825.312 1.107.402.465.147.888.126 1.222.076.372-.056 1.145-.468 1.306-.921.161-.453.161-.842.113-.923-.048-.081-.18-.129-.379-.228-.198-.099-1.145-.565-1.321-.629-.177-.064-.306-.096-.437.099-.13.195-.504.629-.617.755-.113.127-.225.142-.424.043-.198-.099-.838-.309-1.597-.986-.591-.527-.989-1.18-.105-1.328.099-.165.198-.243.297-.342.099-.099.13-.165.198-.297.066-.132.033-.249-.016-.348-.049-.099-.437-1.053-.598-1.442-.157-.38-.33-.328-.453-.334l-.387-.008z" />
+                    </svg>
+                  </div>
+                  
+                  {/* Title & WhatsApp Link */}
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, textAlign: 'left' }}>
+                    <span style={{ color: text, fontSize: 13, fontWeight: 700 }}>WhatsApp</span>
+                    <span style={{ color: subText, fontSize: 11 }}>Chat Now (Sri Lanka)</span>
+                  </div>
+
+                  {/* Business Hours Pill */}
+                  <div style={{ 
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '4px 8px',
+                    borderRadius: 99,
+                    border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.25)'}`,
+                    background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: brand,
+                    whiteSpace: 'nowrap'
+                  }}>
+                    <Clock style={{ width: 10, height: 10, color: brand }} />
+                    <span>Mon–Fri | 9AM–6PM</span>
+                  </div>
+                </a>
+              </div>
             </div>
           </div>
         </div>
