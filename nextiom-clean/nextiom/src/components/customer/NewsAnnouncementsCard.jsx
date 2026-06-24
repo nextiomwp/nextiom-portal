@@ -58,27 +58,51 @@ function NewsAnnouncementsCard({ isDark = false, c = {}, customerId }) {
         <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Megaphone style={{ width: 15, height: 15, color: brand }} />
         </div>
-        <span style={{ color: text, fontWeight: 700, fontSize: 14 }}>News & Announcements</span>
+        <span style={{ color: text, fontWeight: 700, fontSize: 16 }}>News & Announcements</span>
       </div>
 
       {/* Badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: brandLight, alignSelf: 'flex-start' }}>
         <Sparkles style={{ width: 12, height: 12, color: brand }} />
-        <span style={{ color: brand, fontSize: 11, fontWeight: 600 }}>Latest from Nextiom</span>
+        <span style={{ color: brand, fontSize: 12, fontWeight: 600 }}>Latest from Nextiom</span>
       </div>
 
       {/* Announcement */}
       {announcement ? (
-        <div style={{ padding: '12px 14px', borderRadius: 12, background: panel2, border: `1px solid ${border}` }}>
-          <p style={{ color: text, fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{announcement.title}</p>
-          <p style={{ color: subText, fontSize: 11, lineHeight: 1.55, marginBottom: 6 }}>
+        <div 
+          className="no-scrollbar"
+          style={{ 
+            padding: '12px 14px', 
+            borderRadius: 12, 
+            background: panel2, 
+            border: `1px solid ${border}`,
+            flex: 1,
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }}
+        >
+          <p style={{ color: text, fontSize: 14, fontWeight: 600, marginBottom: 6 }}>{announcement.title}</p>
+          <p style={{ color: subText, fontSize: 13, lineHeight: 1.6, marginBottom: 8, whiteSpace: 'pre-wrap' }}>
             {announcement.message}
           </p>
-          <p style={{ color: subText, fontSize: 10 }}>{fmtDate(announcement.created_at)}</p>
+          <p style={{ color: subText, fontSize: 11 }}>{fmtDate(announcement.created_at)}</p>
         </div>
       ) : (
-        <div style={{ padding: '12px 14px', borderRadius: 12, background: panel2, border: `1px solid ${border}` }}>
-          <p style={{ color: subText, fontSize: 12, lineHeight: 1.55, margin: 0 }}>
+        <div 
+          className="no-scrollbar"
+          style={{ 
+            padding: '12px 14px', 
+            borderRadius: 12, 
+            background: panel2, 
+            border: `1px solid ${border}`,
+            flex: 1,
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }}
+        >
+          <p style={{ color: subText, fontSize: 13, lineHeight: 1.6, margin: 0 }}>
             No announcements yet. Check back soon for the latest updates from Nextiom.
           </p>
         </div>
