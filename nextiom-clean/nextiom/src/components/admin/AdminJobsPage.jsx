@@ -1086,7 +1086,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
         </div>
 
         {/* Table Element */}
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: c.subText }}>
               <RefreshCw className="animate-spin" style={{ margin: '0 auto 10px', color: c.brand }} />
@@ -1095,7 +1095,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
           ) : filteredJobs.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: c.subText }}>No jobs found matching this status.</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+            <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: isDark ? 'rgba(255,255,255,0.02)' : '#fdfdfd', borderBottom: `1px solid ${c.border}` }}>
                   <th style={{ padding: '12px 16px', color: c.subText, fontWeight: 600 }}>#</th>

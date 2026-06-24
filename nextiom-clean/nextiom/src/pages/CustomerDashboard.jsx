@@ -866,7 +866,7 @@ function CustomerDashboard() {
             boxShadow: isDark ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
           }}
         >
-          <div className="pl-8 lg:pl-0 font-semibold" style={{ color: c.text }}>
+          <div className="pl-8 lg:pl-0 font-semibold truncate max-w-[120px] sm:max-w-none" style={{ color: c.text }}>
             {activeTab === 'dashboard'
               ? `${getGreeting()}, ${customerProfile?.name || user?.email || 'Customer'}`
               : getActiveLabel(activeTab)}

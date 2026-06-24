@@ -302,8 +302,8 @@ function AdminEmailRequestManagement({ isDark = true }) {
 
       <div style={cardS}>
         <SectionHeader title="Email Requests" accent="#ba7517" />
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
                 <th style={thS}>Type</th>

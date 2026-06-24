@@ -210,60 +210,62 @@ function AdminApprovedHostings({ isDark = true }) {
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Hostings</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredHostings.length} record{filteredHostings.length !== 1 ? 's' : ''}</span>
         </div>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={thS}>Hosting Type</th>
-              <th style={thS}>Plan</th>
-              <th style={thS}>Customer</th>
-              <th style={thS}>Status</th>
-              <th style={thS}>Start Date</th>
-              <th style={thS}>Expiry</th>
-              <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredHostings.map((h, i) => {
-              const parsed = parsePackageType(h.package_type);
-              const expiryDate = calcExpiry(h);
-              const days = expiryDate ? daysUntilExpiry(expiryDate) : null;
-              const urgentColor = days !== null && days <= 7 ? '#ef4444' : days !== null && days <= 30 ? '#f97316' : null;
-              return (
-                <tr key={h.id}>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}>
-                    <span style={{ fontWeight: 600, color: isDark ? '#86efac' : '#15803d' }}>{h.hosting_type || parsed.hostingType}</span>
-                  </td>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{h.plan_name || parsed.planName}</span></td>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.text }}>{h.customers?.name || 'Unknown'}</span></td>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={h.status} /></td>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}>
-                    <span style={{ color: c.subText, fontSize: 12 }}>{h.start_date ? new Date(h.start_date).toLocaleDateString() : h.created_at ? new Date(h.created_at).toLocaleDateString() : '—'}</span>
-                  </td>
-                  <td style={i % 2 === 0 ? tdS : tdAlt}>
-                    {expiryDate ? (
-                      <div>
-                        <span style={{ color: urgentColor || c.text }}>{expiryDate.toLocaleDateString()}</span>
-                        {days !== null && (
-                          <div style={{ fontSize: 11, color: urgentColor || c.subText, marginTop: 2 }}>
-                            {days <= 0 ? 'Expired' : `in ${days} day${days !== 1 ? 's' : ''}`}
-                          </div>
-                        )}
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thS}>Hosting Type</th>
+                <th style={thS}>Plan</th>
+                <th style={thS}>Customer</th>
+                <th style={thS}>Status</th>
+                <th style={thS}>Start Date</th>
+                <th style={thS}>Expiry</th>
+                <th style={{ ...thS, textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredHostings.map((h, i) => {
+                const parsed = parsePackageType(h.package_type);
+                const expiryDate = calcExpiry(h);
+                const days = expiryDate ? daysUntilExpiry(expiryDate) : null;
+                const urgentColor = days !== null && days <= 7 ? '#ef4444' : days !== null && days <= 30 ? '#f97316' : null;
+                return (
+                  <tr key={h.id}>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}>
+                      <span style={{ fontWeight: 600, color: isDark ? '#86efac' : '#15803d' }}>{h.hosting_type || parsed.hostingType}</span>
+                    </td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.subText }}>{h.plan_name || parsed.planName}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><span style={{ color: c.text }}>{h.customers?.name || 'Unknown'}</span></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}><StatusBadge status={h.status} /></td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}>
+                      <span style={{ color: c.subText, fontSize: 12 }}>{h.start_date ? new Date(h.start_date).toLocaleDateString() : h.created_at ? new Date(h.created_at).toLocaleDateString() : '—'}</span>
+                    </td>
+                    <td style={i % 2 === 0 ? tdS : tdAlt}>
+                      {expiryDate ? (
+                        <div>
+                          <span style={{ color: urgentColor || c.text }}>{expiryDate.toLocaleDateString()}</span>
+                          {days !== null && (
+                            <div style={{ fontSize: 11, color: urgentColor || c.subText, marginTop: 2 }}>
+                              {days <= 0 ? 'Expired' : `in ${days} day${days !== 1 ? 's' : ''}`}
+                            </div>
+                          )}
+                        </div>
+                      ) : <span style={{ color: c.subText }}>—</span>}
+                    </td>
+                    <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                        <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
+                        <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
+                        <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                       </div>
-                    ) : <span style={{ color: c.subText }}>—</span>}
-                  </td>
-                  <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                      <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
-                      <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
-                      <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {filteredHostings.length === 0 && <tr><td colSpan={7} style={emptyS}>No approved hostings found</td></tr>}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                );
+              })}
+              {filteredHostings.length === 0 && <tr><td colSpan={7} style={emptyS}>No approved hostings found</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <AssignHostingDialog

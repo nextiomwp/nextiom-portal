@@ -456,55 +456,57 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
             </div>
 
             {/* Line items */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
-              <thead>
-                <tr style={{ background: '#f0ede8' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Description</th>
-                  <th style={{ textAlign: 'center', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 50 }}>Qty</th>
-                  <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 85 }}>Unit Price</th>
-                  <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 80 }}>Discount</th>
-                  <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, i) => (
-                  <tr key={item.id || i} style={{ borderBottom: '1px solid #e8e5e0' }}>
-                    <td style={{ padding: '9px 10px', fontSize: 13 }}>
-                      <div style={{ fontWeight: item.is_package ? 600 : 'normal' }}>{item.description}</div>
-                      {item.is_package && item.sub_items && item.sub_items.length > 0 && (
-                        <div style={{ marginTop: 4, paddingLeft: 16, fontSize: 11, color: c.subText, lineHeight: 1.4 }}>
-                          {item.sub_items.map((sub, subIdx) => (
-                            <div key={subIdx} style={{ whiteSpace: 'pre-wrap' }}>
-                              {sub}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {item.link_url && (
-                        <div style={{ marginTop: 3 }}>
-                          <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#e87b35', textDecoration: 'underline', wordBreak: 'break-all' }}>
-                            {item.link_url}
-                          </a>
-                        </div>
-                      )}
-                    </td>
-                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
-                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
-                      {fmtAmt(item.unit_price || 0, invoice.currency)}
-                    </td>
-                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
-                      {fmtAmt(item.discount || 0, invoice.currency)}
-                    </td>
-                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-                      {fmtAmt(item.qty * item.unit_price - (item.discount || 0), invoice.currency)}
-                    </td>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 20 }}>
+              <table style={{ width: '100%', minWidth: 550, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f0ede8' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Description</th>
+                    <th style={{ textAlign: 'center', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 50 }}>Qty</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 85 }}>Unit Price</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 80 }}>Discount</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Amount</th>
                   </tr>
-                ))}
-                {items.length === 0 && (
-                  <tr><td colSpan={5} style={{ padding: '12px 10px', textAlign: 'center', color: '#888', fontSize: 12, fontStyle: 'italic' }}>No line items</td></tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((item, i) => (
+                    <tr key={item.id || i} style={{ borderBottom: '1px solid #e8e5e0' }}>
+                      <td style={{ padding: '9px 10px', fontSize: 13 }}>
+                        <div style={{ fontWeight: item.is_package ? 600 : 'normal' }}>{item.description}</div>
+                        {item.is_package && item.sub_items && item.sub_items.length > 0 && (
+                          <div style={{ marginTop: 4, paddingLeft: 16, fontSize: 11, color: c.subText, lineHeight: 1.4 }}>
+                            {item.sub_items.map((sub, subIdx) => (
+                              <div key={subIdx} style={{ whiteSpace: 'pre-wrap' }}>
+                                {sub}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {item.link_url && (
+                          <div style={{ marginTop: 3 }}>
+                            <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#e87b35', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                              {item.link_url}
+                            </a>
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
+                      <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
+                        {fmtAmt(item.unit_price || 0, invoice.currency)}
+                      </td>
+                      <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
+                        {fmtAmt(item.discount || 0, invoice.currency)}
+                      </td>
+                      <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+                        {fmtAmt(item.qty * item.unit_price - (item.discount || 0), invoice.currency)}
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr><td colSpan={5} style={{ padding: '12px 10px', textAlign: 'center', color: '#888', fontSize: 12, fontStyle: 'italic' }}>No line items</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Totals */}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

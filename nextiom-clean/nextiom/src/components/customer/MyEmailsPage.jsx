@@ -118,8 +118,8 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
                 {['Email', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (

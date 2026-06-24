@@ -227,29 +227,31 @@ function QuotationDrawer({ quotation, settings, isDark, c, onClose, isMobile = f
             </div>
 
             {/* Line items */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
-              <thead>
-                <tr style={{ background: '#f0ede8' }}>
-                  <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Description</th>
-                  <th style={{ textAlign: 'center', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 50 }}>Qty</th>
-                  <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, i) => (
-                  <tr key={item.id || i} style={{ borderBottom: '1px solid #e8e5e0' }}>
-                    <td style={{ padding: '9px 10px', fontSize: 13 }}>{item.description}</td>
-                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
-                    <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-                      {fmtCurrency(item.qty * item.unit_price, cur)}
-                    </td>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 20 }}>
+              <table style={{ width: '100%', minWidth: 500, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f0ede8' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Description</th>
+                    <th style={{ textAlign: 'center', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666', width: 50 }}>Qty</th>
+                    <th style={{ textAlign: 'right', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Amount</th>
                   </tr>
-                ))}
-                {items.length === 0 && (
-                  <tr><td colSpan={3} style={{ padding: '12px 10px', textAlign: 'center', color: '#888', fontSize: 12, fontStyle: 'italic' }}>No line items</td></tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((item, i) => (
+                    <tr key={item.id || i} style={{ borderBottom: '1px solid #e8e5e0' }}>
+                      <td style={{ padding: '9px 10px', fontSize: 13 }}>{item.description}</td>
+                      <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
+                      <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
+                        {fmtCurrency(item.qty * item.unit_price, cur)}
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr><td colSpan={3} style={{ padding: '12px 10px', textAlign: 'center', color: '#888', fontSize: 12, fontStyle: 'italic' }}>No line items</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Totals */}
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -517,8 +519,8 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
               <div style={{ fontSize: 12, marginTop: 4 }}>There are no quotations matching your current filters.</div>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                     <th style={thS}>Quotation No</th>

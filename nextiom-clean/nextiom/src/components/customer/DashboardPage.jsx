@@ -1200,7 +1200,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       </div>
 
       {/* ── Row 1: 4 Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((card, i) => (
           <StatMiniCard key={i} {...card} c={c} isDark={isDark} />
         ))}

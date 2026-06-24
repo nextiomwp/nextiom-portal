@@ -18,7 +18,7 @@ function RecentOrdersTable({ customerId }) {
             <Button variant="link" size="sm" className="text-blue-600 h-auto p-0 text-xs font-medium">View All</Button>
         </div>
         <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
                 <thead>
                     <tr className="border-b border-slate-200">
                         <th className="text-left py-3 px-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Order ID</th>

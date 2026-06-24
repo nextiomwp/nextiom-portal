@@ -1753,8 +1753,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
-                <div style={{ overflowX: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                     <thead>
                       <tr>
                         <th style={{ ...thS, width: '12%' }}>Job ID</th>

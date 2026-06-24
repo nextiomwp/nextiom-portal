@@ -1034,8 +1034,8 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
       {/* Customers Table */}
       <div style={cardS}>
         <SectionHeader title="Customers" accent={c.brand} />
-        <div style={{ overflowX: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: 36 }} />         {/* checkbox */}
               <col style={{ width: '14%' }} />       {/* Customer */}

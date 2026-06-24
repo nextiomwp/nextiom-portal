@@ -278,8 +278,8 @@ function OrderHistoryPage({ user, isDark = false, c = {} }) {
         </div>
 
         {/* Orders Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
                 <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Order ID</th>

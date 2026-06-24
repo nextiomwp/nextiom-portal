@@ -95,7 +95,7 @@ export const DNSChangeRequestForm = ({ domain, onSuccess }) => {
 
     return (
         <BaseForm domain={domain} onSubmit={handleSubmit}>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label>Record Type</Label>
                     <select value={recordType} onChange={e => setRecordType(e.target.value)} className="w-full p-2 border border-slate-300 rounded-md text-sm">
