@@ -68,6 +68,10 @@ const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
         width: sizePx || '20px',
         height: sizePx || '20px',
         objectFit: 'contain',
+        imageRendering: src.endsWith('.svg') ? 'auto' : '-webkit-optimize-contrast',
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        willChange: 'filter',
         ...style,
         filter: imgFilter
       }}

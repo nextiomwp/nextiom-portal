@@ -60,6 +60,10 @@ const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
         width: sizePx || '20px',
         height: sizePx || '20px',
         objectFit: 'contain',
+        imageRendering: src.endsWith('.svg') ? 'auto' : '-webkit-optimize-contrast',
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        willChange: 'filter',
         ...style,
         filter: imgFilter
       }}
@@ -68,10 +72,10 @@ const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
 };
 
 const OnProgressIcon = (props) => <CustomImageIcon src="/on-progress.png" alt="Jobs" {...props} />;
-const AgreementIcon = (props) => <CustomImageIcon src="/agreement.png" alt="Agreement" {...props} />;
-const DomainReqIcon = (props) => <CustomImageIcon src="/domainREq.png" alt="Domain Requests" {...props} />;
-const EmailReIcon = (props) => <CustomImageIcon src="/emailRe.png" alt="Email Requests" {...props} />;
-const HostingReIcon = (props) => <CustomImageIcon src="/hostingRe.png" alt="Hosting Requests" {...props} />;
+const AgreementIcon = (props) => <CustomImageIcon src="/deal.svg" alt="Agreement" {...props} size={25} />;
+const DomainReqIcon = (props) => <CustomImageIcon src="/internet.svg" alt="Domain Requests" {...props} size={23} />;
+const EmailReIcon = (props) => <CustomImageIcon src="/email.svg" alt="Email Requests" {...props} size={29} />;
+const HostingReIcon = (props) => <CustomImageIcon src="/hostingRe.svg" alt="Hosting Requests" {...props} size={25} />;
 
 const NAV = [
   { id: 'overview', label: 'Dashboard', icon: Home, section: 'top' },
