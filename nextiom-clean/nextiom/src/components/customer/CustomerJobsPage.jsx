@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, CheckCircle, Clock, AlertCircle, FileText, 
-  Upload, Check, ChevronRight, HelpCircle, ListTodo, MessageSquare, Info,
+  Upload, Check, ChevronRight, ArrowRight, HelpCircle, ListTodo, MessageSquare, Info,
   User, Layers, Calendar
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -993,7 +993,7 @@ function QueueDetailsContainer({
                       color: '#ef4444',
                       border: '1px solid rgba(239, 68, 68, 0.25)',
                       background: policyHovered ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.03)',
-                      padding: '4px 10px',
+                      padding: '6px 12px',
                       borderRadius: 6,
                       fontSize: 11,
                       fontWeight: 600,
@@ -1004,6 +1004,7 @@ function QueueDetailsContainer({
                   >
                     <AlertCircle size={12} />
                     Project Information & Response Policy
+                    <ArrowRight size={12} />
                   </button>
                 </DialogTrigger>
                 <DialogContent style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text, border: `1px solid ${c.borderStrong || c.border}`, maxWidth: 600, borderRadius: 16 }}>

@@ -3,10 +3,12 @@ import { Search, Plus, Loader2, Trash2, FileText, Download, Upload, Check, Refre
 import { getCustomers } from '@/lib/storage';
 import { getAgreements, createAgreement, updateAgreementStatus, deleteAgreement, getAgreementUrl } from '@/lib/agreements';
 import { useToast } from '@/components/ui/use-toast';
+import AdminAgreementCreator from '@/components/admin/AdminAgreementCreator';
 
 function AdminAgreementManagement({ isDark = true }) {
   const [agreements, setAgreements] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [view, setView] = useState('list'); // 'list' or 'create'
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -149,6 +151,19 @@ function AdminAgreementManagement({ isDark = true }) {
     return ag.status === statusFilter;
   });
 
+  if (view === 'create') {
+    return (
+      <AdminAgreementCreator
+        isDark={isDark}
+        customers={customers}
+        onBack={() => {
+          setView('list');
+          loadData();
+        }}
+      />
+    );
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
@@ -157,25 +172,47 @@ function AdminAgreementManagement({ isDark = true }) {
           <p style={{ fontSize: 14, color: c.subText }}>Manage, upload templates, and track signature statuses for customer agreements.</p>
         </div>
         
-        <button
-          onClick={() => setShowUploadModal(true)}
-          style={{
-            background: c.brand,
-            color: '#fff',
-            border: 'none',
-            padding: '10px 16px',
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer'
-          }}
-        >
-          <Plus size={16} />
-          {!isMobile && 'Upload Agreement'}
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => setView('create')}
+            style={{
+              background: c.brand,
+              color: '#fff',
+              border: 'none',
+              padding: '10px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer'
+            }}
+          >
+            <Plus size={16} />
+            {!isMobile && 'Create Agreement'}
+          </button>
+          
+          <button
+            onClick={() => setShowUploadModal(true)}
+            style={{
+              background: 'transparent',
+              color: c.text,
+              border: `1.5px solid ${c.border}`,
+              padding: '9px 16px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer'
+            }}
+          >
+            <Upload size={16} />
+            {!isMobile && 'Upload Template'}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
