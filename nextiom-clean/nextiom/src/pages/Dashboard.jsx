@@ -71,7 +71,7 @@ const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   );
 };
 
-const OnProgressIcon = (props) => <CustomImageIcon src="/tasks.svg" alt="Jobs" {...props} size={29} />;
+const OnProgressIcon = (props) => <CustomImageIcon src="/tasks.svg" alt="Jobs" {...props} size={25} />;
 const AgreementIcon = (props) => <CustomImageIcon src="/deal.svg" alt="Agreement" {...props} size={25} />;
 const DomainReqIcon = (props) => <CustomImageIcon src="/internet.svg" alt="Domain Requests" {...props} size={23} />;
 const EmailReIcon = (props) => <CustomImageIcon src="/email.svg" alt="Email Requests" {...props} size={29} />;
