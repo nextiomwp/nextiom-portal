@@ -383,7 +383,7 @@ export default function CustomerJobsPage({ user, c, isDark }) {
   // This is beautiful and extremely accurate! Let's write that.
   
   return (
-    <div className="customer-jobs-page" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 60 }}>
+    <div className="customer-jobs-page" style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 60, minWidth: 0 }}>
       {/* Title */}
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: c.text }}>
@@ -501,7 +501,7 @@ function QueueDetailsContainer({
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, color: c.subText, fontWeight: 600, letterSpacing: '0.5px' }}>{title}</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: valueColor, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: valueColor, marginTop: 6, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {value}
           </div>
         </div>
@@ -676,7 +676,7 @@ function QueueDetailsContainer({
 
   function renderJobDetailsAndChecklist() {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 24 }}>
         
         {/* Progress Stages Timeline */}
         <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
@@ -761,7 +761,12 @@ function QueueDetailsContainer({
         </div>
 
         {/* Bottom Section: Checklist + Admin Notes */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, gridTemplateRows: 'auto' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', 
+          gap: 20, 
+          gridTemplateRows: 'auto' 
+        }}>
           
           {/* Information checklist */}
           <div id="customer-requirements-checklist-card" style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
@@ -937,7 +942,7 @@ function QueueDetailsContainer({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
       
       {/* 2. What Customers See — Job Queue Status Widget */}
       <div style={{ 
@@ -1064,7 +1069,7 @@ function QueueDetailsContainer({
         {/* Metrics Grid */}
         <div style={{ 
           display: 'grid', 
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', 
+          gridTemplateColumns: isMobile ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', 
           gap: 16, 
           margin: '20px 0 0'
         }}>
