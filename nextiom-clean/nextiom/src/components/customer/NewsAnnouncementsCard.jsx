@@ -16,13 +16,22 @@ function NewsAnnouncementsCard({ isDark = false, c = {}, customerId }) {
     if (!customerId) return;
     supabase
       .from('notifications')
-      .select('title, message, created_at')
+      .select('title, message, created_at, start_date, end_date')
       .eq('type', 'announcement')
       .eq('customer_id', customerId)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }) => { if (data) setAnnouncement(data); });
+      .limit(5)
+      .then(({ data }) => {
+        if (data && Array.isArray(data)) {
+          const now = new Date();
+          const active = data.find(ann => {
+            if (ann.start_date && new Date(ann.start_date) > now) return false;
+            if (ann.end_date && new Date(ann.end_date) < now) return false;
+            return true;
+          });
+          setAnnouncement(active || null);
+        }
+      });
   }, [customerId]);
 
   const fmtDate = (iso) => iso

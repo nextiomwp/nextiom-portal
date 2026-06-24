@@ -34,7 +34,15 @@ function AnnouncementsPage({ user, isDark = false, c = {} }) {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAnnouncements(data || []);
+      
+      const now = new Date();
+      const activeAnnouncements = (data || []).filter(ann => {
+        if (ann.start_date && new Date(ann.start_date) > now) return false;
+        if (ann.end_date && new Date(ann.end_date) < now) return false;
+        return true;
+      });
+      
+      setAnnouncements(activeAnnouncements);
     } catch (err) {
       console.error('Failed to load announcements:', err);
       toast({

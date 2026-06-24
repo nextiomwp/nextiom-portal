@@ -33,7 +33,10 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
     recipientId: 'all',
     type: 'announcement',
     title: '',
-    message: ''
+    message: '',
+    startDate: '',
+    endDate: '',
+    useDateRange: false
   });
   const [customers, setCustomers] = useState([]);
   const [sending, setSending] = useState(false);
@@ -46,7 +49,7 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
 
   // Dialog/Modal states
   const [editingAnnouncement, setEditingAnnouncement] = useState(null);
-  const [editFormData, setEditFormData] = useState({ title: '', message: '', type: 'announcement' });
+  const [editFormData, setEditFormData] = useState({ title: '', message: '', type: 'announcement', startDate: '', endDate: '', useDateRange: false });
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [deletingAnnouncement, setDeletingAnnouncement] = useState(null);
@@ -97,6 +100,8 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
             message: notif.message,
             type: notif.type,
             created_at: notif.created_at,
+            start_date: notif.start_date,
+            end_date: notif.end_date,
             ids: [notif.id],
             recipients: [{
               id: notif.customer_id,
@@ -135,18 +140,30 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
       toast({ title: 'Required', description: 'Title and message cannot be empty.', variant: 'destructive' });
       return;
     }
+    if (formData.useDateRange && formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+      toast({ title: 'Invalid Dates', description: 'Start date cannot be after end date.', variant: 'destructive' });
+      return;
+    }
     setSending(true);
     try {
+      const payload = {
+        type: formData.type,
+        title: formData.title,
+        message: formData.message,
+        start_date: formData.useDateRange && formData.startDate ? new Date(formData.startDate + 'T00:00:00Z').toISOString() : null,
+        end_date: formData.useDateRange && formData.endDate ? new Date(formData.endDate + 'T23:59:59.999Z').toISOString() : null,
+      };
+
       if (formData.recipientId === 'all') {
         await Promise.all(customers.map(cu =>
-          addNotification({ customer_id: cu.id, type: formData.type, title: formData.title, message: formData.message })
+          addNotification({ customer_id: cu.id, ...payload })
         ));
         toast({ title: 'Announcement Sent', description: `Sent to all ${customers.length} customers.` });
       } else {
-        await addNotification({ customer_id: formData.recipientId, type: formData.type, title: formData.title, message: formData.message });
+        await addNotification({ customer_id: formData.recipientId, ...payload });
         toast({ title: 'Announcement Sent', description: 'Notification delivered to the selected customer.' });
       }
-      setFormData({ recipientId: 'all', type: 'announcement', title: '', message: '' });
+      setFormData({ recipientId: 'all', type: 'announcement', title: '', message: '', startDate: '', endDate: '', useDateRange: false });
       setActiveTab('sent');
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to send announcement.', variant: 'destructive' });
@@ -161,6 +178,10 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
       toast({ title: 'Required', description: 'Title and message cannot be empty.', variant: 'destructive' });
       return;
     }
+    if (editFormData.useDateRange && editFormData.startDate && editFormData.endDate && new Date(editFormData.startDate) > new Date(editFormData.endDate)) {
+      toast({ title: 'Invalid Dates', description: 'Start date cannot be after end date.', variant: 'destructive' });
+      return;
+    }
     setSavingEdit(true);
     try {
       const { error } = await supabase
@@ -168,7 +189,9 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
         .update({
           title: editFormData.title,
           message: editFormData.message,
-          type: editFormData.type
+          type: editFormData.type,
+          start_date: editFormData.useDateRange && editFormData.startDate ? new Date(editFormData.startDate + 'T00:00:00Z').toISOString() : null,
+          end_date: editFormData.useDateRange && editFormData.endDate ? new Date(editFormData.endDate + 'T23:59:59.999Z').toISOString() : null,
         })
         .in('id', editingAnnouncement.ids);
 
@@ -283,6 +306,54 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
                 <label style={labelS}>Title</label>
                 <input style={inpS} placeholder="e.g. Scheduled Maintenance on May 5th" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} required />
               </div>
+              
+              {/* Date to Announcement Option */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 14px', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input 
+                    type="checkbox" 
+                    id="enable-date-range"
+                    checked={formData.useDateRange} 
+                    onChange={e => {
+                      const checked = e.target.checked;
+                      setFormData(f => ({ 
+                        ...f, 
+                        useDateRange: checked,
+                        startDate: checked ? f.startDate || new Date().toISOString().substring(0, 10) : '',
+                        endDate: checked ? f.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10) : ''
+                      }));
+                    }}
+                    style={{ accentColor: c.brand, cursor: 'pointer' }}
+                  />
+                  <label htmlFor="enable-date-range" style={{ fontSize: 12, fontWeight: 600, color: c.text, cursor: 'pointer' }}>Date to Announcement (Scheduled Period)</label>
+                </div>
+                
+                {formData.useDateRange && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <label style={labelS}>Start Date</label>
+                      <input 
+                        type="date" 
+                        style={inpS} 
+                        value={formData.startDate} 
+                        onChange={e => setFormData(f => ({ ...f, startDate: e.target.value }))} 
+                        required={formData.useDateRange}
+                      />
+                    </div>
+                    <div>
+                      <label style={labelS}>End Date</label>
+                      <input 
+                        type="date" 
+                        style={inpS} 
+                        value={formData.endDate} 
+                        onChange={e => setFormData(f => ({ ...f, endDate: e.target.value }))} 
+                        required={formData.useDateRange}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label style={labelS}>Message</label>
                 <textarea style={{ ...inpS, minHeight: 120, resize: 'vertical' }} placeholder="Write your announcement here..." value={formData.message} onChange={e => setFormData(f => ({ ...f, message: e.target.value }))} required />
@@ -423,6 +494,23 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
                             <span style={{ fontSize: 11.5, color: c.subText, display: 'flex', alignItems: 'center', gap: 4 }}>
                               <Calendar size={12} /> {formattedDate}
                             </span>
+                            {(group.start_date || group.end_date) && (
+                              <span style={{ 
+                                fontSize: 10, 
+                                fontWeight: 700, 
+                                color: c.brand, 
+                                textTransform: 'uppercase', 
+                                background: c.brandLight,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}>
+                                <Calendar size={10} />
+                                {group.start_date ? new Date(group.start_date).toLocaleDateString() : 'Immediate'} - {group.end_date ? new Date(group.end_date).toLocaleDateString() : 'Forever'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -435,7 +523,10 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
                             setEditFormData({
                               title: group.title,
                               message: group.message,
-                              type: group.type
+                              type: group.type,
+                              startDate: group.start_date ? group.start_date.substring(0, 10) : '',
+                              endDate: group.end_date ? group.end_date.substring(0, 10) : '',
+                              useDateRange: !!(group.start_date || group.end_date)
                             });
                           }}
                           style={{ 
@@ -560,7 +651,7 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
                     <option value="security">Security Notice</option>
                   </select>
                 </div>
-                <div>
+                 <div>
                   <label style={labelS}>Title</label>
                   <input 
                     style={inpS} 
@@ -569,6 +660,54 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
                     required 
                   />
                 </div>
+
+                {/* Date to Announcement Option for Edit Modal */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 14px', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input 
+                      type="checkbox" 
+                      id="edit-enable-date-range"
+                      checked={editFormData.useDateRange} 
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setEditFormData(f => ({ 
+                          ...f, 
+                          useDateRange: checked,
+                          startDate: checked ? f.startDate || new Date().toISOString().substring(0, 10) : '',
+                          endDate: checked ? f.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10) : ''
+                        }));
+                      }}
+                      style={{ accentColor: c.brand, cursor: 'pointer' }}
+                    />
+                    <label htmlFor="edit-enable-date-range" style={{ fontSize: 12, fontWeight: 600, color: c.text, cursor: 'pointer' }}>Date to Announcement (Scheduled Period)</label>
+                  </div>
+                  
+                  {editFormData.useDateRange && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label style={labelS}>Start Date</label>
+                        <input 
+                          type="date" 
+                          style={inpS} 
+                          value={editFormData.startDate} 
+                          onChange={e => setEditFormData(f => ({ ...f, startDate: e.target.value }))} 
+                          required={editFormData.useDateRange}
+                        />
+                      </div>
+                      <div>
+                        <label style={labelS}>End Date</label>
+                        <input 
+                          type="date" 
+                          style={inpS} 
+                          value={editFormData.endDate} 
+                          onChange={e => setEditFormData(f => ({ ...f, endDate: e.target.value }))} 
+                          required={editFormData.useDateRange}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <label style={labelS}>Message</label>
                   <textarea 

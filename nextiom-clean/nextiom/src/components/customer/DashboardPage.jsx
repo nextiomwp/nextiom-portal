@@ -841,7 +841,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           supabase.from('hosting_packages').select('*').eq('customer_id', customerId),
           supabase.from('domains').select('*').eq('customer_id', customerId),
           supabase.from('email_requests').select('id, email, status, expiry_date').eq('customer_id', customerId),
-          supabase.from('notifications').select('id, title, message, created_at').eq('customer_id', customerId).eq('type', 'announcement').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('notifications').select('id, title, message, created_at, start_date, end_date').eq('customer_id', customerId).eq('type', 'announcement').order('created_at', { ascending: false }).limit(5),
           supabase.from('jobs').select('*').eq('customer_id', customerId).order('created_date', { ascending: false })
         ]);
 
@@ -1060,7 +1060,17 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
             productsCount: activeProductsCount,
           },
           renewalAlerts,
-          latestAnnouncement: latestAnnouncementRes?.data || null,
+          latestAnnouncement: (() => {
+            if (latestAnnouncementRes?.data && Array.isArray(latestAnnouncementRes.data)) {
+              const now = new Date();
+              return latestAnnouncementRes.data.find(ann => {
+                if (ann.start_date && new Date(ann.start_date) > now) return false;
+                if (ann.end_date && new Date(ann.end_date) < now) return false;
+                return true;
+              }) || null;
+            }
+            return null;
+          })(),
           invoices: processedInvoices,
           hostingPackages: hostingPackagesRes.data || [],
           domains: domainsRes.data || [],
