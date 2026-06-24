@@ -39,7 +39,7 @@ import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
 import CustomerAgreementManagement from '@/components/customer/CustomerAgreementManagement';
 import useDisableRightClick from '@/hooks/useDisableRightClick';
 
-const OnProgressIcon = ({ size, className, style, color }) => {
+const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
   const iconColor = color || style?.color || '';
   const colorStr = String(iconColor).toLowerCase();
@@ -59,8 +59,8 @@ const OnProgressIcon = ({ size, className, style, color }) => {
 
   return (
     <img
-      src="/on-progress.png"
-      alt="Jobs"
+      src={src}
+      alt={alt || "icon"}
       className={className}
       style={{
         width: sizePx || '20px',
@@ -72,6 +72,9 @@ const OnProgressIcon = ({ size, className, style, color }) => {
     />
   );
 };
+
+const OnProgressIcon = (props) => <CustomImageIcon src="/on-progress.png" alt="Jobs" {...props} />;
+const AgreementIcon = (props) => <CustomImageIcon src="/agreement.png" alt="Agreement" {...props} />;
 
 const c = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
@@ -710,7 +713,10 @@ function ImpersonationDashboard() {
                         activeTab === child.id ? c.brandLight : 'transparent';
                     }}
                   >
-                    <span>{child.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {child.icon && <child.icon size={16} color={activeTab === child.id ? c.brand : c.subText} />}
+                      <span>{child.label}</span>
+                    </div>
                     {displayCount !== null && (
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-semibold font-mono"

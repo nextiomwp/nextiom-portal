@@ -33,7 +33,7 @@ import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
 import AdminJobsPage from '@/components/admin/AdminJobsPage';
 import AdminAgreementManagement from '@/components/admin/AdminAgreementManagement';
 
-const OnProgressIcon = ({ size, className, style, color }) => {
+const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
   const iconColor = color || style?.color || '';
   const colorStr = String(iconColor).toLowerCase();
@@ -53,8 +53,8 @@ const OnProgressIcon = ({ size, className, style, color }) => {
 
   return (
     <img
-      src="/on-progress.png"
-      alt="Jobs"
+      src={src}
+      alt={alt || "icon"}
       className={className}
       style={{
         width: sizePx || '20px',
@@ -66,6 +66,12 @@ const OnProgressIcon = ({ size, className, style, color }) => {
     />
   );
 };
+
+const OnProgressIcon = (props) => <CustomImageIcon src="/on-progress.png" alt="Jobs" {...props} />;
+const AgreementIcon = (props) => <CustomImageIcon src="/agreement.png" alt="Agreement" {...props} />;
+const DomainReqIcon = (props) => <CustomImageIcon src="/domainREq.png" alt="Domain Requests" {...props} />;
+const EmailReIcon = (props) => <CustomImageIcon src="/emailRe.png" alt="Email Requests" {...props} />;
+const HostingReIcon = (props) => <CustomImageIcon src="/hostingRe.png" alt="Hosting Requests" {...props} />;
 
 const NAV = [
   { id: 'overview', label: 'Dashboard', icon: Home, section: 'top' },
@@ -80,9 +86,9 @@ const NAV = [
   { id: 'hosting', label: 'Hosting', icon: Server },
   { id: 'products', label: 'Products', icon: Package },
   { section: 'header', label: 'REQUESTS' },
-  { id: 'domainsRequests', label: 'Domain Requests', icon: ClipboardList, badgeType: 'orange' },
-  { id: 'hostingRequests', label: 'Hosting Requests', icon: Zap, badgeType: 'orange' },
-  { id: 'emailRequests', label: 'Email Requests', icon: Star, badgeType: 'orange' },
+  { id: 'domainsRequests', label: 'Domain Requests', icon: DomainReqIcon, badgeType: 'orange' },
+  { id: 'hostingRequests', label: 'Hosting Requests', icon: HostingReIcon, badgeType: 'orange' },
+  { id: 'emailRequests', label: 'Email Requests', icon: EmailReIcon, badgeType: 'orange' },
   { section: 'header', label: 'ACTIVE SERVICES' },
   { id: 'approvedHostings', label: 'Active Domains', icon: CheckCircle, badgeType: 'green' },
   { id: 'activeHosting', label: 'Active Hosting', icon: CheckSquare, badgeType: 'green' },
@@ -90,7 +96,7 @@ const NAV = [
   { section: 'header', label: 'BILLING' },
   { id: 'invoices', label: 'Invoices', icon: Receipt },
   { id: 'quotations', label: 'Quotations', icon: FileText },
-  { id: 'agreements', label: 'Agreements', icon: FileCheck },
+  { id: 'agreements', label: 'Agreements', icon: AgreementIcon },
   { section: 'header', label: 'SYSTEM' },
   { id: 'maintenance', label: 'Maintenance', icon: Shield },
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
