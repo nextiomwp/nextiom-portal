@@ -3,6 +3,7 @@
 // It reads print data from sessionStorage set by InvoiceForm
 
 import { useEffect, useState } from 'react'
+import { Helmet } from 'react-helmet'
 import { fmtCurrency, InvoiceCurrency, resolveLogoUrl } from '@/lib/invoices'
 
 function formatPrintDate(value?: string) {
@@ -92,8 +93,17 @@ export default function InvoicePrintPage() {
   const subtotal = items.reduce((sum: number, item: any) => sum + (item.qty * item.unit_price), 0)
   const totalDiscount = items.reduce((sum: number, item: any) => sum + (item.discount || 0), 0)
 
+  // Extract first name and build dynamic title/filename for PDF print
+  const clientName = client_name || ''
+  const invoiceNo = invoice_no || ''
+  const firstName = clientName.trim().split(/\s+/)[0] || ''
+  const printTitle = firstName ? `${invoiceNo}_${firstName}` : invoiceNo || 'Invoice'
+
   return (
     <>
+      <Helmet>
+        <title>{printTitle}</title>
+      </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
