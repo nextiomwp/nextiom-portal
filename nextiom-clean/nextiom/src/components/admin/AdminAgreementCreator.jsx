@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
-import { ArrowLeft, Save, Loader2, Calendar, FileText, ChevronDown, DollarSign } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Calendar, FileText, ChevronDown, DollarSign, Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { createAgreement, getAgreementUrl } from '@/lib/agreements';
+import { createAgreement } from '@/lib/agreements';
 import { addNotification } from '@/lib/storage';
 import { resolveLogoUrl } from '@/lib/invoices';
 import { useToast } from '@/components/ui/use-toast';
@@ -47,10 +47,14 @@ const loadBase64Image = async (url) => {
     const res = await fetch(url);
     if (!res.ok) return null;
 
-    // Safety check: skip if the response is not an image (avoids SPA routing fallback HTML corruption)
+    // Safety check: skip if the response is not a format supported by jsPDF
+    // jsPDF natively supports JPEG, PNG, and WebP (in modern engines).
+    // SVG logo formats will hang/crash standard image decoders in jsPDF.
     const contentType = res.headers.get('content-type') || '';
-    if (!contentType.startsWith('image/')) {
-      console.warn(`[loadBase64Image] Skipping non-image resource from ${url}: Content-Type is ${contentType}`);
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const isAllowed = allowedTypes.some(type => contentType.startsWith(type));
+    if (!isAllowed) {
+      console.warn(`[loadBase64Image] Skipping unsupported image resource from ${url}: Content-Type is ${contentType}`);
       return null;
     }
 
@@ -65,6 +69,19 @@ const loadBase64Image = async (url) => {
     console.error('Error loading image base64:', err);
     return null;
   }
+};
+
+// Detect image format from base64 string
+const getImageFormat = (base64) => {
+  if (!base64) return 'PNG';
+  const match = base64.match(/^data:image\/([a-zA-Z+]+);base64,/);
+  if (match && match[1]) {
+    const ext = match[1].toLowerCase();
+    if (ext === 'jpeg' || ext === 'jpg') return 'JPEG';
+    if (ext === 'png') return 'PNG';
+    if (ext === 'webp') return 'WEBP';
+  }
+  return 'PNG';
 };
 
 const getTemplates = (cust, fee, curr) => {
@@ -261,17 +278,16 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
   // Sync payment terms automatically when pricing changes, if user hasn't edited it manually
   useEffect(() => {
     if (!selectedCustomerId) return;
-    const cust = customers.find(cu => cu.id === selectedCustomerId);
     
     setSections(prev => {
       return prev.map(sec => {
-        if (sec.title.includes('5. Payment Terms')) {
+        if (sec.title && sec.title.includes('5. Payment Terms')) {
           const feeVal = parseFloat(packageFee) || 0;
           const feeText = currency === 'USD' 
             ? `Annual Hosting Package Fee: USD ${feeVal.toLocaleString('en-US', { minimumFractionDigits: 2 })} (United States Dollars)`
             : `Annual Hosting Package Fee: LKR ${feeVal.toLocaleString('en-LK', { minimumFractionDigits: 2 })} (Sri Lankan Rupees)`;
           
-          let content = sec.content;
+          let content = sec.content || '';
           const lines = content.split('\n');
           const updatedLines = lines.map(line => {
             if (line.includes('Hosting Package Fee:')) {
@@ -285,6 +301,36 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
       });
     });
   }, [packageFee, currency, selectedCustomerId]);
+
+  // Add Custom Section
+  const handleAddSection = () => {
+    setSections(prev => [
+      ...prev,
+      {
+        title: `${prev.length + 1}. Custom Term`,
+        content: ''
+      }
+    ]);
+    setExpandedSectionIndex(sections.length);
+  };
+
+  // Delete Section
+  const handleDeleteSection = (index, e) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete section "${sections[index]?.title}"?`)) {
+      setSections(prev => prev.filter((_, idx) => idx !== index));
+      if (expandedSectionIndex === index) {
+        setExpandedSectionIndex(-1);
+      } else if (expandedSectionIndex > index) {
+        setExpandedSectionIndex(prev => prev - 1);
+      }
+    }
+  };
+
+  // Update Section Title
+  const handleSectionTitleChange = (index, newTitle) => {
+    setSections(prev => prev.map((sec, idx) => idx === index ? { ...sec, title: newTitle } : sec));
+  };
 
   const handleSaveAgreement = async () => {
     if (!selectedCustomerId) {
@@ -361,9 +407,10 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
           // Logo on top right
           if (logoBase64) {
             try {
-              doc.addImage(logoBase64, 'PNG', 150, 10, 42, 13);
+              const format = getImageFormat(logoBase64);
+              doc.addImage(logoBase64, format, 150, 10, 42, 13);
             } catch (err) {
-              console.error(err);
+              console.error('[PDF Gen] Logo embed failed:', err);
             }
           }
 
@@ -384,9 +431,10 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
 
           if (logoBase64) {
             try {
-              doc.addImage(logoBase64, 'PNG', 165, 8, 30, 9);
+              const format = getImageFormat(logoBase64);
+              doc.addImage(logoBase64, format, 165, 8, 30, 9);
             } catch (err) {
-              console.error(err);
+              console.error('[PDF Gen] Logo page-2 embed failed:', err);
             }
           }
 
@@ -479,7 +527,7 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
         y += 5.5;
       }
 
-      // Print sections
+      // Print helpers
       const printParagraph = (text, fontSize = 9.5, isBold = false, color = { r: 51, g: 51, b: 51 }) => {
         doc.setFont('helvetica', isBold ? 'bold' : 'normal');
         doc.setFontSize(fontSize);
@@ -554,11 +602,13 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11.5);
         doc.setTextColor(232, 123, 53); // orange brand
-        doc.text(sec.title, margin, y);
+        doc.text(sec.title || '', margin, y);
         y += 5.5;
 
         // Print Section content
-        printSectionContent(sec.content);
+        if (sec.content) {
+          printSectionContent(sec.content);
+        }
       }
 
       // Print Signature Section
@@ -598,10 +648,11 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
       let drewSignature = false;
       if (sigBase64) {
         try {
-          doc.addImage(sigBase64, 'PNG', col1X, y + 2, 45, 14);
+          const format = getImageFormat(sigBase64);
+          doc.addImage(sigBase64, format, col1X, y + 2, 45, 14);
           drewSignature = true;
         } catch (err) {
-          console.error('Failed to add signature image:', err);
+          console.error('[PDF Gen] Signature image embed failed:', err);
         }
       }
       
@@ -935,7 +986,32 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
         {/* Right Side: Section Editor */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 700, color: c.text, borderBottom: `1px solid ${c.border}`, paddingBottom: 10, marginBottom: 16 }}>Agreement Sections Content</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${c.border}`, paddingBottom: 10, marginBottom: 16 }}>
+              <h2 style={{ fontSize: 14, fontWeight: 700, color: c.text, margin: 0 }}>Agreement Sections Content</h2>
+              
+              {selectedCustomerId && (
+                <button
+                  type="button"
+                  onClick={handleAddSection}
+                  style={{
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                    border: `1px solid ${c.border}`,
+                    color: c.brand,
+                    borderRadius: 6,
+                    padding: '4px 10px',
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <Plus size={13} />
+                  Add Section
+                </button>
+              )}
+            </div>
             
             {!selectedCustomerId ? (
               <div style={{ padding: '60px 20px', textAlign: 'center', color: c.subText }}>
@@ -955,32 +1031,67 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
                         overflow: 'hidden'
                       }}
                     >
-                      <button
+                      <div
                         onClick={() => setExpandedSectionIndex(isExpanded ? -1 : idx)}
                         style={{
                           width: '100%',
-                          padding: '12px 16px',
+                          padding: '10px 16px',
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
                           background: isExpanded ? (isDark ? 'rgba(232,123,53,0.06)' : '#fff7ed') : 'transparent',
-                          border: 'none',
                           color: isExpanded ? c.brand : c.text,
-                          fontWeight: 600,
-                          fontSize: 13.5,
-                          cursor: 'pointer',
-                          textAlign: 'left'
+                          cursor: 'pointer'
                         }}
                       >
-                        <span>{sec.title}</span>
-                        <ChevronDown
-                          size={16}
+                        {/* Editable Section Title Input */}
+                        <input
+                          type="text"
+                          value={sec.title || ''}
+                          onClick={(e) => e.stopPropagation()} // prevent toggle collapse
+                          onChange={(e) => handleSectionTitleChange(idx, e.target.value)}
                           style={{
-                            transform: isExpanded ? 'rotate(180deg)' : 'none',
-                            transition: 'transform 0.2s'
+                            background: 'transparent',
+                            border: 'none',
+                            color: isExpanded ? c.brand : c.text,
+                            fontWeight: 600,
+                            fontSize: 13.5,
+                            outline: 'none',
+                            width: '80%',
+                            fontFamily: 'inherit'
                           }}
                         />
-                      </button>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {/* Delete Section Button */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteSection(idx, e)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              padding: 4,
+                              display: 'flex',
+                              alignItems: 'center',
+                              opacity: 0.8
+                            }}
+                            title="Delete this section"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          
+                          <ChevronDown
+                            size={16}
+                            style={{
+                              transform: isExpanded ? 'rotate(180deg)' : 'none',
+                              transition: 'transform 0.2s',
+                              color: c.subText
+                            }}
+                          />
+                        </div>
+                      </div>
 
                       {isExpanded && (
                         <div style={{ padding: '12px 16px', borderTop: `1px solid ${c.border}` }}>

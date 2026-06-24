@@ -1003,7 +1003,7 @@ function QueueDetailsContainer({
                     }}
                   >
                     <AlertCircle size={12} />
-                    Project Information & Response Policy
+                    Project Queue Policy
                     <ArrowRight size={12} />
                   </button>
                 </DialogTrigger>

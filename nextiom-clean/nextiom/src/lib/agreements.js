@@ -40,21 +40,35 @@ const uploadFileDirect = async (bucket, path, file, contentType) => {
   const token = await getAccessToken();
   const url = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
 
-  const response = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${token}`,
-      'Content-Type': contentType,
-      'x-upsert': 'true',
-    },
-    body: file,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
 
-  if (!response.ok) {
-    const text = await response.text().catch(() => `HTTP ${response.status}`);
-    console.error(`[agreements] Storage upload failed (${response.status}):`, text);
-    throw new Error(`Upload failed (${response.status}): ${text}`);
+  try {
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+        'Content-Type': contentType,
+        'x-upsert': 'true',
+      },
+      body: file,
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => `HTTP ${response.status}`);
+      console.error(`[agreements] Storage upload failed (${response.status}):`, text);
+      throw new Error(`Upload failed (${response.status}): ${text}`);
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Upload timed out. Please check your network connection and try again.');
+    }
+    throw err;
   }
 };
 
