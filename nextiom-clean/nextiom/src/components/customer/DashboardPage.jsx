@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Globe, Server, Bell, TrendingUp, TrendingDown, ShoppingCart, CheckCircle2, DollarSign, Phone, Mail, MapPin, Building, ChevronRight, Info, ExternalLink, Package, Shield, Key, CreditCard, MessageSquare, Clock, Settings, Megaphone, AlertCircle, X, BookOpen, Briefcase, ShieldCheck, Zap, BarChart3, ArrowUpRight, Layers, Activity } from 'lucide-react';
+import { Loader2, Globe, Server, Bell, TrendingUp, TrendingDown, ShoppingCart, CheckCircle2, DollarSign, Phone, Mail, MapPin, Building, ChevronRight, Info, ExternalLink, Package, Shield, Key, CreditCard, MessageSquare, Clock, Settings, Megaphone, AlertCircle, X, BookOpen, Briefcase, ShieldCheck, Zap, BarChart3, ArrowUpRight, Layers, Activity, Ticket } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import NewsAnnouncementsCard from './NewsAnnouncementsCard';
 import RateUsCard from './RateUsCard';
@@ -1355,47 +1355,95 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
         </div>
         <div className="lg:col-span-2 h-full">
-          <div style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 16, height: '100%', boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Zap style={{ width: 16, height: 16, color: brand }} />
+          <div style={{ 
+            ...cardStyle, 
+            padding: 24, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            justifyContent: 'space-between', 
+            gap: 20, 
+            height: '100%', 
+            boxSizing: 'border-box', 
+            position: 'relative', 
+            overflow: 'hidden' 
+          }}>
+            {/* Header: Lightning Badge + Title & Description */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+              <div style={{ 
+                width: 48, 
+                height: 48, 
+                borderRadius: 12, 
+                background: isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.03)', 
+                border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.4)'}`,
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Zap style={{ width: 22, height: 22, color: brand }} />
               </div>
-              <div>
-                <h3 style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>Need Help?</h3>
-                <p style={{ color: subText, fontSize: 11, margin: 0 }}>Create a support ticket or choose a faster contact option.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <h3 style={{ color: text, fontSize: 20, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>Need Help?</h3>
+                <p style={{ color: subText, fontSize: 13, margin: 0, lineHeight: 1.4 }}>
+                  Create a support ticket, call us, or chat via WhatsApp during business hours.
+                </p>
               </div>
             </div>
 
+            {/* Response Time Info Banner */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 8, 
+              fontSize: 12, 
+              color: subText,
+              padding: '2px 0'
+            }}>
+              <Clock style={{ width: 16, height: 16, color: brand }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600, color: text }}>Response Time:</span>
+                <span style={{ color: brand, fontWeight: 600 }}>30 Min – 1 Hr</span>
+                <span style={{ opacity: 0.6 }}>|</span>
+                <span style={{ opacity: 0.7 }}>May take up to 24 Hrs during busy periods.</span>
+              </div>
+            </div>
+
+            {/* Action Button: Create Support Ticket */}
             <button
               onClick={() => onNavigate('support_create')}
               style={{ 
                 alignSelf: 'center',
-                padding: '10px 24px', 
+                padding: '8px 20px', 
                 borderRadius: 10, 
-                background: `linear-gradient(135deg, ${brand}, #f59e0b)`, 
+                background: brand, 
                 border: 'none', 
                 color: '#fff', 
                 fontSize: 13, 
-                fontWeight: 700, 
+                fontWeight: 600, 
                 cursor: 'pointer', 
-                boxShadow: `0 4px 12px ${brand}30`, 
-                transition: 'all 0.2s',
-                marginTop: 6,
-                marginBottom: 6
+                boxShadow: `0 2px 10px ${brand}25`, 
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: 4,
+                marginBottom: 4
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 6px 16px ${brand}40`; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 4px 12px ${brand}30`; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 4px 16px ${brand}40`; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 2px 10px ${brand}25`; }}
             >
+              <Ticket style={{ width: 14, height: 14 }} />
               Create Support Ticket
             </button>
 
+            {/* Separator */}
             <div style={{ textAlign: 'center', margin: '4px 0' }}>
-              <span style={{ color: subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>— OR REACH OUT —</span>
+              <span style={{ color: subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.6 }}>— OR REACH OUT —</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 w-full" style={{ marginTop: 'auto' }}>
+            {/* Reach Out Grid: Call Us & WhatsApp */}
+            <div className="grid grid-cols-2 gap-4 w-full" style={{ marginTop: 'auto' }}>
+              {/* Call Us Box */}
               <a href="tel:+94702032323"
                 style={{ 
                   display: 'flex', 
@@ -1403,21 +1451,62 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
                   alignItems: 'center', 
                   justifyContent: 'center',
                   textAlign: 'center',
-                  gap: 6,
-                  padding: '16px 12px', 
-                  borderRadius: 14, 
+                  gap: 10,
+                  padding: '20px 12px', 
+                  borderRadius: 16, 
                   border: `1px solid ${border}`, 
-                  background: panel2, 
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', 
                   textDecoration: 'none', 
-                  transition: 'all 0.15s' 
+                  transition: 'all 0.2s ease-in-out' 
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = brand; e.currentTarget.style.background = brandLight; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.background = panel2; }}
+                onMouseEnter={e => { 
+                  e.currentTarget.style.borderColor = brand; 
+                  e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={e => { 
+                  e.currentTarget.style.borderColor = border; 
+                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
-                <Phone style={{ width: 22, height: 22, color: brand, marginBottom: 2 }} />
-                <span style={{ color: text, fontSize: 13, fontWeight: 700 }}>Call Us</span>
-                <span style={{ color: subText, fontSize: 11 }}>+94 70 203 2323</span>
+                {/* Icon Container */}
+                <div style={{ 
+                  width: 44, 
+                  height: 44, 
+                  borderRadius: '50%', 
+                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.4)'}`,
+                  background: isDark ? 'rgba(232,123,53,0.04)' : '#fff',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <Phone style={{ width: 18, height: 18, color: brand }} />
+                </div>
+                
+                {/* Title & Phone */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ color: text, fontSize: 14, fontWeight: 700 }}>Call Us</span>
+                  <span style={{ color: subText, fontSize: 12 }}>+94 70 203 2323</span>
+                </div>
+
+                {/* Status/Time Pill */}
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  borderRadius: 99,
+                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.3)'}`,
+                  background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
+                  marginTop: 4
+                }}>
+                  <Clock style={{ width: 12, height: 12, color: brand }} />
+                  <span style={{ color: brand, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>Mon – Fri | 9:00 AM – 6:00 PM</span>
+                </div>
               </a>
+
+              {/* WhatsApp Box */}
               <a href="https://wa.me/message/GSCYIITXTDGXO1" target="_blank" rel="noopener noreferrer"
                 style={{ 
                   display: 'flex', 
@@ -1425,22 +1514,61 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
                   alignItems: 'center', 
                   justifyContent: 'center',
                   textAlign: 'center',
-                  gap: 6,
-                  padding: '16px 12px', 
-                  borderRadius: 14, 
+                  gap: 10,
+                  padding: '20px 12px', 
+                  borderRadius: 16, 
                   border: `1px solid ${border}`, 
-                  background: panel2, 
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', 
                   textDecoration: 'none', 
-                  transition: 'all 0.15s' 
+                  transition: 'all 0.2s ease-in-out' 
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#22c55e'; e.currentTarget.style.background = isDark ? 'rgba(34,197,94,0.08)' : '#f0fdf4'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = border; e.currentTarget.style.background = panel2; }}
+                onMouseEnter={e => { 
+                  e.currentTarget.style.borderColor = brand; 
+                  e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={e => { 
+                  e.currentTarget.style.borderColor = border; 
+                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
-                <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, fill: '#22c55e', marginBottom: 2 }}>
-                  <path d="M12.031 2c-5.51 0-9.99 4.48-9.99 9.99 0 2.062.626 3.979 1.698 5.568l-1.116 4.093 4.205-1.103c1.517.927 3.308 1.465 5.203 1.465 5.51 0 9.99-4.48 9.99-9.99S17.541 2 12.031 2zm0 1.662c4.595 0 8.328 3.733 8.328 8.328S16.626 20.318 12.031 20.318c-1.83 0-3.528-.592-4.912-1.597l-.353-.255-2.434.638.653-2.395-.286-.399c-1.144-1.593-1.821-3.535-1.821-5.637.001-4.595 3.734-8.328 8.329-8.328zm-3.328 3.864c-.144 0-.361.054-.541.252-.18.198-.685.67-.685 1.632 0 .963.702 1.892.8 2.025.099.135 1.352 2.158 3.298 2.977.463.195.825.312 1.107.402.465.147.888.126 1.222.076.372-.056 1.145-.468 1.306-.921.161-.453.161-.842.113-.923-.048-.081-.18-.129-.379-.228-.198-.099-1.145-.565-1.321-.629-.177-.064-.306-.096-.437.099-.13.195-.504.629-.617.755-.113.127-.225.142-.424.043-.198-.099-.838-.309-1.597-.986-.591-.527-.989-1.18-.105-1.328.099-.165.198-.243.297-.342.099-.099.13-.165.198-.297.066-.132.033-.249-.016-.348-.049-.099-.437-1.053-.598-1.442-.157-.38-.33-.328-.453-.334l-.387-.008z" />
-                </svg>
-                <span style={{ color: text, fontSize: 13, fontWeight: 700 }}>WhatsApp</span>
-                <span style={{ color: subText, fontSize: 11 }}>Chat Now (Sri Lanka)</span>
+                {/* Icon Container */}
+                <div style={{ 
+                  width: 44, 
+                  height: 44, 
+                  borderRadius: '50%', 
+                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.4)'}`,
+                  background: isDark ? 'rgba(232,123,53,0.04)' : '#fff',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <svg viewBox="0 0 24 24" style={{ width: 18, height: 18, fill: brand }}>
+                    <path d="M12.031 2c-5.51 0-9.99 4.48-9.99 9.99 0 2.062.626 3.979 1.698 5.568l-1.116 4.093 4.205-1.103c1.517.927 3.308 1.465 5.203 1.465 5.51 0 9.99-4.48 9.99-9.99S17.541 2 12.031 2zm0 1.662c4.595 0 8.328 3.733 8.328 8.328S16.626 20.318 12.031 20.318c-1.83 0-3.528-.592-4.912-1.597l-.353-.255-2.434.638.653-2.395-.286-.399c-1.144-1.593-1.821-3.535-1.821-5.637.001-4.595 3.734-8.328 8.329-8.328zm-3.328 3.864c-.144 0-.361.054-.541.252-.18.198-.685.67-.685 1.632 0 .963.702 1.892.8 2.025.099.135 1.352 2.158 3.298 2.977.463.195.825.312 1.107.402.465.147.888.126 1.222.076.372-.056 1.145-.468 1.306-.921.161-.453.161-.842.113-.923-.048-.081-.18-.129-.379-.228-.198-.099-1.145-.565-1.321-.629-.177-.064-.306-.096-.437.099-.13.195-.504.629-.617.755-.113.127-.225.142-.424.043-.198-.099-.838-.309-1.597-.986-.591-.527-.989-1.18-.105-1.328.099-.165.198-.243.297-.342.099-.099.13-.165.198-.297.066-.132.033-.249-.016-.348-.049-.099-.437-1.053-.598-1.442-.157-.38-.33-.328-.453-.334l-.387-.008z" />
+                  </svg>
+                </div>
+                
+                {/* Title & WhatsApp Status */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ color: text, fontSize: 14, fontWeight: 700 }}>WhatsApp</span>
+                  <span style={{ color: subText, fontSize: 12 }}>Chat Now (Sri Lanka)</span>
+                </div>
+
+                {/* Status/Time Pill */}
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  borderRadius: 99,
+                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.3)'}`,
+                  background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
+                  marginTop: 4
+                }}>
+                  <Clock style={{ width: 12, height: 12, color: brand }} />
+                  <span style={{ color: brand, fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}>Mon – Fri | 9:00 AM – 6:00 PM</span>
+                </div>
               </a>
             </div>
           </div>
