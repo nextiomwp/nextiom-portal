@@ -188,3 +188,13 @@
 .customer-jobs-page textarea * {
   cursor: text !important;
 }
+
+/* Responsive Card Heights for Row 5 (News + Need Help) */
+.row5-card-container {
+  height: auto;
+}
+@media (min-width: 1024px) {
+  .row5-card-container {
+    height: 470px;
+  }
+}

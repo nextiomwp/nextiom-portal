@@ -1361,10 +1361,10 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
       {/* ── Row 5: News + Need Help ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-3 flex flex-col" style={{ height: 470 }}>
+        <div className="lg:col-span-3 flex flex-col row5-card-container">
           <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
         </div>
-        <div className="lg:col-span-2 flex flex-col" style={{ height: 470 }}>
+        <div className="lg:col-span-2 flex flex-col row5-card-container">
           <div style={{ 
             ...cardStyle, 
             padding: 24, 
