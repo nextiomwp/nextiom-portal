@@ -617,7 +617,7 @@ function ServiceHealthCard({ data, c, isDark }) {
 
     return {
       color: '#f97316',
-      dot: '#f97316',
+      dot: '#dc2626',
       label: (
         <span>
           <span style={{ color: '#16a34a' }}>Active ({activeCount})</span>
@@ -657,7 +657,7 @@ function ServiceHealthCard({ data, c, isDark }) {
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, flex: 1, alignContent: 'center' }}>
         {services.map(({ label, key, Icon }) => {
           const state = getServiceState(key);
           return (
@@ -675,34 +675,6 @@ function ServiceHealthCard({ data, c, isDark }) {
             </div>
           );
         })}
-      </div>
-
-      {/* Renewal Alerts */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-        <p style={{ color: text, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 10px', textAlign: 'center' }}>Renewal Alerts</p>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, maxHeight: 110, overflowY: 'auto', width: '100%' }} className="no-scrollbar">
-          {data.renewalAlerts.length > 0 ? (
-            data.renewalAlerts.map((alert, idx) => (
-              <div key={idx} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                background: isDark ? 'rgba(245,158,11,0.07)' : '#fffbeb',
-                border: `1px solid ${isDark ? 'rgba(245,158,11,0.2)' : '#fef3c7'}`,
-                borderRadius: 10, padding: '7px 11px',
-                width: '100%',
-                maxWidth: '450px',
-                textAlign: 'center'
-              }}>
-                <AlertCircle style={{ width: 13, height: 13, color: '#f59e0b', flexShrink: 0 }} />
-                <span style={{ color: text, fontSize: 11, fontWeight: 500, lineHeight: 1.4 }}>{alert.message}</span>
-              </div>
-            ))
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px 12px', background: isDark ? 'rgba(22,163,74,0.07)' : '#f0fdf4', borderRadius: 10, width: '100%', maxWidth: '450px', textAlign: 'center' }}>
-              <CheckCircle2 style={{ width: 14, height: 14, color: '#16a34a', flexShrink: 0 }} />
-              <span style={{ color: subText, fontSize: 11 }}>All services are running smoothly.</span>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
