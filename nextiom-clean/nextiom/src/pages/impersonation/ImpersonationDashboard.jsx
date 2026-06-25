@@ -282,58 +282,143 @@ function ImpersonationDashboard() {
         });
         setHasActiveQuotations(hasActiveQuotes);
 
+        const getBillingMonths = (billing) => {
+          const b = String(billing || '').toLowerCase();
+          if (b.includes('yearly') || b.includes('annual')) return 12;
+          if (b.includes('6')) return 6;
+          if (b.includes('3')) return 3;
+          return 1;
+        };
+
+        const parseRequestField = (raw, label) => {
+          if (!raw) return null;
+          const regex = new RegExp(`${label}:\\s*([^|;\\n]+)`, 'i');
+          const match = raw.match(regex);
+          return match?.[1]?.trim() || null;
+        };
+
+        const getHostingExpiryDate = (h) => {
+          if (h.expiry_date) return new Date(h.expiry_date);
+          const isApproved = ['active', 'connected', 'approved', 'completed'].includes(String(h.status || '').toLowerCase());
+          if (!isApproved) return null;
+          const updated = h.updated_at || h.created_at;
+          if (!updated) return null;
+          const base = new Date(updated);
+          const raw = h.package_type || h.notes || '';
+          const billingPeriod = parseRequestField(raw, 'Billing') || h.billing_period;
+          base.setMonth(base.getMonth() + getBillingMonths(billingPeriod));
+          return base;
+        };
+
+        const isHostingActive = (h) => {
+          const status = String(h.status || '').toLowerCase();
+          const approved = ['active', 'connected', 'approved', 'completed'].includes(status);
+          if (!approved) return false;
+          const exp = getHostingExpiryDate(h);
+          if (exp) {
+            return exp.getTime() >= new Date().getTime();
+          }
+          return true;
+        };
+
+        const isDomainActive = (d) => {
+          const status = String(d.status || '').toLowerCase();
+          const approved = ['active', 'registered', 'approved', 'connected', 'completed'].includes(status);
+          if (!approved) return false;
+          const isExpired = d.expiry_date && new Date(d.expiry_date).getTime() < new Date().getTime();
+          return !isExpired;
+        };
+
+        const isEmailActive = (e) => {
+          const status = String(e.status || '').toLowerCase();
+          const approved = ['active', 'connected', 'approved', 'completed'].includes(status);
+          if (!approved) return false;
+          const isExpired = e.expiry_date && new Date(e.expiry_date).getTime() < new Date().getTime();
+          return !isExpired;
+        };
+
         // Deduplicate and combine domains
         const seenDomains = new Set();
         let combinedDomainsCount = 0;
         (domainsDataRes?.data || []).forEach(d => {
-          const name = d.domain_name || d.domain || d.name;
-          if (name) {
-            const key = name.toLowerCase().trim();
-            if (!seenDomains.has(key)) {
-              seenDomains.add(key);
-              combinedDomainsCount++;
+          if (isDomainActive(d)) {
+            const name = d.domain_name || d.domain || d.name;
+            if (name) {
+              const key = name.toLowerCase().trim();
+              if (!seenDomains.has(key)) {
+                seenDomains.add(key);
+                combinedDomainsCount++;
+              }
             }
           }
         });
         (domainRequestsRes?.data || []).forEach(d => {
-          const name = d.domain_name || d.domain || d.name;
-          if (name) {
-            const key = name.toLowerCase().trim();
-            if (!seenDomains.has(key)) {
-              seenDomains.add(key);
-              combinedDomainsCount++;
+          if (isDomainActive(d)) {
+            const name = d.domain_name || d.domain || d.name;
+            if (name) {
+              const key = name.toLowerCase().trim();
+              if (!seenDomains.has(key)) {
+                seenDomains.add(key);
+                combinedDomainsCount++;
+              }
             }
           }
         });
         setDomainsCount(combinedDomainsCount);
 
-        // Deduplicate and combine hosting packages
-        const seenHostings = new Set();
-        let combinedHostingsCount = 0;
-        (hostingPackagesDataRes?.data || []).forEach(h => {
-          const pkgName = h.package_name || h.package_type || h.packageName;
-          const domName = h.domain_name || h.domain;
-          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
-          if (pkgName || domName) {
-            if (!seenHostings.has(key)) {
-              seenHostings.add(key);
-              combinedHostingsCount++;
-            }
+        // Deduplicate and combine hosting packages and requests
+        const normalizeHostingKey = (value) => String(value || '').split('|')[0].trim().toLowerCase();
+        
+        const rawPackages = hostingPackagesDataRes?.data || [];
+        const rawRequests = hostingRequestsRes?.data || [];
+        
+        const requestIndex = new Map();
+        rawRequests.forEach(req => {
+          const key = `${req.customer_id || customerProfile.id}:${normalizeHostingKey(req.package_name || req.package_type || req.packageName)}`;
+          requestIndex.set(key, req);
+        });
+
+        const linkedRequestIds = new Set();
+        
+        const enrichedPackages = rawPackages.map(pkg => {
+          const key = `${pkg.customer_id || customerProfile.id}:${normalizeHostingKey(pkg.package_name || pkg.package_type || pkg.packageName)}`;
+          const linkedRequest = requestIndex.get(key) || null;
+          if (linkedRequest) linkedRequestIds.add(linkedRequest.id);
+          
+          const raw = linkedRequest?.package_type || linkedRequest?.notes || pkg.package_type || pkg.notes || '';
+          const billingPeriod = pkg.billing_period || linkedRequest?.billing_period || parseRequestField(raw, 'Billing');
+          const expiryDate = pkg.expiry_date || linkedRequest?.expiry_date || null;
+          
+          return {
+            ...pkg,
+            billing_period: billingPeriod,
+            expiry_date: expiryDate,
+          };
+        });
+
+        const unlinkedRequests = rawRequests.filter(r => !linkedRequestIds.has(r.id)).map(r => {
+          const raw = r.package_type || r.notes || '';
+          const billingPeriod = parseRequestField(raw, 'Billing');
+          return {
+            ...r,
+            billing_period: billingPeriod,
+          };
+        });
+
+        const combinedHosting = [...enrichedPackages, ...unlinkedRequests];
+
+        const activeHostingSet = new Set();
+        combinedHosting.forEach(h => {
+          if (isHostingActive(h)) {
+            const key = String(h.package_name || h.package_type || h.packageName || '').toLowerCase().trim();
+            if (key) activeHostingSet.add(key);
           }
         });
-        (hostingRequestsRes?.data || []).forEach(h => {
-          const pkgName = h.package_name || h.package_type || h.packageName;
-          const domName = h.domain_name || h.domain;
-          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
-          if (!seenHostings.has(key) && (pkgName || domName)) {
-            seenHostings.add(key);
-            combinedHostingsCount++;
-          }
-        });
-        setHostingCount(combinedHostingsCount);
+        setHostingCount(activeHostingSet.size);
 
         // Emails count
-        setEmailsCount(emailRequestsRes?.data?.length || 0);
+        const activeEmails = (emailRequestsRes?.data || []).filter(isEmailActive);
+        setEmailsCount(activeEmails.length);
 
       } catch (error) {
         console.error('Error fetching impersonated dashboard counts:', error);

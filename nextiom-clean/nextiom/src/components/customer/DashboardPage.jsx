@@ -588,11 +588,44 @@ function ServiceHealthCard({ data, c, isDark }) {
   ];
 
   const getServiceState = (key) => {
-    const val = data.serviceHealth[key];
-    const count = data.serviceHealth[key + 'Count'] || 0;
-    if (val === 'active') return { color: '#16a34a', label: `Active (${count})`, dot: '#16a34a' };
-    if (val === 'expired') return { color: '#dc2626', label: 'Expired', dot: '#dc2626' };
-    return { color: subText, label: 'Inactive', dot: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' };
+    const activeCount = data.serviceHealth[key + 'Count'] || 0;
+    const expiredCount = data.serviceHealth[key + 'ExpiredCount'] || 0;
+
+    if (activeCount === 0 && expiredCount === 0) {
+      return {
+        color: subText,
+        dot: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
+        label: <span style={{ color: subText }}>Inactive</span>
+      };
+    }
+
+    if (activeCount > 0 && expiredCount === 0) {
+      return {
+        color: '#16a34a',
+        dot: '#16a34a',
+        label: <span style={{ color: '#16a34a' }}>Active ({activeCount})</span>
+      };
+    }
+
+    if (activeCount === 0 && expiredCount > 0) {
+      return {
+        color: '#dc2626',
+        dot: '#dc2626',
+        label: <span style={{ color: '#dc2626' }}>Expired ({expiredCount})</span>
+      };
+    }
+
+    return {
+      color: '#f97316',
+      dot: '#f97316',
+      label: (
+        <span>
+          <span style={{ color: '#16a34a' }}>Active ({activeCount})</span>
+          <span style={{ color: subText }}>, </span>
+          <span style={{ color: '#dc2626' }}>Expired ({expiredCount})</span>
+        </span>
+      )
+    };
   };
 
   return (
@@ -636,9 +669,9 @@ function ServiceHealthCard({ data, c, isDark }) {
               <Icon style={{ width: 14, height: 14, color: state.color, flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ color: subText, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 1px' }}>{label}</p>
-                <p style={{ color: state.color, fontSize: 11, fontWeight: 700, margin: 0 }}>{state.label}</p>
+                <p style={{ fontSize: 11, fontWeight: 700, margin: 0 }}>{state.label}</p>
               </div>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: state.dot, flexShrink: 0, boxShadow: state.color !== subText ? `0 0 6px ${state.dot}80` : 'none' }} />
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: state.dot, flexShrink: 0, boxShadow: state.dot !== (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') ? `0 0 6px ${state.dot}80` : 'none' }} />
             </div>
           );
         })}
@@ -774,7 +807,16 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       hosting: 'unknown',
       domain: 'unknown',
       email: 'unknown',
+      products: 'unknown',
       renewalSoon: false,
+      hostingCount: 0,
+      hostingExpiredCount: 0,
+      domainCount: 0,
+      domainExpiredCount: 0,
+      emailCount: 0,
+      emailExpiredCount: 0,
+      productsCount: 0,
+      productsExpiredCount: 0,
     },
     renewalAlerts: [],
     latestAnnouncement: null,
@@ -831,16 +873,16 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           latestAnnouncementRes,
           jobsRes
         ] = await Promise.all([
-          supabase.from('domain_requests').select('id, status, created_at, domain_name').eq('customer_id', customerId).order('created_at', { ascending: false }),
-          supabase.from('hosting_requests').select('id, status, created_at, package_type').eq('customer_id', customerId).order('created_at', { ascending: false }),
-          supabase.from('email_requests').select('id, status, created_at, email').eq('customer_id', customerId).order('created_at', { ascending: false }),
+          supabase.from('domain_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }),
+          supabase.from('hosting_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }),
+          supabase.from('email_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }),
           supabase.from('notifications').select('id, title, message, type, created_at, read_status').eq('customer_id', customerId).order('created_at', { ascending: false }).limit(15),
           supabase.from('invoices').select('total, currency, status, invoice_date, due_date').eq('client_email', user.email),
           supabase.from('customers').select('notifications_cleared_at').eq('id', customerId).maybeSingle(),
           supabase.from('licenses').select('*, products(id, name, type, license_type, category)').eq('customer_id', customerId),
           supabase.from('hosting_packages').select('*').eq('customer_id', customerId),
           supabase.from('domains').select('*').eq('customer_id', customerId),
-          supabase.from('email_requests').select('id, email, status, expiry_date').eq('customer_id', customerId),
+          supabase.from('email_requests').select('*').eq('customer_id', customerId),
           supabase.from('notifications').select('id, title, message, created_at, start_date, end_date').eq('customer_id', customerId).eq('type', 'announcement').order('created_at', { ascending: false }).limit(5),
           supabase.from('jobs').select('*').eq('customer_id', customerId).order('created_date', { ascending: false })
         ]);
@@ -899,26 +941,165 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         const older3 = chartData.slice(0, 3).reduce((s, d) => s + d.count, 0);
         const growth = older3 === 0 ? (recent3 > 0 ? 100 : 0) : Math.round(((recent3 - older3) / older3) * 100);
 
-        // Deduplicate and count active hostings
-        const activeHostingSet = new Set();
-        const activeHostingList1 = (hostingPackagesRes.data || []).filter(h => ['active', 'connected', 'approved'].includes(String(h.status || '').toLowerCase()));
-        const activeHostingList2 = (hostingRes.data || []).filter(h => ['active', 'connected', 'approved'].includes(String(h.status || '').toLowerCase()));
-        
-        activeHostingList1.forEach(h => {
-          const key = String(h.package_name || h.package_type || h.packageName || '').toLowerCase().trim();
-          if (key) activeHostingSet.add(key);
-        });
-        activeHostingList2.forEach(h => {
-          const key = String(h.package_name || h.package_type || h.packageName || '').toLowerCase().trim();
-          if (key) activeHostingSet.add(key);
-        });
-        const hasActiveHosting = activeHostingList1.length > 0 || activeHostingList2.length > 0;
-        const hostingActiveCount = activeHostingSet.size;
+        const getDaysUntilExpiry = (expiryDate) => {
+          if (!expiryDate) return null;
+          const now = new Date(); now.setHours(0, 0, 0, 0);
+          const exp = new Date(expiryDate); exp.setHours(0, 0, 0, 0);
+          return Math.ceil((exp.getTime() - now.getTime()) / 86400000);
+        };
 
-        // Deduplicate and count active domains
+        const getBillingMonths = (billing) => {
+          const b = String(billing || '').toLowerCase();
+          if (b.includes('yearly') || b.includes('annual')) return 12;
+          if (b.includes('6')) return 6;
+          if (b.includes('3')) return 3;
+          return 1;
+        };
+
+        const parseRequestField = (raw, label) => {
+          if (!raw) return null;
+          const regex = new RegExp(`${label}:\\s*([^|;\\n]+)`, 'i');
+          const match = raw.match(regex);
+          return match?.[1]?.trim() || null;
+        };
+
+        const getHostingExpiryDate = (h) => {
+          if (h.expiry_date) return new Date(h.expiry_date);
+          const isApproved = ['active', 'connected', 'approved', 'completed'].includes(String(h.status || '').toLowerCase());
+          if (!isApproved) return null;
+          const updated = h.updated_at || h.created_at;
+          if (!updated) return null;
+          const base = new Date(updated);
+          const raw = h.package_type || h.notes || '';
+          const billingPeriod = parseRequestField(raw, 'Billing') || h.billing_period;
+          base.setMonth(base.getMonth() + getBillingMonths(billingPeriod));
+          return base;
+        };
+
+        const isHostingActive = (h) => {
+          const status = String(h.status || '').toLowerCase();
+          const approved = ['active', 'connected', 'approved', 'completed'].includes(status);
+          if (!approved) return false;
+          const exp = getHostingExpiryDate(h);
+          if (exp) {
+            return exp.getTime() >= new Date().getTime();
+          }
+          return true;
+        };
+
+        const isHostingExpired = (h) => {
+          const status = String(h.status || '').toLowerCase();
+          if (status === 'expired') return true;
+          const exp = getHostingExpiryDate(h);
+          if (exp) {
+            return exp.getTime() < new Date().getTime();
+          }
+          return false;
+        };
+
+        const isDomainActive = (d) => {
+          const status = String(d.status || '').toLowerCase();
+          const approved = ['active', 'registered', 'approved', 'connected', 'completed'].includes(status);
+          if (!approved) return false;
+          const isExpired = d.expiry_date && new Date(d.expiry_date).getTime() < new Date().getTime();
+          return !isExpired;
+        };
+
+        const isDomainExpired = (d) => {
+          const status = String(d.status || '').toLowerCase();
+          if (status === 'expired') return true;
+          const isExpired = d.expiry_date && new Date(d.expiry_date).getTime() < new Date().getTime();
+          return !!isExpired;
+        };
+
+        const isEmailActive = (e) => {
+          const status = String(e.status || '').toLowerCase();
+          const approved = ['active', 'connected', 'approved', 'completed'].includes(status);
+          if (!approved) return false;
+          const isExpired = e.expiry_date && new Date(e.expiry_date).getTime() < new Date().getTime();
+          return !isExpired;
+        };
+
+        const isEmailExpired = (e) => {
+          const status = String(e.status || '').toLowerCase();
+          if (status === 'expired') return true;
+          const isExpired = e.expiry_date && new Date(e.expiry_date).getTime() < new Date().getTime();
+          return !!isExpired;
+        };
+
+        // Deduplicate and combine hosting packages and requests
+        const normalizeHostingKey = (value) => String(value || '').split('|')[0].trim().toLowerCase();
+        
+        const rawPackages = hostingPackagesRes.data || [];
+        const rawRequests = hostingRes.data || [];
+        
+        const requestIndex = new Map();
+        rawRequests.forEach(req => {
+          const key = `${req.customer_id || customerId}:${normalizeHostingKey(req.package_name || req.package_type || req.packageName)}`;
+          requestIndex.set(key, req);
+        });
+
+        const linkedRequestIds = new Set();
+        
+        const enrichedPackages = rawPackages.map(pkg => {
+          const key = `${pkg.customer_id || customerId}:${normalizeHostingKey(pkg.package_name || pkg.package_type || pkg.packageName)}`;
+          const linkedRequest = requestIndex.get(key) || null;
+          if (linkedRequest) linkedRequestIds.add(linkedRequest.id);
+          
+          const raw = linkedRequest?.package_type || linkedRequest?.notes || pkg.package_type || pkg.notes || '';
+          const billingPeriod = pkg.billing_period || linkedRequest?.billing_period || parseRequestField(raw, 'Billing');
+          const expiryDate = pkg.expiry_date || linkedRequest?.expiry_date || null;
+          
+          return {
+            ...pkg,
+            billing_period: billingPeriod,
+            expiry_date: expiryDate,
+          };
+        });
+
+        const unlinkedRequests = rawRequests.filter(r => !linkedRequestIds.has(r.id)).map(r => {
+          const raw = r.package_type || r.notes || '';
+          const billingPeriod = parseRequestField(raw, 'Billing');
+          return {
+            ...r,
+            billing_period: billingPeriod,
+          };
+        });
+
+        const combinedHosting = [...enrichedPackages, ...unlinkedRequests];
+
+        const activeHostingSet = new Set();
+        const expiredHostingSet = new Set();
+        combinedHosting.forEach(h => {
+          const key = String(h.package_name || h.package_type || h.packageName || '').toLowerCase().trim();
+          if (key) {
+            if (isHostingActive(h)) {
+              activeHostingSet.add(key);
+            } else if (isHostingExpired(h)) {
+              expiredHostingSet.add(key);
+            }
+          }
+        });
+        activeHostingSet.forEach(key => {
+          expiredHostingSet.delete(key);
+        });
+        const hostingActiveCount = activeHostingSet.size;
+        const hostingExpiredCount = expiredHostingSet.size;
+
+        let hostingStatus = 'inactive';
+        if (combinedHosting.length > 0) {
+          const hasActive = hostingActiveCount > 0;
+          const hasExpired = hostingExpiredCount > 0;
+          hostingStatus = hasActive ? 'active' : (hasExpired ? 'expired' : 'inactive');
+        }
+
+        // Deduplicate and count active/expired domains
         const activeDomainSet = new Set();
-        const activeDomainList1 = (domainsRes.data || []).filter(d => ['active', 'registered', 'approved', 'connected'].includes(String(d.status || '').toLowerCase()));
-        const activeDomainList2 = (domainRes.data || []).filter(d => ['active', 'registered', 'approved', 'connected'].includes(String(d.status || '').toLowerCase()));
+        const expiredDomainSet = new Set();
+        const activeDomainList1 = (domainsRes.data || []).filter(isDomainActive);
+        const activeDomainList2 = (domainRes.data || []).filter(isDomainActive);
+        const expiredDomainList1 = (domainsRes.data || []).filter(isDomainExpired);
+        const expiredDomainList2 = (domainRes.data || []).filter(isDomainExpired);
 
         activeDomainList1.forEach(d => {
           const key = String(d.domain_name || d.name || '').toLowerCase().trim();
@@ -928,19 +1109,54 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           const key = String(d.domain_name || d.name || '').toLowerCase().trim();
           if (key) activeDomainSet.add(key);
         });
-        const hasActiveDomain = activeDomainList1.length > 0 || activeDomainList2.length > 0;
+
+        expiredDomainList1.forEach(d => {
+          const key = String(d.domain_name || d.name || '').toLowerCase().trim();
+          if (key) expiredDomainSet.add(key);
+        });
+        expiredDomainList2.forEach(d => {
+          const key = String(d.domain_name || d.name || '').toLowerCase().trim();
+          if (key) expiredDomainSet.add(key);
+        });
+
+        activeDomainSet.forEach(key => {
+          expiredDomainSet.delete(key);
+        });
         const domainActiveCount = activeDomainSet.size;
+        const domainExpiredCount = expiredDomainSet.size;
 
-        const activeEmailList = (emailsRes.data || []).filter(e => ['active', 'connected', 'approved', 'completed'].includes(String(e.status || '').toLowerCase()));
-        const hasActiveEmail = activeEmailList.length > 0;
-        const emailActiveCount = activeEmailList.length;
+        let domainStatus = 'inactive';
+        const allDomains = [...(domainsRes.data || []), ...(domainRes.data || [])];
+        if (allDomains.length > 0) {
+          const hasActive = domainActiveCount > 0;
+          const hasExpired = domainExpiredCount > 0;
+          domainStatus = hasActive ? 'active' : (hasExpired ? 'expired' : 'inactive');
+        }
 
-        const getDaysUntilExpiry = (expiryDate) => {
-          if (!expiryDate) return null;
-          const now = new Date(); now.setHours(0, 0, 0, 0);
-          const exp = new Date(expiryDate); exp.setHours(0, 0, 0, 0);
-          return Math.ceil((exp.getTime() - now.getTime()) / 86400000);
-        };
+        const activeEmailSet = new Set();
+        const expiredEmailSet = new Set();
+        (emailsRes.data || []).forEach(e => {
+          const key = String(e.email || '').toLowerCase().trim();
+          if (key) {
+            if (isEmailActive(e)) {
+              activeEmailSet.add(key);
+            } else if (isEmailExpired(e)) {
+              expiredEmailSet.add(key);
+            }
+          }
+        });
+        activeEmailSet.forEach(key => {
+          expiredEmailSet.delete(key);
+        });
+        const emailActiveCount = activeEmailSet.size;
+        const emailExpiredCount = expiredEmailSet.size;
+
+        let emailStatus = 'inactive';
+        if ((emailsRes.data || []).length > 0) {
+          const hasActive = emailActiveCount > 0;
+          const hasExpired = emailExpiredCount > 0;
+          emailStatus = hasActive ? 'active' : (hasExpired ? 'expired' : 'inactive');
+        }
 
         const renewalAlerts = [];
 
@@ -954,20 +1170,33 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           }
         });
 
-        (hostingPackagesRes.data || []).forEach(h => {
-          if (h.expiry_date) {
-            const days = getDaysUntilExpiry(h.expiry_date);
+        combinedHosting.forEach(h => {
+          const exp = getHostingExpiryDate(h);
+          if (exp) {
+            const days = getDaysUntilExpiry(exp);
             if (days !== null && days >= 0 && days <= 30) {
               const planName = h.package_name || h.package_type || h.packageName || 'Hosting Plan';
               const displayName = planName.split('|')[0]?.trim() || 'Hosting Plan';
-              const domainName = h.domain_name || h.domain || 'No domain';
+              const domainName = h.domain || h.domain_name || 'No domain';
               renewalAlerts.push({ type: 'hosting', name: displayName, days, message: `Hosting ${displayName} (${domainName}) expires in ${days} day${days !== 1 ? 's' : ''}.` });
+            }
+          }
+        });
+
+        (emailsRes.data || []).forEach(e => {
+          if (e.expiry_date) {
+            const days = getDaysUntilExpiry(e.expiry_date);
+            if (days !== null && days >= 0 && days <= 30) {
+              const name = e.email || 'Email Account';
+              renewalAlerts.push({ type: 'email', name, days, message: `Email ${name} expires in ${days} day${days !== 1 ? 's' : ''}.` });
             }
           }
         });
 
         const licenses = productsRes.data || [];
         let hasExpiredProducts = false;
+        let productsActiveCount = 0;
+        let productsExpiredCount = 0;
 
         licenses.forEach(l => {
           const prodName = l.products?.name || l.name || 'Software Product';
@@ -991,8 +1220,14 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           if (isLickExpired) {
             hasExpiredProducts = true;
             renewalAlerts.push({ type: 'product', name: prodName, days: days !== null ? days : -1, message: `Product ${prodName} has expired.` });
-          } else if (isLickExpiringSoon) {
-            renewalAlerts.push({ type: 'product', name: prodName, days, message: `Product ${prodName} expires in ${days} day${days !== 1 ? 's' : ''}.` });
+            productsExpiredCount++;
+          } else {
+            if (l.status !== 'Disabled' && l.status !== 'Suspended') {
+              productsActiveCount++;
+            }
+            if (isLickExpiringSoon) {
+              renewalAlerts.push({ type: 'product', name: prodName, days, message: `Product ${prodName} expires in ${days} day${days !== 1 ? 's' : ''}.` });
+            }
           }
         });
 
@@ -1029,19 +1264,11 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
         const totalProducts = licenses.length;
         let productsStatus = 'inactive';
-        if (licenses.length > 0) { productsStatus = hasExpiredProducts ? 'expired' : 'active'; }
-
-        const activeProductsCount = licenses.filter(l => {
-          if (l.status === 'Expired' || l.status === 'Disabled' || l.status === 'Suspended') {
-            return false;
-          }
-          const lt = l.license_type || l.products?.license_type || 'one_time';
-          if ((lt === 'yearly' || lt === 'monthly') && l.expiry_date) {
-            const days = getDaysUntilExpiry(l.expiry_date);
-            if (days !== null && days <= 0) return false;
-          }
-          return true;
-        }).length;
+        if (licenses.length > 0) {
+          const hasActive = productsActiveCount > 0;
+          const hasExpired = productsExpiredCount > 0;
+          productsStatus = hasActive ? 'active' : (hasExpired ? 'expired' : 'inactive');
+        }
 
         setData({
           chartData, totalOrders: allOrders.length, approvedOrders: approved.length,
@@ -1049,15 +1276,19 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           successRate: allOrders.length === 0 ? 0 : Math.round((approved.length / allOrders.length) * 100),
           growth, recentActivity: activityItems, invoiceSummary,
           serviceHealth: {
-            hosting: hasActiveHosting ? 'active' : 'inactive',
-            domain: hasActiveDomain ? 'active' : 'inactive',
-            email: hasActiveEmail ? 'active' : 'inactive',
+            hosting: hostingStatus,
+            domain: domainStatus,
+            email: emailStatus,
             products: productsStatus,
             renewalSoon: hasRenewalSoon,
             hostingCount: hostingActiveCount,
+            hostingExpiredCount,
             domainCount: domainActiveCount,
+            domainExpiredCount,
             emailCount: emailActiveCount,
-            productsCount: activeProductsCount,
+            emailExpiredCount,
+            productsCount: productsActiveCount,
+            productsExpiredCount,
           },
           renewalAlerts,
           latestAnnouncement: (() => {

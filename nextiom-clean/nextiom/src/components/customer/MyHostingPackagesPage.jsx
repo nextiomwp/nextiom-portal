@@ -114,18 +114,47 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
         if (linkedRequest) linkedRequestIds.add(linkedRequest.id);
         const parsed = linkedRequest ? parseHostingRequest(linkedRequest) : parseHostingRequest(pkg);
 
+        const billingPeriod = pkg.billing_period || linkedRequest?.billing_period || parsed.billing_period;
+        const start_date = pkg.start_date || linkedRequest?.start_date || linkedRequest?.updated_at || pkg.created_at;
+
+        // Calculate expiry date
+        let expiryDate = null;
+        if (pkg.expiry_date || linkedRequest?.expiry_date) {
+          expiryDate = new Date(pkg.expiry_date || linkedRequest.expiry_date);
+        } else {
+          const isApproved = ['active', 'approved', 'completed'].includes(String(pkg.status || '').toLowerCase());
+          if (isApproved && (pkg.updated_at || pkg.created_at)) {
+            const base = new Date(pkg.updated_at || pkg.created_at);
+            base.setMonth(base.getMonth() + billingMonths(billingPeriod));
+            expiryDate = base;
+          }
+        }
+
+        let isExpired = false;
+        if (expiryDate) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const exp = new Date(expiryDate);
+          exp.setHours(0, 0, 0, 0);
+          isExpired = today.getTime() > exp.getTime();
+        }
+
+        const initialStatus = pkg.status || 'Active';
+        const displayStatus = isExpired ? 'Expired' : initialStatus;
+
         return {
           ...pkg,
+          status: displayStatus,
           package_type: pkg.package_type || linkedRequest?.package_type || parsed.plan,
           packageName: pkg.packageName || pkg.package_name || parsed.plan,
           package_name: pkg.package_name || pkg.packageName || parsed.plan,
           hosting_type: pkg.hosting_type || linkedRequest?.hosting_type || parsed.hosting_type,
           plan_name: pkg.plan_name || linkedRequest?.plan_name || parsed.plan_name,
-          billing_period: pkg.billing_period || linkedRequest?.billing_period || parsed.billing_period,
+          billing_period: billingPeriod,
           domain: pkg.domain || linkedRequest?.domain || parsed.domain || 'N/A',
           notes: pkg.notes || linkedRequest?.notes || parsed.notes,
-          start_date: pkg.start_date || linkedRequest?.start_date || linkedRequest?.updated_at || pkg.created_at,
-          expiry_date: pkg.expiry_date || linkedRequest?.expiry_date || null,
+          start_date: start_date,
+          expiry_date: expiryDate ? expiryDate.toISOString() : null,
           disk_usage_limit: pkg.disk_usage_limit || linkedRequest?.disk_usage_limit || null,
           bandwidth_limit: pkg.bandwidth_limit || linkedRequest?.bandwidth_limit || null,
           currency: pkg.currency || linkedRequest?.currency || 'LKR',
@@ -139,20 +168,34 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
         ...enrichedPackages,
         ...(Array.isArray(reqs) ? reqs : []).filter(r => !linkedRequestIds.has(r.id)).map(r => {
           const parsed = parseHostingRequest(r);
+          let expiryDate = null;
+          if (r.expiry_date) {
+            expiryDate = new Date(r.expiry_date);
+          }
+          let isExpired = false;
+          if (expiryDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const exp = new Date(expiryDate);
+            exp.setHours(0, 0, 0, 0);
+            isExpired = today.getTime() > exp.getTime();
+          }
+          const initialStatus = String(r.status || '').toLowerCase() === 'pending' ? 'Pending Setup' : r.status;
+          const displayStatus = isExpired ? 'Expired' : initialStatus;
           return {
             ...r,
             id: `req-${r.id}`,
+            status: displayStatus,
             package_type: parsed.plan,
             packageName: parsed.plan,
             plan: parsed.plan,
             hosting_type: parsed.hosting_type,
             plan_name: parsed.plan_name,
             billing_period: parsed.billing_period,
-            status: String(r.status || '').toLowerCase() === 'pending' ? 'Pending Setup' : r.status,
             domain: parsed.domain || 'N/A',
             notes: parsed.notes,
             start_date: r.start_date || r.updated_at || r.created_at,
-            expiry_date: r.expiry_date || null,
+            expiry_date: expiryDate ? expiryDate.toISOString() : null,
             disk_usage_limit: r.disk_usage_limit || null,
             bandwidth_limit: r.bandwidth_limit || null,
             currency: r.currency || 'LKR',
