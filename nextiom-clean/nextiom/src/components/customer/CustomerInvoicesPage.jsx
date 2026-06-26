@@ -806,65 +806,63 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
         <div style={{ padding: 22, overflowY: 'auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 22 }}>
           {/* Left: form */}
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
-              <div style={{ position: 'relative' }} ref={dropdownRef}>
-                <label style={label}>Bank Account Name *</label>
-                <input
-                  style={inp}
-                  value={bankName}
-                  onChange={e => {
-                    setBankName(e.target.value);
-                    setShowDropdown(true);
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  placeholder="Type to search bank..."
-                />
-                {showDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    maxHeight: 180,
-                    overflowY: 'auto',
-                    background: isDark ? '#22252C' : '#fff',
-                    border: `1.5px solid ${c.border}`,
-                    borderRadius: 8,
-                    marginTop: 4,
-                    zIndex: 310,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  }}>
-                    {filteredBanks.length > 0 ? (
-                      filteredBanks.map(b => (
-                        <div
-                          key={b}
-                          onClick={() => {
-                            setBankName(b);
-                            setShowDropdown(false);
-                          }}
-                          style={{
-                            padding: '8px 12px',
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            color: c.text,
-                            transition: 'background 0.15s',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                          {b}
-                        </div>
-                      ))
-                    ) : (
-                      <div style={{ padding: '8px 12px', fontSize: 13, color: c.subText }}>No matches found</div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label style={label}>Reference Number / Transaction ID *</label>
-                <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. Bank/Paypal" />
-              </div>
+            <div style={{ position: 'relative', marginBottom: 14 }} ref={dropdownRef}>
+              <label style={label}>Bank Account Name *</label>
+              <input
+                style={inp}
+                value={bankName}
+                onChange={e => {
+                  setBankName(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                placeholder="Type to search bank..."
+              />
+              {showDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  background: isDark ? '#22252C' : '#fff',
+                  border: `1.5px solid ${c.border}`,
+                  borderRadius: 8,
+                  marginTop: 4,
+                  zIndex: 310,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}>
+                  {filteredBanks.length > 0 ? (
+                    filteredBanks.map(b => (
+                      <div
+                        key={b}
+                        onClick={() => {
+                          setBankName(b);
+                          setShowDropdown(false);
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          fontSize: 13,
+                          color: c.text,
+                          transition: 'background 0.15s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        {b}
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '8px 12px', fontSize: 13, color: c.subText }}>No matches found</div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={label}>Reference Number / Transaction ID *</label>
+              <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. Bank/Paypal" />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
