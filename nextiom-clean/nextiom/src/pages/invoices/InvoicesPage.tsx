@@ -128,6 +128,8 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
                 <div>
                   <div style={lbl}>Customer</div>
                   <div style={val}>{invoice.client_name} ({invoice.client_email})</div>
+                  <div style={lbl}>Bank Account Name</div>
+                  <div style={val}>{payment.bank_account_name || '—'}</div>
                   <div style={lbl}>Transaction ID / Reference</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
                   <div style={lbl}>Paid Amount (This Txn)</div>
@@ -515,7 +517,7 @@ function TimelineDrawer({ invoice, c, isDark, onClose }: {
         list.push({
           time: new Date(p.created_at),
           title: 'Payment Submitted',
-          desc: `Customer submitted payment of ${fmtCurrency(p.paid_amount, invoice.currency === 'USD' ? 'USD' : 'LKR')} (Ref: ${p.transaction_id}).${p.notes ? ` Notes: "${p.notes}"` : ''}`,
+          desc: `Customer submitted payment of ${fmtCurrency(p.paid_amount, invoice.currency === 'USD' ? 'USD' : 'LKR')}${p.bank_account_name ? ` via ${p.bank_account_name}` : ''} (Ref: ${p.transaction_id}).${p.notes ? ` Notes: "${p.notes}"` : ''}`,
           type: 'submitted'
         })
       }

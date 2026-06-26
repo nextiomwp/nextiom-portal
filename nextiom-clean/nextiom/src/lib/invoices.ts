@@ -445,6 +445,7 @@ export interface InvoicePayment {
   invoice_id: string
   customer_email?: string
   transaction_id: string
+  bank_account_name?: string
   paid_amount: number
   payment_date: string
   notes?: string
@@ -534,7 +535,7 @@ async function notifyCustomerByEmail(email: string, notif: { type: string; title
 
 export async function submitInvoicePayment(
   invoice: Invoice,
-  payment: { transaction_id: string; paid_amount: number; payment_date: string; notes?: string },
+  payment: { bank_account_name?: string; transaction_id: string; paid_amount: number; payment_date: string; notes?: string },
   file: File | null
 ): Promise<void> {
   await assertPortalActionsAllowed()
@@ -545,6 +546,7 @@ export async function submitInvoicePayment(
     invoice_id: invoice.id!,
     customer_email: invoice.client_email,
     transaction_id: payment.transaction_id,
+    bank_account_name: payment.bank_account_name ?? null,
     paid_amount: payment.paid_amount,
     payment_date: payment.payment_date,
     notes: payment.notes ?? null,

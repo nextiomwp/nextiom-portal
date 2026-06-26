@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Receipt, Wallet, CheckCircle, AlertTriangle, RefreshCw,
   Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
@@ -9,6 +9,34 @@ import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, subm
 import { assertPortalActionsAllowed } from '@/lib/storage';
 
 const PAGE_SIZE = 6;
+
+const BANK_NAMES = [
+  "Amana Bank",
+  "Bank of Ceylon",
+  "Bank of China",
+  "Cargills Bank",
+  "Citibank",
+  "Commercial Bank of Ceylon",
+  "Deutsche Bank",
+  "DFCC Bank",
+  "Habib Bank",
+  "Hatton National Bank",
+  "Indian Bank",
+  "Indian Overseas Bank",
+  "MCB Bank",
+  "National Development Bank",
+  "Nations Trust Bank",
+  "Pan Asia Bank",
+  "People's Bank",
+  "Public Bank Berhad",
+  "Sampath Bank",
+  "Seylan Bank",
+  "Standard Chartered Bank",
+  "State Bank of India",
+  "HSBC",
+  "Union Bank of Colombo",
+  "Paypal"
+];
 
 function svcIcon(type, size = 14) {
   const s = String(type || '').toLowerCase();
@@ -643,6 +671,8 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
                       <BadgeComponent status="payment_submitted" />
                     )}
                   </div>
+                  <div style={lbl}>Bank Account Name</div>
+                  <div style={val}>{payment.bank_account_name || '—'}</div>
                   <div style={lbl}>Transaction ID</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' }}>{payment.transaction_id}</div>
                   <div style={lbl}>Paid Amount</div>
@@ -703,6 +733,20 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
 
 function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, isMobile = false }) {
   const [txn, setTxn] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const remainingAmount = (invoice.total || 0) - (invoice.paid_amount || 0);
   const [amount, setAmount] = useState(String(remainingAmount > 0 ? remainingAmount : invoice.total ?? ''));
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
@@ -711,15 +755,21 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
 
+  const filteredBanks = BANK_NAMES.filter(b =>
+    b.toLowerCase().includes(bankName.toLowerCase())
+  );
+
   const handleSubmit = async () => {
     try {
       await assertPortalActionsAllowed();
-      if (!txn.trim()) { setErr('Transaction ID / reference is required'); return; }
+      if (!bankName.trim()) { setErr('Bank Account Name is required'); return; }
+      if (!txn.trim()) { setErr('Reference Number / Transaction ID is required'); return; }
       if (!amount || Number(amount) <= 0) { setErr('Paid amount is required'); return; }
       if (!payDate) { setErr('Payment date is required'); return; }
       setErr('');
       setSubmitting(true);
       await submitInvoicePayment(invoice, {
+        bank_account_name: bankName.trim(),
         transaction_id: txn.trim(),
         paid_amount: Number(amount),
         payment_date: payDate,
@@ -756,9 +806,65 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
         <div style={{ padding: 22, overflowY: 'auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 22 }}>
           {/* Left: form */}
           <div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={label}>Transaction ID / Reference *</label>
-              <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. Bank/Paypal" />
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div style={{ position: 'relative' }} ref={dropdownRef}>
+                <label style={label}>Bank Account Name *</label>
+                <input
+                  style={inp}
+                  value={bankName}
+                  onChange={e => {
+                    setBankName(e.target.value);
+                    setShowDropdown(true);
+                  }}
+                  onFocus={() => setShowDropdown(true)}
+                  placeholder="Type to search bank..."
+                />
+                {showDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    maxHeight: 180,
+                    overflowY: 'auto',
+                    background: isDark ? '#22252C' : '#fff',
+                    border: `1.5px solid ${c.border}`,
+                    borderRadius: 8,
+                    marginTop: 4,
+                    zIndex: 310,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  }}>
+                    {filteredBanks.length > 0 ? (
+                      filteredBanks.map(b => (
+                        <div
+                          key={b}
+                          onClick={() => {
+                            setBankName(b);
+                            setShowDropdown(false);
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            color: c.text,
+                            transition: 'background 0.15s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}
+                          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          {b}
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '8px 12px', fontSize: 13, color: c.subText }}>No matches found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label style={label}>Reference Number / Transaction ID *</label>
+                <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. Bank/Paypal" />
+              </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
