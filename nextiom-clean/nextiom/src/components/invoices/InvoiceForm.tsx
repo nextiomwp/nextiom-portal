@@ -246,8 +246,17 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
       invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: hasDueDate ? dueDate : null, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress,
-      items: items.filter(i => i.description.trim()), notes, total, settings,
+      items: items.filter(i => i.description.trim()).map(i => ({
+        ...i,
+        refunded: i.refunded ?? false
+      })),
+      notes, total, settings,
       service_name: serviceName,
+      refunded_amount: existing?.refunded_amount || 0,
+      refund_date: existing?.refund_date || null,
+      refund_reason: existing?.refund_reason || null,
+      refund_service_charge: existing?.refund_service_charge || 0,
+      paid_amount: existing?.paid_amount || 0
     }))
     window.open('/invoices/print', '_blank')
   }

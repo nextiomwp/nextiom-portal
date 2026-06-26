@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink, Clock } from 'lucide-react'
+import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink, Clock, RotateCcw } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments } from '@/lib/invoices'
+import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, getInvoice, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments, refundInvoice } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: 'Paid',    color: '#22c55e', bg: 'rgba(34,197,94,0.13)' },
@@ -9,6 +9,8 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   overdue: { label: 'Overdue', color: '#ef4444', bg: 'rgba(239,68,68,0.13)' },
   payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.13)' },
   partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.13)' },
+  refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.13)' },
+  partially_refunded: { label: 'Partially Refunded', color: '#ec4899', bg: 'rgba(236,72,153,0.13)' },
 }
 
 function getLocalDateString() {
@@ -21,7 +23,9 @@ function getLocalDateString() {
 
 function formatCollectedCurrencyBreakdown(invoices: Invoice[]) {
   const totals = invoices.reduce<Record<InvoiceCurrency, number>>((acc, inv) => {
-    acc[invoiceCurrency(inv)] += inv.paid_amount || 0
+    const paid = inv.paid_amount || (inv.status === 'paid' ? inv.total : 0)
+    const refunded = inv.refunded_amount || 0
+    acc[invoiceCurrency(inv)] += Math.max(0, paid - refunded)
     return acc
   }, { LKR: 0, USD: 0 })
   return (['LKR', 'USD'] as InvoiceCurrency[])
@@ -207,6 +211,256 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
             )}
           </div>
         )}
+      </div>
+    </>
+  )
+}
+
+function RefundDialog({ invoice, c, isDark, onClose, onChanged }: {
+  invoice: Invoice; c: any; isDark: boolean; onClose: () => void; onChanged: () => void
+}) {
+  const { toast } = useToast()
+  const [fullInvoice, setFullInvoice] = useState<Invoice | null>(null)
+  const [loadingInvoice, setLoadingInvoice] = useState(true)
+  const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
+  const [amount, setAmount] = useState('')
+  const [reason, setReason] = useState('')
+  const [serviceCharge, setServiceCharge] = useState('')
+  const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+
+  const total = Number(invoice.total || 0)
+  const paidAmt = Number(invoice.paid_amount || total)
+  const currentRefunded = Number(invoice.refunded_amount || 0)
+  const maxRefundable = Math.max(0, paidAmt - currentRefunded)
+
+  useEffect(() => {
+    setLoadingInvoice(true)
+    getInvoice(invoice.id!)
+      .then(res => {
+        setFullInvoice(res)
+        setLoadingInvoice(false)
+      })
+      .catch(() => {
+        toast({ title: 'Error', description: 'Failed to load invoice items', variant: 'destructive' })
+        setLoadingInvoice(false)
+      })
+  }, [invoice.id])
+
+  const allItemIds = useMemo(() => {
+    if (!fullInvoice || !fullInvoice.items) return []
+    return fullInvoice.items.map(item => item.id!)
+  }, [fullInvoice])
+
+  const selectedItemsTotal = useMemo(() => {
+    if (!fullInvoice || !fullInvoice.items) return 0
+    return fullInvoice.items
+      .filter(item => selectedItems.includes(item.id!))
+      .reduce((sum, item) => sum + (item.qty * item.unit_price - (item.discount || 0)), 0)
+  }, [fullInvoice, selectedItems])
+
+  const calculatedPartialAmount = useMemo(() => {
+    const charge = Number(serviceCharge) || 0
+    return Math.max(0, selectedItemsTotal - charge)
+  }, [selectedItemsTotal, serviceCharge])
+
+  useEffect(() => {
+    if (refundType === 'full') {
+      setAmount(String(maxRefundable))
+      setServiceCharge('0')
+    } else {
+      setAmount(String(calculatedPartialAmount))
+    }
+  }, [refundType, maxRefundable, calculatedPartialAmount])
+
+  const handleToggleItem = (itemId: string) => {
+    setSelectedItems(prev => {
+      if (prev.includes(itemId)) {
+        return prev.filter(x => x !== itemId)
+      } else {
+        return [...prev, itemId]
+      }
+    })
+  }
+
+  async function handleRefund() {
+    const refundAmt = Number(amount)
+    const chargeAmt = Number(serviceCharge) || 0
+
+    if (isNaN(refundAmt) || refundAmt < 0) {
+      toast({ title: 'Invalid amount', description: 'Please enter a valid refund amount.', variant: 'destructive' })
+      return
+    }
+
+    if (refundType === 'partial' && selectedItems.length === 0) {
+      toast({ title: 'No items selected', description: 'Please select at least one item to refund.', variant: 'destructive' })
+      return
+    }
+
+    if (refundAmt > maxRefundable) {
+      toast({ title: 'Amount exceeds limit', description: `Maximum refundable amount is ${fmtCurrency(maxRefundable, invoiceCurrency(invoice))}`, variant: 'destructive' })
+      return
+    }
+
+    setBusy(true)
+    try {
+      const itemsToRefund = refundType === 'full' ? allItemIds : selectedItems
+      await refundInvoice(invoice.id!, refundAmt, reason.trim(), chargeAmt, itemsToRefund)
+      toast({ title: 'Refund processed successfully' })
+      onChanged()
+      onClose()
+    } catch (e: any) {
+      toast({ title: 'Failed to process refund', description: e.message || 'Something went wrong', variant: 'destructive' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase' as const, letterSpacing: 0.6, marginBottom: 4 }
+  const val: React.CSSProperties = { fontSize: 13, color: c.text, marginBottom: 10 }
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8,
+    background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 13,
+    outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit'
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 300 }} />
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 560, maxWidth: '95vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+        <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <RotateCcw size={18} style={{ color: '#E87B35' }} />
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Process Refund — {invoice.invoice_no}</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
+        </div>
+
+        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+          {loadingInvoice ? (
+            <div style={{ color: c.subText, fontSize: 13, textAlign: 'center', padding: 20 }}>Loading invoice details…</div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <div style={lbl}>Client</div>
+                  <div style={val}>{invoice.client_name}</div>
+                </div>
+                <div>
+                  <div style={lbl}>Invoice Total</div>
+                  <div style={val}>{fmtCurrency(total, invoiceCurrency(invoice))}</div>
+                </div>
+                <div>
+                  <div style={lbl}>Paid Amount</div>
+                  <div style={val}>{fmtCurrency(paidAmt, invoiceCurrency(invoice))}</div>
+                </div>
+                <div>
+                  <div style={lbl}>Already Refunded</div>
+                  <div style={val}>{fmtCurrency(currentRefunded, invoiceCurrency(invoice))}</div>
+                </div>
+              </div>
+
+              <div style={{ height: '1px', background: c.border, margin: '6px 0' }} />
+
+              <div>
+                <div style={lbl}>Refund Type</div>
+                <div style={{ display: 'flex', gap: 16, marginTop: 4, marginBottom: 12 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: c.text, cursor: 'pointer' }}>
+                    <input type="radio" checked={refundType === 'full'} onChange={() => setRefundType('full')} style={{ accentColor: c.brand }} disabled={maxRefundable <= 0} />
+                    Full Refund ({fmtCurrency(maxRefundable, invoiceCurrency(invoice))})
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: c.text, cursor: 'pointer' }}>
+                    <input type="radio" checked={refundType === 'partial'} onChange={() => setRefundType('partial')} style={{ accentColor: c.brand }} disabled={maxRefundable <= 0} />
+                    Partial Refund
+                  </label>
+                </div>
+              </div>
+
+              {refundType === 'partial' && (
+                <div>
+                  <div style={{ ...lbl, marginBottom: 8 }}>Select Items & Packages to Refund</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWait: '180px', overflowY: 'auto', border: `1px solid ${c.border}`, borderRadius: 8, padding: 12, background: isDark ? 'rgba(0,0,0,0.15)' : '#fafafa' }}>
+                    {(fullInvoice?.items || []).map(item => {
+                      const itemAmt = item.qty * item.unit_price - (item.discount || 0)
+                      return (
+                        <label key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 13, color: c.text, cursor: 'pointer', padding: '6px 4px', borderBottom: `1px solid ${c.border}`, last: { borderBottom: 'none' } }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.includes(item.id!)}
+                            onChange={() => handleToggleItem(item.id!)}
+                            style={{ accentColor: c.brand, marginTop: 3 }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600 }}>{item.description}</div>
+                            <div style={{ fontSize: 11, color: c.subText }}>Qty: {item.qty} × {fmtCurrency(item.unit_price, invoiceCurrency(invoice))} {item.discount ? `(Disc: ${fmtCurrency(item.discount, invoiceCurrency(invoice))})` : ''}</div>
+                          </div>
+                          <div style={{ fontWeight: 700, fontFamily: 'monospace' }}>
+                            {fmtCurrency(itemAmt, invoiceCurrency(invoice))}
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {refundType === 'partial' && (
+                  <div>
+                    <div style={lbl}>Service Charge ({invoiceCurrency(invoice)})</div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={serviceCharge}
+                      onChange={e => setServiceCharge(e.target.value)}
+                      placeholder="e.g. 500"
+                      style={inp}
+                      disabled={busy}
+                    />
+                  </div>
+                )}
+                <div>
+                  <div style={lbl}>Net Refund Amount ({invoiceCurrency(invoice)})</div>
+                  <input
+                    type="text"
+                    value={fmtCurrency(Number(amount) || 0, invoiceCurrency(invoice))}
+                    style={{ ...inp, background: isDark ? '#1C1E24' : '#eee', fontWeight: 700, cursor: 'not-allowed' }}
+                    disabled={true}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div style={lbl}>Refund Reason / Notes (Viewable in PDF)</div>
+                <textarea
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  placeholder="Reason for refund and service charge details..."
+                  style={{ ...inp, minHeight: 70, resize: 'vertical' }}
+                  disabled={busy}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ padding: '14px 22px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, background: isDark ? 'rgba(0,0,0,0.1)' : '#fafafa', flexShrink: 0 }}>
+          <button onClick={onClose} disabled={busy} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+            Cancel
+          </button>
+          <button
+            onClick={handleRefund}
+            disabled={busy || maxRefundable <= 0 || loadingInvoice}
+            style={{
+              padding: '8px 20px', border: 'none', background: '#E87B35', color: '#fff',
+              borderRadius: 8, cursor: busy || maxRefundable <= 0 || loadingInvoice ? 'not-allowed' : 'pointer',
+              fontSize: 13, fontWeight: 700, fontFamily: 'inherit', opacity: busy || maxRefundable <= 0 || loadingInvoice ? 0.6 : 1
+            }}
+          >
+            {busy ? 'Processing...' : 'Process Refund'}
+          </button>
+        </div>
       </div>
     </>
   )
@@ -515,6 +769,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [reviewInvoice, setReviewInvoice] = useState<Invoice | null>(null)
   const [timelineInvoice, setTimelineInvoice] = useState<Invoice | null>(null)
+  const [refundInvoice, setRefundInvoice] = useState<Invoice | null>(null)
   const [checkedIds, setCheckedIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('nextiom_checked_invoices')
@@ -743,6 +998,8 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
               <option value="overdue">Overdue</option>
               <option value="payment_submitted">Pending Review</option>
               <option value="partially_paid">Partially Paid</option>
+              <option value="refunded">Refunded</option>
+              <option value="partially_refunded">Partially Refunded</option>
             </select>
             <select
               value={customerFilter}
@@ -902,6 +1159,11 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                           <CreditCard size={14} />
                         </button>
                       )}
+                      {(inv.status === 'paid' || inv.status === 'partially_paid' || inv.status === 'partially_refunded') && (
+                        <button onClick={() => setRefundInvoice(inv)} style={{ background: 'none', border: 'none', color: '#ec4899', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Refund">
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
                       <button onClick={() => onEdit(inv.id!)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Edit">
                         <Edit3 size={14} />
                       </button>
@@ -946,6 +1208,16 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
           c={c}
           isDark={isDark}
           onClose={() => setTimelineInvoice(null)}
+        />
+      )}
+
+      {refundInvoice && (
+        <RefundDialog
+          invoice={refundInvoice}
+          c={c}
+          isDark={isDark}
+          onClose={() => setRefundInvoice(null)}
+          onChanged={load}
         />
       )}
 

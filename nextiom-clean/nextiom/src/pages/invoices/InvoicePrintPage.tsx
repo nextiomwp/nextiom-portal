@@ -85,7 +85,8 @@ export default function InvoicePrintPage() {
   )
 
   const { invoice_no, invoice_date, due_date, client_name, client_company,
-          client_phone, client_email, client_address, items = [], notes, total, status, settings: s } = data
+          client_phone, client_email, client_address, items = [], notes, total, status,
+          refunded_amount, refund_date, refund_reason, refund_service_charge, settings: s } = data
   const currency: InvoiceCurrency = data.currency === 'USD' ? 'USD' : 'LKR'
   const paymentImage = currency === 'USD' ? '/NEXTIOM_USD.png' : '/NEXTIOM_LKR.png'
   const printInvoiceDate = formatPrintDate(invoice_date)
@@ -159,7 +160,41 @@ export default function InvoicePrintPage() {
           borderRadius: 14,
           boxShadow: '0 8px 48px rgba(0,0,0,0.12)',
           fontFamily: "'DM Sans', sans-serif",
+          position: 'relative',
         }}>
+
+          {(status === 'refunded' || status === 'partially_refunded') && (
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              top: '40%',
+              transform: 'translate(-50%, -50%) rotate(-25deg)',
+              fontSize: status === 'refunded' ? 64 : 48,
+              fontWeight: 900,
+              color: '#E87B35',
+              opacity: 0.12,
+              letterSpacing: 6,
+              border: '6px solid #E87B35',
+              padding: status === 'refunded' ? '12px 36px' : '16px 36px',
+              borderRadius: 16,
+              pointerEvents: 'none',
+              zIndex: 10,
+              textTransform: 'uppercase',
+              fontFamily: 'system-ui, sans-serif',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              lineHeight: 1.1,
+            }}>
+              {status === 'refunded' ? (
+                'REFUNDED'
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span>PARTIALLY</span>
+                  <span>REFUNDED</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36, paddingBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
@@ -231,7 +266,23 @@ export default function InvoicePrintPage() {
               {items.map((item: any, i: number) => (
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                   <td style={{ padding: '11px 10px', fontSize: 13 }}>
-                    <div style={{ fontWeight: item.is_package ? 600 : 'normal' }}>{item.description}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                      <span style={{ fontWeight: item.is_package ? 600 : 'normal' }}>{item.description}</span>
+                      {status === 'partially_refunded' && (
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: 4,
+                          textTransform: 'uppercase',
+                          background: item.refunded ? 'rgba(232, 123, 53, 0.12)' : 'rgba(34, 197, 94, 0.12)',
+                          color: item.refunded ? '#E87B35' : '#22c55e',
+                          display: 'inline-block'
+                        }}>
+                          {item.refunded ? 'Refunded' : 'Active'}
+                        </span>
+                      )}
+                    </div>
                     {item.is_package && item.sub_items && item.sub_items.length > 0 && (
                       <div style={{ marginTop: 4, paddingLeft: 16, fontSize: 11, color: '#4b5563', lineHeight: 1.4 }}>
                         {item.sub_items.map((sub: string, subIdx: number) => (
@@ -285,8 +336,21 @@ export default function InvoicePrintPage() {
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
               <span>Grand total</span><span>{fmtCurrency(total, currency)}</span>
             </div>
+            {refunded_amount && Number(refunded_amount) > 0 ? (
+              <>
+                <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#E87B35', fontWeight: 600 }}>
+                  <span>Total Refunded</span><span>- {fmtCurrency(Number(refunded_amount), currency)}</span>
+                </div>
+                {refund_service_charge && Number(refund_service_charge) > 0 ? (
+                  <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
+                    <span>Service Charge</span><span>{fmtCurrency(Number(refund_service_charge), currency)}</span>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
             <div style={{ display: 'flex', gap: 56, fontSize: 16, fontWeight: 700, borderTop: '2px solid #111', paddingTop: 8, marginTop: 4 }}>
-              <span>Due total</span><span>{fmtCurrency(total, currency)}</span>
+              <span>{refunded_amount && Number(refunded_amount) > 0 ? 'Net Paid' : 'Due total'}</span>
+              <span>{fmtCurrency(refunded_amount && Number(refunded_amount) > 0 ? Math.max(0, Number(data.paid_amount || total) - Number(refunded_amount)) : total, currency)}</span>
             </div>
           </div>
 
@@ -334,6 +398,13 @@ export default function InvoicePrintPage() {
           {notes && (
             <div style={{ marginTop: 16, fontSize: 11, color: '#9ca3af', lineHeight: 1.7, borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
               {notes}
+            </div>
+          )}
+
+          {refund_reason && (
+            <div style={{ marginTop: 16, fontSize: 11, color: '#E87B35', lineHeight: 1.7, borderTop: '1.5px dashed #fed7aa', paddingTop: 12, background: '#fffaf8', padding: '10px 14px', borderRadius: 8, border: '1.5px solid #fed7aa' }}>
+              <strong style={{ display: 'block', marginBottom: 4, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', color: '#E87B35' }}>Refund Details & Notes</strong>
+              {refund_reason}
             </div>
           )}
 

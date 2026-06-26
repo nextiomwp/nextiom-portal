@@ -34,6 +34,22 @@ function formatCurrencyBreakdown(invoicesList) {
     .join(' / ') || fmtCurrency(0, 'LKR');
 }
 
+function formatNetPaidCurrencyBreakdown(invoicesList) {
+  const totals = (invoicesList || []).reduce((acc, inv) => {
+    const cur = inv.currency === 'USD' ? 'USD' : 'LKR';
+    const total = inv.total || 0;
+    const paid = inv.status === 'paid' ? total : (inv.paid_amount || 0);
+    const refunded = inv.refunded_amount || 0;
+    const net = Math.max(0, paid - refunded);
+    acc[cur] += net;
+    return acc;
+  }, { LKR: 0, USD: 0 });
+
+  return ['LKR', 'USD']
+    .map(cur => fmtCurrency(totals[cur], cur))
+    .join(' / ') || fmtCurrency(0, 'LKR');
+}
+
 function formatOutstandingBreakdown(invoicesList) {
   const totals = (invoicesList || []).reduce((acc, inv) => {
     const cur = inv.currency === 'USD' ? 'USD' : 'LKR';
@@ -65,6 +81,8 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
     overdue: { label: 'Overdue', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: '#ef4444' },
     payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)', border: '#3b82f6' },
     partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.15)', border: '#a855f7' },
+    refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.15)', border: '#64748b' },
+    partially_refunded: { label: 'Partially Refunded', color: '#ec4899', bg: 'rgba(236,72,153,0.15)', border: '#ec4899' },
   }[status] || { label: status, color: '#888', bg: 'rgba(136,136,136,0.1)', border: '#888' };
 
   if (badgeStyle === 'dot') {
@@ -914,7 +932,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   const outstanding = formatOutstandingBreakdown(invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid'));
   const unpaidCount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid').length;
   const thisYear = new Date().getFullYear();
-  const paidThisYear = formatCurrencyBreakdown(invoices.filter(inv => inv.status === 'paid' && new Date(inv.invoice_date || 0).getFullYear() === thisYear));
+  const paidThisYear = formatNetPaidCurrencyBreakdown(invoices.filter(inv => (inv.status === 'paid' || inv.status === 'partially_refunded' || inv.status === 'refunded') && new Date(inv.invoice_date || 0).getFullYear() === thisYear));
   const overdueCount = invoices.filter(inv => inv.status === 'overdue').length;
   const overduePast = formatOutstandingBreakdown(invoices.filter(inv => inv.status === 'overdue'));
 

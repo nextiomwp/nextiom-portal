@@ -396,7 +396,7 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
 
   const invoices = data.invoices || [];
   const totalInvoicesCount = invoices.length;
-  const paidInvoicesCount = invoices.filter(inv => inv.status === 'paid').length;
+  const paidInvoicesCount = invoices.filter(inv => inv.status === 'paid' || inv.status === 'partially_refunded').length;
   const invoicesPaidPct = totalInvoicesCount > 0 ? Math.round((paidInvoicesCount / totalInvoicesCount) * 100) : 100;
 
   const hostingList = data.hostingPackages || [];
@@ -877,7 +877,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
         const processedInvoices = invoices.map(inv => {
           let status = inv.status;
-          if (status !== 'paid' && status !== 'payment_submitted') {
+          if (status !== 'paid' && status !== 'payment_submitted' && status !== 'refunded' && status !== 'partially_refunded') {
             const due = inv.due_date ? inv.due_date.split('T')[0] : null;
             if (due && due < todayStr) { status = 'overdue'; }
           }
@@ -888,11 +888,18 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           const status = inv.status;
           const currency = inv.currency === 'USD' ? 'USD' : 'LKR';
           const total = parseFloat(inv.total) || 0;
+          const refunded = parseFloat(inv.refunded_amount) || 0;
           let cat = 'pending';
-          if (status === 'paid') cat = 'paid';
+          if (status === 'paid' || status === 'partially_refunded' || status === 'refunded') cat = 'paid';
           else if (status === 'overdue') cat = 'overdue';
           acc[cat].count += 1;
-          acc[cat][currency] += total;
+          if (cat === 'paid') {
+            const paidAmt = status === 'paid' ? total : (parseFloat(inv.paid_amount) || total);
+            const netPaid = Math.max(0, paidAmt - refunded);
+            acc[cat][currency] += netPaid;
+          } else {
+            acc[cat][currency] += total;
+          }
           return acc;
         }, { paid: { count: 0, LKR: 0, USD: 0 }, pending: { count: 0, LKR: 0, USD: 0 }, overdue: { count: 0, LKR: 0, USD: 0 } });
 

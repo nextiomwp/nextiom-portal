@@ -18,9 +18,10 @@ export interface InvoiceItem {
   sort_order?: number
   is_package?: boolean
   sub_items?: string[]
+  refunded?: boolean
 }
 
-export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted' | 'partially_paid'
+export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted' | 'partially_paid' | 'refunded' | 'partially_refunded'
 export type InvoiceCurrency = 'LKR' | 'USD'
 
 export interface Invoice {
@@ -38,6 +39,10 @@ export interface Invoice {
   notes: string
   total: number
   paid_amount?: number
+  refunded_amount?: number
+  refund_date?: string
+  refund_reason?: string
+  refund_service_charge?: number
   currency?: InvoiceCurrency
   created_at?: string
   items?: InvoiceItem[]
@@ -365,6 +370,72 @@ export async function deleteInvoice(id: string): Promise<void> {
 
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus): Promise<void> {
   await supabase.from('invoices').update({ status }).eq('id', id)
+}
+
+export async function refundInvoice(
+  id: string,
+  amount: number,
+  reason?: string,
+  serviceCharge = 0,
+  refundedItemIds?: string[]
+): Promise<void> {
+  const invoice = await getInvoice(id)
+  if (!invoice) throw new Error('Invoice not found')
+  if (invoice.status !== 'paid' && invoice.status !== 'partially_paid' && invoice.status !== 'partially_refunded' && invoice.status !== 'refunded') {
+    throw new Error('Only paid, partially paid, or refunded/partially refunded invoices can be refunded')
+  }
+
+  const currentRefunded = Number(invoice.refunded_amount || 0)
+  const total = Number(invoice.total || 0)
+  const paidAmt = Number(invoice.paid_amount || total)
+  const newRefunded = currentRefunded + amount
+
+  if (newRefunded > paidAmt) {
+    throw new Error(`Refund amount exceeds the paid amount of ${paidAmt}`)
+  }
+
+  const isFullRefund = Math.abs(newRefunded - paidAmt) < 0.01
+  const newStatus: InvoiceStatus = isFullRefund ? 'refunded' : 'partially_refunded'
+
+  const { error } = await supabase
+    .from('invoices')
+    .update({
+      status: newStatus,
+      refunded_amount: newRefunded,
+      refund_date: new Date().toISOString(),
+      refund_reason: reason || null,
+      refund_service_charge: Number(serviceCharge || 0)
+    })
+    .eq('id', id)
+
+  if (error) throw error
+
+  // Update individual invoice items refunded status
+  if (refundedItemIds && refundedItemIds.length > 0) {
+    const { data: items } = await supabase
+      .from('invoice_items')
+      .select('id')
+      .eq('invoice_id', id)
+
+    if (items) {
+      for (const item of items) {
+        const isRefunded = refundedItemIds.includes(item.id)
+        await supabase
+          .from('invoice_items')
+          .update({ refunded: isRefunded })
+          .eq('id', item.id)
+      }
+    }
+  }
+
+  const cur = invoice.currency || 'LKR'
+  await notifyCustomerByEmail(invoice.client_email, {
+    type: isFullRefund ? 'invoice_refunded' : 'invoice_partially_refunded',
+    title: isFullRefund ? `Invoice Refunded: ${invoice.invoice_no}` : `Invoice Partially Refunded: ${invoice.invoice_no}`,
+    message: isFullRefund
+      ? `Your payment of ${fmtCurrency(paidAmt, cur)} for invoice ${invoice.invoice_no} has been fully refunded.`
+      : `An amount of ${fmtCurrency(amount, cur)} has been refunded from your invoice ${invoice.invoice_no}. Total refunded: ${fmtCurrency(newRefunded, cur)}.`,
+  })
 }
 
 // ── Payments ─────────────────────────────────────────────────
