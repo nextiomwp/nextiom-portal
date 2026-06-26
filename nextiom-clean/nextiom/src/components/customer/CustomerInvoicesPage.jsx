@@ -82,7 +82,7 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
     payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)', border: '#3b82f6' },
     partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.15)', border: '#a855f7' },
     refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.15)', border: '#64748b' },
-    partially_refunded: { label: 'Partially Refunded', color: '#ec4899', bg: 'rgba(236,72,153,0.15)', border: '#ec4899' },
+    partially_refunded: { label: 'Partially Refunded', color: '#E87B35', bg: 'rgba(232,123,53,0.15)', border: '#E87B35' },
   }[status] || { label: status, color: '#888', bg: 'rgba(136,136,136,0.1)', border: '#888' };
 
   if (badgeStyle === 'dot') {

@@ -10,7 +10,7 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.13)' },
   partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.13)' },
   refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.13)' },
-  partially_refunded: { label: 'Partially Refunded', color: '#ec4899', bg: 'rgba(236,72,153,0.13)' },
+  partially_refunded: { label: 'Partially Refunded', color: '#E87B35', bg: 'rgba(232,123,53,0.13)' },
 }
 
 function getLocalDateString() {
@@ -1147,9 +1147,16 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                       {inv.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_company}</div>}
                     </div>
                     <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(inv.total, invoiceCurrency(inv))}</span>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: inv.paid_amount && inv.paid_amount > 0 ? '#22c55e' : c.subText }}>
-                      {fmtCurrency(inv.paid_amount || 0, invoiceCurrency(inv))}
-                    </span>
+                    {(() => {
+                      const paid = Number(inv.paid_amount || 0)
+                      const refunded = Number(inv.refunded_amount || 0)
+                      const netPaid = Math.max(0, paid - refunded)
+                      return (
+                        <span style={{ fontWeight: 600, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>
+                          {fmtCurrency(netPaid, invoiceCurrency(inv))}
+                        </span>
+                      )
+                    })()}
                     <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
                     <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.due_date ? inv.due_date.substring(0, 10) : '—'}</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
@@ -1160,7 +1167,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                         </button>
                       )}
                       {(inv.status === 'paid' || inv.status === 'partially_paid' || inv.status === 'partially_refunded') && (
-                        <button onClick={() => setRefundInvoice(inv)} style={{ background: 'none', border: 'none', color: '#ec4899', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Refund">
+                        <button onClick={() => setRefundInvoice(inv)} style={{ background: 'none', border: 'none', color: '#E87B35', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Refund">
                           <RotateCcw size={14} />
                         </button>
                       )}
