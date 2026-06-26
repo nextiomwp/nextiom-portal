@@ -10,8 +10,8 @@ function AnnouncementsPage({ user, isDark = false, c = {} }) {
   const [filterMode, setFilterMode] = useState('all'); // 'all', 'unread', 'read'
   const { toast } = useToast();
 
-  const brand = c.brand || '#E87B35';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brand = c.brand || 'var(--brand-color)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
   const border = c.border || '#ebebeb';
   const borderStrong = c.borderStrong || '#d0d0d0';
   const text = c.text || '#1a1a1a';

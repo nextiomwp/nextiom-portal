@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { getCustomerByEmail, getUserProfile, addNotification, getMaintenanceStatus } from '@/lib/storage';
+import { getCustomerByEmail, getUserProfile, addNotification, getMaintenanceStatus, getPortalSettings, applyThemeColor } from '@/lib/storage';
 
 const AuthContext = createContext(undefined);
 
@@ -15,6 +15,33 @@ export const AuthProvider = ({ children }) => {
       .filter(k => k.startsWith('sb-'))
       .forEach(k => localStorage.removeItem(k));
   };
+
+  useEffect(() => {
+    // Initial fetch and application of the theme color
+    getPortalSettings().then((settings) => {
+      if (settings?.themeColor) {
+        applyThemeColor(settings.themeColor);
+      }
+    });
+
+    // Realtime listener for theme updates
+    const channel = supabase
+      .channel('public-portal-settings-theme')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'portal_settings', filter: 'id=eq.1' },
+        (payload) => {
+          if (payload.new && payload.new.theme_color) {
+            applyThemeColor(payload.new.theme_color);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;

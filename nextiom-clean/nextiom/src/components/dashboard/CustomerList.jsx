@@ -100,13 +100,13 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
               placeholder="Search by name, email or company..."
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#e87b35] focus:border-transparent transition-all"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent transition-all"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => handleStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#e87b35] focus:border-transparent transition-all"
+            className="px-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--brand-color)] focus:border-transparent transition-all"
           >
             <option value="all">All Status</option>
             <option value={LICENSE_STATUS.ACTIVE}>Active</option>
@@ -200,7 +200,7 @@ function CustomerList({ customers, licenses, products, onUpdate, onAssignProduct
                       >
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="font-semibold text-slate-700">Assigned Products & Licenses</h4>
-                          <Button size="sm" onClick={onAssignProduct} className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
+                          <Button size="sm" onClick={onAssignProduct} className="bg-[var(--brand-color)] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
                             <Plus className="w-4 h-4 mr-1" /> Assign Product
                           </Button>
                         </div>

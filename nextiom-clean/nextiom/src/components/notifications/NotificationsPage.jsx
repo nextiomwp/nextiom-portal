@@ -7,7 +7,7 @@ function getIconData(type, isDark) {
   switch (String(type || '').toLowerCase()) {
     case 'job':
     case 'job_update':
-      return { Icon: Briefcase, color: '#e87b35', bg: isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.1)' };
+      return { Icon: Briefcase, color: 'var(--brand-color)', bg: isDark ? 'var(--brand-color-light)' : 'var(--brand-color-light)' };
     case 'expiration':
       return { Icon: AlertCircle, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2' };
     case 'new_product':
@@ -19,7 +19,7 @@ function getIconData(type, isDark) {
     case 'hosting_request':
       return { Icon: Server, color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.15)' : '#cffafe' };
     case 'email_request':
-      return { Icon: Mail, color: '#e87b35', bg: isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.1)' };
+      return { Icon: Mail, color: 'var(--brand-color)', bg: isDark ? 'var(--brand-color-light)' : 'var(--brand-color-light)' };
     default:
       return { Icon: Mail, color: '#64748b', bg: isDark ? 'rgba(100,116,139,0.15)' : '#f1f5f9' };
   }
@@ -45,9 +45,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const hover = c.hover || '#f5f5f5';
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const panel2 = c.panel2 || '#f5f5f5';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
 
   useEffect(() => {
     if (!customerId) { setIsLoading(false); return; }

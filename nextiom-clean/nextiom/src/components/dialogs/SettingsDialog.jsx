@@ -76,7 +76,7 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
     setSaving(false);
   };
 
-  const field = 'w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all text-sm';
+  const field = 'w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all text-sm';
   const theme = {
     shell: '#ffffff',
     shellBorder: 'rgba(15,23,42,0.08)',
@@ -178,7 +178,7 @@ function SettingsDialog({ open, onOpenChange, onUpdate, isDark = false }) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl" disabled={loading || saving}>
               Cancel
             </Button>
-            <Button type="submit" className="rounded-xl border-0 bg-[#e87b35] text-white shadow-md transition-all font-medium hover:bg-[#d66a24]" disabled={loading || saving}>
+            <Button type="submit" className="rounded-xl border-0 bg-[var(--brand-color)] text-white shadow-md transition-all font-medium hover:bg-[#d66a24]" disabled={loading || saving}>
               <Save className="w-4 h-4 mr-2" />
               {saving ? 'Saving…' : loading ? 'Loading…' : 'Save Changes'}
             </Button>

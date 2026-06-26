@@ -1097,7 +1097,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                       borderBottom: `1px solid ${c.border}`,
                       cursor: 'pointer',
                       background: isActive
-                        ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)')
+                        ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)')
                         : (adminReplied && !isActive)
                           ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)')
                           : 'transparent',
@@ -1105,7 +1105,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                       transition: 'background 0.1s',
                     }}
                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.hover; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : adminReplied ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)') : 'transparent'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)') : adminReplied ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)') : 'transparent'; }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
                       <span style={{ fontSize: 13, fontWeight: adminReplied ? 600 : 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{ticket.subject}</span>

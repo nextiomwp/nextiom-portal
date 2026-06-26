@@ -7,8 +7,8 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
-  const brand = c.brand || '#E87B35';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brand = c.brand || 'var(--brand-color)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
   const cardBg = isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)';
 
   const cardStyle = {
@@ -176,8 +176,8 @@ export function ContactDetailsPage({ user, isDark = false, c = {} }) {
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
-  const brand = c.brand || '#E87B35';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brand = c.brand || 'var(--brand-color)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
   const cardBg = isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)';
 
   const cardStyle = {

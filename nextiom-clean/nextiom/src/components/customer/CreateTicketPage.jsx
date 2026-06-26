@@ -549,7 +549,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
             />
           </div>
 
-          <div style={{ padding: '12px 14px', background: isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', borderRadius: 10, border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.12)'}` }}>
+          <div style={{ padding: '12px 14px', background: isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', borderRadius: 10, border: `1px solid ${isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.12)'}` }}>
             <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.5 }}>
               Your ticket will be sent to our support team. You will receive notifications when we respond. Please do not share passwords in your ticket.
             </p>

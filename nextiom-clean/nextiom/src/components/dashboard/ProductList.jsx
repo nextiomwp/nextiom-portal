@@ -64,7 +64,7 @@ export default function ProductList({ products, licenses = [], customers = [], o
   const [deletingProductId, setDeletingProductId] = useState(null);
   const { toast } = useToast();
 
-  const brand = c?.brand || '#e87b35';
+  const brand = c?.brand || 'var(--brand-color)';
   const text = c?.text || (isDark ? '#fff' : '#1a1a1a');
   const sub = c?.subText || (isDark ? '#a0a0a0' : '#888');
   const border = c?.border || (isDark ? 'rgba(255,255,255,0.06)' : '#ebebeb');

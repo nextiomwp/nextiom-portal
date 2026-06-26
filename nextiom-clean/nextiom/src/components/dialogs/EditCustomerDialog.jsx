@@ -87,7 +87,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all"
                 required
               />
             </div>
@@ -99,7 +99,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all"
                 required
               />
             </div>
@@ -111,7 +111,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all"
                 required
               />
             </div>
@@ -123,7 +123,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all"
                 required
               />
             </div>
@@ -135,7 +135,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                 type="text"
                 value={formData.company}
                 onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
+                className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all"
               />
             </div>
           </div>
@@ -156,7 +156,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
                     value={domain}
                     onChange={(e) => updateDomain(index, e.target.value)}
                     placeholder="example.com"
-                    className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all"
+                    className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all"
                   />
                   {formData.domains.length > 1 && (
                     <Button
@@ -178,7 +178,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
               Cancel
             </Button>
-            <Button type="submit" className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
+            <Button type="submit" className="bg-[var(--brand-color)] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
               Update Customer
             </Button>
           </div>

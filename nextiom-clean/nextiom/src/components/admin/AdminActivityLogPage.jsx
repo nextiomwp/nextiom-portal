@@ -12,7 +12,7 @@ const ACTION_MAP = {
   announcement: { label: 'Announcement', color: '#a78bfa', bg: '#2a1a4a' },
   account_rejected: { label: 'Account Rejected', color: '#f87171', bg: '#3a1515' },
   account_confirmed: { label: 'Account Confirmed', color: '#34d399', bg: '#0d2b1e' },
-  admin_login: { label: 'Admin Login', color: '#e87b35', bg: '#2b1a0a' },
+  admin_login: { label: 'Admin Login', color: 'var(--brand-color)', bg: '#2b1a0a' },
   customer_login: { label: 'Customer Login', color: '#34d399', bg: '#0d2b1e' },
   ticket: { label: 'Ticket', color: '#38bdf8', bg: '#0c2233' },
   ticket_reply: { label: 'Ticket Reply', color: '#38bdf8', bg: '#0c2233' },
@@ -29,9 +29,9 @@ const ACTION_MAP = {
   hosting_request: { label: 'Hosting Request', color: '#a78bfa', bg: '#1e1040' },
   domain_expiry: { label: 'Domain Expiry', color: '#fb923c', bg: '#3b2508' },
   hosting_expiry: { label: 'Hosting Expiry', color: '#fb923c', bg: '#3b2508' },
-  license_updated: { label: 'License Updated', color: '#e87b35', bg: '#2b1a0a' },
+  license_updated: { label: 'License Updated', color: 'var(--brand-color)', bg: '#2b1a0a' },
   portal_pause: { label: 'Portal Pause', color: '#fb923c', bg: '#3b2508' },
-  maintenance_mode: { label: 'Maintenance Mode', color: '#e87b35', bg: '#3b2508' },
+  maintenance_mode: { label: 'Maintenance Mode', color: 'var(--brand-color)', bg: '#3b2508' },
 };
 
 function getAction(type) {
@@ -125,8 +125,8 @@ function AdminActivityLogPage({ isDark = true }) {
   const [perPage, setPerPage] = useState(10);
 
   const c = isDark
-    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35', panel: '#22252C' }
-    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35', panel: '#f5f5f5' };
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)', panel: '#22252C' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: 'var(--brand-color)', panel: '#f5f5f5' };
 
   const cardStyle = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
 
@@ -241,7 +241,7 @@ function AdminActivityLogPage({ isDark = true }) {
                 style={{ width: '100%', padding: '8px 10px 8px 30px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 9, color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
             </div>
             {[{ l: '7d', v: 7 }, { l: '30d', v: 30 }, { l: '90d', v: 90 }].map(o => (
-              <button key={o.v} onClick={() => setDays(o.v)} style={{ padding: '7px 11px', borderRadius: 8, border: `1px solid ${days === o.v ? c.brand : c.border}`, background: days === o.v ? 'rgba(232,123,53,0.13)' : c.card, color: days === o.v ? c.brand : c.subText, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>{o.l}</button>
+              <button key={o.v} onClick={() => setDays(o.v)} style={{ padding: '7px 11px', borderRadius: 8, border: `1px solid ${days === o.v ? c.brand : c.border}`, background: days === o.v ? 'var(--brand-color-light)' : c.card, color: days === o.v ? c.brand : c.subText, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>{o.l}</button>
             ))}
             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{ padding: '7px 8px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
               {['All', 'Admin', 'Customer'].map(r => <option key={r}>{r}</option>)}

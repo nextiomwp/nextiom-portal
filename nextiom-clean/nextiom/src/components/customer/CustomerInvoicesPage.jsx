@@ -110,7 +110,7 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
     payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.15)', border: '#3b82f6' },
     partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.15)', border: '#a855f7' },
     refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.15)', border: '#64748b' },
-    partially_refunded: { label: 'Partially Refunded', color: '#E87B35', bg: 'rgba(232,123,53,0.15)', border: '#E87B35' },
+    partially_refunded: { label: 'Partially Refunded', color: 'var(--brand-color)', bg: 'var(--brand-color-light)', border: 'var(--brand-color)' },
   }[status] || { label: status, color: '#888', bg: 'rgba(136,136,136,0.1)', border: '#888' };
 
   if (badgeStyle === 'dot') {
@@ -387,7 +387,7 @@ function DarkCalendar({ invoiceDates, calFilter, onDayClick, onMonthClick, c, is
                 onClick={() => onDayClick(viewYear, viewMonth, day)}
                 style={{
                   textAlign: 'center', borderRadius: 7, padding: '5px 0', cursor: 'pointer', position: 'relative',
-                  background: isSelected ? brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent',
+                  background: isSelected ? brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent',
                   color: isSelected ? '#fff' : hasInvoice ? (isDark ? '#fff' : '#1a1a1a') : c.subText,
                   fontWeight: hasInvoice || isToday ? 700 : 400,
                   fontSize: 12,
@@ -395,7 +395,7 @@ function DarkCalendar({ invoiceDates, calFilter, onDayClick, onMonthClick, c, is
                   transition: 'background 0.1s',
                 }}
                 onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = isSelected ? brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isSelected ? brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent'; }}
               >
                 {day}
                 {hasInvoice && !isSelected && (
@@ -462,14 +462,14 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
               <div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#e87b35', letterSpacing: 2 }}>{settings?.company_name || 'NEXTIOM'}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--brand-color)', letterSpacing: 2 }}>{settings?.company_name || 'NEXTIOM'}</div>
                 <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{settings?.address || ''}</div>
                 <div style={{ fontSize: 11, color: '#666' }}>{settings?.phone || ''}</div>
                 <div style={{ fontSize: 11, color: '#666' }}>{settings?.website || ''}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 4, color: '#1a1a1a' }}>INVOICE</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, color: '#e87b35', marginTop: 4 }}>#{invoice.invoice_no}</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, color: 'var(--brand-color)', marginTop: 4 }}>#{invoice.invoice_no}</div>
               </div>
             </div>
 
@@ -529,7 +529,7 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                         )}
                         {item.link_url && (
                           <div style={{ marginTop: 3 }}>
-                            <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#e87b35', textDecoration: 'underline', wordBreak: 'break-all' }}>
+                            <a href={item.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--brand-color)', textDecoration: 'underline', wordBreak: 'break-all' }}>
                               {item.link_url}
                             </a>
                           </div>
@@ -571,14 +571,14 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, borderTop: '2px solid #1a1a1a', paddingTop: 8 }}>
                   <span>Total</span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#e87b35' }}>{fmtAmt(invoice.total ?? subtotal - totalDiscount + tax, invoice.currency)}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--brand-color)' }}>{fmtAmt(invoice.total ?? subtotal - totalDiscount + tax, invoice.currency)}</span>
                 </div>
               </div>
             </div>
 
             {/* Notes */}
             {invoice.notes && (
-              <div style={{ marginTop: 24, padding: '12px 14px', background: '#f0ede8', borderRadius: 8, fontSize: 11, color: '#666', lineHeight: 1.6, borderLeft: '3px solid #e87b35' }}>
+              <div style={{ marginTop: 24, padding: '12px 14px', background: '#f0ede8', borderRadius: 8, fontSize: 11, color: '#666', lineHeight: 1.6, borderLeft: '3px solid var(--brand-color)' }}>
                 {invoice.notes}
               </div>
             )}
@@ -666,7 +666,7 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
                   <div style={lbl}>Status</div>
                   <div style={val}>
                     {needsReply ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 12, background: 'rgba(232,123,53,0.15)', color: c.brand, fontSize: 11, fontWeight: 700 }}>Action Required</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 12, background: 'var(--brand-color-light)', color: c.brand, fontSize: 11, fontWeight: 700 }}>Action Required</span>
                     ) : (
                       <BadgeComponent status="payment_submitted" />
                     )}

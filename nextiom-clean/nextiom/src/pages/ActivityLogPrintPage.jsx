@@ -45,18 +45,18 @@ export default function ActivityLogPrintPage() {
       <style>{`@media print { @page { size: A4; margin: 18mm 14mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }`}</style>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #e87b35', paddingBottom: 20, marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid var(--brand-color)', paddingBottom: 20, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {logoUrl && <img src={logoUrl} alt="logo" style={{ height: 52, objectFit: 'contain' }} />}
           <div>
             <div style={{ fontWeight: 800, fontSize: 20, color: '#1a1a1a' }}>{company}</div>
             {address && <div style={{ fontSize: 12, color: '#666', marginTop: 2 }}>{address}</div>}
             {phone && <div style={{ fontSize: 12, color: '#666' }}>{phone}</div>}
-            {website && <div style={{ fontSize: 12, color: '#e87b35' }}>{website}</div>}
+            {website && <div style={{ fontSize: 12, color: 'var(--brand-color)' }}>{website}</div>}
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: 700, fontSize: 22, color: '#e87b35', letterSpacing: 1 }}>ACTIVITY LOG</div>
+          <div style={{ fontWeight: 700, fontSize: 22, color: 'var(--brand-color)', letterSpacing: 1 }}>ACTIVITY LOG</div>
           <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Generated: {format(new Date(), 'MMM dd, yyyy HH:mm')}</div>
           <div style={{ fontSize: 12, color: '#666' }}>Period: {dateLabel}</div>
           <div style={{ fontSize: 12, color: '#666' }}>Total Entries: {logs.length}</div>
@@ -78,7 +78,7 @@ export default function ActivityLogPrintPage() {
               <td style={{ padding: '8px 10px', borderBottom: '1px solid #eee', color: '#999', fontSize: 11 }}>{i + 1}</td>
               <td style={{ padding: '8px 10px', borderBottom: '1px solid #eee', fontWeight: 600 }}>{log.userName || 'Admin'}</td>
               <td style={{ padding: '8px 10px', borderBottom: '1px solid #eee' }}>
-                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, background: log.isAdmin ? '#fff3e8' : '#e8f0ff', color: log.isAdmin ? '#e87b35' : '#2563eb' }}>{log.isAdmin ? 'Admin' : 'Customer'}</span>
+                <span style={{ padding: '2px 8px', borderRadius: 10, fontSize: 10.5, fontWeight: 700, background: log.isAdmin ? '#fff3e8' : '#e8f0ff', color: log.isAdmin ? 'var(--brand-color)' : '#2563eb' }}>{log.isAdmin ? 'Admin' : 'Customer'}</span>
               </td>
               <td style={{ padding: '8px 10px', borderBottom: '1px solid #eee', fontWeight: 600, color: '#444' }}>{ACTION_LABELS[log.type] || log.type || '—'}</td>
               <td style={{ padding: '8px 10px', borderBottom: '1px solid #eee', maxWidth: 240 }}>

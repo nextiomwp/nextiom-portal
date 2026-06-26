@@ -46,35 +46,38 @@ const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const iconColor = color || style?.color || '';
   const colorStr = String(iconColor).toLowerCase();
 
-  // Color matching filters
-  let imgFilter = 'brightness(0) saturate(100%) invert(60%)'; // default inactive gray
-  if (colorStr.includes('e87b35')) {
-    // Brand Orange (#E87B35) filter
-    imgFilter = 'brightness(0) saturate(100%) invert(56%) sepia(56%) saturate(1487%) hue-rotate(345deg) brightness(97%) contrast(92%)';
+  let resolvedColor = '#a0a0a0'; // Default gray
+  if (colorStr.includes('e87b35') || colorStr.includes('var(--brand-color)') || colorStr.includes('brand')) {
+    resolvedColor = 'var(--brand-color)';
   } else if (colorStr.includes('888')) {
-    imgFilter = 'brightness(0) saturate(100%) invert(53%)';
+    resolvedColor = '#888888';
   } else if (colorStr.includes('a0a0a0')) {
-    imgFilter = 'brightness(0) saturate(100%) invert(63%)';
+    resolvedColor = '#a0a0a0';
   } else if (colorStr.includes('fff') || colorStr.includes('rgb(255, 255, 255)')) {
-    imgFilter = 'brightness(0) saturate(100%) invert(100%)';
+    resolvedColor = '#ffffff';
+  } else if (iconColor) {
+    resolvedColor = iconColor;
   }
 
   return (
-    <img
-      src={src}
-      alt={alt || "icon"}
+    <div
       className={className}
       style={{
         width: sizePx || '20px',
         height: sizePx || '20px',
-        objectFit: 'contain',
-        imageRendering: src.endsWith('.svg') ? 'auto' : '-webkit-optimize-contrast',
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
-        willChange: 'filter',
+        backgroundColor: resolvedColor,
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+        display: 'inline-block',
         ...style,
-        filter: imgFilter
       }}
+      aria-label={alt || "icon"}
     />
   );
 };
@@ -126,12 +129,12 @@ const DARK = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
   borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0',
   card: '#1C1E24', panel2: '#22252C', hover: 'rgba(255,255,255,0.04)',
-  brand: '#E87B35', brandLight: 'rgba(232,123,53,0.15)',
+  brand: 'var(--brand-color)', brandLight: 'var(--brand-color-light)',
 };
 const LIGHT = {
   bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0',
   text: '#1a1a1a', subText: '#888', card: '#fff', panel2: '#f5f5f5',
-  hover: '#f5f5f5', brand: '#E87B35', brandLight: 'rgba(232,123,53,0.1)',
+  hover: '#f5f5f5', brand: 'var(--brand-color)', brandLight: 'var(--brand-color-light)',
 };
 
 const NAV_STRUCTURE = [

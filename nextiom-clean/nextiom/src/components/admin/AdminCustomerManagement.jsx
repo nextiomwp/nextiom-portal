@@ -52,8 +52,8 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
   const navigate = useNavigate();
 
   const c = isDark
-    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.15)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35', brandLight: 'rgba(232,123,53,0.15)' }
-    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', borderStrong: '#dcdcdc', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35', brandLight: 'rgba(232,123,53,0.1)' };
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.15)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)', brandLight: 'var(--brand-color-light)' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', borderStrong: '#dcdcdc', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: 'var(--brand-color)', brandLight: 'var(--brand-color-light)' };
 
   const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
   const thS = { textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}`, whiteSpace: 'nowrap' };
@@ -636,18 +636,18 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
 </head>
 <body>
   <!-- Header -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid #E87B35;padding-bottom:20px;margin-bottom:24px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid var(--brand-color);padding-bottom:20px;margin-bottom:24px">
     <div style="display:flex;align-items:center;gap:16px">
       ${logoTag}
       <div>
         <div style="font-weight:800;font-size:20px;color:#1a1a1a">${company}</div>
         ${settings.address ? `<div style="font-size:12px;color:#666;margin-top:2px">${settings.address}</div>` : ''}
         ${settings.phone ? `<div style="font-size:12px;color:#666">${settings.phone}</div>` : ''}
-        ${settings.website ? `<div style="font-size:12px;color:#E87B35">${settings.website}</div>` : ''}
+        ${settings.website ? `<div style="font-size:12px;color:var(--brand-color)">${settings.website}</div>` : ''}
       </div>
     </div>
     <div style="text-align:right">
-      <div style="font-weight:700;font-size:22px;color:#E87B35;letter-spacing:1px">CUSTOMER REPORT</div>
+      <div style="font-weight:700;font-size:22px;color:var(--brand-color);letter-spacing:1px">CUSTOMER REPORT</div>
       <div style="font-size:12px;color:#666;margin-top:4px">Generated: ${generated}</div>
       <div style="font-size:12px;color:#666">Total Records: ${list.length}</div>
     </div>

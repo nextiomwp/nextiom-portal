@@ -51,7 +51,7 @@ function LineChart({ data, c, isDark }) {
   const cH = H - pad.t - pad.b;
   const maxV = Math.max(...data.map(d => d.count), 2);
   const yTicks = [0, Math.ceil(maxV / 2), maxV];
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const subText = c.subText || '#888';
 
   const pts = data.map((d, i) => ({
@@ -97,18 +97,18 @@ function LineChart({ data, c, isDark }) {
 
 function ActivityIcon({ type, isDark }) {
   const map = {
-    domain: { Icon: Globe, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
-    hosting: { Icon: Server, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
-    email: { Icon: Mail, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
-    login: { Icon: Shield, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
-    product: { Icon: Package, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
-    invoice: { Icon: CreditCard, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
-    ticket: { Icon: MessageSquare, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    domain: { Icon: Globe, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    hosting: { Icon: Server, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    email: { Icon: Mail, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    login: { Icon: Shield, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    product: { Icon: Package, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    invoice: { Icon: CreditCard, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    ticket: { Icon: MessageSquare, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
     expiration: { Icon: Clock, color: '#f59e0b', bg: isDark ? 'rgba(245,158,11,0.2)' : '#fef3c7' },
-    update: { Icon: Settings, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
+    update: { Icon: Settings, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' },
     announcement: { Icon: Megaphone, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.2)' : '#fee2e2' },
   };
-  const item = map[type] || { Icon: Bell, color: '#E87B35', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' };
+  const item = map[type] || { Icon: Bell, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.2)' : '#fff7ed' };
   const Icon = item.Icon;
   return (
     <div style={{ width: 38, height: 38, borderRadius: 10, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -123,7 +123,7 @@ function StatMiniCard({ icon: Icon, iconBg, iconColor, label, value, valueColor,
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
 
   return (
     <div
@@ -139,7 +139,7 @@ function StatMiniCard({ icon: Icon, iconBg, iconColor, label, value, valueColor,
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
         boxShadow: hovered
-          ? (isDark ? `0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px ${brand}22` : `0 8px 32px rgba(232,123,53,0.1)`)
+          ? (isDark ? `0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px ${brand}22` : `0 8px 32px var(--brand-color-light)`)
           : (isDark ? '0 2px 12px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.04)'),
         cursor: 'pointer',
         transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
@@ -189,7 +189,7 @@ function StatMiniCard({ icon: Icon, iconBg, iconColor, label, value, valueColor,
 /* ─────────────── PROJECT PROGRESS WIDGET ─────────────── */
 function ProjectProgressWidget({ jobs, onNavigate, c, isDark }) {
   const [hovered, setHovered] = useState(false);
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
@@ -224,7 +224,7 @@ function ProjectProgressWidget({ jobs, onNavigate, c, isDark }) {
       <div style={cardStyle} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onClick={() => onNavigate('jobs')}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'rgba(232,123,53,0.15)' : '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'var(--brand-color-light)' : '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Briefcase style={{ width: 16, height: 16, color: brand }} />
             </div>
             <span style={{ color: text, fontWeight: 700, fontSize: 15 }}>Project Progress</span>
@@ -306,7 +306,7 @@ function ProjectProgressWidget({ jobs, onNavigate, c, isDark }) {
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'rgba(232,123,53,0.15)' : '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'var(--brand-color-light)' : '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Briefcase style={{ width: 16, height: 16, color: brand }} />
           </div>
           <span style={{ color: text, fontWeight: 700, fontSize: 15 }}>Project Progress</span>
@@ -363,12 +363,12 @@ function ProjectProgressWidget({ jobs, onNavigate, c, isDark }) {
 function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
   const [isHovered, setIsHovered] = useState(false);
 
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
 
   const profileFields = ['name', 'phone', 'company', 'country'];
   let filledFields = 0;
@@ -498,9 +498,9 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
           {/* Details list */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 160 }}>
             {[
-              { label: 'Profile Setup', pct: profileCompletePct, color: brand, bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff7ed' },
-              { label: 'Invoices Paid', pct: invoicesPaidPct, color: brand, bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff7ed' },
-              { label: 'Services Active', pct: servicesActivePct, color: brand, bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff7ed' }
+              { label: 'Profile Setup', pct: profileCompletePct, color: brand, bg: isDark ? 'var(--brand-color-light)' : '#fff7ed' },
+              { label: 'Invoices Paid', pct: invoicesPaidPct, color: brand, bg: isDark ? 'var(--brand-color-light)' : '#fff7ed' },
+              { label: 'Services Active', pct: servicesActivePct, color: brand, bg: isDark ? 'var(--brand-color-light)' : '#fff7ed' }
             ].map(({ label, pct, color, bg }) => (
               <div key={label} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -565,7 +565,7 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
 /* ─────────────── SERVICE SUB CARD (HELPER) ─────────────── */
 function ServiceSubCard({ label, description, activeCount, expiredCount, icon: Icon, onClick, c, isDark }) {
   const [hovered, setHovered] = React.useState(false);
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
@@ -687,7 +687,7 @@ function ServiceSubCard({ label, description, activeCount, expiredCount, icon: I
 /* ─────────────── SERVICE HEALTH CARD ─────────────── */
 function ServiceHealthCard({ data, c, isDark, onNavigate }) {
   const [hovered, setHovered] = useState(false);
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
@@ -774,12 +774,12 @@ function ServiceHealthCard({ data, c, isDark, onNavigate }) {
 /* ─────────────── INVOICE SUMMARY CARD ─────────────── */
 function InvoiceSummaryCard({ invoiceSummary, onNavigate, c, isDark }) {
   const [hovered, setHovered] = useState(false);
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
 
   const rows = [
     { label: 'Paid', key: 'paid', color: '#16a34a', bg: isDark ? 'rgba(22,163,74,0.1)' : '#f0fdf4', dot: '#16a34a' },
@@ -904,13 +904,13 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
   });
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
 
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
   const hover = c.hover || '#f5f5f5';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 768px)');
@@ -1500,7 +1500,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       {/* ── Welcome Header ── */}
       <div style={{
         background: isDark ? 'rgba(232,123,53,0.08)' : 'linear-gradient(135deg, #fff7ed 0%, rgba(255,255,255,0) 60%)',
-        border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.12)'}`,
+        border: `1px solid ${isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.12)'}`,
         borderRadius: 20, padding: '22px 28px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
       }}>
@@ -1860,7 +1860,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
                   gap: 6,
                   padding: '6px 12px',
                   borderRadius: 99,
-                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.3)'}`,
+                  border: `1px solid ${isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.3)'}`,
                   background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
                   fontSize: 10,
                   fontWeight: 600,
@@ -1932,7 +1932,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
                   gap: 6,
                   padding: '6px 12px',
                   borderRadius: 99,
-                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.3)'}`,
+                  border: `1px solid ${isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.3)'}`,
                   background: isDark ? 'rgba(232,123,53,0.04)' : 'rgba(232,123,53,0.02)',
                   fontSize: 10,
                   fontWeight: 600,

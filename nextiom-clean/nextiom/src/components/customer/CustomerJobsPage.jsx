@@ -27,7 +27,7 @@ const renderTextWithLinks = (text, brandColor) => {
           rel="noopener noreferrer" 
           onClick={(e) => e.stopPropagation()}
           style={{ 
-            color: brandColor || '#E87B35', 
+            color: brandColor || 'var(--brand-color)', 
             textDecoration: 'underline',
             fontWeight: 'inherit'
           }}
@@ -526,7 +526,7 @@ function QueueDetailsContainer({
             transform: 'translateX(-50%) translateY(-10px)',
             background: isDark ? '#2E323D' : '#1E293B',
             color: '#fff',
-            border: '1px solid #E87B35',
+            border: '1px solid var(--brand-color)',
             padding: '8px 12px',
             borderRadius: 8,
             fontSize: 11,
@@ -801,7 +801,7 @@ function QueueDetailsContainer({
                             Requirement: {req.type === 'upload' ? 'Upload document/asset' : 'Provide text details'}
                           </div>
                           {!isSubmitted && req.due_date && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 11, fontWeight: 600, color: '#e87b35' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 11, fontWeight: 600, color: 'var(--brand-color)' }}>
                               <Clock size={12} />
                               <span>{formatRequirementDueDate(req)}</span>
                             </div>

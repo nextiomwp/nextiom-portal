@@ -198,7 +198,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
           const originalBoxShadow = element.style.boxShadow;
           const originalTransition = element.style.transition;
           
-          element.style.outline = '2px solid #E87B35';
+          element.style.outline = '2px solid var(--brand-color)';
           element.style.boxShadow = '0 0 15px rgba(232,123,53,0.5)';
           element.style.transition = 'all 0.5s ease';
           
@@ -266,7 +266,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
             rel="noopener noreferrer" 
             onClick={(e) => e.stopPropagation()}
             style={{ 
-              color: c.brand || '#E87B35', 
+              color: c.brand || 'var(--brand-color)', 
               textDecoration: 'underline',
               fontWeight: 'inherit'
             }}
@@ -766,7 +766,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
               display: 'inline-block',
               width: 24,
               height: 24,
-              backgroundColor: c.brand || '#E87B35',
+              backgroundColor: c.brand || 'var(--brand-color)',
               WebkitMaskImage: "url('/tasks.svg')",
               maskImage: "url('/tasks.svg')",
               WebkitMaskSize: 'contain',
@@ -1003,7 +1003,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
         {/* Stat 1: Current Active Jobs */}
         <div style={{ 
           background: isDark ? 'rgba(232, 123, 53, 0.08)' : '#fff5ee', 
-          border: `1px solid ${isDark ? 'rgba(232, 123, 53, 0.2)' : 'rgba(232, 123, 53, 0.15)'}`, 
+          border: `1px solid ${isDark ? 'rgba(232, 123, 53, 0.2)' : 'var(--brand-color-light)'}`, 
           borderRadius: 12, 
           padding: 20,
           position: 'relative'

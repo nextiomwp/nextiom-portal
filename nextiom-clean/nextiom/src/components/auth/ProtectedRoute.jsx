@@ -78,7 +78,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (loading || accessCheckLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#15161A' }}>
-        <Loader2 className="h-8 w-8 animate-spin text-[#E87B35]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-color)]" />
       </div>
     );
   }
@@ -94,7 +94,7 @@ function ProtectedRoute({ children, allowedRoles }) {
           <p style={{ color: '#a0a0a0' }}>{authError}</p>
           <Button
             onClick={async () => { await signOut(); window.location.href = '/'; }}
-            className="bg-[#E87B35] hover:bg-[#d06b28] text-white"
+            className="bg-[var(--brand-color)] hover:bg-[#d06b28] text-white"
           >
             Return to Login
           </Button>
@@ -108,14 +108,14 @@ function ProtectedRoute({ children, allowedRoles }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: '#15161A' }}>
         <div className="p-8 rounded-xl max-w-md w-full text-center space-y-4" style={{ background: '#1C1E24', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="p-3 rounded-full w-fit mx-auto" style={{ background: isPending ? 'rgba(232,123,53,0.15)' : 'rgba(239,68,68,0.15)' }}>
-            <AlertTriangle className={`h-8 w-8 ${isPending ? 'text-[#E87B35]' : 'text-red-400'}`} />
+          <div className="p-3 rounded-full w-fit mx-auto" style={{ background: isPending ? 'var(--brand-color-light)' : 'rgba(239,68,68,0.15)' }}>
+            <AlertTriangle className={`h-8 w-8 ${isPending ? 'text-[var(--brand-color)]' : 'text-red-400'}`} />
           </div>
           <h2 className="text-xl font-bold" style={{ color: '#fff' }}>{isPending ? 'Pending Approval' : 'Access Restricted'}</h2>
           <p style={{ color: '#a0a0a0' }}>{isPending ? 'Please wait for admin approval before accessing your account.' : accessError}</p>
           <Button
             onClick={async () => { await signOut(); window.location.href = '/'; }}
-            style={{ background: '#E87B35', color: '#fff' }}
+            style={{ background: 'var(--brand-color)', color: '#fff' }}
             className="hover:opacity-90"
           >
             Return to Login

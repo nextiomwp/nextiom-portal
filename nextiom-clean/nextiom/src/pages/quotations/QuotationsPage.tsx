@@ -71,14 +71,14 @@ function CalendarWidget({ quotations, calFilter, onDayClick, onMonthClick, c, is
                 onClick={() => onDayClick(viewYear, viewMonth, day)}
                 style={{
                   textAlign: 'center', borderRadius: 6, padding: '4px 0', cursor: 'pointer', position: 'relative',
-                  background: isSelected ? c.brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent',
+                  background: isSelected ? c.brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent',
                   color: isSelected ? '#fff' : hasQuotation ? c.text : c.subText,
                   fontWeight: hasQuotation || isToday ? 700 : 400,
                   fontSize: 11,
                   border: isToday && !isSelected ? `1.5px dashed ${c.brand}` : '1.5px solid transparent',
                 }}
                 onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? c.brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? c.brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent' }}
               >
                 {day}
                 {hasQuotation && !isSelected && (
@@ -360,7 +360,7 @@ export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
                           padding: '4px 8px',
                           fontSize: 12,
                           cursor: 'pointer',
-                          background: q.status === 'accepted' ? 'rgba(34,197,94,0.15)' : q.status === 'declined' ? 'rgba(239,68,68,0.15)' : q.status === 'expired' ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'rgba(232,123,53,0.15)',
+                          background: q.status === 'accepted' ? 'rgba(34,197,94,0.15)' : q.status === 'declined' ? 'rgba(239,68,68,0.15)' : q.status === 'expired' ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'var(--brand-color-light)',
                           color: q.status === 'accepted' ? '#22c55e' : q.status === 'declined' ? '#ef4444' : q.status === 'expired' ? c.subText : c.brand,
                           border: 'none',
                           fontWeight: 700,

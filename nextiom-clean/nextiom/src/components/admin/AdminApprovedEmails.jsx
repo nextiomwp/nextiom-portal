@@ -26,8 +26,8 @@ function AdminApprovedEmails({ isDark = true }) {
   const { toast } = useToast();
 
   const c = isDark
-    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35', input: '#22252C', overlay: 'rgba(0,0,0,0.6)' }
-    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35', input: '#f5f5f5', overlay: 'rgba(0,0,0,0.4)' };
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)', input: '#22252C', overlay: 'rgba(0,0,0,0.6)' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: 'var(--brand-color)', input: '#f5f5f5', overlay: 'rgba(0,0,0,0.4)' };
 
   const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20, boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
   const thS = { textAlign: 'left', padding: '11px 18px', fontSize: 10.5, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 1.2, background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', borderBottom: `1px solid ${c.border}` };
@@ -185,7 +185,7 @@ function AdminApprovedEmails({ isDark = true }) {
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setFilterOpen(!filterOpen)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', border: `1.5px solid ${expFilter !== 'all' ? c.brand : c.border}`, borderRadius: 10, background: expFilter !== 'all' ? (isDark ? 'rgba(232,123,53,0.1)' : 'rgba(232,123,53,0.06)') : c.input, color: expFilter !== 'all' ? c.brand : c.text, fontSize: 13, fontWeight: expFilter !== 'all' ? 600 : 400, cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 14px', border: `1.5px solid ${expFilter !== 'all' ? c.brand : c.border}`, borderRadius: 10, background: expFilter !== 'all' ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.06)') : c.input, color: expFilter !== 'all' ? c.brand : c.text, fontSize: 13, fontWeight: expFilter !== 'all' ? 600 : 400, cursor: 'pointer' }}
           >
             {activeFilterLabel} <ChevronDown size={14} style={{ transform: filterOpen ? 'rotate(180deg)' : 'none', transition: '0.15s' }} />
           </button>
@@ -194,7 +194,7 @@ function AdminApprovedEmails({ isDark = true }) {
               {FILTER_OPTIONS.map(opt => (
                 <div key={opt.key}
                   onClick={() => { setExpFilter(opt.key); setFilterOpen(false); }}
-                  style={{ padding: '10px 16px', fontSize: 13, cursor: 'pointer', color: expFilter === opt.key ? c.brand : c.text, fontWeight: expFilter === opt.key ? 600 : 400, background: expFilter === opt.key ? (isDark ? 'rgba(232,123,53,0.1)' : 'rgba(232,123,53,0.06)') : 'transparent' }}>
+                  style={{ padding: '10px 16px', fontSize: 13, cursor: 'pointer', color: expFilter === opt.key ? c.brand : c.text, fontWeight: expFilter === opt.key ? 600 : 400, background: expFilter === opt.key ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.06)') : 'transparent' }}>
                   {opt.label}
                 </div>
               ))}

@@ -56,8 +56,8 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
   const [deleting, setDeleting] = useState(false);
 
   const c = isDark
-    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35', input: '#22252C', panel: '#22252C', brandLight: 'rgba(232,123,53,0.15)' }
-    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35', input: '#f5f5f5', panel: '#f5f5f5', brandLight: 'rgba(232,123,53,0.1)' };
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)', input: '#22252C', panel: '#22252C', brandLight: 'var(--brand-color-light)' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: 'var(--brand-color)', input: '#f5f5f5', panel: '#f5f5f5', brandLight: 'var(--brand-color-light)' };
 
   const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
   const inpS = { width: '100%', padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 9, background: c.input, color: c.text, fontSize: 13.5, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' };
@@ -436,7 +436,7 @@ function AdminNotificationManagement({ isDark = true, isMobile = false }) {
                 
                 let TypeIcon = Megaphone;
                 let iconColor = c.brand;
-                let iconBg = isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.1)';
+                let iconBg = isDark ? 'var(--brand-color-light)' : 'var(--brand-color-light)';
                 
                 if (group.type === 'security') {
                   TypeIcon = Shield;

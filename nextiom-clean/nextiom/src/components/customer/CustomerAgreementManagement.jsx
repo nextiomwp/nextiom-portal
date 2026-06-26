@@ -108,7 +108,7 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
                     width: 44,
                     height: 44,
                     borderRadius: 10,
-                    background: 'rgba(232, 123, 53, 0.1)',
+                    background: 'var(--brand-color-light)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',

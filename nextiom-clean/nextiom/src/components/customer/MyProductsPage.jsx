@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 const LICENSE_CFG = {
   one_time:  { label: 'One Time Purchase', icon: Package,   color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
   yearly:    { label: 'Yearly Renewal',    icon: RefreshCw, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  lifetime:  { label: 'Lifetime License',  icon: Infinity,  color: '#E87B35', bg: 'rgba(232,123,53,0.12)' },
+  lifetime:  { label: 'Lifetime License',  icon: Infinity,  color: 'var(--brand-color)', bg: 'rgba(232,123,53,0.12)' },
 };
 
 function getValidity(license) {
@@ -221,7 +221,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   const hover = c?.hover || (isDark ? 'rgba(255, 255, 255, 0.04)' : '#f5f5f5');
   const text = c?.text || (isDark ? '#fff' : '#1a1a1a');
   const sub = c?.subText || (isDark ? '#a0a0a0' : '#888');
-  const brand = c?.brand || '#E87B35';
+  const brand = c?.brand || 'var(--brand-color)';
 
   useEffect(() => {
     if (user?.id) load();

@@ -7,8 +7,8 @@ function NewsAnnouncementsCard({ isDark = false, c = {}, customerId }) {
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
-  const brand = c.brand || '#E87B35';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brand = c.brand || 'var(--brand-color)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
   const panel2 = c.panel2 || '#f5f5f5';
 
   const [announcement, setAnnouncement] = useState(null);

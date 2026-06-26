@@ -26,7 +26,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
     }
   }, [open]);
 
-  const inp = 'w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all text-sm';
+  const inp = 'w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all text-sm';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -198,7 +198,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
             <div className="space-y-2">
               {formData.domains.map((domain, index) => (
                 <div key={index} className="flex gap-2">
-                  <input type="text" value={domain} onChange={e => updateDomain(index, e.target.value)} placeholder="example.com" className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35] outline-none transition-all text-sm" />
+                  <input type="text" value={domain} onChange={e => updateDomain(index, e.target.value)} placeholder="example.com" className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all text-sm" />
                   {formData.domains.length > 1 && (
                     <Button type="button" variant="ghost" size="sm" onClick={() => removeDomain(index)} className="hover:bg-red-50 hover:text-red-600">
                       <Trash2 className="w-4 h-4" />
@@ -211,7 +211,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
 
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
-            <Button type="submit" disabled={loading} className="bg-[#e87b35] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
+            <Button type="submit" disabled={loading} className="bg-[var(--brand-color)] hover:bg-[#d66a24] text-white shadow-md rounded-xl transition-all font-medium border-0">
               {loading ? 'Creating…' : 'Add Customer'}
             </Button>
           </div>

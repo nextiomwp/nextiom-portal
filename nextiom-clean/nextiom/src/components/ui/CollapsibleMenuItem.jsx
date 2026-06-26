@@ -25,8 +25,8 @@ const CollapsibleMenuItem = ({
   showDot = false,
   dotColor,
 }) => {
-  const brand = c.brand || '#E87B35';
-  const brandLight = c.brandLight || 'rgba(232,123,53,0.1)';
+  const brand = c.brand || 'var(--brand-color)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
   const subText = c.subText || '#888';
   const textColor = c.text || '#1a1a1a';
   const hover = c.hover || '#f5f5f5';

@@ -63,7 +63,7 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
   const card = c.card || '#1C1E24';
   const border = c.border || 'rgba(255,255,255,0.06)';
   const borderStrong = c.borderStrong || 'rgba(255,255,255,0.10)';
-  const brand = c.brand || '#e87b35';
+  const brand = c.brand || 'var(--brand-color)';
   const input = c.input || '#22252C';
   const overlay = 'rgba(0,0,0,0.6)';
 

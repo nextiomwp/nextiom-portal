@@ -1153,9 +1153,26 @@ export const DEFAULT_PORTAL_SETTINGS = {
   maintenanceExpectedDowntime: '',
   maintenanceStartDate: '',
   maintenanceEndDate: '',
+  themeColor: 'var(--brand-color)',
 };
 
 const PORTAL_SETTINGS_STORAGE_KEY = 'portal_settings';
+
+export const hexToRgb = (hex) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+};
+
+export const applyThemeColor = (hex = 'var(--brand-color)') => {
+  const rgb = hexToRgb(hex) || { r: 232, g: 123, b: 53 };
+  document.documentElement.style.setProperty('--brand-color', hex);
+  document.documentElement.style.setProperty('--brand-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+  document.documentElement.style.setProperty('--brand-color-light', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`);
+};
 
 const toPortalSettingsRecord = (settings = {}) => ({
   id: 1,
@@ -1168,6 +1185,7 @@ const toPortalSettingsRecord = (settings = {}) => ({
   maintenance_expected_downtime: settings.maintenanceExpectedDowntime || '',
   maintenance_start_date: settings.maintenanceStartDate || null,
   maintenance_end_date: settings.maintenanceEndDate || null,
+  theme_color: settings.themeColor || 'var(--brand-color)',
 });
 
 const fromPortalSettingsRecord = (record = {}) => ({
@@ -1181,6 +1199,7 @@ const fromPortalSettingsRecord = (record = {}) => ({
   maintenanceExpectedDowntime: record.maintenance_expected_downtime ?? record.maintenanceExpectedDowntime ?? '',
   maintenanceStartDate: record.maintenance_start_date ?? record.maintenanceStartDate ?? '',
   maintenanceEndDate: record.maintenance_end_date ?? record.maintenanceEndDate ?? '',
+  themeColor: record.theme_color ?? record.themeColor ?? 'var(--brand-color)',
 });
 
 export const getSettings = () => {

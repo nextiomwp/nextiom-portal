@@ -20,8 +20,8 @@ export default function MaintenanceModePage({ isDark }) {
   const { toast } = useToast();
 
   const c = isDark
-    ? { bg: '#15161A', card: '#1C1E24', panel2: '#22252C', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', brand: '#e87b35', hover: 'rgba(255,255,255,0.04)', inputBg: '#1C1E24', inputBorder: 'rgba(255,255,255,0.10)' }
-    : { bg: '#f8f8f7', card: '#fff', panel2: '#f5f5f5', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', brand: '#e87b35', hover: '#f5f5f5', inputBg: '#fff', inputBorder: '#e2e8f0' };
+    ? { bg: '#15161A', card: '#1C1E24', panel2: '#22252C', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', brand: 'var(--brand-color)', hover: 'rgba(255,255,255,0.04)', inputBg: '#1C1E24', inputBorder: 'rgba(255,255,255,0.10)' }
+    : { bg: '#f8f8f7', card: '#fff', panel2: '#f5f5f5', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', brand: 'var(--brand-color)', hover: '#f5f5f5', inputBg: '#fff', inputBorder: '#e2e8f0' };
 
   const fieldStyle = {
     background: c.inputBg,
@@ -330,7 +330,7 @@ export default function MaintenanceModePage({ isDark }) {
           background: isDark ? 'rgba(232,123,53,0.08)' : 'rgba(232,123,53,0.06)',
           border: `1px solid ${isDark ? 'rgba(232,123,53,0.18)' : 'rgba(232,123,53,0.14)'}`,
         }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(232,123,53,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--brand-color-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Construction size={26} style={{ color: c.brand }} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>

@@ -171,10 +171,10 @@ export default function InvoicePrintPage() {
               transform: 'translate(-50%, -50%) rotate(-25deg)',
               fontSize: status === 'refunded' ? 64 : 48,
               fontWeight: 900,
-              color: '#E87B35',
+              color: 'var(--brand-color)',
               opacity: 0.12,
               letterSpacing: 6,
-              border: '6px solid #E87B35',
+              border: '6px solid var(--brand-color)',
               padding: status === 'refunded' ? '12px 36px' : '16px 36px',
               borderRadius: 16,
               pointerEvents: 'none',
@@ -276,7 +276,7 @@ export default function InvoicePrintPage() {
                           borderRadius: 4,
                           textTransform: 'uppercase',
                           background: item.refunded ? 'rgba(232, 123, 53, 0.12)' : 'rgba(34, 197, 94, 0.12)',
-                          color: item.refunded ? '#E87B35' : '#22c55e',
+                          color: item.refunded ? 'var(--brand-color)' : '#22c55e',
                           display: 'inline-block'
                         }}>
                           {item.refunded ? 'Refunded' : 'Active'}
@@ -338,7 +338,7 @@ export default function InvoicePrintPage() {
             </div>
             {refunded_amount && Number(refunded_amount) > 0 ? (
               <>
-                <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#E87B35', fontWeight: 600 }}>
+                <div style={{ display: 'flex', gap: 56, fontSize: 13, color: 'var(--brand-color)', fontWeight: 600 }}>
                   <span>Total Refunded</span><span>- {fmtCurrency(Number(refunded_amount), currency)}</span>
                 </div>
                 {refund_service_charge && Number(refund_service_charge) > 0 ? (
@@ -402,8 +402,8 @@ export default function InvoicePrintPage() {
           )}
 
           {refund_reason && (
-            <div style={{ marginTop: 16, fontSize: 11, color: '#E87B35', lineHeight: 1.7, borderTop: '1.5px dashed #fed7aa', paddingTop: 12, background: '#fffaf8', padding: '10px 14px', borderRadius: 8, border: '1.5px solid #fed7aa' }}>
-              <strong style={{ display: 'block', marginBottom: 4, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', color: '#E87B35' }}>Refund Details & Notes</strong>
+            <div style={{ marginTop: 16, fontSize: 11, color: 'var(--brand-color)', lineHeight: 1.7, borderTop: '1.5px dashed #fed7aa', paddingTop: 12, background: '#fffaf8', padding: '10px 14px', borderRadius: 8, border: '1.5px solid #fed7aa' }}>
+              <strong style={{ display: 'block', marginBottom: 4, textTransform: 'uppercase', fontSize: 10, letterSpacing: '0.05em', color: 'var(--brand-color)' }}>Refund Details & Notes</strong>
               {refund_reason}
             </div>
           )}

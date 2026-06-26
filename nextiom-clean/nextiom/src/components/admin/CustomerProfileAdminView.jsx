@@ -51,8 +51,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   const { toast } = useToast();
 
   const c = isDark
-    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.12)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
-    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', borderStrong: '#d1d1d1', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: '#e87b35' };
+    ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.12)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)' }
+    : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', borderStrong: '#d1d1d1', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: 'var(--brand-color)' };
 
   // Data States
   const [customerData, setCustomerData] = useState(customer || null);
@@ -1464,7 +1464,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                 }}
               >
                 {tab.label}
-                <span style={{ background: activeTab === tab.id ? 'rgba(232,123,53,0.15)' : 'rgba(255,255,255,0.05)', color: activeTab === tab.id ? c.brand : c.subText, fontSize: 10.5, padding: '2px 6px', borderRadius: 10 }}>{tab.count}</span>
+                <span style={{ background: activeTab === tab.id ? 'var(--brand-color-light)' : 'rgba(255,255,255,0.05)', color: activeTab === tab.id ? c.brand : c.subText, fontSize: 10.5, padding: '2px 6px', borderRadius: 10 }}>{tab.count}</span>
               </button>
             ))}
           </div>
@@ -1517,7 +1517,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                                 {pImg ? (
                                   <img src={pImg} style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover' }} alt="" />
                                 ) : (
-                                  <div style={{ width: 28, height: 28, borderRadius: 4, background: 'rgba(232,123,53,0.1)', color: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={14} /></div>
+                                  <div style={{ width: 28, height: 28, borderRadius: 4, background: 'var(--brand-color-light)', color: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={14} /></div>
                                 )}
                                 <span style={{ fontWeight: 600 }}>{lic.name}</span>
                               </div>

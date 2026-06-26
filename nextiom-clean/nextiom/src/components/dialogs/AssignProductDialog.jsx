@@ -337,7 +337,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     card: '#1C1E24',
     panel2: '#22252C',
     hover: 'rgba(255,255,255,0.04)',
-    brand: '#e87b35',
+    brand: 'var(--brand-color)',
   };
 
   const text = theme.text || '#fff';
@@ -345,7 +345,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
   const card = theme.card || '#1C1E24';
   const border = theme.border || 'rgba(255,255,255,0.06)';
   const borderStrong = theme.borderStrong || 'rgba(255,255,255,0.10)';
-  const brand = theme.brand || '#e87b35';
+  const brand = theme.brand || 'var(--brand-color)';
   const input = theme.input || (theme.bg === '#15161A' ? '#22252C' : '#fff');
   const panel = theme.panel2 || '#22252C';
   const overlay = 'rgba(0,0,0,0.6)';
@@ -1137,7 +1137,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{
                               width: 48, height: 48, borderRadius: '50%',
-                              background: 'rgba(232, 123, 53, 0.15)',
+                              background: 'var(--brand-color-light)',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
                               marginBottom: 8
                             }}>

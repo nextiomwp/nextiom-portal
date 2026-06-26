@@ -75,7 +75,7 @@ function ResetPasswordPage() {
   if (!isReady) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f8f7' }}>
       <div style={{ textAlign: 'center' }}>
-        <Loader2 style={{ width: 44, height: 44, color: '#E87B35', margin: '0 auto 16px' }} className="animate-spin" />
+        <Loader2 style={{ width: 44, height: 44, color: 'var(--brand-color)', margin: '0 auto 16px' }} className="animate-spin" />
         <p style={{ color: '#888', fontSize: 14 }}>Verifying reset link…</p>
       </div>
     </div>
@@ -106,7 +106,7 @@ function ResetPasswordPage() {
                 placeholder="Minimum 8 characters"
                 required
                 style={inputStyle}
-                onFocus={e => e.target.style.borderColor = '#E87B35'}
+                onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
                 onBlur={e => e.target.style.borderColor = '#ebebeb'}
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
@@ -127,7 +127,7 @@ function ResetPasswordPage() {
                 placeholder="Re-enter new password"
                 required
                 style={inputStyle}
-                onFocus={e => e.target.style.borderColor = '#E87B35'}
+                onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
                 onBlur={e => e.target.style.borderColor = '#ebebeb'}
               />
             </div>
@@ -145,7 +145,7 @@ function ResetPasswordPage() {
             disabled={isLoading}
             style={{
               width: '100%', padding: '12px', borderRadius: 10, border: 'none',
-              background: isLoading ? '#f0a070' : '#E87B35', color: '#fff',
+              background: isLoading ? '#f0a070' : 'var(--brand-color)', color: '#fff',
               fontSize: 14, fontWeight: 700, cursor: isLoading ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               transition: 'background 0.15s',

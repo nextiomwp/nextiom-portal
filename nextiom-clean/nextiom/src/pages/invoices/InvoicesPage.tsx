@@ -10,7 +10,7 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   payment_submitted: { label: 'Pending Review', color: '#3b82f6', bg: 'rgba(59,130,246,0.13)' },
   partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.13)' },
   refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.13)' },
-  partially_refunded: { label: 'Partially Refunded', color: '#E87B35', bg: 'rgba(232,123,53,0.13)' },
+  partially_refunded: { label: 'Partially Refunded', color: 'var(--brand-color)', bg: 'var(--brand-color-light)' },
 }
 
 function getLocalDateString() {
@@ -332,7 +332,7 @@ function RefundDialog({ invoice, c, isDark, onClose, onChanged }: {
       <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 560, maxWidth: '95vw', maxHeight: '92vh', background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, zIndex: 301, display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
         <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <RotateCcw size={18} style={{ color: '#E87B35' }} />
+            <RotateCcw size={18} style={{ color: 'var(--brand-color)' }} />
             <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Process Refund — {invoice.invoice_no}</span>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
@@ -455,7 +455,7 @@ function RefundDialog({ invoice, c, isDark, onClose, onChanged }: {
             onClick={handleRefund}
             disabled={busy || maxRefundable <= 0 || loadingInvoice}
             style={{
-              padding: '8px 20px', border: 'none', background: '#E87B35', color: '#fff',
+              padding: '8px 20px', border: 'none', background: 'var(--brand-color)', color: '#fff',
               borderRadius: 8, cursor: busy || maxRefundable <= 0 || loadingInvoice ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 700, fontFamily: 'inherit', opacity: busy || maxRefundable <= 0 || loadingInvoice ? 0.6 : 1
             }}
@@ -717,14 +717,14 @@ function CalendarWidget({ invoices, calFilter, onDayClick, onMonthClick, c, isDa
                 onClick={() => onDayClick(viewYear, viewMonth, day)}
                 style={{
                   textAlign: 'center', borderRadius: 6, padding: '4px 0', cursor: 'pointer', position: 'relative',
-                  background: isSelected ? c.brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent',
+                  background: isSelected ? c.brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent',
                   color: isSelected ? '#fff' : hasInvoice ? c.text : c.subText,
                   fontWeight: hasInvoice || isToday ? 700 : 400,
                   fontSize: 11,
                   border: isToday && !isSelected ? `1.5px dashed ${c.brand}` : '1.5px solid transparent',
                 }}
                 onMouseEnter={e => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? c.brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? c.brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent' }}
               >
                 {day}
                 {hasInvoice && !isSelected && (
@@ -1169,7 +1169,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                         </button>
                       )}
                       {(inv.status === 'paid' || inv.status === 'partially_paid' || inv.status === 'partially_refunded') && (
-                        <button onClick={() => setRefundInvoice(inv)} style={{ background: 'none', border: 'none', color: '#E87B35', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Refund">
+                        <button onClick={() => setRefundInvoice(inv)} style={{ background: 'none', border: 'none', color: 'var(--brand-color)', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Refund">
                           <RotateCcw size={14} />
                         </button>
                       )}

@@ -96,7 +96,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
     card: '#1C1E24',
     panel2: '#22252C',
     hover: 'rgba(255,255,255,0.04)',
-    brand: '#e87b35',
+    brand: 'var(--brand-color)',
   };
 
   const text = theme.text || '#fff';
@@ -104,7 +104,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
   const card = theme.card || '#1C1E24';
   const border = theme.border || 'rgba(255,255,255,0.06)';
   const borderStrong = theme.borderStrong || 'rgba(255,255,255,0.10)';
-  const brand = theme.brand || '#e87b35';
+  const brand = theme.brand || 'var(--brand-color)';
   const inputBg = theme.input || (theme.bg === '#15161A' ? '#22252C' : '#fff');
   const panel = theme.panel2 || '#22252C';
   const overlay = 'rgba(0,0,0,0.6)';

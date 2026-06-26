@@ -58,14 +58,14 @@ const DEFAULT_PLANS = [
 
 // ── Hosting type icons & descriptions ──────────────────────────────────────────
 const TYPE_META = {
-  'Shared Hosting':   { Icon: Globe,    gradient: 'linear-gradient(135deg,#E87B35,#c4611e)', desc: 'Affordable and easy for beginners' },
-  'Cloud Hosting':    { Icon: Cloud,    gradient: 'linear-gradient(135deg,#E87B35,#c4611e)', desc: 'Scalable and powerful cloud infrastructure' },
-  'VPS Hosting':      { Icon: Database, gradient: 'linear-gradient(135deg,#E87B35,#c4611e)', desc: 'Dedicated power with VPS flexibility' },
-  'Dedicated Server': { Icon: Cpu,      gradient: 'linear-gradient(135deg,#E87B35,#c4611e)', desc: 'Full control with dedicated resources' },
+  'Shared Hosting':   { Icon: Globe,    gradient: 'linear-gradient(135deg,var(--brand-color),#c4611e)', desc: 'Affordable and easy for beginners' },
+  'Cloud Hosting':    { Icon: Cloud,    gradient: 'linear-gradient(135deg,var(--brand-color),#c4611e)', desc: 'Scalable and powerful cloud infrastructure' },
+  'VPS Hosting':      { Icon: Database, gradient: 'linear-gradient(135deg,var(--brand-color),#c4611e)', desc: 'Dedicated power with VPS flexibility' },
+  'Dedicated Server': { Icon: Cpu,      gradient: 'linear-gradient(135deg,var(--brand-color),#c4611e)', desc: 'Full control with dedicated resources' },
 };
 
 const getTypeMeta = (type) =>
-  TYPE_META[type] || { Icon: Server, gradient: 'linear-gradient(135deg,#E87B35,#c4611e)', desc: 'Hosting solution' };
+  TYPE_META[type] || { Icon: Server, gradient: 'linear-gradient(135deg,var(--brand-color),#c4611e)', desc: 'Hosting solution' };
 
 // ── Step Progress Bar ──────────────────────────────────────────────────────────
 const STEPS = ['Hosting Type', 'Choose Plan', 'Configuration'];
@@ -296,13 +296,13 @@ function OrderSummaryPanel({ hostingType, selectedPlan, billingPeriod, autoRenew
   return (
     <div style={{
       background: theme.card,
-      border: `1px solid ${theme.isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.2)'}`,
+      border: `1px solid ${theme.isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.2)'}`,
       borderRadius: 20, padding: '24px 20px',
       boxShadow: theme.isDark ? '0 8px 40px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.04)' : '0 8px 30px rgba(0,0,0,0.06)',
     }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${theme.border}` }}>
-        <div style={{ width: 32, height: 32, borderRadius: 10, background: theme.isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, borderRadius: 10, background: theme.isDark ? 'var(--brand-color-light)' : 'var(--brand-color-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Server size={15} color={brand} />
         </div>
         <span style={{ color: theme.text, fontWeight: 700, fontSize: 15 }}>Order Summary</span>
@@ -345,7 +345,7 @@ function OrderSummaryPanel({ hostingType, selectedPlan, billingPeriod, autoRenew
 
       {/* Pricing */}
       {hasPrice ? (
-        <div style={{ marginBottom: 20, padding: '16px', background: theme.isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', borderRadius: 14, border: `1px solid ${theme.isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.2)'}` }}>
+        <div style={{ marginBottom: 20, padding: '16px', background: theme.isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', borderRadius: 14, border: `1px solid ${theme.isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.2)'}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <span style={{ color: theme.subText, fontSize: 12 }}>Total Due Today</span>
             {yearlyDiscount && <span style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>SAVE {yearlyDiscount}%</span>}
@@ -369,7 +369,7 @@ function OrderSummaryPanel({ hostingType, selectedPlan, billingPeriod, autoRenew
           )}
         </div>
       ) : (
-        <div style={{ marginBottom: 20, padding: '16px', background: theme.isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', borderRadius: 14, border: `1px solid ${theme.isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.2)'}`, textAlign: 'center' }}>
+        <div style={{ marginBottom: 20, padding: '16px', background: theme.isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', borderRadius: 14, border: `1px solid ${theme.isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.2)'}`, textAlign: 'center' }}>
           <p style={{ color: brand, fontWeight: 700, fontSize: 14 }}>Custom Pricing</p>
           <p style={{ color: theme.subText, fontSize: 11, marginTop: 4 }}>Admin will contact you with a quote</p>
         </div>
@@ -461,7 +461,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
     text: c?.text || (isDark ? '#fff' : '#1a1a1a'),
     subText: c?.subText || (isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.5)'),
     subTextMuted: isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.35)',
-    brand: c?.brand || '#E87B35',
+    brand: c?.brand || 'var(--brand-color)',
     isDark
   };
 
@@ -669,9 +669,9 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
           <div style={{
             width: 42, height: 42, borderRadius: 12,
-            background: theme.isDark ? 'linear-gradient(135deg,rgba(232,123,53,0.2),rgba(232,123,53,0.08))' : 'linear-gradient(135deg,rgba(232,123,53,0.1),rgba(232,123,53,0.04))',
+            background: theme.isDark ? 'linear-gradient(135deg,rgba(232,123,53,0.2),rgba(232,123,53,0.08))' : 'linear-gradient(135deg,var(--brand-color-light),rgba(232,123,53,0.04))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: `1px solid ${theme.isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.15)'}`,
+            border: `1px solid ${theme.isDark ? 'rgba(232,123,53,0.2)' : 'var(--brand-color-light)'}`,
           }}>
             <Server size={18} color={brand} />
           </div>
@@ -695,7 +695,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
           {/* ── STEP 1: Hosting Type ── */}
           <div style={sectionCard}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <div style={{ width: 26, height: 26, borderRadius: 8, background: currentStep >= 1 ? 'rgba(232,123,53,0.15)' : theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: currentStep >= 1 ? '1px solid rgba(232,123,53,0.3)' : 'none' }}>
+              <div style={{ width: 26, height: 26, borderRadius: 8, background: currentStep >= 1 ? 'var(--brand-color-light)' : theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: currentStep >= 1 ? '1px solid rgba(232,123,53,0.3)' : 'none' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: currentStep >= 1 ? brand : theme.subTextMuted }}>1</span>
               </div>
               <div>
@@ -724,7 +724,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
             pointerEvents: currentStep >= 2 ? 'auto' : 'none',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <div style={{ width: 26, height: 26, borderRadius: 8, background: currentStep >= 2 ? 'rgba(232,123,53,0.15)' : theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: currentStep >= 2 ? '1px solid rgba(232,123,53,0.3)' : 'none' }}>
+              <div style={{ width: 26, height: 26, borderRadius: 8, background: currentStep >= 2 ? 'var(--brand-color-light)' : theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: currentStep >= 2 ? '1px solid rgba(232,123,53,0.3)' : 'none' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: currentStep >= 2 ? brand : theme.subTextMuted }}>2</span>
               </div>
               <div>
@@ -779,7 +779,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
             pointerEvents: currentStep >= 3 ? 'auto' : 'none',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <div style={{ width: 26, height: 26, borderRadius: 8, background: currentStep >= 3 ? 'rgba(232,123,53,0.15)' : theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: currentStep >= 3 ? '1px solid rgba(232,123,53,0.3)' : 'none' }}>
+              <div style={{ width: 26, height: 26, borderRadius: 8, background: currentStep >= 3 ? 'var(--brand-color-light)' : theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: currentStep >= 3 ? '1px solid rgba(232,123,53,0.3)' : 'none' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: currentStep >= 3 ? brand : theme.subTextMuted }}>3</span>
               </div>
               <div>
@@ -845,7 +845,7 @@ function NewHostingOrderPage({ onSuccess, user, isDark = true, c = {}, onNavigat
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                        background: domainOption === key ? 'rgba(232,123,53,0.15)' : theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                        background: domainOption === key ? 'var(--brand-color-light)' : theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
                         color: domainOption === key ? brand : theme.subText,
                         border: `1.5px solid ${domainOption === key ? 'rgba(232,123,53,0.4)' : theme.border}`,
                         transition: 'all 0.2s',

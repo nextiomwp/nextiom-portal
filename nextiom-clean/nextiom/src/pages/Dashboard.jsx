@@ -32,41 +32,45 @@ import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
 import AdminJobsPage from '@/components/admin/AdminJobsPage';
 import AdminAgreementManagement from '@/components/admin/AdminAgreementManagement';
+import SystemSettingsPage from '@/components/admin/SystemSettingsPage';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
   const iconColor = color || style?.color || '';
   const colorStr = String(iconColor).toLowerCase();
 
-  // Color matching filters
-  let imgFilter = 'brightness(0) saturate(100%) invert(60%)'; // default inactive gray
-  if (colorStr.includes('e87b35')) {
-    // Brand Orange (#E87B35) filter
-    imgFilter = 'brightness(0) saturate(100%) invert(56%) sepia(56%) saturate(1487%) hue-rotate(345deg) brightness(97%) contrast(92%)';
+  let resolvedColor = '#a0a0a0'; // Default gray
+  if (colorStr.includes('e87b35') || colorStr.includes('var(--brand-color)') || colorStr.includes('brand')) {
+    resolvedColor = 'var(--brand-color)';
   } else if (colorStr.includes('888')) {
-    imgFilter = 'brightness(0) saturate(100%) invert(53%)';
+    resolvedColor = '#888888';
   } else if (colorStr.includes('a0a0a0')) {
-    imgFilter = 'brightness(0) saturate(100%) invert(63%)';
+    resolvedColor = '#a0a0a0';
   } else if (colorStr.includes('fff') || colorStr.includes('rgb(255, 255, 255)')) {
-    imgFilter = 'brightness(0) saturate(100%) invert(100%)';
+    resolvedColor = '#ffffff';
+  } else if (iconColor) {
+    resolvedColor = iconColor;
   }
 
   return (
-    <img
-      src={src}
-      alt={alt || "icon"}
+    <div
       className={className}
       style={{
         width: sizePx || '20px',
         height: sizePx || '20px',
-        objectFit: 'contain',
-        imageRendering: src.endsWith('.svg') ? 'auto' : '-webkit-optimize-contrast',
-        transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden',
-        willChange: 'filter',
+        backgroundColor: resolvedColor,
+        WebkitMaskImage: `url(${src})`,
+        maskImage: `url(${src})`,
+        WebkitMaskSize: 'contain',
+        maskSize: 'contain',
+        WebkitMaskRepeat: 'no-repeat',
+        maskRepeat: 'no-repeat',
+        WebkitMaskPosition: 'center',
+        maskPosition: 'center',
+        display: 'inline-block',
         ...style,
-        filter: imgFilter
       }}
+      aria-label={alt || "icon"}
     />
   );
 };
@@ -105,7 +109,7 @@ const NAV = [
   { id: 'maintenance', label: 'Maintenance', icon: Shield },
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
   // { id: 'adminManagement', label: 'Admin Management', icon: Shield },
-  // { id: 'systemSettings', label: 'System Settings', icon: Settings },
+  { id: 'systemSettings', label: 'System Settings', icon: Settings },
 ];
 
 const ADMIN_INTERNAL_NOTIFICATION_TYPES = new Set([
@@ -288,8 +292,8 @@ function Dashboard({ onLogout }) {
   };
 
   const c = isDark
-    ? { bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', card: '#1C1E24', panel2: '#22252C', hover: 'rgba(255,255,255,0.04)', brand: '#e87b35' }
-    : { bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', card: '#fff', panel2: '#f5f5f5', hover: '#f5f5f5', brand: '#e87b35' };
+    ? { bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0', card: '#1C1E24', panel2: '#22252C', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)' }
+    : { bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0', text: '#1a1a1a', subText: '#888', card: '#fff', panel2: '#f5f5f5', hover: '#f5f5f5', brand: 'var(--brand-color)' };
 
   useEffect(() => {
     loadData();
@@ -687,7 +691,7 @@ function Dashboard({ onLogout }) {
       case 'approvedEmailsActive': return <AdminApprovedEmails key={refreshKey} isDark={isDark} />;
       case 'activeHosting': return <AdminApprovedHostings key={refreshKey} isDark={isDark} />;
       case 'adminManagement': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>Admin management page coming soon.</div>;
-      case 'systemSettings': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>System settings page coming soon.</div>;
+      case 'systemSettings': return <SystemSettingsPage key={refreshKey} isDark={isDark} />;
       default: return null;
     }
   };
@@ -746,7 +750,7 @@ function Dashboard({ onLogout }) {
               if (item.section === 'divider') return <div key={`div-${i}`} style={{ height: 12 }} />;
               if (item.section === 'header') {
                 if (!sidebarOpen) return <div key={`h-${i}`} style={{ height: 4 }} />;
-                return <div key={`h-${i}`} style={{ fontSize: 10, color: '#E87B35', padding: '0 12px 8px', fontWeight: 700, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
+                return <div key={`h-${i}`} style={{ fontSize: 10, color: 'var(--brand-color)', padding: '0 12px 8px', fontWeight: 700, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
               }
               const isItem = item;
               let badge = 0;
@@ -781,7 +785,7 @@ function Dashboard({ onLogout }) {
               </div>}
             </div>
             <div style={{ display: 'flex', flexDirection: sidebarOpen ? 'row' : 'column', gap: 8, marginTop: 12 }}>
-              <button onClick={() => setIsSettingsOpen(true)} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
+              <button onClick={() => setActive('systemSettings')} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }} title="System Settings">
                 <Settings size={16} />
               </button>
               <button onClick={handleLogout} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.brand, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
@@ -818,7 +822,7 @@ function Dashboard({ onLogout }) {
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
               {NAV.map((item, i) => {
                 if (item.section === 'divider') return <div key={`mdiv-${i}`} style={{ height: 12 }} />;
-                if (item.section === 'header') return <div key={`mh-${i}`} style={{ fontSize: 10, color: '#E87B35', padding: '0 12px 8px', fontWeight: 700, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
+                if (item.section === 'header') return <div key={`mh-${i}`} style={{ fontSize: 10, color: 'var(--brand-color)', padding: '0 12px 8px', fontWeight: 700, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
                 let badge = 0;
                 let dot = false;
                 let badgeColor = c.brand;
@@ -849,7 +853,7 @@ function Dashboard({ onLogout }) {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <button onClick={() => setIsSettingsOpen(true)} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
+                <button onClick={() => navigateTo('systemSettings')} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }} title="System Settings">
                   <Settings size={16} />
                 </button>
                 <button onClick={handleLogout} style={{ display: 'flex', justifyContent: 'center', background: c.hover, border: 'none', color: c.brand, padding: 8, borderRadius: 8, cursor: 'pointer', flex: 1 }}>
@@ -963,7 +967,7 @@ function Dashboard({ onLogout }) {
                     transition: 'background 0.15s',
                     filter: isDark ? `drop-shadow(0 0 3px rgba(232,123,53,0.5))` : 'none',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.20)' : 'rgba(232,123,53,0.10)'}
+                  onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(232,123,53,0.20)' : 'var(--brand-color-light)'}
                   onMouseLeave={e => e.currentTarget.style.background = autoRefreshInterval ? (isDark ? 'rgba(232,123,53,0.18)' : 'rgba(232,123,53,0.12)') : 'transparent'}
                 >
                   <ChevronDown size={13} style={{ transform: showAutoRefreshMenu ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.22s ease' }} />
@@ -996,7 +1000,7 @@ function Dashboard({ onLogout }) {
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                         width: '100%', padding: '9px 14px',
                         background: autoRefreshInterval === opt.value
-                          ? (isDark ? 'rgba(232,123,53,0.14)' : 'rgba(232,123,53,0.10)')
+                          ? (isDark ? 'rgba(232,123,53,0.14)' : 'var(--brand-color-light)')
                           : 'transparent',
                         border: 'none',
                         color: autoRefreshInterval === opt.value ? c.brand : c.text,
@@ -1006,7 +1010,7 @@ function Dashboard({ onLogout }) {
                         transition: 'background 0.12s',
                       }}
                       onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}
-                      onMouseLeave={e => e.currentTarget.style.background = autoRefreshInterval === opt.value ? (isDark ? 'rgba(232,123,53,0.14)' : 'rgba(232,123,53,0.10)') : 'transparent'}
+                      onMouseLeave={e => e.currentTarget.style.background = autoRefreshInterval === opt.value ? (isDark ? 'rgba(232,123,53,0.14)' : 'var(--brand-color-light)') : 'transparent'}
                     >
                       <span>{opt.label}</span>
                       {autoRefreshInterval === opt.value && (
@@ -1058,7 +1062,7 @@ function Dashboard({ onLogout }) {
 
                       return merged.map((item, i) => {
                         const isUnread = item.key && !readNotifIds.includes(item.key);
-                        const rowStyle = { padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' };
+                        const rowStyle = { padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 4, cursor: 'pointer', background: isUnread ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)') : 'transparent', transition: 'background 0.15s' };
                         const dot = isUnread && <span style={{ width: 7, height: 7, borderRadius: '50%', background: c.brand, flexShrink: 0 }} />;
                         const titleStyle = { fontSize: 13, fontWeight: isUnread ? 600 : 500, color: c.text };
                         const subStyle = { fontSize: 12, color: c.subText, paddingLeft: isUnread ? 13 : 0 };
@@ -1248,7 +1252,7 @@ function NavItem({ item, active, setActive, open, c, badge = 0, badgeColor, dot 
   );
 }
 
-const AVATAR_COLORS = ['#e87b35', '#e85d5d', '#378ADD', '#639922', '#BA7517', '#8b5cf6'];
+const AVATAR_COLORS = ['var(--brand-color)', '#e85d5d', '#378ADD', '#639922', '#BA7517', '#8b5cf6'];
 const avatarColor = str => AVATAR_COLORS[(str?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 const timeAgo = d => { const days = Math.floor((Date.now() - new Date(d)) / 86400000); if (days < 1) return 'Today'; if (days < 7) return `${days}d ago`; return `${Math.floor(days / 7)}w ago`; };
 
@@ -1376,8 +1380,8 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                 } else if (r.source === 'email') {
                   targetTab = 'emailRequests';
                   badgeLabel = 'Email';
-                  badgeBg = 'rgba(232,123,53,0.15)';
-                  badgeColor = '#e87b35';
+                  badgeBg = 'var(--brand-color-light)';
+                  badgeColor = 'var(--brand-color)';
                 }
 
                 return (

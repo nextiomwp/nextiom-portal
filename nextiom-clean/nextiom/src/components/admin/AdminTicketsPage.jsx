@@ -1104,12 +1104,12 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                   padding: '12px 14px',
                   borderBottom: `1px solid ${c.border}`,
                   cursor: 'pointer',
-                  background: isActive ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : unread ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : 'transparent',
+                  background: isActive ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)') : unread ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)') : 'transparent',
                   borderLeft: isActive ? `3px solid ${c.brand}` : '3px solid transparent',
                   transition: 'background 0.1s',
                 }}
                 onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.hover; }}
-                onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'rgba(232,123,53,0.10)' : 'rgba(232,123,53,0.07)') : 'transparent'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)') : 'transparent'; }}
               >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 4 }}>
                     <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: unread ? 700 : 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.subject}</span>

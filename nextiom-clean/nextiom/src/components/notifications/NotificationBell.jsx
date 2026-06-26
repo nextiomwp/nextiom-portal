@@ -45,7 +45,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
   const dropdownRef = useRef(null);
   const knownIdsRef = useRef(new Set());
 
-  const brand = c.brand || '#E87B35';
+  const brand = c.brand || 'var(--brand-color)';
   const card = c.card || '#fff';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
@@ -298,13 +298,13 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
   const getIconBg = (type) => {
     if (isDark) {
       switch (type) {
-        case 'expiration': return 'rgba(232,123,53,0.15)';
+        case 'expiration': return 'var(--brand-color-light)';
         case 'new_product': return 'rgba(34,197,94,0.15)';
         case 'update': return 'rgba(59,130,246,0.15)';
         case 'invoice': return 'rgba(168,85,247,0.15)';
         case 'job':
         case 'job_update':
-          return 'rgba(232,123,53,0.15)';
+          return 'var(--brand-color-light)';
         default: return 'rgba(100,116,139,0.15)';
       }
     }
@@ -315,7 +315,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
       case 'invoice': return '#f3e8ff';
       case 'job':
       case 'job_update':
-        return 'rgba(232,123,53,0.1)';
+        return 'var(--brand-color-light)';
       default: return '#f1f5f9';
     }
   };
@@ -378,7 +378,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
                   <button
                     onClick={handleMarkAllRead}
                     className="text-[10px] font-semibold px-2 py-0.5 rounded-md transition-colors"
-                    style={{ color: brand, background: c.brandLight || 'rgba(232,123,53,0.1)' }}
+                    style={{ color: brand, background: c.brandLight || 'var(--brand-color-light)' }}
                     onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
                     onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                   >

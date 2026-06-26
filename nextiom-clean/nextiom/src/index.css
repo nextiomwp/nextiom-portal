@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brand-color: var(--brand-color);
+  --brand-color-rgb: 232, 123, 53;
+  --brand-color-light: var(--brand-color-light);
+}
+
 @layer base {
   * {
     @apply border-slate-200;
@@ -53,16 +59,16 @@
 /* Cositive pulsing animation for jobs menu item — radiating ring pulse */
 @keyframes pulse-glow {
   0% {
-    background-color: rgba(232, 123, 53, 0.08);
-    box-shadow: 0 0 0 0 rgba(232, 123, 53, 0.55), 0 0 8px rgba(232, 123, 53, 0.2);
+    background-color: rgba(var(--brand-color-rgb), 0.08);
+    box-shadow: 0 0 0 0 rgba(var(--brand-color-rgb), 0.55), 0 0 8px rgba(var(--brand-color-rgb), 0.2);
   }
   50% {
-    background-color: rgba(232, 123, 53, 0.18);
-    box-shadow: 0 0 0 7px rgba(232, 123, 53, 0), 0 0 16px rgba(232, 123, 53, 0.35);
+    background-color: rgba(var(--brand-color-rgb), 0.18);
+    box-shadow: 0 0 0 7px rgba(var(--brand-color-rgb), 0), 0 0 16px rgba(var(--brand-color-rgb), 0.35);
   }
   100% {
-    background-color: rgba(232, 123, 53, 0.08);
-    box-shadow: 0 0 0 0 rgba(232, 123, 53, 0), 0 0 8px rgba(232, 123, 53, 0.2);
+    background-color: rgba(var(--brand-color-rgb), 0.08);
+    box-shadow: 0 0 0 0 rgba(var(--brand-color-rgb), 0), 0 0 8px rgba(var(--brand-color-rgb), 0.2);
   }
 }
 
@@ -102,7 +108,7 @@
   position: absolute;
   inset: 0;
   border-radius: 8px;
-  border: 1.5px solid rgba(232, 123, 53, 0.7);
+  border: 1.5px solid rgba(var(--brand-color-rgb), 0.7);
   pointer-events: none;
 }
 

@@ -155,13 +155,13 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
   // Use exact admin theme values or sensible defaults
   const text = c?.text || (isDark ? '#fff' : '#1a1a1a');
   const subText = c?.subText || (isDark ? '#a0a0a0' : '#888');
-  const brand = c?.brand || '#e87b35';
+  const brand = c?.brand || 'var(--brand-color)';
   const border = c?.border || (isDark ? 'rgba(255,255,255,0.06)' : '#ebebeb');
   const bgColor = c?.card || (isDark ? '#1C1E24' : '#fff');
   const sectionBg = isDark ? '#2a2d35' : '#f8f8f7';
   const inputBg = isDark ? '#1a1d24' : '#f5f5f5';
   const inputBorder = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
-  const fieldClass = 'w-full mt-1.5 px-3 py-2 h-10 leading-tight rounded-xl outline-none transition-all border focus:ring-2 focus:ring-[#e87b35]/30 focus:border-[#e87b35]';
+  const fieldClass = 'w-full mt-1.5 px-3 py-2 h-10 leading-tight rounded-xl outline-none transition-all border focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)]';
   const fieldStyle = {
     background: inputBg,
     color: text,

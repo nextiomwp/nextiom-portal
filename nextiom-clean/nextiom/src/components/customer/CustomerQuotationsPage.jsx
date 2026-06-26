@@ -111,7 +111,7 @@ function DarkCalendar({ quotationDates, calFilter, onDayClick, onMonthClick, c, 
                 onClick={() => onDayClick(viewYear, viewMonth, day)}
                 style={{
                   textAlign: 'center', borderRadius: 7, padding: '5px 0', cursor: 'pointer', position: 'relative',
-                  background: isSelected ? brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent',
+                  background: isSelected ? brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent',
                   color: isSelected ? '#fff' : hasQuotation ? (isDark ? '#fff' : '#1a1a1a') : c.subText,
                   fontWeight: hasQuotation || isToday ? 700 : 400,
                   fontSize: 12,
@@ -119,7 +119,7 @@ function DarkCalendar({ quotationDates, calFilter, onDayClick, onMonthClick, c, 
                   transition: 'background 0.1s',
                 }}
                 onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : '#f0f0f0'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = isSelected ? brand : isMonthTinted ? 'rgba(232,123,53,0.10)' : 'transparent'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = isSelected ? brand : isMonthTinted ? 'var(--brand-color-light)' : 'transparent'; }}
               >
                 {day}
                 {hasQuotation && !isSelected && (
@@ -185,14 +185,14 @@ function QuotationDrawer({ quotation, settings, isDark, c, onClose, isMobile = f
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
               <div>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#e87b35', letterSpacing: 2 }}>{settings?.company_name || 'NEXTIOM'}</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--brand-color)', letterSpacing: 2 }}>{settings?.company_name || 'NEXTIOM'}</div>
                 <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{settings?.address || 'Niwandama, Ja Ela – 11350'}</div>
                 <div style={{ fontSize: 11, color: '#666' }}>{settings?.phone || '+94 70 203 2323'}</div>
                 <div style={{ fontSize: 11, color: '#666' }}>{settings?.website || 'https://nextiom.com/'}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 4, color: '#1a1a1a' }}>QUOTATION</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, color: '#e87b35', marginTop: 4 }}>#{quotation.quotation_no}</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 14, fontWeight: 700, color: 'var(--brand-color)', marginTop: 4 }}>#{quotation.quotation_no}</div>
               </div>
             </div>
 
@@ -262,7 +262,7 @@ function QuotationDrawer({ quotation, settings, isDark, c, onClose, isMobile = f
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, borderTop: '2px solid #1a1a1a', paddingTop: 8 }}>
                   <span>Grand Total</span>
-                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#e87b35' }}>{fmtCurrency(quotation.total ?? subtotal, cur)}</span>
+                  <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--brand-color)' }}>{fmtCurrency(quotation.total ?? subtotal, cur)}</span>
                 </div>
               </div>
             </div>
@@ -279,7 +279,7 @@ function QuotationDrawer({ quotation, settings, isDark, c, onClose, isMobile = f
 
             {/* Notes */}
             {quotation.notes && (
-              <div style={{ marginTop: 14, padding: '12px 14px', background: '#f0ede8', borderRadius: 8, fontSize: 11, color: '#666', lineHeight: 1.6, borderLeft: '3px solid #e87b35' }}>
+              <div style={{ marginTop: 14, padding: '12px 14px', background: '#f0ede8', borderRadius: 8, fontSize: 11, color: '#666', lineHeight: 1.6, borderLeft: '3px solid var(--brand-color)' }}>
                 {quotation.notes}
               </div>
             )}
@@ -560,7 +560,7 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
                               Expired
                             </span>
                           ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#e87b35', background: 'rgba(232,123,53,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand-color)', background: 'rgba(232,123,53,0.12)', borderRadius: 20, padding: '2px 9px' }}>
                               Active
                             </span>
                           )}
