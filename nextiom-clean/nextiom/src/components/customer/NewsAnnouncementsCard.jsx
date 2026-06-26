@@ -3,6 +3,7 @@ import { Megaphone, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 
 function NewsAnnouncementsCard({ isDark = false, c = {}, customerId }) {
+  const [hovered, setHovered] = useState(false);
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
@@ -39,20 +40,28 @@ function NewsAnnouncementsCard({ isDark = false, c = {}, customerId }) {
     : '';
 
   return (
-    <div style={{
-      background: isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)',
-      border: `1px solid ${border}`,
-      borderRadius: 20,
-      backdropFilter: 'blur(12px)',
-      WebkitBackdropFilter: 'blur(12px)',
-      boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.25)' : '0 2px 16px rgba(0,0,0,0.06)',
-      padding: '20px',
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      boxSizing: 'border-box',
-      gap: 14,
-    }}>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)',
+        border: `1px solid ${hovered ? brand : border}`,
+        borderRadius: 20,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        boxShadow: hovered
+          ? (isDark ? '0 8px 32px rgba(0,0,0,0.35)' : '0 8px 32px rgba(232,123,53,0.08)')
+          : (isDark ? '0 4px 24px rgba(0,0,0,0.25)' : '0 2px 16px rgba(0,0,0,0.06)'),
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        boxSizing: 'border-box',
+        gap: 14,
+        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+        transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
+      }}
+    >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

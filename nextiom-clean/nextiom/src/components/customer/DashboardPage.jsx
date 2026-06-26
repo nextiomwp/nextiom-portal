@@ -118,7 +118,7 @@ function ActivityIcon({ type, isDark }) {
 }
 
 /* ─────────────── REDESIGNED STAT CARD ─────────────── */
-function StatMiniCard({ icon: Icon, iconBg, iconColor, label, value, valueColor, description, quickActionText, onClick, c, isDark, gradient }) {
+function StatMiniCard({ icon: Icon, iconBg, iconColor, label, value, valueColor, description, quickActionText, onClick, c, isDark }) {
   const [hovered, setHovered] = useState(false);
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
@@ -149,16 +149,7 @@ function StatMiniCard({ icon: Icon, iconBg, iconColor, label, value, valueColor,
         height: '100%',
       }}
     >
-      {/* Accent gradient top bar */}
-      {gradient && (
-        <div style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0,
-          height: 3,
-          background: gradient,
-          borderRadius: '18px 18px 0 0',
-        }} />
-      )}
+
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{
@@ -311,8 +302,7 @@ function ProjectProgressWidget({ jobs, onNavigate, c, isDark }) {
       onMouseLeave={() => setHovered(false)}
       style={cardStyle}
     >
-      {/* Subtle top accent */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
+
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -461,7 +451,7 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
         overflow: 'hidden',
       }}
     >
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
+
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -696,6 +686,7 @@ function ServiceSubCard({ label, description, activeCount, expiredCount, icon: I
 
 /* ─────────────── SERVICE HEALTH CARD ─────────────── */
 function ServiceHealthCard({ data, c, isDark, onNavigate }) {
+  const [hovered, setHovered] = useState(false);
   const brand = c.brand || '#E87B35';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
@@ -709,18 +700,26 @@ function ServiceHealthCard({ data, c, isDark, onNavigate }) {
   ];
 
   return (
-    <div style={{
-      background: isDark ? 'rgba(28,30,36,0.9)' : '#fff',
-      border: `1px solid ${border}`,
-      borderRadius: 20,
-      padding: 24,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 18,
-      boxSizing: 'border-box',
-      height: '100%',
-      boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.04)',
-    }}>
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: isDark ? 'rgba(28,30,36,0.9)' : '#fff',
+        border: `1px solid ${hovered ? brand : border}`,
+        borderRadius: 20,
+        padding: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 18,
+        boxSizing: 'border-box',
+        height: '100%',
+        boxShadow: hovered
+          ? (isDark ? '0 8px 32px rgba(0,0,0,0.35)' : '0 8px 32px rgba(232,123,53,0.08)')
+          : (isDark ? '0 2px 12px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.04)'),
+        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+        transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* Header icon box */}
@@ -853,6 +852,14 @@ function InvoiceSummaryCard({ invoiceSummary, onNavigate, c, isDark }) {
 
 /* ─────────────── MAIN DASHBOARD ─────────────── */
 function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
+  const [ordersHovered, setOrdersHovered] = useState(false);
+  const [activityHovered, setActivityHovered] = useState(false);
+  const [healthHovered, setHealthHovered] = useState(false);
+  const [helpHovered, setHelpHovered] = useState(false);
+  const [aboutHovered, setAboutHovered] = useState(false);
+  const [contactHovered, setContactHovered] = useState(false);
+  const [quickHovered, setQuickHovered] = useState(false);
+
   const [data, setData] = useState({
     chartData: [],
     totalOrders: 0,
@@ -1407,6 +1414,16 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
     boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.04)',
   };
 
+  const getCardStyle = (hovered) => ({
+    ...cardStyle,
+    border: `1px solid ${hovered ? brand : border}`,
+    boxShadow: hovered
+      ? (isDark ? '0 8px 32px rgba(0,0,0,0.35)' : '0 8px 32px rgba(232,123,53,0.08)')
+      : cardStyle.boxShadow,
+    transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+    transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
+  });
+
   const isAnnouncementBannerVisible = data.latestAnnouncement &&
     !announcementDismissed &&
     localStorage.getItem(`dismissed_announcement_${data.latestAnnouncement.id}`) !== 'true';
@@ -1521,8 +1538,20 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       {/* ── Row 2: Orders Overview + Recent Activity ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Orders Overview */}
-        <div className="lg:col-span-3" style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', gap: 18, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
+        <div
+          className="lg:col-span-3"
+          onMouseEnter={() => setOrdersHovered(true)}
+          onMouseLeave={() => setOrdersHovered(false)}
+          style={{
+            ...getCardStyle(ordersHovered),
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 18,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1569,8 +1598,19 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
 
         {/* Recent Activity */}
-        <div className="lg:col-span-2" style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
+        <div
+          className="lg:col-span-2"
+          onMouseEnter={() => setActivityHovered(true)}
+          onMouseLeave={() => setActivityHovered(false)}
+          style={{
+            ...getCardStyle(activityHovered),
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell style={{ width: 16, height: 16, color: brand }} />
@@ -1667,18 +1707,22 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           <NewsAnnouncementsCard isDark={isDark} c={c} customerId={user?.id} />
         </div>
         <div className="lg:col-span-2 flex flex-col row5-card-container">
-          <div style={{ 
-            ...cardStyle, 
-            padding: 24, 
-            display: 'flex', 
-            flexDirection: 'column', 
-            justifyContent: 'space-between', 
-            gap: 20, 
-            height: '100%', 
-            boxSizing: 'border-box', 
-            position: 'relative', 
-            overflow: 'hidden' 
-          }}>
+          <div
+            onMouseEnter={() => setHelpHovered(true)}
+            onMouseLeave={() => setHelpHovered(false)}
+            style={{ 
+              ...getCardStyle(helpHovered), 
+              padding: 24, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              justifyContent: 'space-between', 
+              gap: 20, 
+              height: '100%', 
+              boxSizing: 'border-box', 
+              position: 'relative', 
+              overflow: 'hidden' 
+            }}
+          >
             {/* Header: Lightning Badge + Title & Description */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
               <div style={{ 
@@ -1906,8 +1950,20 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       {/* ── Row 6: About + Contact + Quick Links + Rate Us ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* About Our Company */}
-        <div style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
+        <div
+          onMouseEnter={() => setAboutHovered(true)}
+          onMouseLeave={() => setAboutHovered(false)}
+          style={{
+            ...getCardStyle(aboutHovered),
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            boxSizing: 'border-box',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 11, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Building style={{ width: 16, height: 16, color: brand }} />
@@ -1938,8 +1994,20 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
 
         {/* Contact Information */}
-        <div style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
+        <div
+          onMouseEnter={() => setContactHovered(true)}
+          onMouseLeave={() => setContactHovered(false)}
+          style={{
+            ...getCardStyle(contactHovered),
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            boxSizing: 'border-box',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 11, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Phone style={{ width: 16, height: 16, color: brand }} />
@@ -1973,8 +2041,20 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
 
         {/* Quick Links */}
-        <div style={{ ...cardStyle, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxSizing: 'border-box', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${brand}, #f59e0b)`, borderRadius: '20px 20px 0 0' }} />
+        <div
+          onMouseEnter={() => setQuickHovered(true)}
+          onMouseLeave={() => setQuickHovered(false)}
+          style={{
+            ...getCardStyle(quickHovered),
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            boxSizing: 'border-box',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 36, height: 36, borderRadius: 11, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Layers style={{ width: 16, height: 16, color: brand }} />
