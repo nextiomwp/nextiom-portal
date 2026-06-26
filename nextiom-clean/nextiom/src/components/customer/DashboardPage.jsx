@@ -572,61 +572,141 @@ function AccountStatusWidget({ user, data, c, isDark, onNavigate }) {
   );
 }
 
-/* ─────────────── SERVICE HEALTH CARD ─────────────── */
-function ServiceHealthCard({ data, c, isDark }) {
+/* ─────────────── SERVICE SUB CARD (HELPER) ─────────────── */
+function ServiceSubCard({ label, description, activeCount, expiredCount, icon: Icon, onClick, c, isDark }) {
+  const [hovered, setHovered] = React.useState(false);
   const brand = c.brand || '#E87B35';
   const border = c.border || '#ebebeb';
   const text = c.text || '#1a1a1a';
   const subText = c.subText || '#888';
   const panel2 = c.panel2 || '#f5f5f5';
 
+  // Determine icon background and color based on service status counts
+  let iconBg = isDark ? 'rgba(255,255,255,0.03)' : '#f8f8f7';
+  let iconBorder = `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`;
+  let iconColor = isDark ? '#a0a0a0' : '#888';
+
+  if (expiredCount > 0) {
+    iconBg = isDark ? 'rgba(239,68,68,0.08)' : '#fef2f2';
+    iconBorder = `1px solid ${isDark ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.15)'}`;
+    iconColor = '#dc2626';
+  } else if (activeCount > 0) {
+    iconBg = isDark ? 'rgba(34,197,94,0.08)' : '#f0fdf4';
+    iconBorder = `1px solid ${isDark ? 'rgba(34,197,94,0.2)' : 'rgba(34,197,94,0.15)'}`;
+    iconColor = '#16a34a';
+  }
+
+  const showInactive = activeCount === 0 && expiredCount === 0;
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        background: isDark ? 'rgba(28,30,36,0.5)' : '#fff',
+        border: `1px solid ${hovered ? brand : border}`,
+        borderRadius: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        cursor: 'pointer',
+        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
+        boxShadow: hovered
+          ? (isDark ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 15px rgba(0,0,0,0.05)')
+          : 'none',
+        transition: 'all 0.2s ease-in-out',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Top half content */}
+      <div style={{ display: 'flex', gap: 14, padding: '20px 20px 16px 20px', alignItems: 'flex-start' }}>
+        {/* Icon container */}
+        <div style={{
+          width: 48, height: 48, borderRadius: 12,
+          background: iconBg,
+          border: iconBorder,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Icon style={{ width: 22, height: 22, color: iconColor }} />
+        </div>
+
+        {/* Text info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h4 style={{ color: text, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px 0' }}>
+            {label}
+          </h4>
+
+          {/* Status indicators */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            {showInactive ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)' }} />
+                <span style={{ color: subText, fontSize: 11, fontWeight: 600 }}>Inactive (0)</span>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
+                  <span style={{ color: '#16a34a', fontSize: 11, fontWeight: 600 }}>Active ({activeCount})</span>
+                </div>
+                <span style={{ color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)', fontSize: 11 }}>|</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626' }} />
+                  <span style={{ color: '#dc2626', fontSize: 11, fontWeight: 600 }}>Expired ({expiredCount})</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Description */}
+          <p style={{ color: subText, fontSize: 11, margin: 0, lineHeight: 1.4 }}>
+            {description}
+          </p>
+        </div>
+      </div>
+
+      {/* Bottom details bar */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 20px',
+        borderTop: `1px solid ${border}`,
+        background: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.02)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 18, height: 18, borderRadius: 4, border: `1px solid ${brand}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Activity style={{ width: 10, height: 10, color: brand }} />
+          </div>
+          <span style={{ color: brand, fontSize: 11, fontWeight: 700 }}>View Details</span>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={brand} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: hovered ? 'translateX(3px)' : 'translateX(0)', transition: 'transform 0.2s' }}>
+          <line x1="5" y1="12" x2="19" y2="12" />
+          <polyline points="12 5 19 12 12 19" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── SERVICE HEALTH CARD ─────────────── */
+function ServiceHealthCard({ data, c, isDark, onNavigate }) {
+  const brand = c.brand || '#E87B35';
+  const border = c.border || '#ebebeb';
+  const text = c.text || '#1a1a1a';
+  const subText = c.subText || '#888';
+
   const services = [
-    { label: 'Web Hostings', key: 'hosting', Icon: Server },
-    { label: 'Active Domains', key: 'domain', Icon: Globe },
-    { label: 'Custom Emails', key: 'email', Icon: Mail },
-    { label: 'Products', key: 'products', Icon: Package },
+    { label: 'Web Hostings', key: 'hosting', Icon: Server, description: 'Hosting packages and websites', dest: 'hosting_my' },
+    { label: 'Active Domains', key: 'domain', Icon: Globe, description: 'Domain registration and management', dest: 'domains_my' },
+    { label: 'Custom Emails', key: 'email', Icon: Mail, description: 'Business email accounts and services', dest: 'emails_my' },
+    { label: 'Products', key: 'products', Icon: Package, description: 'Licenses, addons and digital products', dest: 'products' },
   ];
-
-  const getServiceState = (key) => {
-    const activeCount = data.serviceHealth[key + 'Count'] || 0;
-    const expiredCount = data.serviceHealth[key + 'ExpiredCount'] || 0;
-
-    if (activeCount === 0 && expiredCount === 0) {
-      return {
-        color: subText,
-        dot: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)',
-        label: <span style={{ color: subText }}>Inactive</span>
-      };
-    }
-
-    if (activeCount > 0 && expiredCount === 0) {
-      return {
-        color: '#16a34a',
-        dot: '#16a34a',
-        label: <span style={{ color: '#16a34a' }}>Active ({activeCount})</span>
-      };
-    }
-
-    if (activeCount === 0 && expiredCount > 0) {
-      return {
-        color: '#dc2626',
-        dot: '#dc2626',
-        label: <span style={{ color: '#dc2626' }}>Expired ({expiredCount})</span>
-      };
-    }
-
-    return {
-      color: '#f97316',
-      dot: '#dc2626',
-      label: (
-        <span>
-          <span style={{ color: '#16a34a' }}>Active ({activeCount})</span>
-          <span style={{ color: subText }}>, </span>
-          <span style={{ color: '#dc2626' }}>Expired ({expiredCount})</span>
-        </span>
-      )
-    };
-  };
 
   return (
     <div style={{
@@ -642,37 +722,49 @@ function ServiceHealthCard({ data, c, isDark }) {
       boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.04)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: isDark ? 'rgba(232,123,53,0.15)' : '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Activity style={{ width: 16, height: 16, color: brand }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Header icon box */}
+          <div style={{
+            width: 48, height: 48, borderRadius: 14,
+            background: isDark ? 'rgba(255,255,255,0.02)' : '#f8f8f7',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Activity style={{ width: 22, height: 22, color: brand }} />
           </div>
-          <span style={{ color: text, fontWeight: 700, fontSize: 15 }}>Service Health</span>
+          <div>
+            <span style={{ color: text, fontWeight: 700, fontSize: 16, display: 'block', marginBottom: 2 }}>Service Health</span>
+            <span style={{ color: subText, fontSize: 12, display: 'block' }}>Real-time status of all our services and systems</span>
+          </div>
         </div>
         <span style={{
-          fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99,
-          background: data.serviceHealth.renewalSoon ? (isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7') : (isDark ? 'rgba(22,163,74,0.15)' : '#dcfce7'),
-          color: data.serviceHealth.renewalSoon ? '#d97706' : '#16a34a',
+          fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 99,
+          background: data.serviceHealth.renewalSoon ? 'rgba(239,68,68,0.05)' : 'rgba(34,197,94,0.05)',
+          color: data.serviceHealth.renewalSoon ? '#ef4444' : '#22c55e',
+          border: `1px solid ${data.serviceHealth.renewalSoon ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'}`,
+          display: 'flex', alignItems: 'center', gap: 6
         }}>
           {data.serviceHealth.renewalSoon ? '⚠ Renewal Due' : '✓ All Systems Go'}
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, flex: 1, alignContent: 'center' }}>
-        {services.map(({ label, key, Icon }) => {
-          const state = getServiceState(key);
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" style={{ marginTop: 6, flex: 1 }}>
+        {services.map(({ label, key, Icon, description, dest }) => {
+          const activeCount = data.serviceHealth[key + 'Count'] || 0;
+          const expiredCount = data.serviceHealth[key + 'ExpiredCount'] || 0;
+
           return (
-            <div key={key} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: panel2, padding: '12px 14px', borderRadius: 12,
-              border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-            }}>
-              <Icon style={{ width: 14, height: 14, color: state.color, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ color: subText, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 1px' }}>{label}</p>
-                <p style={{ fontSize: 11, fontWeight: 700, margin: 0 }}>{state.label}</p>
-              </div>
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: state.dot, flexShrink: 0, boxShadow: state.dot !== (isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)') ? `0 0 6px ${state.dot}80` : 'none' }} />
-            </div>
+            <ServiceSubCard
+              key={key}
+              label={label}
+              description={description}
+              activeCount={activeCount}
+              expiredCount={expiredCount}
+              icon={Icon}
+              onClick={() => onNavigate && onNavigate(dest)}
+              c={c}
+              isDark={isDark}
+            />
           );
         })}
       </div>
@@ -1562,7 +1654,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
       {/* ── Row 4: Service Health + Invoice Summary ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         <div className="lg:col-span-3">
-          <ServiceHealthCard data={data} c={c} isDark={isDark} />
+          <ServiceHealthCard data={data} c={c} isDark={isDark} onNavigate={onNavigate} />
         </div>
         <div className="lg:col-span-2">
           <InvoiceSummaryCard invoiceSummary={data.invoiceSummary} onNavigate={onNavigate} c={c} isDark={isDark} />
