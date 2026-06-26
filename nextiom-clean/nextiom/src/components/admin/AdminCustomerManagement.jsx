@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff, ShieldCheck, ShieldOff, MoreVertical, Download, Users, Building, HelpCircle } from 'lucide-react';
+import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff, ShieldCheck, ShieldOff, MoreVertical, Download, Users, Building, HelpCircle, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications, updateCustomer, createTicket, addTicketMessage } from '@/lib/storage';
 import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
@@ -36,6 +36,13 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [hoveredCustomer, setHoveredCustomer] = useState(null);
   const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [ticketCustomer, setTicketCustomer] = useState(null);
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketPriority, setTicketPriority] = useState('normal');
+  const [ticketMessage, setTicketMessage] = useState('');
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
 
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
@@ -411,18 +418,46 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
     setAssigningCustomer(null);
   };
 
-  const handleOpenTicket = async (customer) => {
-    const subject = prompt(`Enter ticket subject for ${customer.name}:`);
-    if (!subject) return;
+  const handleOpenTicket = (customer) => {
+    setTicketCustomer(customer);
+    setTicketSubject('');
+    setTicketPriority('normal');
+    setTicketMessage('');
+    setIsTicketModalOpen(true);
+  };
+
+  const handleCreateTicketSubmit = async (e) => {
+    e.preventDefault();
+    if (!ticketCustomer) return;
+    if (!ticketSubject.trim() || !ticketMessage.trim()) {
+      toast({ title: 'Required', description: 'Please fill in all fields.', variant: 'destructive' });
+      return;
+    }
+
+    setIsCreatingTicket(true);
     try {
-      const ticket = await createTicket(customer.id, subject, 'normal');
-      await addTicketMessage(ticket.id, 'admin', 'Ticket opened by Administrator.');
-      toast({ title: 'Ticket Created', description: `Successfully opened ticket: "${subject}"` });
-      if (onNavigate) {
-        onNavigate('logs');
-      }
+      // 1. Create ticket
+      const ticket = await createTicket(ticketCustomer.id, ticketSubject.trim(), ticketPriority);
+
+      // 2. Add message under customer identity (sender_role: 'customer')
+      await addTicketMessage(ticket.id, 'customer', ticketMessage.trim());
+
+      // 3. Notify admin that a new support ticket was created
+      await addNotification({
+        customer_id: null,
+        type: 'ticket',
+        title: 'New support ticket',
+        message: `${ticketCustomer.name || ticketCustomer.email} opened a ticket: ${ticketSubject.trim()}`,
+      }).catch(() => {});
+
+      toast({ title: 'Ticket Created', description: `Successfully opened ticket: "${ticketSubject}"` });
+      setIsTicketModalOpen(false);
+      setTicketCustomer(null);
+      loadCustomers();
     } catch (err) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsCreatingTicket(false);
     }
   };
 
@@ -1340,6 +1375,49 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
           customer={editingCustomer}
           onSuccess={() => { setEditingCustomer(null); loadCustomers(); onSuccess?.(); }}
         />
+      )}
+
+      {/* Open Ticket Modal */}
+      {isTicketModalOpen && ticketCustomer && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Open Support Ticket (As Customer)</span>
+              <button onClick={() => { setIsTicketModalOpen(false); setTicketCustomer(null); }} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer' }}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleCreateTicketSubmit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Customer</label>
+                <div style={{ fontSize: 13.5, color: c.text, marginTop: 4 }}>
+                  <strong>{ticketCustomer.name}</strong> ({ticketCustomer.email})
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Subject / Issue</label>
+                <input required value={ticketSubject} onChange={e => setTicketSubject(e.target.value)} placeholder="e.g. Email server not sending outgoing mails" style={{ width: '100%', padding: '9px 13px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', marginTop: 4, boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Priority</label>
+                <select value={ticketPriority} onChange={e => setTicketPriority(e.target.value)} style={{ width: '100%', padding: '9px 13px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', marginTop: 4 }}>
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase' }}>Ticket message (Sent as Customer)</label>
+                <textarea required rows={4} value={ticketMessage} onChange={e => setTicketMessage(e.target.value)} placeholder="Describe the issue or message..." style={{ width: '100%', padding: '9px 13px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: c.bg, color: c.text, fontSize: 13.5, outline: 'none', marginTop: 4, resize: 'vertical', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <button type="button" onClick={() => { setIsTicketModalOpen(false); setTicketCustomer(null); }} style={{ flex: 1, padding: '10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={isCreatingTicket} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  {isCreatingTicket ? <Loader2 size={16} className="animate-spin" /> : 'Create Ticket'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
