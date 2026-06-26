@@ -345,15 +345,14 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
           markdown += '\n';
           continue;
         } else if (tagName === 'div' || tagName === 'p') {
-          const innerMd = htmlToMarkdown(child);
-          if (innerMd) {
-            if (markdown && !markdown.endsWith('\n')) {
-              markdown += '\n';
-            }
-            markdown += innerMd + '\n';
-          } else {
+          let innerMd = htmlToMarkdown(child);
+          if (innerMd.endsWith('\n')) {
+            innerMd = innerMd.slice(0, -1);
+          }
+          if (markdown && !markdown.endsWith('\n')) {
             markdown += '\n';
           }
+          markdown += innerMd + '\n';
           continue;
         }
         
@@ -711,7 +710,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   function markdownToHtml(markdown) {
     if (!markdown) return '';
     const lines = markdown.split('\n');
-    const processedLines = [];
+    const items = [];
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -719,7 +718,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
       
       if (trimmed.startsWith('> ')) {
         const innerHtml = inlineMarkdownToHtml(trimmed.slice(2));
-        processedLines.push(`<blockquote>${innerHtml}</blockquote>`);
+        items.push({ type: 'block', html: `<blockquote>${innerHtml}</blockquote>` });
       } else if (trimmed.startsWith('```')) {
         let codeContent = '';
         let j = i + 1;
@@ -727,15 +726,30 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
           codeContent += (codeContent ? '\n' : '') + lines[j];
           j++;
         }
-        processedLines.push(`<pre><code>${escapeHtml(codeContent)}</code></pre>`);
+        items.push({ type: 'block', html: `<pre><code>${escapeHtml(codeContent)}</code></pre>` });
         i = j;
       } else {
         const innerHtml = inlineMarkdownToHtml(line);
-        processedLines.push(innerHtml || '<br>');
+        items.push({ type: 'text', html: innerHtml });
       }
     }
     
-    return processedLines.join('\n');
+    let html = '';
+    for (let i = 0; i < items.length; i++) {
+      const current = items[i];
+      const next = items[i + 1];
+      
+      html += current.html;
+      
+      if (current.type === 'text') {
+        if (current.html === '') {
+          html += '<br>';
+        } else if (next && next.type === 'text') {
+          html += '<br>';
+        }
+      }
+    }
+    return html;
   }
 
   function linkifyText(text, isOnBrand, key) {
