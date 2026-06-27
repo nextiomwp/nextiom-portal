@@ -6,7 +6,7 @@
  * the browser.
  */
 
-import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/customSupabaseClient';
+import { supabase } from '@/lib/customSupabaseClient';
 
 // ── SMS Settings CRUD ─────────────────────────────────────────────────────────
 
@@ -101,30 +101,34 @@ export async function getSmsLogs({ limit = 100, type = null } = {}) {
  */
 export async function sendSms({ phone, message, type = 'manual', customerId }) {
   console.log('[sendSms] Dispatching test/manual SMS with payload:', { phone, message, type, customerId });
-  
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error('Not authenticated');
 
   try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ phone, message, type, customerId }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error('[sendSms] Edge Function returned HTTP error:', res.status, json);
-      throw new Error(json.error || `Failed to send SMS (HTTP ${res.status})`);
+    // Force a session refresh to get a fresh (small) JWT — avoids Nginx header
+    // size rejection if the cached token has bloated user_metadata claims.
+    const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+    if (refreshErr || !refreshData?.session?.access_token) {
+      // Fallback: try the existing session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Not authenticated');
+      refreshData.session = session;
     }
 
-    console.log('[sendSms] Success:', json);
-    return json;
+    const { data, error } = await supabase.functions.invoke('send-sms', {
+      body: { phone, message, type, customerId },
+    });
+
+    if (error) {
+      console.error('[sendSms] Edge Function returned error:', error);
+      throw new Error(error.message || 'Failed to send SMS');
+    }
+
+    if (data?.error) {
+      console.error('[sendSms] Edge Function logic error:', data.error);
+      throw new Error(data.error);
+    }
+
+    console.log('[sendSms] Success:', data);
+    return data;
   } catch (err) {
     console.error('[sendSms] Network or execution error:', err);
     throw err;
@@ -137,29 +141,26 @@ export async function sendSms({ phone, message, type = 'manual', customerId }) {
 export async function triggerRenewalReminders() {
   console.log('[triggerRenewalReminders] Dispatching renewal reminders check');
 
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) throw new Error('Not authenticated');
-
   try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/renewal-sms-reminders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({}),
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase.functions.invoke('renewal-sms-reminders', {
+      body: {},
     });
 
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      console.error('[triggerRenewalReminders] Edge Function returned HTTP error:', res.status, json);
-      throw new Error(json.error || `Failed to trigger reminders (HTTP ${res.status})`);
+    if (error) {
+      console.error('[triggerRenewalReminders] Edge Function returned error:', error);
+      throw new Error(error.message || 'Failed to trigger reminders');
     }
 
-    console.log('[triggerRenewalReminders] Success:', json);
-    return json;
+    if (data?.error) {
+      console.error('[triggerRenewalReminders] Edge Function logic error:', data.error);
+      throw new Error(data.error);
+    }
+
+    console.log('[triggerRenewalReminders] Success:', data);
+    return data;
   } catch (err) {
     console.error('[triggerRenewalReminders] Network or execution error:', err);
     throw err;
