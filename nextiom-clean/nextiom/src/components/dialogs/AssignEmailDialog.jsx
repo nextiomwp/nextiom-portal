@@ -134,6 +134,23 @@ function AssignEmailDialog({ open, onClose, customer, c, onSuccess, request, isE
           url: url.trim() || null,
           auto_renew: autoRenew,
         });
+
+        try {
+          const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+          if (await shouldSendPurchaseSms()) {
+            if (customer?.phone) {
+              await sendPurchaseSms({
+                phone: customer.phone,
+                customerName: customer.name || 'Valued Customer',
+                serviceLabel: `email account "${fullEmail}"`,
+                customerId: customer.id
+              });
+            }
+          }
+        } catch (smsErr) {
+          console.error('Failed to send email assign SMS:', smsErr);
+        }
+
         toast({ title: 'Email Assigned', description: `${fullEmail} assigned to ${customer.name}` });
         setEmailName(''); setExtension('.com'); setRegPeriod('1');
         setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);

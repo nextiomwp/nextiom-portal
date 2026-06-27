@@ -214,6 +214,23 @@ function AdminEmailRequestManagement({ isDark = true }) {
           title: `Email Request Approved — ${approveTarget.email}`,
           message: `Your email request for ${approveTarget.email} has been approved. You can view login credentials from the My Emails page.`
         }).catch(() => { });
+
+        try {
+          const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+          if (await shouldSendPurchaseSms()) {
+            const cust = customers.find(cu => cu.id === approveTarget.customer_id) || approveTarget.customers;
+            if (cust?.phone) {
+              await sendPurchaseSms({
+                phone: cust.phone,
+                customerName: cust.name || 'Valued Customer',
+                serviceLabel: `email account "${approveTarget.email}"`,
+                customerId: approveTarget.customer_id
+              });
+            }
+          }
+        } catch (smsErr) {
+          console.error('Failed to send email approval SMS:', smsErr);
+        }
       }
       toast({ title: 'Approved', description: `Email approved with credentials set.` });
       setApproveTarget(null);

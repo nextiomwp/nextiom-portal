@@ -114,6 +114,23 @@ function AssignDomainDialog({ open, onClose, customer, c, onSuccess, request, is
           price: finalPrice,
           startDate,
         });
+        
+        try {
+          const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+          if (await shouldSendPurchaseSms()) {
+            if (customer?.phone) {
+              await sendPurchaseSms({
+                phone: customer.phone,
+                customerName: customer.name || 'Valued Customer',
+                serviceLabel: `domain "${domainName.trim()}"`,
+                customerId: customer.id
+              });
+            }
+          }
+        } catch (smsErr) {
+          console.error('Failed to send domain assign SMS:', smsErr);
+        }
+
         toast({ title: 'Domain Assigned', description: `${domainName.trim()} assigned to ${customer.name}` });
         setDomainName(''); setRegPeriod('1'); setPrice(''); setMultiYearPct(''); setNotes(''); setStartDate(new Date().toISOString().split('T')[0]);
       }

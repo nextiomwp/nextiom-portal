@@ -369,7 +369,7 @@ export const getDomains = async () => {
 export const getDomainRequests = async () => {
   const { data, error } = await supabase
     .from('domain_requests')
-    .select('*, customers(name, email)')
+    .select('*, customers(name, email, phone)')
     .order('created_at', { ascending: false });
 
   if (error) handleSupabaseError(error, 'getDomainRequests');
@@ -469,7 +469,7 @@ export const getHostingPackages = async () => {
 export const getHostingRequests = async () => {
   const { data, error } = await supabase
     .from('hosting_requests')
-    .select('*, customers(name, email)')
+    .select('*, customers(name, email, phone)')
     .order('created_at', { ascending: false });
 
   if (error) handleSupabaseError(error, 'getHostingRequests');
@@ -1068,7 +1068,7 @@ export const deleteHostingRequest = async (id) => {
 export const getEmailRequests = async () => {
   const { data, error } = await supabase
     .from('email_requests')
-    .select('*, customers(name, email)')
+    .select('*, customers(name, email, phone)')
     .order('created_at', { ascending: false });
 
   if (error) {

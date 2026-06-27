@@ -292,7 +292,6 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       } else if (isRequestMode) {
         await updateHostingRequest(request.id, payload);
         toast({ title: 'Request Updated', description: `${hostingType} - ${planName} request updated for ${customer?.name || 'customer'}` });
-      } else {
         await assignHostingToCustomer({
           customerId: customer.id,
           hostingType,
@@ -317,6 +316,23 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           showAdditionalCredentials: payload.show_additional_credentials,
           sendEmailNotification: payload.send_email_notification,
         });
+
+        try {
+          const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+          if (await shouldSendPurchaseSms()) {
+            if (customer?.phone) {
+              await sendPurchaseSms({
+                phone: customer.phone,
+                customerName: customer.name || 'Valued Customer',
+                serviceLabel: `hosting plan "${planName}"`,
+                customerId: customer.id
+              });
+            }
+          }
+        } catch (smsErr) {
+          console.error('Failed to send hosting assign SMS:', smsErr);
+        }
+
         toast({ title: 'Hosting Assigned', description: `${hostingType} - ${planName} assigned to ${customer.name}` });
       }
 

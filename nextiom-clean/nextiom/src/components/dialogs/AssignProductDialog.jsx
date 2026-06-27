@@ -410,6 +410,29 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
       };
 
       await assignProductToCustomer(payload);
+      
+      try {
+        const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+        if (await shouldSendPurchaseSms()) {
+          const cust = customers.find(cu => cu.id === payload.customerId);
+          if (cust?.phone) {
+            const { data: prod } = await supabase
+              .from('products')
+              .select('name')
+              .eq('id', payload.productId)
+              .single();
+            await sendPurchaseSms({
+              phone: cust.phone,
+              customerName: cust.name || 'Valued Customer',
+              serviceLabel: `product "${prod?.name || 'Assigned Product'}"`,
+              customerId: cust.id
+            });
+          }
+        }
+      } catch (smsErr) {
+        console.error('Failed to send standard product assign SMS:', smsErr);
+      }
+
       toast({ title: 'Success', description: 'Product assigned successfully' });
       if (onSuccess) onSuccess();
       onOpenChange(false);
@@ -524,6 +547,23 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         read_status: false,
         created_at: new Date().toISOString()
       }]);
+
+      try {
+        const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+        if (await shouldSendPurchaseSms()) {
+          const cust = customers.find(cu => cu.id === targetCustomerId);
+          if (cust?.phone) {
+            await sendPurchaseSms({
+              phone: cust.phone,
+              customerName: cust.name || 'Valued Customer',
+              serviceLabel: `product "${newProduct.name}"`,
+              customerId: cust.id
+            });
+          }
+        }
+      } catch (smsErr) {
+        console.error('Failed to send custom product assign SMS:', smsErr);
+      }
 
       toast({ title: 'Success', description: 'Custom product assigned successfully' });
       if (onSuccess) onSuccess();

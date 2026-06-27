@@ -103,6 +103,25 @@ function AdminRequestManagement({ isDark = true }) {
         title: isApproved ? `Domain Request Approved — ${req.domain_name}` : `Domain Request Rejected — ${req.domain_name}`,
         message: isApproved ? `Your domain request for ${req.domain_name} has been approved.` : `Your domain request for ${req.domain_name} has been declined.`
       }).catch(() => { });
+
+      if (isApproved) {
+        try {
+          const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+          if (await shouldSendPurchaseSms()) {
+            const cust = customers.find(cu => cu.id === req.customer_id) || req.customers;
+            if (cust?.phone) {
+              await sendPurchaseSms({
+                phone: cust.phone,
+                customerName: cust.name || 'Valued Customer',
+                serviceLabel: `domain "${req.domain_name}"`,
+                customerId: req.customer_id
+              });
+            }
+          }
+        } catch (smsErr) {
+          console.error('Failed to send domain approval SMS:', smsErr);
+        }
+      }
     }
     toast({ title: 'Request Updated', description: `Request marked as ${newStatus}` });
     loadData();

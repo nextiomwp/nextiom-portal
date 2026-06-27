@@ -153,6 +153,25 @@ function AdminHostingRequestManagement({ isDark = true }) {
           title: isApproved ? `Hosting Request Approved — ${planName}` : `Hosting Request Rejected — ${planName}`,
           message: isApproved ? `Your hosting request for ${planName} has been approved.` : `Your hosting request was declined. Reason: ${rejectReason || 'No reason provided.'}`
         }).catch(() => {});
+
+        if (isApproved) {
+          try {
+            const { shouldSendPurchaseSms, sendPurchaseSms } = await import('@/lib/sms');
+            if (await shouldSendPurchaseSms()) {
+              const cust = customers.find(cu => cu.id === selectedRequest.customer_id) || selectedRequest.customers;
+              if (cust?.phone) {
+                await sendPurchaseSms({
+                  phone: cust.phone,
+                  customerName: cust.name || 'Valued Customer',
+                  serviceLabel: `hosting plan "${planName}"`,
+                  customerId: selectedRequest.customer_id
+                });
+              }
+            }
+          } catch (smsErr) {
+            console.error('Failed to send hosting approval SMS:', smsErr);
+          }
+        }
       }
       toast({ title: 'Request Updated', description: `Request has been marked as ${status}.` });
       setSelectedRequest(null);
