@@ -33,6 +33,7 @@ import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
 import AdminJobsPage from '@/components/admin/AdminJobsPage';
 import AdminAgreementManagement from '@/components/admin/AdminAgreementManagement';
 import SystemSettingsPage from '@/components/admin/SystemSettingsPage';
+import SmsSettingsPage from '@/components/admin/SmsSettingsPage';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -110,6 +111,7 @@ const NAV = [
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
   // { id: 'adminManagement', label: 'Admin Management', icon: Shield },
   { id: 'systemSettings', label: 'System Settings', icon: Settings },
+  { id: 'smsSettings', label: 'SMS Settings', icon: MessageSquare },
 ];
 
 const ADMIN_INTERNAL_NOTIFICATION_TYPES = new Set([
@@ -692,6 +694,7 @@ function Dashboard({ onLogout }) {
       case 'activeHosting': return <AdminApprovedHostings key={refreshKey} isDark={isDark} />;
       case 'adminManagement': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>Admin management page coming soon.</div>;
       case 'systemSettings': return <SystemSettingsPage key={refreshKey} isDark={isDark} />;
+      case 'smsSettings': return <SmsSettingsPage key={refreshKey} isDark={isDark} />;
       default: return null;
     }
   };
