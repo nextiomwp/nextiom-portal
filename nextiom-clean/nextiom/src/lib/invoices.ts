@@ -47,6 +47,7 @@ export interface Invoice {
   created_at?: string
   items?: InvoiceItem[]
   service_name?: string
+  deleted_at?: string
 }
 
 export interface InvoiceSettings {
@@ -63,6 +64,7 @@ export interface InvoiceSettings {
   account_no: string
   default_notes: string
   logo_url: string
+  recycle_bin_retention_hours?: number
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -110,6 +112,7 @@ export async function generateInvoiceNo(): Promise<string> {
     .from('invoices')
     .select('invoice_no')
     .ilike('invoice_no', `${prefix}%`)
+    .is('deleted_at', null)
     .order('invoice_no', { ascending: false })
     .limit(1)
 
@@ -131,6 +134,7 @@ export function defaultSettings(): InvoiceSettings {
     account_no: '1000564301',
     default_notes: 'Please settle the due amount within 7 days of purchase to avoid pricing adjustments caused by exchange rate fluctuations. A 50% advance payment is required before starting the project.',
     logo_url: '',
+    recycle_bin_retention_hours: 24,
   }
 }
 
@@ -232,11 +236,16 @@ export async function resolveLogoUrl(value: string | null | undefined, expiresIn
 
 // ── Invoices ─────────────────────────────────────────────────
 
-export async function getInvoices(): Promise<Invoice[]> {
-  const { data, error } = await supabase
+export async function getInvoices(includeDeleted = false): Promise<Invoice[]> {
+  let query = supabase
     .from('invoices')
     .select('*')
-    .order('created_at', { ascending: false })
+
+  if (!includeDeleted) {
+    query = query.is('deleted_at', null)
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false })
 
   if (error) throw error
   return data ?? []
@@ -289,6 +298,7 @@ export async function getCustomerInvoices(email: string): Promise<Invoice[]> {
     .from('invoices')
     .select('*, invoice_items(*)')
     .eq('client_email', email)
+    .is('deleted_at', null)
     .order('invoice_date', { ascending: false })
 
   if (error) throw error
@@ -365,7 +375,27 @@ export async function updateInvoice(id: string, invoice: Partial<Invoice>, items
 }
 
 export async function deleteInvoice(id: string): Promise<void> {
-  await supabase.from('invoices').delete().eq('id', id)
+  const { error } = await supabase
+    .from('invoices')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function restoreInvoice(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('invoices')
+    .update({ deleted_at: null })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function permanentlyDeleteInvoice(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('invoices')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
 }
 
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus): Promise<void> {

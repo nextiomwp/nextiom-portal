@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink, Clock, RotateCcw } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, getInvoice, deleteInvoice, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments, refundInvoice } from '@/lib/invoices'
+import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, getInvoice, deleteInvoice, restoreInvoice, permanentlyDeleteInvoice, getInvoiceSettings, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments, refundInvoice } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: 'Paid',    color: '#22c55e', bg: 'rgba(34,197,94,0.13)' },
@@ -758,6 +758,10 @@ interface Props {
 export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighlightInvoiceNo, onNew, onEdit, onSettings }: Props) {
   const { toast } = useToast()
   const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [deletedInvoices, setDeletedInvoices] = useState<Invoice[]>([])
+  const [showRecycleBin, setShowRecycleBin] = useState(false)
+  const [retentionHours, setRetentionHours] = useState(24)
+  const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState(() => {
@@ -780,6 +784,19 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
       return []
     }
   })
+
+  const getRemainingTime = (deletedAtStr: string) => {
+    const deletedAt = new Date(deletedAtStr).getTime()
+    const now = new Date().getTime()
+    const diffMs = (deletedAt + retentionHours * 60 * 60 * 1000) - now
+    if (diffMs <= 0) return 'Expiring soon'
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+    if (diffHours > 0) {
+      return `${diffHours}h ${diffMins}m left`
+    }
+    return `${diffMins}m left`
+  }
 
   const handleToggleCheck = (id: string, checked: boolean) => {
     setCheckedIds(prev => {
@@ -822,16 +839,35 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
   async function load() {
     setLoading(true)
     try {
-      const data = await getInvoices()
+      const [allData, settings] = await Promise.all([
+        getInvoices(true),
+        getInvoiceSettings()
+      ])
+      setRetentionHours(settings.recycle_bin_retention_hours ?? 24)
       const todayStr = getLocalDateString()
-      const mapped = data.map(inv => {
-        const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : ''
-        if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
-          return { ...inv, status: 'overdue' as const }
-        }
-        return inv
-      })
-      setInvoices(mapped)
+      
+      const mappedActive = allData
+        .filter(inv => !inv.deleted_at)
+        .map(inv => {
+          const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : ''
+          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
+            return { ...inv, status: 'overdue' as const }
+          }
+          return inv
+        })
+
+      const mappedDeleted = allData
+        .filter(inv => !!inv.deleted_at)
+        .map(inv => {
+          const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : ''
+          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
+            return { ...inv, status: 'overdue' as const }
+          }
+          return inv
+        })
+
+      setInvoices(mappedActive)
+      setDeletedInvoices(mappedDeleted)
     }
     catch { toast({ title: 'Failed to load invoices', variant: 'destructive' }) }
     finally { setLoading(false) }
@@ -888,11 +924,41 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
   async function handleDelete() {
     if (!deleteId) return
     try {
+      const invoiceToDelete = invoices.find(i => i.id === deleteId)
       await deleteInvoice(deleteId)
       setInvoices(p => p.filter(i => i.id !== deleteId))
-      toast({ title: 'Invoice deleted' })
+      if (invoiceToDelete) {
+        setDeletedInvoices(p => [
+          { ...invoiceToDelete, deleted_at: new Date().toISOString() },
+          ...p
+        ])
+      }
+      toast({ title: 'Invoice moved to recycle bin' })
     } catch { toast({ title: 'Failed to delete', variant: 'destructive' }) }
     finally { setDeleteId(null) }
+  }
+
+  async function handlePermanentDelete() {
+    if (!permanentDeleteId) return
+    try {
+      await permanentlyDeleteInvoice(permanentDeleteId)
+      setDeletedInvoices(p => p.filter(i => i.id !== permanentDeleteId))
+      toast({ title: 'Invoice permanently deleted' })
+    } catch { toast({ title: 'Failed to delete invoice permanently', variant: 'destructive' }) }
+    finally { setPermanentDeleteId(null) }
+  }
+
+  async function handleRestore(id: string) {
+    try {
+      const restored = deletedInvoices.find(i => i.id === id)
+      await restoreInvoice(id)
+      setDeletedInvoices(p => p.filter(i => i.id !== id))
+      if (restored) {
+        const { deleted_at, ...activeRestored } = restored
+        setInvoices(p => [activeRestored, ...p])
+      }
+      toast({ title: 'Invoice restored successfully' })
+    } catch { toast({ title: 'Failed to restore invoice', variant: 'destructive' }) }
   }
 
   const card = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }
@@ -950,197 +1016,81 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0, color: c.text }}>Invoices</h2>
-          <p style={{ fontSize: 13, color: c.subText, marginTop: 2 }}>Manage and track all client invoices</p>
+          <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0, color: c.text }}>{showRecycleBin ? 'Recycle Bin' : 'Invoices'}</h2>
+          <p style={{ fontSize: 13, color: c.subText, marginTop: 2 }}>
+            {showRecycleBin 
+              ? `Restore deleted invoices or delete them permanently (auto-purges after ${retentionHours} hours)` 
+              : 'Manage and track all client invoices'}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onSettings} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            <Settings size={15} /> Settings
-          </button>
-          <button onClick={onNew} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
-            <Plus size={15} /> New invoice
-          </button>
+          {!showRecycleBin && (
+            <>
+              <button onClick={() => setShowRecycleBin(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+                <Trash2 size={15} /> Recycle Bin {deletedInvoices.length > 0 && `(${deletedInvoices.length})`}
+              </button>
+              <button onClick={onSettings} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+                <Settings size={15} /> Settings
+              </button>
+              <button onClick={onNew} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+                <Plus size={15} /> New invoice
+              </button>
+            </>
+          )}
+          {showRecycleBin && (
+            <button onClick={() => setShowRecycleBin(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
+              <ChevronLeft size={15} /> Back to Invoices
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
-        {metrics.map(m => (
-          <div key={m.label} style={card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <span style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{m.label}</span>
-              <m.Icon size={16} color={m.color} />
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: m.color }}>{m.value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Two-column layout: list + calendar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, alignItems: 'start' }}>
-        {/* Left: filters + list */}
+      {showRecycleBin ? (
+        /* Recycle Bin List */
         <div>
-          {/* Filters */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
-              <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText, pointerEvents: 'none' }} />
-              <input style={{ ...inp, paddingLeft: 30, width: '100%' }} placeholder="Search by client, company, or invoice no…" value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={e => {
-                setStatusFilter(e.target.value)
-                localStorage.setItem('nextiom_invoices_status_filter', e.target.value)
-              }}
-              style={{ ...inp, width: 160, cursor: 'pointer' }}
-            >
-              <option value="all">All status</option>
-              <option value="paid">Paid</option>
-              <option value="unpaid">Unpaid</option>
-              <option value="overdue">Overdue</option>
-              <option value="payment_submitted">Pending Review</option>
-              <option value="partially_paid">Partially Paid</option>
-              <option value="refunded">Refunded</option>
-              <option value="partially_refunded">Partially Refunded</option>
-            </select>
-            <select
-              value={customerFilter}
-              onChange={e => {
-                setCustomerFilter(e.target.value)
-                localStorage.setItem('nextiom_invoices_customer_filter', e.target.value)
-              }}
-              style={{ ...inp, width: 180, cursor: 'pointer' }}
-            >
-              <option value="all">All customers</option>
-              {uniqueClients.map(client => (
-                <option key={client} value={client}>{client}</option>
-              ))}
-            </select>
-            <button
-              onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-              title={sortDir === 'desc' ? 'Newest first' : 'Oldest first'}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', border: `1px solid ${c.borderStrong}`, background: isDark ? '#22252C' : '#fff', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', whiteSpace: 'nowrap' as const }}
-            >
-              <ArrowUpDown size={13} /> {sortDir === 'desc' ? 'Newest' : 'Oldest'}
-            </button>
-          </div>
-
-          {checkedIds.length > 0 && !search.trim() && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '10px 14px',
-              background: isDark ? 'rgba(232, 123, 53, 0.12)' : 'rgba(232, 123, 53, 0.08)',
-              border: `1.5px solid ${c.brandLight || 'rgba(232, 123, 53, 0.2)'}`,
-              borderRadius: 8,
-              marginBottom: 14,
-              fontSize: 12,
-              color: c.text
-            }}>
-              <span>
-                Showing only <strong>{checkedIds.length}</strong> checked {checkedIds.length === 1 ? 'invoice' : 'invoices'}. Other invoices are hidden until you uncheck them.
-              </span>
-              <button
-                onClick={() => {
-                  setCheckedIds([])
-                  localStorage.removeItem('nextiom_checked_invoices')
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: c.brand,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  padding: '2px 6px',
-                  fontFamily: 'inherit'
-                }}
-              >
-                Clear all
-              </button>
-            </div>
-          )}
-
-          {/* List */}
           {loading ? (
             <div>
-              {[...Array(5)].map((_, i) => (
+              {[...Array(3)].map((_, i) => (
                 <div key={i} style={{ height: 52, borderRadius: 10, background: c.hover, marginBottom: 8 }} />
               ))}
             </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '64px 0', color: c.subText }}>
-              <FileText size={40} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
-              <p style={{ fontWeight: 500 }}>{invoices.length === 0 ? 'No invoices yet' : 'No invoices match your search'}</p>
-              {invoices.length === 0 && (
-                <button onClick={onNew} style={{ marginTop: 16, padding: '8px 16px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
-                  <Plus size={14} /> Create first invoice
-                </button>
-              )}
+          ) : deletedInvoices.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '64px 0', color: c.subText, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12 }}>
+              <Trash2 size={40} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
+              <p style={{ fontWeight: 500 }}>Recycle bin is empty</p>
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                <span></span><span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
-                <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
+              <div style={{ display: 'grid', gridTemplateColumns: '85px 1.2fr 1.5fr 100px 115px 140px 95px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Status</span><span>Remaining Time</span><span></span>
               </div>
-              {filtered.map(inv => {
+              {deletedInvoices.map(inv => {
                 const st = STATUS[inv.status] ?? STATUS.unpaid
-                const isHighlighted = !!(highlightInvoiceNo && inv.invoice_no.toLowerCase() === highlightInvoiceNo.toLowerCase())
                 return (
                   <div
                     key={inv.id}
-                    id={`invoice-row-${inv.invoice_no}`}
                     style={{ 
                       display: 'grid', 
-                      gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', 
+                      gridTemplateColumns: '85px 1.2fr 1.5fr 100px 115px 140px 95px', 
                       gap: 12, 
                       alignItems: 'center', 
                       padding: '12px 14px', 
                       background: c.card, 
-                      border: `1px solid ${isHighlighted ? c.brand : c.border}`, 
+                      border: `1px solid ${c.border}`, 
                       borderRadius: 10, 
                       marginBottom: 6, 
-                      transition: 'border-color 0.15s, box-shadow 0.15s',
-                      ...(isHighlighted ? {
-                        animation: 'invoice-highlight-pulse 1.8s infinite ease-in-out',
-                        position: 'relative',
-                        zIndex: 10
-                      } : {})
-                    }}
-                    onClick={() => {
-                      if (isHighlighted && clearHighlightInvoiceNo) {
-                        clearHighlightInvoiceNo()
-                      }
+                      transition: 'border-color 0.15s',
                     }}
                     onMouseEnter={e => {
-                      if (!isHighlighted) {
-                        ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)
-                      }
+                      ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)
                     }}
                     onMouseLeave={e => {
-                      if (!isHighlighted) {
-                        ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)
-                      }
+                      ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={checkedIds.includes(inv.id!)}
-                        onChange={(e) => handleToggleCheck(inv.id!, e.target.checked)}
-                        style={{
-                          cursor: 'pointer',
-                          width: 14,
-                          height: 14,
-                          accentColor: c.brand,
-                        }}
-                      />
-                    </div>
                     <span style={{ fontFamily: 'monospace', fontSize: 12, color: c.subText }}>{inv.invoice_no}</span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.service_name || ''}>
+                      <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {inv.service_name || '—'}
                       </div>
                     </div>
@@ -1149,37 +1099,15 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                       {inv.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_company}</div>}
                     </div>
                     <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(inv.total, invoiceCurrency(inv))}</span>
-                    {(() => {
-                      const paid = Number(inv.paid_amount || 0)
-                      const refunded = Number(inv.refunded_amount || 0)
-                      const netPaid = Math.max(0, paid - refunded)
-                      return (
-                        <span style={{ fontWeight: 600, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>
-                          {fmtCurrency(netPaid, invoiceCurrency(inv))}
-                        </span>
-                      )
-                    })()}
-                    <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
-                    <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.due_date ? inv.due_date.substring(0, 10) : '—'}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      {inv.status === 'payment_submitted' && (
-                        <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Review payment">
-                          <CreditCard size={14} />
-                        </button>
-                      )}
-                      {(inv.status === 'paid' || inv.status === 'partially_paid' || inv.status === 'partially_refunded') && (
-                        <button onClick={() => setRefundInvoice(inv)} style={{ background: 'none', border: 'none', color: 'var(--brand-color)', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Refund">
-                          <RotateCcw size={14} />
-                        </button>
-                      )}
-                      <button onClick={() => onEdit(inv.id!)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Edit">
-                        <Edit3 size={14} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, width: 'fit-content', whiteSpace: 'nowrap' as const }}>{st.label}</span>
+                    <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 500 }}>
+                      {inv.deleted_at ? getRemainingTime(inv.deleted_at) : '—'}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button onClick={() => handleRestore(inv.id!)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Restore Invoice">
+                        <RotateCcw size={14} />
                       </button>
-                      <button onClick={() => setTimelineInvoice(inv)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="History / Timeline">
-                        <Clock size={14} />
-                      </button>
-                      <button onClick={() => setDeleteId(inv.id!)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete">
+                      <button onClick={() => setPermanentDeleteId(inv.id!)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete Permanently">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -1189,17 +1117,248 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
             </>
           )}
         </div>
+      ) : (
+        /* Regular Invoices View */
+        <>
+          {/* Metrics */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+            {metrics.map(m => (
+              <div key={m.label} style={card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{m.label}</span>
+                  <m.Icon size={16} color={m.color} />
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: m.color }}>{m.value}</div>
+              </div>
+            ))}
+          </div>
 
-        {/* Right: calendar */}
-        <CalendarWidget
-          invoices={invoices}
-          calFilter={calFilter}
-          onDayClick={handleDayClick}
-          onMonthClick={handleMonthClick}
-          c={c}
-          isDark={isDark}
-        />
-      </div>
+          {/* Two-column layout: list + calendar */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, alignItems: 'start' }}>
+            {/* Left: filters + list */}
+            <div>
+              {/* Filters */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+                  <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText, pointerEvents: 'none' }} />
+                  <input style={{ ...inp, paddingLeft: 30, width: '100%' }} placeholder="Search by client, company, or invoice no…" value={search} onChange={e => setSearch(e.target.value)} />
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={e => {
+                    setStatusFilter(e.target.value)
+                    localStorage.setItem('nextiom_invoices_status_filter', e.target.value)
+                  }}
+                  style={{ ...inp, width: 160, cursor: 'pointer' }}
+                >
+                  <option value="all">All status</option>
+                  <option value="paid">Paid</option>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="payment_submitted">Pending Review</option>
+                  <option value="partially_paid">Partially Paid</option>
+                  <option value="refunded">Refunded</option>
+                  <option value="partially_refunded">Partially Refunded</option>
+                </select>
+                <select
+                  value={customerFilter}
+                  onChange={e => {
+                    setCustomerFilter(e.target.value)
+                    localStorage.setItem('nextiom_invoices_customer_filter', e.target.value)
+                  }}
+                  style={{ ...inp, width: 180, cursor: 'pointer' }}
+                >
+                  <option value="all">All customers</option>
+                  {uniqueClients.map(client => (
+                    <option key={client} value={client}>{client}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                  title={sortDir === 'desc' ? 'Newest first' : 'Oldest first'}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', border: `1px solid ${c.borderStrong}`, background: isDark ? '#22252C' : '#fff', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', whiteSpace: 'nowrap' as const }}
+                >
+                  <ArrowUpDown size={13} /> {sortDir === 'desc' ? 'Newest' : 'Oldest'}
+                </button>
+              </div>
+
+              {checkedIds.length > 0 && !search.trim() && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  background: isDark ? 'rgba(232, 123, 53, 0.12)' : 'rgba(232, 123, 53, 0.08)',
+                  border: `1.5px solid ${c.brandLight || 'rgba(232, 123, 53, 0.2)'}`,
+                  borderRadius: 8,
+                  marginBottom: 14,
+                  fontSize: 12,
+                  color: c.text
+                }}>
+                  <span>
+                    Showing only <strong>{checkedIds.length}</strong> checked {checkedIds.length === 1 ? 'invoice' : 'invoices'}. Other invoices are hidden until you uncheck them.
+                  </span>
+                  <button
+                    onClick={() => {
+                      setCheckedIds([])
+                      localStorage.removeItem('nextiom_checked_invoices')
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: c.brand,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      padding: '2px 6px',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    Clear all
+                  </button>
+                </div>
+              )}
+
+              {/* List */}
+              {loading ? (
+                <div>
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} style={{ height: 52, borderRadius: 10, background: c.hover, marginBottom: 8 }} />
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '64px 0', color: c.subText }}>
+                  <FileText size={40} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
+                  <p style={{ fontWeight: 500 }}>{invoices.length === 0 ? 'No invoices yet' : 'No invoices match your search'}</p>
+                  {invoices.length === 0 && (
+                    <button onClick={onNew} style={{ marginTop: 16, padding: '8px 16px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                      <Plus size={14} /> Create first invoice
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    <span></span><span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
+                    <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
+                  </div>
+                  {filtered.map(inv => {
+                    const st = STATUS[inv.status] ?? STATUS.unpaid
+                    const isHighlighted = !!(highlightInvoiceNo && inv.invoice_no.toLowerCase() === highlightInvoiceNo.toLowerCase())
+                    return (
+                      <div
+                        key={inv.id}
+                        id={`invoice-row-${inv.invoice_no}`}
+                        style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', 
+                          gap: 12, 
+                          alignItems: 'center', 
+                          padding: '12px 14px', 
+                          background: c.card, 
+                          border: `1px solid ${isHighlighted ? c.brand : c.border}`, 
+                          borderRadius: 10, 
+                          marginBottom: 6, 
+                          transition: 'border-color 0.15s, box-shadow 0.15s',
+                          ...(isHighlighted ? {
+                            animation: 'invoice-highlight-pulse 1.8s infinite ease-in-out',
+                            position: 'relative',
+                            zIndex: 10
+                          } : {})
+                        }}
+                        onClick={() => {
+                          if (isHighlighted && clearHighlightInvoiceNo) {
+                            clearHighlightInvoiceNo()
+                          }
+                        }}
+                        onMouseEnter={e => {
+                          if (!isHighlighted) {
+                            ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          if (!isHighlighted) {
+                            ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)
+                          }
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={checkedIds.includes(inv.id!)}
+                            onChange={(e) => handleToggleCheck(inv.id!, e.target.checked)}
+                            style={{
+                              cursor: 'pointer',
+                              width: 14,
+                              height: 14,
+                              accentColor: c.brand,
+                            }}
+                          />
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, color: c.subText }}>{inv.invoice_no}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inv.service_name || ''}>
+                            {inv.service_name || '—'}
+                          </div>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_name}</div>
+                          {inv.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.client_company}</div>}
+                        </div>
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(inv.total, invoiceCurrency(inv))}</span>
+                        {(() => {
+                          const paid = Number(inv.paid_amount || 0)
+                          const refunded = Number(inv.refunded_amount || 0)
+                          const netPaid = Math.max(0, paid - refunded)
+                          return (
+                            <span style={{ fontWeight: 600, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>
+                              {fmtCurrency(netPaid, invoiceCurrency(inv))}
+                            </span>
+                          )
+                        })()}
+                        <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
+                        <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.due_date ? inv.due_date.substring(0, 10) : '—'}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          {inv.status === 'payment_submitted' && (
+                            <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Review payment">
+                              <CreditCard size={14} />
+                            </button>
+                          )}
+                          {(inv.status === 'paid' || inv.status === 'partially_paid' || inv.status === 'partially_refunded') && (
+                            <button onClick={() => setRefundInvoice(inv)} style={{ background: 'none', border: 'none', color: 'var(--brand-color)', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Refund">
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+                          <button onClick={() => onEdit(inv.id!)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Edit">
+                            <Edit3 size={14} />
+                          </button>
+                          <button onClick={() => setTimelineInvoice(inv)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="History / Timeline">
+                            <Clock size={14} />
+                          </button>
+                          <button onClick={() => setDeleteId(inv.id!)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+
+            {/* Right: calendar */}
+            <CalendarWidget
+              invoices={invoices}
+              calFilter={calFilter}
+              onDayClick={handleDayClick}
+              onMonthClick={handleMonthClick}
+              c={c}
+              isDark={isDark}
+            />
+          </div>
+        </>
+      )}
 
       {reviewInvoice && (
         <PaymentReviewDialog
@@ -1234,11 +1393,25 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
       {deleteId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
           <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: 28, width: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: c.text }}>Delete this invoice?</h3>
-            <p style={{ fontSize: 13, color: c.subText, marginBottom: 22 }}>This action cannot be undone. The invoice and all its line items will be permanently deleted.</p>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: c.text }}>Move to Recycle Bin?</h3>
+            <p style={{ fontSize: 13, color: c.subText, marginBottom: 22 }}>This invoice will be moved to the recycle bin. It can be restored within the configured retention period before being permanently deleted.</p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => setDeleteId(null)} style={{ padding: '8px 18px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={handleDelete} style={{ padding: '8px 18px', background: '#ef4444', border: 'none', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Delete</button>
+              <button onClick={handleDelete} style={{ padding: '8px 18px', background: c.brand, border: 'none', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Move to Bin</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Delete confirm dialog */}
+      {permanentDeleteId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: 28, width: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: c.text }}>Permanently delete this invoice?</h3>
+            <p style={{ fontSize: 13, color: c.subText, marginBottom: 22 }}>This action cannot be undone. The invoice and all associated data will be permanently deleted from the database.</p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setPermanentDeleteId(null)} style={{ padding: '8px 18px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={handlePermanentDelete} style={{ padding: '8px 18px', background: '#ef4444', border: 'none', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>Delete Permanently</button>
             </div>
           </div>
         </div>

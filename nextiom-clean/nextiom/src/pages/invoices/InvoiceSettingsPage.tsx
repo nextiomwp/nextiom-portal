@@ -27,7 +27,7 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
     return () => { cancelled = true }
   }, [s.logo_url])
 
-  const update = (field: keyof InvoiceSettings, value: string) =>
+  const update = (field: keyof InvoiceSettings, value: any) =>
     setS(prev => ({ ...prev, [field]: value }))
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,6 +138,25 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
       <div style={card}>
         <p style={secTitle}>Default invoice notes</p>
         <textarea style={{ ...inp, resize: 'vertical', minHeight: 80 }} value={s.default_notes} onChange={e => update('default_notes', e.target.value)} rows={4} placeholder="Payment terms shown on every new invoice…" />
+      </div>
+      
+      {/* Retention Settings */}
+      <div style={card}>
+        <p style={secTitle}>Recycle Bin & Retention</p>
+        <div>
+          <label style={lbl}>Auto-delete period (hours)</label>
+          <input
+            type="number"
+            style={inp}
+            value={s.recycle_bin_retention_hours ?? 24}
+            onChange={e => update('recycle_bin_retention_hours', parseInt(e.target.value) || 0)}
+            min={1}
+            max={8760}
+          />
+          <p style={{ fontSize: 12, color: c.subText, marginTop: 6, lineHeight: 1.4 }}>
+            Deleted invoices will remain in the recycle bin and can be restored for this period before being permanently deleted from the database.
+          </p>
+        </div>
       </div>
 
       <button onClick={handleSave} disabled={saving} style={{ ...btnPrimary, width: '100%', justifyContent: 'center', opacity: saving ? 0.7 : 1 }}>
