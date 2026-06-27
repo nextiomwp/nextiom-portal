@@ -8,15 +8,6 @@
 
 import { supabase } from '@/lib/customSupabaseClient';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://fewhvlsqkbsmqbrqclya.supabase.co';
-const EDGE_BASE = `${SUPABASE_URL}/functions/v1`;
-
-// ─── Helper: get current admin JWT ───────────────────────────────────────────
-async function getAdminToken() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token || null;
-}
-
 // ── SMS Settings CRUD ─────────────────────────────────────────────────────────
 
 /**
@@ -109,42 +100,50 @@ export async function getSmsLogs({ limit = 100, type = null } = {}) {
  * The API token is resolved server-side from the TEXTLK_API_TOKEN env var.
  */
 export async function sendSms({ phone, message, type = 'manual', customerId }) {
-  const token = await getAdminToken();
-  if (!token) throw new Error('Not authenticated');
-
-  const res = await fetch(`${EDGE_BASE}/send-sms`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ phone, message, type, customerId }),
+  const { data, error } = await supabase.functions.invoke('send-sms', {
+    body: { phone, message, type, customerId },
   });
 
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error || 'Failed to send SMS');
-  return json;
+  if (error) {
+    let errorMsg = 'Failed to send SMS';
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json();
+        if (body?.error) errorMsg = body.error;
+      }
+    } catch {}
+    if (errorMsg === 'Failed to send SMS') {
+      errorMsg = error.message || errorMsg;
+    }
+    throw new Error(errorMsg);
+  }
+
+  return data;
 }
 
 /**
  * Trigger the renewal-sms-reminders Edge Function manually.
  */
 export async function triggerRenewalReminders() {
-  const token = await getAdminToken();
-  if (!token) throw new Error('Not authenticated');
-
-  const res = await fetch(`${EDGE_BASE}/renewal-sms-reminders`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({}),
+  const { data, error } = await supabase.functions.invoke('renewal-sms-reminders', {
+    body: {},
   });
 
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error || 'Failed to trigger reminders');
-  return json;
+  if (error) {
+    let errorMsg = 'Failed to trigger reminders';
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json();
+        if (body?.error) errorMsg = body.error;
+      }
+    } catch {}
+    if (errorMsg === 'Failed to trigger reminders') {
+      errorMsg = error.message || errorMsg;
+    }
+    throw new Error(errorMsg);
+  }
+
+  return data;
 }
 
 /**
