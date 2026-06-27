@@ -295,9 +295,9 @@ export default defineConfig({
 				'http://192.168.8.106:3000',
 			],
 		},
-		headers: {
-			'Cross-Origin-Embedder-Policy': 'credentialless',
-		},
+		// NOTE: Cross-Origin-Embedder-Policy: credentialless was removed because it
+		// blocks cross-origin fetch calls to Supabase Edge Functions (and any other
+		// external APIs) that don't return Cross-Origin-Resource-Policy headers.
 		allowedHosts: ['localhost', '127.0.0.1', '192.168.8.106'],
 	},
 	resolve: {

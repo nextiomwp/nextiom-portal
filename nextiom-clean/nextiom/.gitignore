@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Supabase CLI local state
+supabase/.temp/
+.supabase/
+
+# Editor / OS
+.vscode/
+.continue/
+.kilo/
+.idea/
+.DS_Store
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs_output.json
+
+# Local DB dumps (never commit — may contain hashes / PII)
+*.sql.bak
+backup*.sql
+
+# Stray test / diagnostic scripts
+test_insert.js
+check-bucket.mjs
+check-policy.mjs
+fix-agreements-bucket.mjs
+make-bucket-public.mjs
+
+# Reference / scratch docs
+smsdoc1.txt
+smsdoc2Text.lk*
+
