@@ -505,7 +505,10 @@ function Dashboard({ onLogout }) {
     localStorage.setItem('adminNotifReadAt', now);
     setMarkedReadAt(now);
     setIsNotificationsOpen(false);
-    supabase.auth.updateUser({ data: { admin_notif_read_at: now, admin_notif_read_ids: next } });
+    // Cap stored IDs at 200 to prevent JWT bloat (>8KB header → nginx 400)
+    const MAX_STORED_IDS = 200;
+    const cappedNext = next.slice(-MAX_STORED_IDS);
+    supabase.auth.updateUser({ data: { admin_notif_read_at: now, admin_notif_read_ids: cappedNext } });
   };
 
   const markNotifRead = (id) => {
@@ -513,7 +516,10 @@ function Dashboard({ onLogout }) {
     const next = [...readNotifIds, id];
     setReadNotifIds(next);
     localStorage.setItem('adminNotifReadIds', JSON.stringify(next));
-    supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
+    // Cap stored IDs at 200 to prevent JWT bloat (>8KB header → nginx 400)
+    const MAX_STORED_IDS = 200;
+    const cappedNext = next.slice(-MAX_STORED_IDS);
+    supabase.auth.updateUser({ data: { admin_notif_read_ids: cappedNext } });
   };
 
   // Show only customer/system-facing admin notifications in dropdown
@@ -535,7 +541,10 @@ function Dashboard({ onLogout }) {
     const next = [...new Set([...readNotifIds, ...ids])];
     setReadNotifIds(next);
     localStorage.setItem('adminNotifReadIds', JSON.stringify(next));
-    supabase.auth.updateUser({ data: { admin_notif_read_ids: next } });
+    // Cap stored IDs at 200 to prevent JWT bloat (>8KB header → nginx 400)
+    const MAX_STORED_IDS = 200;
+    const cappedNext = next.slice(-MAX_STORED_IDS);
+    supabase.auth.updateUser({ data: { admin_notif_read_ids: cappedNext } });
   };
 
   useEffect(() => {
