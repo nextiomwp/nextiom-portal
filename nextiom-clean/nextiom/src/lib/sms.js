@@ -6,7 +6,7 @@
  * the browser.
  */
 
-import { supabase } from '@/lib/customSupabaseClient';
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/customSupabaseClient';
 
 // ── SMS Settings CRUD ─────────────────────────────────────────────────────────
 
@@ -100,50 +100,70 @@ export async function getSmsLogs({ limit = 100, type = null } = {}) {
  * The API token is resolved server-side from the TEXTLK_API_TOKEN env var.
  */
 export async function sendSms({ phone, message, type = 'manual', customerId }) {
-  const { data, error } = await supabase.functions.invoke('send-sms', {
-    body: { phone, message, type, customerId },
-  });
+  console.log('[sendSms] Dispatching test/manual SMS with payload:', { phone, message, type, customerId });
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
 
-  if (error) {
-    let errorMsg = 'Failed to send SMS';
-    try {
-      if (error.context && typeof error.context.json === 'function') {
-        const body = await error.context.json();
-        if (body?.error) errorMsg = body.error;
-      }
-    } catch {}
-    if (errorMsg === 'Failed to send SMS') {
-      errorMsg = error.message || errorMsg;
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ phone, message, type, customerId }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('[sendSms] Edge Function returned HTTP error:', res.status, json);
+      throw new Error(json.error || `Failed to send SMS (HTTP ${res.status})`);
     }
-    throw new Error(errorMsg);
-  }
 
-  return data;
+    console.log('[sendSms] Success:', json);
+    return json;
+  } catch (err) {
+    console.error('[sendSms] Network or execution error:', err);
+    throw err;
+  }
 }
 
 /**
  * Trigger the renewal-sms-reminders Edge Function manually.
  */
 export async function triggerRenewalReminders() {
-  const { data, error } = await supabase.functions.invoke('renewal-sms-reminders', {
-    body: {},
-  });
+  console.log('[triggerRenewalReminders] Dispatching renewal reminders check');
 
-  if (error) {
-    let errorMsg = 'Failed to trigger reminders';
-    try {
-      if (error.context && typeof error.context.json === 'function') {
-        const body = await error.context.json();
-        if (body?.error) errorMsg = body.error;
-      }
-    } catch {}
-    if (errorMsg === 'Failed to trigger reminders') {
-      errorMsg = error.message || errorMsg;
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not authenticated');
+
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/renewal-sms-reminders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error('[triggerRenewalReminders] Edge Function returned HTTP error:', res.status, json);
+      throw new Error(json.error || `Failed to trigger reminders (HTTP ${res.status})`);
     }
-    throw new Error(errorMsg);
-  }
 
-  return data;
+    console.log('[triggerRenewalReminders] Success:', json);
+    return json;
+  } catch (err) {
+    console.error('[triggerRenewalReminders] Network or execution error:', err);
+    throw err;
+  }
 }
 
 /**
