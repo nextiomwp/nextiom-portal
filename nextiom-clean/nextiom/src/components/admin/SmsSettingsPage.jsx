@@ -596,7 +596,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
           supabase
             .from('domain_requests')
             .select('id, domain_name, expiry_date, customers(name, phone)')
-            .eq('status', 'Active')
+            .in('status', ['approved', 'active', 'completed'])
             .not('expiry_date', 'is', null)
             .lte('expiry_date', windowEnd.toISOString())
             .gte('expiry_date', now.toISOString())
