@@ -671,7 +671,7 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
                       <BadgeComponent status="payment_submitted" />
                     )}
                   </div>
-                  <div style={lbl}>Bank Account Name</div>
+                  <div style={lbl}>Bank Name</div>
                   <div style={val}>{payment.bank_account_name || '—'}</div>
                   <div style={lbl}>Transaction ID</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' }}>{payment.transaction_id}</div>
@@ -807,7 +807,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
           {/* Left: form */}
           <div>
             <div style={{ position: 'relative', marginBottom: 14 }} ref={dropdownRef}>
-              <label style={label}>Bank Account Name *</label>
+              <label style={label}>Your Bank Name *</label>
               <input
                 style={inp}
                 value={bankName}
@@ -891,7 +891,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
           {/* Right: bank details + summary */}
           <div>
             <div style={{ background: isDark ? '#22252C' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Bank Details</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Our Bank Details</div>
               {settings ? (
                 <div style={{ fontSize: 13, color: c.text, lineHeight: 1.7 }}>
                   <div><span style={{ color: c.subText }}>Bank:</span> {settings.bank_name}</div>

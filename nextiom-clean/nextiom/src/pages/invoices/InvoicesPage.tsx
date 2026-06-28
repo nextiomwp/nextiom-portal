@@ -128,7 +128,7 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
                 <div>
                   <div style={lbl}>Customer</div>
                   <div style={val}>{invoice.client_name} ({invoice.client_email})</div>
-                  <div style={lbl}>Bank Account Name</div>
+                  <div style={lbl}>Bank Name</div>
                   <div style={val}>{payment.bank_account_name || '—'}</div>
                   <div style={lbl}>Transaction ID / Reference</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
