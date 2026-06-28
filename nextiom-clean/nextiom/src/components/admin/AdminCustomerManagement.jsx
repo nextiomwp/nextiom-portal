@@ -1150,7 +1150,13 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                         <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customer.name}</span>
                       </div>
                     </td>
-                    <td style={bgStyle}><span style={{ color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }}>{customer.email}</span></td>
+                    <td style={bgStyle}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        <span style={{ color: c.text, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }}>
+                          {customer.email}
+                        </span>
+                      </div>
+                    </td>
                     <td style={bgStyle}><span style={{ color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100%' }}>{customer.company || '—'}</span></td>
                     <td style={compactTd}><span style={{ color: c.subText, whiteSpace: 'nowrap' }}>{new Date(customer.created_at).toLocaleDateString()}</span></td>
                     <td style={bgStyle}><StatusBadge status={customer.status} /></td>

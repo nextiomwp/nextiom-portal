@@ -1350,8 +1350,10 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                   <Mail size={16} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <label style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase' }}>Email</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase' }}>Email</label>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                     <input 
                       value={customerData.email || ''} 
                       onChange={e => setCustomerData({ ...customerData, email: e.target.value })}
@@ -1368,8 +1370,10 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                   <Phone size={16} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <label style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase' }}>Phone</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase' }}>Phone</label>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
                     <input 
                       value={customerData.phone || ''} 
                       onChange={e => setCustomerData({ ...customerData, phone: e.target.value })}

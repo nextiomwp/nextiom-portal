@@ -39,8 +39,8 @@ export async function getSmsSettings() {
  * Upsert SMS settings — feature flags only, no API token field.
  */
 export async function saveSmsSettings(settings) {
-  // Strip any accidental api_token field — it must never be in the DB
-  const { api_token, ...safeSettings } = settings;
+  // Strip fields that shouldn't be updated/inserted manually
+  const { api_token, id, created_at, ...safeSettings } = settings;
 
   // Try to get existing ID first
   const { data: existing } = await supabase

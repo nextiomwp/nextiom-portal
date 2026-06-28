@@ -25,7 +25,7 @@ import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification } from '@/lib/storage';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification, deleteCustomer } from '@/lib/storage';
 
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
@@ -611,17 +611,11 @@ function Dashboard({ onLogout }) {
 
   const handleRejectCustomer = async (cu) => {
     try {
-      await updateCustomer(cu.id, { status: 'rejected' });
-      await addNotification({
-        customer_id: cu.id,
-        type: 'account_rejected',
-        title: 'Account Rejected',
-        message: 'Your account registration has been rejected. Please contact support for assistance.',
-      });
-      toast({ title: 'Rejected', description: `${cu.name}'s account has been rejected.` });
+      await deleteCustomer(cu.id);
+      toast({ title: 'Rejected & Deleted', description: `${cu.name}'s account has been rejected and deleted.` });
       loadData();
     } catch (e) {
-      toast({ title: 'Error', description: 'Failed to reject account.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to reject and delete account.', variant: 'destructive' });
     }
   };
 
@@ -1329,13 +1323,14 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                 <tr style={{ color: c.subText, fontSize: 11, letterSpacing: '0.05em' }}>
                   <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Customer</th>
                   <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Phone</th>
+                  <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Verification</th>
                   <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Joined</th>
                   <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'right', textTransform: 'uppercase' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingCustomers.length === 0 && (
-                  <tr><td colSpan={4} style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: c.subText }}>No pending customers</td></tr>
+                  <tr><td colSpan={5} style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: c.subText }}>No pending customers</td></tr>
                 )}
                 {pendingCustomers.map((cu, i) => {
                   const col = avatarColor(cu.name);
@@ -1351,6 +1346,38 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                         </div>
                       </td>
                       <td style={{ padding: '10px 0', fontSize: 13, color: c.subText }}>{cu.phone || '—'}</td>
+                      <td style={{ padding: '10px 0' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            width: 'fit-content',
+                            padding: '1px 5px',
+                            borderRadius: 4,
+                            fontSize: 9,
+                            fontWeight: 600,
+                            background: cu.email_otp_verified ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                            color: cu.email_otp_verified ? '#10b981' : '#ef4444',
+                            border: `1px solid ${cu.email_otp_verified ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`
+                          }}>
+                            Email: {cu.email_otp_verified ? 'Verified' : 'Pending'}
+                          </span>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            width: 'fit-content',
+                            padding: '1px 5px',
+                            borderRadius: 4,
+                            fontSize: 9,
+                            fontWeight: 600,
+                            background: cu.phone_otp_verified ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                            color: cu.phone_otp_verified ? '#10b981' : '#ef4444',
+                            border: `1px solid ${cu.phone_otp_verified ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`
+                          }}>
+                            Mobile: {cu.phone_otp_verified ? 'Verified' : 'Pending'}
+                          </span>
+                        </div>
+                      </td>
                       <td style={{ padding: '10px 0', fontSize: 12, color: c.subText }}>{cu.created_at ? timeAgo(cu.created_at) : '—'}</td>
                       <td style={{ padding: '10px 0', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: 6 }}>

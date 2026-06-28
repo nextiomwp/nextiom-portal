@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, Phone, KeyRound, ArrowRight, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, Phone, KeyRound, ArrowRight, Loader2, Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,11 +17,14 @@ function RegisterPage() {
   const [step, setStep] = useState('form');
   const [formData, setFormData] = useState({ fullName: '', phone: '', email: '', password: '', confirmPassword: '' });
   const [otp, setOtp] = useState('');
+  const [phoneOtp, setPhoneOtp] = useState('');
   const [errors, setErrors] = useState({});
   const [otpError, setOtpError] = useState('');
+  const [phoneOtpError, setPhoneOtpError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [smsSkipped, setSmsSkipped] = useState(false);
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -100,19 +103,22 @@ function RegisterPage() {
       if (error) {
         setOtpError('Wrong OTP. Please try again.');
       } else {
+        // Create/Update customer profile with status: pending and email_otp_verified: true
         const { error: profileErr } = await supabase
           .from('customers')
-          .update({ status: 'active', name: formData.fullName, phone: formData.phone })
+          .update({ status: 'pending', name: formData.fullName, phone: formData.phone, email_otp_verified: true })
           .eq('user_id', data.user.id);
 
         if (profileErr) {
-          console.error('Failed to activate customer profile:', profileErr);
+          console.error('Failed to update customer profile:', profileErr);
           const { error: insertErr } = await supabase.from('customers').insert([{
             user_id: data.user.id,
             email: formData.email,
             name: formData.fullName,
             phone: formData.phone,
-            status: 'active',
+            status: 'pending',
+            email_otp_verified: true,
+            phone_otp_verified: false,
             created_at: new Date().toISOString()
           }]);
           if (insertErr) {
@@ -122,17 +128,99 @@ function RegisterPage() {
               title: 'Profile Setup Failed',
               description: 'Account created but profile could not be saved. Contact support.'
             });
+            return;
           }
+        }
+
+        // Check if SMS notifications are enabled
+        let smsEnabled = false;
+        try {
+          const { data: statusData, error: statusErr } = await supabase.functions.invoke('registration-otp', {
+            body: { action: 'status' }
+          });
+          if (!statusErr && statusData) {
+            smsEnabled = !!statusData.sms_enabled;
+          }
+        } catch (err) {
+          console.error("SMS function status check failed:", err);
+        }
+
+        if (smsEnabled) {
+          // Trigger SMS OTP send via Edge Function
+          try {
+            const { data: resData, error: funcErr } = await supabase.functions.invoke('registration-otp', {
+              body: { action: 'send', phone: formData.phone }
+            });
+            if (funcErr || resData?.error) {
+              toast({
+                variant: 'destructive',
+                title: 'SMS Sent Failed',
+                description: funcErr?.message || resData?.error || 'Could not send verification SMS.'
+              });
+            } else {
+              toast({ description: `Verification SMS code sent to ${formData.phone}` });
+            }
+          } catch (err) {
+            console.error("SMS function invoke failed:", err);
+            toast({ variant: 'destructive', description: 'Could not trigger verification SMS.' });
+          }
+          setSmsSkipped(false);
+          setStep('phone_otp');
         } else {
+          // SMS is disabled - skip phone OTP step
           addNotification({
             customer_id: null,
             type: 'new_registration',
             title: `New Customer: ${formData.fullName}`,
-            message: `${formData.email} just registered on the portal.`,
+            message: `${formData.email} just registered and verified Email. Waiting for approval.`,
           }).catch(() => {});
+          setSmsSkipped(true);
+          setStep('completed');
         }
-        navigate('/customer-dashboard');
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePhoneOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (phoneOtp.length !== 6) { setPhoneOtpError('Please enter the 6-digit code.'); return; }
+    setIsLoading(true);
+    setPhoneOtpError('');
+    try {
+      const { data, error } = await supabase.functions.invoke('registration-otp', {
+        body: { action: 'verify', code: phoneOtp }
+      });
+      if (error || data?.error) {
+        setPhoneOtpError(error?.message || data?.error || 'Wrong OTP. Please try again.');
+      } else {
+        addNotification({
+          customer_id: null,
+          type: 'new_registration',
+          title: `New Customer: ${formData.fullName}`,
+          message: `${formData.email} just registered and verified both Email and Mobile. Waiting for approval.`,
+        }).catch(() => {});
+        setStep('completed');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendPhoneOtp = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('registration-otp', {
+        body: { action: 'send', phone: formData.phone }
+      });
+      if (error || data?.error) {
+        toast({ variant: 'destructive', description: error?.message || data?.error || 'Failed to resend.' });
+      } else {
+        toast({ description: `Verification code resent to ${formData.phone}` });
+      }
+    } catch (err) {
+      toast({ variant: 'destructive', description: 'Failed to resend.' });
     } finally {
       setIsLoading(false);
     }
@@ -226,6 +314,131 @@ function RegisterPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </motion.div>
+        </div>
+      </>
+    );
+  }
+
+  if (step === 'phone_otp') {
+    return (
+      <>
+        <Helmet><title>Verify Phone - Nextiom</title></Helmet>
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[440px]">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 space-y-6">
+              <div className="text-center space-y-2">
+                {logo}
+                <div className="flex items-center justify-center w-14 h-14 bg-[#FF8C42]/10 rounded-full mx-auto mb-3">
+                  <Phone className="w-7 h-7 text-[#FF8C42]" />
+                </div>
+                <h1 className="text-2xl font-bold text-[#1a1a1a]">Verify your phone</h1>
+                <p className="text-slate-500 text-sm">
+                  Enter the 6-digit code sent to your mobile number<br />
+                  <span className="font-medium text-[#1a1a1a]">{formData.phone}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handlePhoneOtpSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="phoneOtp">Verification Code</Label>
+                  <input
+                    id="phoneOtp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={phoneOtp}
+                    onChange={(e) => { setPhoneOtp(e.target.value.replace(/\D/g, '')); setPhoneOtpError(''); }}
+                    className={cn(
+                      "w-full text-center py-3 bg-white border rounded-lg text-2xl font-bold tracking-[0.4em] focus:outline-none focus:ring-2 focus:ring-[#FF8C42]/20 transition-all",
+                      phoneOtpError ? "border-red-500 focus:border-red-500" : "border-slate-200 focus:border-[#FF8C42]"
+                    )}
+                    placeholder="------"
+                    autoFocus
+                  />
+                  {phoneOtpError && <p className="text-xs text-red-500 text-center font-medium">{phoneOtpError}</p>}
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoading || phoneOtp.length !== 6}
+                  className="w-full bg-[#FF8C42] hover:bg-[#e67e3b] text-white font-semibold h-11 rounded-lg transition-all shadow-sm hover:shadow-md"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" /><span>Verifying...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <span>Verify & Submit</span><ArrowRight className="w-4 h-4" />
+                    </div>
+                  )}
+                </Button>
+
+                <div className="text-center space-y-2 pt-1">
+                  <p className="text-sm text-slate-500">
+                    Didn't receive it?{' '}
+                    <button type="button" onClick={handleResendPhoneOtp} disabled={isLoading} className="text-[#FF8C42] font-medium hover:text-[#e67e3b] transition-colors disabled:opacity-50">
+                      Resend SMS
+                    </button>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      setStep('form');
+                      setPhoneOtp('');
+                      setPhoneOtpError('');
+                    }}
+                    className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors mx-auto"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Back to registration
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      </>
+    );
+  }
+
+  if (step === 'completed') {
+    return (
+      <>
+        <Helmet><title>Registration Submitted - Nextiom</title></Helmet>
+        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[440px]">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 space-y-6 text-center">
+              {logo}
+              <div className="flex items-center justify-center w-16 h-16 bg-emerald-50 rounded-full mx-auto mb-4 border border-emerald-100">
+                <CheckCircle2 className="w-9 h-9 text-emerald-500" />
+              </div>
+              <h1 className="text-2xl font-bold text-[#1a1a1a]">Registration Submitted</h1>
+              <p className="text-slate-600 text-sm leading-relaxed">
+                Thank you, <span className="font-semibold text-slate-800">{formData.fullName}</span>. Your email {smsSkipped ? 'has' : 'and mobile number have'} been successfully verified.
+              </p>
+
+              <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-4 text-left space-y-1">
+                <h4 className="text-sm font-semibold text-amber-800 flex items-center gap-1.5">
+                  Pending Admin Approval
+                </h4>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  Your account is now waiting for administrative review. You will be able to access the portal once your profile is approved.
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate('/');
+                }}
+                className="w-full bg-[#FF8C42] hover:bg-[#e67e3b] text-white font-semibold h-11 rounded-lg transition-all shadow-sm hover:shadow-md"
+              >
+                Return to Login
+              </Button>
             </div>
           </motion.div>
         </div>

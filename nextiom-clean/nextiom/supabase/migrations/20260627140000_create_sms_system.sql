@@ -44,11 +44,13 @@ ALTER TABLE sms_logs     ENABLE ROW LEVEL SECURITY;
 -- sms_settings: only admins can read/write
 -- Use auth.jwt() to read app_metadata from the JWT claim directly,
 -- which avoids a subquery on auth.users (which the authenticated role cannot read).
+DROP POLICY IF EXISTS "Admin read sms_settings" ON sms_settings;
 CREATE POLICY "Admin read sms_settings"
   ON sms_settings FOR SELECT
   TO authenticated
   USING ((auth.jwt() ->> 'app_metadata')::jsonb ->> 'role' = 'admin');
 
+DROP POLICY IF EXISTS "Admin write sms_settings" ON sms_settings;
 CREATE POLICY "Admin write sms_settings"
   ON sms_settings FOR ALL
   TO authenticated
@@ -56,6 +58,7 @@ CREATE POLICY "Admin write sms_settings"
   WITH CHECK ((auth.jwt() ->> 'app_metadata')::jsonb ->> 'role' = 'admin');
 
 -- sms_logs: only admins can read; edge functions insert via service role (bypasses RLS)
+DROP POLICY IF EXISTS "Admin read sms_logs" ON sms_logs;
 CREATE POLICY "Admin read sms_logs"
   ON sms_logs FOR SELECT
   TO authenticated

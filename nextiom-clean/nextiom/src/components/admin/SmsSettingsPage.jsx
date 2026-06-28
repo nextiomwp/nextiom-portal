@@ -248,10 +248,6 @@ export default function SmsSettingsPage({ isDark }) {
   const cardStyle = {
     background: c.card,
     border: `1px solid ${c.border}`,
-    borderRadius: 16,
-    padding: 24,
-    boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-    marginBottom: 20,
   };
 
   if (loading) {
@@ -264,9 +260,65 @@ export default function SmsSettingsPage({ isDark }) {
 
   return (
     <form onSubmit={handleSave} style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 40px' }} noValidate>
+      <style>{`
+        .sms-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 24px;
+          margin-bottom: 28px;
+        }
+        .sms-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+        .sms-card {
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+          margin-bottom: 20px;
+        }
+        .sms-save-btn {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 10px 22px;
+          border-radius: 10px;
+          border: none;
+          background: var(--brand-color);
+          color: #fff;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: opacity 0.15s;
+        }
+        @media (max-width: 768px) {
+          .sms-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+            margin-bottom: 20px;
+          }
+          .sms-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+          .sms-card {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+          }
+          .sms-save-btn {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+      `}</style>
 
       {/* ── Page Header ─────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, marginBottom: 28 }}>
+      <div className="sms-header">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Smartphone size={22} style={{ color: c.brand }} />
@@ -279,14 +331,10 @@ export default function SmsSettingsPage({ isDark }) {
         <button
           type="submit"
           disabled={saving}
+          className="sms-save-btn"
           style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '10px 22px', borderRadius: 10, border: 'none',
-            background: 'var(--brand-color)', color: '#fff',
-            fontSize: 13, fontWeight: 700,
             cursor: saving ? 'not-allowed' : 'pointer',
             opacity: saving ? 0.7 : 1,
-            flexShrink: 0,
           }}
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -294,12 +342,12 @@ export default function SmsSettingsPage({ isDark }) {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div className="sms-grid">
 
         {/* ── LEFT COLUMN ──────────────────────────────────── */}
         <div>
           {/* Feature Toggles */}
-          <div style={cardStyle}>
+          <div className="sms-card" style={cardStyle}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Bell size={16} style={{ color: c.brand }} />
               Notification Toggles
@@ -382,7 +430,7 @@ export default function SmsSettingsPage({ isDark }) {
         {/* ── RIGHT COLUMN ─────────────────────────────────── */}
         <div>
           {/* Test SMS card */}
-          <div style={cardStyle}>
+          <div className="sms-card" style={cardStyle}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Send size={16} style={{ color: c.brand }} />
               Send Test SMS
@@ -448,7 +496,7 @@ export default function SmsSettingsPage({ isDark }) {
           </div>
 
           {/* Trigger renewal reminders card */}
-          <div style={cardStyle}>
+          <div className="sms-card" style={cardStyle}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={16} style={{ color: c.brand }} />
               Renewal Reminder Trigger
@@ -482,7 +530,7 @@ export default function SmsSettingsPage({ isDark }) {
       </div>
 
       {/* ── SMS Logs section ──────────────────────────────── */}
-      <div style={cardStyle}>
+      <div className="sms-card" style={cardStyle}>
         <button
           type="button"
           onClick={() => setShowLogs(v => !v)}
@@ -672,7 +720,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
   ].sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
 
   if (loading) return (
-    <div style={cardStyle}>
+    <div className="sms-card" style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13 }}>
         <Loader2 size={16} className="animate-spin" /> Loading expiring services…
       </div>
@@ -680,7 +728,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
   );
 
   return (
-    <div style={cardStyle}>
+    <div className="sms-card" style={cardStyle}>
       <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
         <AlertCircle size={16} style={{ color: c.brand }} />
         Services Expiring in Next 30 Days
