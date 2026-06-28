@@ -146,7 +146,7 @@ export async function triggerRenewalReminders() {
     if (!session?.access_token) throw new Error('Not authenticated');
 
     const { data, error } = await supabase.functions.invoke('renewal-sms-reminders', {
-      body: {},
+      body: { force: true },
     });
 
     if (error) {

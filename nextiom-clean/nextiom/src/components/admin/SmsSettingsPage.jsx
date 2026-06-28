@@ -77,6 +77,7 @@ const TYPE_LABELS = {
   renewal_reminder_domain: 'Domain Renewal',
   renewal_reminder_hosting: 'Hosting Renewal',
   renewal_reminder_email: 'Email Renewal',
+  renewal_reminder_product: 'Product Renewal',
   purchase: 'Purchase',
   otp: 'OTP',
   manual: 'Manual',
@@ -87,6 +88,7 @@ function TypeBadge({ type }) {
     renewal_reminder_domain: { bg: 'rgba(99,153,34,0.13)', color: '#639922' },
     renewal_reminder_hosting: { bg: 'rgba(55,138,221,0.13)', color: '#5b9aff' },
     renewal_reminder_email: { bg: 'rgba(232,123,53,0.13)', color: 'var(--brand-color)' },
+    renewal_reminder_product: { bg: 'rgba(236,72,153,0.13)', color: '#ec4899' },
     purchase: { bg: 'rgba(168,85,247,0.13)', color: '#a855f7' },
     otp: { bg: 'rgba(249,115,22,0.13)', color: '#f97316' },
     manual: { bg: 'rgba(100,116,139,0.13)', color: '#64748b' },
@@ -577,7 +579,7 @@ export default function SmsSettingsPage({ isDark }) {
 
 // ── Expiring Services overview panel ─────────────────────────────────────────
 function ExpiringServicesPanel({ isDark, c, cardStyle }) {
-  const [data, setData] = useState({ domains: [], hostings: [], emails: [] });
+  const [data, setData] = useState({ domains: [], hostings: [], emails: [], products: [] });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -590,7 +592,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
         const windowEnd = new Date(now);
         windowEnd.setDate(windowEnd.getDate() + 30); // show expiring within 30 days
 
-        const [domainsRes, hostingsRes, emailsRes] = await Promise.all([
+        const [domainsRes, hostingsRes, emailsRes, productsRes] = await Promise.all([
           supabase
             .from('domain_requests')
             .select('id, domain_name, expiry_date, customers(name, phone)')
@@ -618,6 +620,18 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
             .gte('expiry_date', now.toISOString())
             .order('expiry_date', { ascending: true })
             .limit(20),
+          supabase
+            .from('licenses')
+            .select('id, expiry_date, license_type, products(name), customers(name, phone)')
+            .in('license_type', ['yearly', 'monthly'])
+            .not('expiry_date', 'is', null)
+            .neq('status', 'Disabled')
+            .neq('status', 'Suspended')
+            .neq('status', 'Expired')
+            .lte('expiry_date', windowEnd.toISOString())
+            .gte('expiry_date', now.toISOString())
+            .order('expiry_date', { ascending: true })
+            .limit(20),
         ]);
 
         if (mounted) {
@@ -625,6 +639,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
             domains: domainsRes.data || [],
             hostings: hostingsRes.data || [],
             emails: emailsRes.data || [],
+            products: productsRes.data || [],
           });
         }
       } catch (err) {
@@ -653,6 +668,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
     ...data.domains.map(d => ({ ...d, label: d.domain_name, serviceType: 'Domain' })),
     ...data.hostings.map(h => ({ ...h, label: h.plan_name || 'Hosting', serviceType: 'Hosting' })),
     ...data.emails.map(e => ({ ...e, label: e.email || 'Email', serviceType: 'Email' })),
+    ...data.products.map(p => ({ ...p, label: p.products?.name || 'Product', serviceType: 'Product' })),
   ].sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
 
   if (loading) return (
@@ -673,7 +689,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
         </span>
       </h2>
       <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-        Active domains, hostings and email accounts that are coming up for renewal. SMS reminders will be sent automatically.
+        Active domains, hostings, email accounts and product licenses that are coming up for renewal. SMS reminders will be sent automatically.
       </p>
 
       {allItems.length === 0 ? (
@@ -711,8 +727,8 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
                     <td style={{ padding: '11px 12px' }}>
                       <span style={{
                         padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                        background: item.serviceType === 'Domain' ? 'rgba(99,153,34,0.12)' : item.serviceType === 'Hosting' ? 'rgba(55,138,221,0.12)' : 'rgba(232,123,53,0.12)',
-                        color: item.serviceType === 'Domain' ? '#639922' : item.serviceType === 'Hosting' ? '#5b9aff' : 'var(--brand-color)',
+                        background: item.serviceType === 'Domain' ? 'rgba(99,153,34,0.12)' : item.serviceType === 'Hosting' ? 'rgba(55,138,221,0.12)' : item.serviceType === 'Product' ? 'rgba(236,72,153,0.12)' : 'rgba(232,123,53,0.12)',
+                        color: item.serviceType === 'Domain' ? '#639922' : item.serviceType === 'Hosting' ? '#5b9aff' : item.serviceType === 'Product' ? '#ec4899' : 'var(--brand-color)',
                       }}>
                         {item.serviceType}
                       </span>

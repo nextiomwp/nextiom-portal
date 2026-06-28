@@ -289,9 +289,12 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           message: `Admin updated hosting record for ${label} (status: ${status}).`
         }).catch(() => {});
         toast({ title: 'Hosting Updated', description: 'Changes saved successfully.' });
-      } else if (isRequestMode) {
-        await updateHostingRequest(request.id, payload);
-        toast({ title: 'Request Updated', description: `${hostingType} - ${planName} request updated for ${customer?.name || 'customer'}` });
+      } else {
+        if (isRequestMode) {
+          await updateHostingRequest(request.id, payload);
+          toast({ title: 'Request Updated', description: `${hostingType} - ${planName} request updated for ${customer?.name || 'customer'}` });
+        }
+
         await assignHostingToCustomer({
           customerId: customer.id,
           hostingType,

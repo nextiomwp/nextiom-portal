@@ -59,17 +59,40 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS })
 
   try {
+    // ── Parse body early to get force flag ─────────────────────────────────────
+    let body: any = {}
+    try {
+      body = await req.json()
+    } catch {
+      // empty body is fine
+    }
+    const forceRun = body?.force === true
+
     // ── Auth (admin only) ─────────────────────────────────────────────────────
+    // ── Auth (admin or service role) ──────────────────────────────────────────
     const token = req.headers.get('Authorization')?.replace('Bearer ', '')
     if (!token) return jsonRes({ error: 'Unauthorized' }, 401)
+
+    let authorized = false
+    if (token === SUPABASE_SERVICE_ROLE_KEY) {
+      authorized = true
+      console.log('[renewal-sms-reminders] Authenticated via service role key');
+    } else {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false },
+      })
+      const { data: { user }, error: uErr } = await supabase.auth.getUser(token)
+      if (!uErr && user && user.app_metadata?.role === 'admin') {
+        authorized = true
+        console.log(`[renewal-sms-reminders] Authenticated via admin user: ${user.email}`);
+      }
+    }
+
+    if (!authorized) return jsonRes({ error: 'Unauthorized access' }, 403)
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     })
-
-    const { data: { user }, error: uErr } = await supabase.auth.getUser(token)
-    if (uErr || !user) return jsonRes({ error: 'Invalid token' }, 401)
-    if (user.app_metadata?.role !== 'admin') return jsonRes({ error: 'Admins only' }, 403)
 
     // ── Guard: ensure secret is configured ──────────────────────────────────
     if (!TEXTLK_API_TOKEN) {
@@ -108,10 +131,14 @@ serve(async (req) => {
     }
 
     if (!settings?.sms_enabled) return jsonRes({ skipped: true, reason: 'SMS disabled in settings' })
+    if (!settings?.renewal_reminder) return jsonRes({ skipped: true, reason: 'Renewal reminders disabled in settings' })
 
     const reminderDays = settings.reminder_days ?? 3
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    console.log(`[renewal-sms-reminders] reminderDays=${reminderDays}, forceRun=${forceRun}`);
+
+    // Use a clean UTC "today" baseline for consistent comparison
+    const nowUtc = new Date()
+    const todayMs = Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate())
 
     // ── Fetch active domains ──────────────────────────────────────────────────
     const { data: domains } = await supabase
@@ -134,6 +161,18 @@ serve(async (req) => {
       .in('status', ['approved', 'active', 'completed'])
       .not('expiry_date', 'is', null)
 
+    // ── Fetch active product licenses (yearly/monthly only) ───────────────────
+    const { data: licenses } = await supabase
+      .from('licenses')
+      .select('id, customer_id, expiry_date, license_type, products(name), customers(name, phone)')
+      .in('license_type', ['yearly', 'monthly'])
+      .not('expiry_date', 'is', null)
+      .neq('status', 'Disabled')
+      .neq('status', 'Suspended')
+      .neq('status', 'Expired')
+
+    console.log(`[renewal-sms-reminders] Found: ${domains?.length ?? 0} domains, ${hostings?.length ?? 0} hostings, ${emails?.length ?? 0} emails, ${licenses?.length ?? 0} product licenses`);
+
     const sent: string[] = []
     const failed: string[] = []
 
@@ -146,11 +185,14 @@ serve(async (req) => {
       logType: string
     }
 
+    // Check if a service expires within the reminder window (0 to reminderDays inclusive)
     const isExpiringSoon = (expiryStr: string): boolean => {
-      const exp = new Date(expiryStr)
-      exp.setHours(0, 0, 0, 0)
-      const diff = Math.round((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-      return diff === reminderDays
+      // Parse just the date portion (YYYY-MM-DD) to avoid timezone shifts
+      const parts = expiryStr.substring(0, 10).split('-')
+      const expMs = Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+      const diffDays = Math.round((expMs - todayMs) / (1000 * 60 * 60 * 24))
+      console.log(`[renewal-sms-reminders] expiry=${expiryStr}, diffDays=${diffDays}, inWindow=${diffDays >= 0 && diffDays <= reminderDays}`);
+      return diffDays >= 0 && diffDays <= reminderDays
     }
 
     const items: ServiceItem[] = [
@@ -178,12 +220,47 @@ serve(async (req) => {
         customers: e.customers,
         logType: 'renewal_reminder_email',
       })),
+      ...(licenses || []).map((l: any) => ({
+        id: l.id,
+        customer_id: l.customer_id,
+        label: `product license "${l.products?.name || 'your product'}"`,
+        expiry_date: l.expiry_date,
+        customers: l.customers,
+        logType: 'renewal_reminder_product',
+      })),
     ]
 
+    // Load recently-sent reminders to avoid duplicates within 24h
+    // When force=true (manual trigger from admin), skip the dedup check entirely
+    let alreadySent = new Set<string>()
+    if (!forceRun) {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const { data: recentLogs } = await supabase
+        .from('sms_logs')
+        .select('customer_id, type')
+        .in('type', ['renewal_reminder_domain', 'renewal_reminder_hosting', 'renewal_reminder_email', 'renewal_reminder_product'])
+        .gte('sent_at', twentyFourHoursAgo)
+      alreadySent = new Set((recentLogs || []).map(r => `${r.customer_id}:${r.type}`))
+      console.log(`[renewal-sms-reminders] Dedup: ${alreadySent.size} recent sends found`);
+    } else {
+      console.log('[renewal-sms-reminders] Force mode — skipping dedup check');
+    }
+
     for (const item of items) {
-      if (!isExpiringSoon(item.expiry_date)) continue
+      if (!isExpiringSoon(item.expiry_date)) {
+        continue
+      }
       const phone = item.customers?.phone
-      if (!phone) continue
+      if (!phone) {
+        console.log(`[renewal-sms-reminders] Skipping ${item.label}: no phone number`);
+        continue
+      }
+
+      // Skip if a reminder was already sent to this customer+service in the last 24h
+      if (alreadySent.has(`${item.customer_id}:${item.logType}`)) {
+        console.log(`[renewal-sms-reminders] Skipping ${item.label} for ${item.customers?.name}: already sent within 24h`);
+        continue
+      }
 
       const customerName = item.customers?.name || 'Valued Customer'
       const exp = new Date(item.expiry_date).toLocaleDateString('en-US', {
@@ -191,10 +268,13 @@ serve(async (req) => {
         month: 'long',
         day: 'numeric',
       })
+      const expParts = item.expiry_date.substring(0, 10).split('-')
+      const expMs = Date.UTC(Number(expParts[0]), Number(expParts[1]) - 1, Number(expParts[2]))
+      const expDiff = Math.round((expMs - todayMs) / (1000 * 60 * 60 * 24))
 
       const message =
         `Dear ${customerName}, your ${item.label} with Nextiom is expiring on ${exp} ` +
-        `(${reminderDays} days remaining). Please log in to your portal to renew and avoid service interruption. ` +
+        `(${expDiff} day${expDiff === 1 ? '' : 's'} remaining). Please log in to your portal to renew and avoid service interruption. ` +
         `Visit: portal.nextiom.com`
 
       const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
