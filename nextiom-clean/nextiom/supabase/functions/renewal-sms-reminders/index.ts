@@ -144,7 +144,7 @@ serve(async (req) => {
     const { data: domains } = await supabase
       .from('domain_requests')
       .select('id, customer_id, domain_name, expiry_date, customers(name, phone)')
-      .eq('status', 'Active')
+      .in('status', ['approved', 'active', 'completed'])
       .not('expiry_date', 'is', null)
 
     // ── Fetch active hosting packages ─────────────────────────────────────────
