@@ -123,7 +123,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   const [viewAllActivities, setViewAllActivities] = useState(false);
 
   // Renewal Side Drawer States
-  const [renewingHosting, setRenewingHosting] = useState(null);
+  const [renewingItem, setRenewingItem] = useState(null);
+  const [renewingType, setRenewingType] = useState(null);
   const [renewStartDate, setRenewStartDate] = useState('');
   const [renewalPeriod, setRenewalPeriod] = useState('yearly');
 
@@ -201,15 +202,26 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   useEffect(() => { loadAll(); }, [customer?.id]);
 
   useEffect(() => {
-    if (renewingHosting) {
-      const baseDate = renewingHosting.expiry_date ? new Date(renewingHosting.expiry_date) : new Date();
+    if (renewingItem) {
+      const baseDate = renewingItem.expiry_date ? new Date(renewingItem.expiry_date) : new Date();
       const year = baseDate.getFullYear();
       const month = String(baseDate.getMonth() + 1).padStart(2, '0');
       const day = String(baseDate.getDate()).padStart(2, '0');
       setRenewStartDate(`${year}-${month}-${day}`);
-      setRenewalPeriod(String(renewingHosting.billing_period || 'yearly').toLowerCase());
+      
+      let period = 'yearly';
+      if (renewingType === 'hosting') {
+        period = renewingItem.billing_period || 'yearly';
+      } else if (renewingType === 'license') {
+        period = 'yearly';
+      } else if (renewingType === 'domain') {
+        period = renewingItem.registration_period || 'yearly';
+      } else if (renewingType === 'email') {
+        period = renewingItem.registration_period || 'yearly';
+      }
+      setRenewalPeriod(String(period).toLowerCase());
     }
-  }, [renewingHosting]);
+  }, [renewingItem, renewingType]);
 
   const handleCopyText = (text, type = 'Copied') => {
     if (!text) return;
@@ -283,6 +295,18 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
       return 'Active';
     }
     return 'Active';
+  };
+
+  const getGenericCalculatedStatus = (item) => {
+    const status = String(item.status || 'pending').toLowerCase();
+    if (status === 'suspended') return 'suspended';
+    if (item.expiry_date) {
+      const exp = new Date(item.expiry_date);
+      if (!isNaN(exp.getTime()) && exp < new Date()) {
+        return 'expired';
+      }
+    }
+    return status;
   };
 
   // Health Status Badge Calculation
@@ -668,30 +692,33 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
     });
 
   const filteredHosting = hostingRequests
+    .map(h => ({ ...h, calculatedStatus: getGenericCalculatedStatus(h) }))
     .filter(h => {
       const term = hostingSearch.toLowerCase();
       const domainMatch = (h.domain || '').toLowerCase().includes(term);
       const planMatch = (h.plan_name || '').toLowerCase().includes(term);
       const matchesSearch = domainMatch || planMatch;
-      const matchesStatus = hostingStatusFilter === 'all' || String(h.status).toLowerCase() === hostingStatusFilter.toLowerCase();
+      const matchesStatus = hostingStatusFilter === 'all' || h.calculatedStatus === hostingStatusFilter.toLowerCase();
       return matchesSearch && matchesStatus;
     });
 
   const filteredDomains = domainRequests
+    .map(d => ({ ...d, calculatedStatus: getGenericCalculatedStatus(d) }))
     .filter(d => {
       const term = domainSearch.toLowerCase();
       const domainMatch = (d.domain_name || '').toLowerCase().includes(term);
       const matchesSearch = domainMatch;
-      const matchesStatus = domainStatusFilter === 'all' || String(d.status).toLowerCase() === domainStatusFilter.toLowerCase();
+      const matchesStatus = domainStatusFilter === 'all' || d.calculatedStatus === domainStatusFilter.toLowerCase();
       return matchesSearch && matchesStatus;
     });
 
   const filteredEmails = emailRequests
+    .map(e => ({ ...e, calculatedStatus: getGenericCalculatedStatus(e) }))
     .filter(e => {
       const term = emailSearch.toLowerCase();
       const emailMatch = (e.email || '').toLowerCase().includes(term);
       const matchesSearch = emailMatch;
-      const matchesStatus = emailStatusFilter === 'all' || String(e.status).toLowerCase() === emailStatusFilter.toLowerCase();
+      const matchesStatus = emailStatusFilter === 'all' || e.calculatedStatus === emailStatusFilter.toLowerCase();
       return matchesSearch && matchesStatus;
     });
 
@@ -1004,7 +1031,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
     const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
     if (isNaN(date.getTime())) return '';
     
-    switch (renewalPeriod) {
+    const period = String(renewalPeriod).toLowerCase();
+    switch (period) {
       case 'monthly':
         date.setMonth(date.getMonth() + 1);
         break;
@@ -1015,16 +1043,24 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
         date.setMonth(date.getMonth() + 6);
         break;
       case 'yearly':
+      case '1':
         date.setFullYear(date.getFullYear() + 1);
         break;
       case '2years':
+      case '2':
         date.setFullYear(date.getFullYear() + 2);
         break;
       case '3years':
+      case '3':
         date.setFullYear(date.getFullYear() + 3);
         break;
       case '5years':
+      case '5':
         date.setFullYear(date.getFullYear() + 5);
+        break;
+      case '10years':
+      case '10':
+        date.setFullYear(date.getFullYear() + 10);
         break;
       default:
         break;
@@ -1036,21 +1072,32 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   })();
 
   const handleSaveRenewal = async () => {
-    if (!renewingHosting || !renewStartDate || !calculatedExpiry) return;
+    if (!renewingItem || !renewingType || !renewStartDate || !calculatedExpiry) return;
     try {
       setLoading(true);
       
       let currentHistory = [];
-      if (renewingHosting.renewal_history && Array.isArray(renewingHosting.renewal_history)) {
-        currentHistory = [...renewingHosting.renewal_history];
+      if (renewingItem.renewal_history && Array.isArray(renewingItem.renewal_history)) {
+        currentHistory = [...renewingItem.renewal_history];
       }
       
       // If history is empty, insert the initial state as first history record
       if (currentHistory.length === 0) {
+        let initialPeriod = 'yearly';
+        if (renewingType === 'hosting') {
+          initialPeriod = renewingItem.billing_period || 'yearly';
+        } else if (renewingType === 'license') {
+          initialPeriod = 'yearly';
+        } else if (renewingType === 'domain') {
+          initialPeriod = renewingItem.registration_period || 'yearly';
+        } else if (renewingType === 'email') {
+          initialPeriod = renewingItem.registration_period || 'yearly';
+        }
+
         currentHistory.push({
-          renew_start_date: renewingHosting.start_date || renewingHosting.created_at,
-          renewal_time: renewingHosting.billing_period || 'yearly',
-          expiry_date: renewingHosting.expiry_date
+          renew_start_date: renewingItem.start_date || renewingItem.purchase_date || renewingItem.created_at,
+          renewal_time: initialPeriod,
+          expiry_date: renewingItem.expiry_date
         });
       }
       
@@ -1064,22 +1111,53 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
       
       const updatedHistory = [...currentHistory, newEntry];
       
+      let table = '';
+      let updatePayload = {
+        expiry_date: new Date(calculatedExpiry).toISOString(),
+        renewal_history: updatedHistory
+      };
+
+      if (renewingType === 'hosting') {
+        table = 'hosting_requests';
+        updatePayload.billing_period = renewalPeriod;
+        updatePayload.status = 'approved';
+      } else if (renewingType === 'license') {
+        table = 'licenses';
+        updatePayload.status = 'Active';
+      } else if (renewingType === 'domain') {
+        table = 'domain_requests';
+        updatePayload.registration_period = parseInt(renewalPeriod, 10) || 1;
+        updatePayload.status = 'approved';
+      } else if (renewingType === 'email') {
+        table = 'email_requests';
+        updatePayload.registration_period = parseInt(renewalPeriod, 10) || 1;
+        updatePayload.status = 'approved';
+      }
+      
       const { error } = await supabase
-        .from('hosting_requests')
-        .update({
-          expiry_date: new Date(calculatedExpiry).toISOString(),
-          billing_period: renewalPeriod,
-          renewal_history: updatedHistory
-        })
-        .eq('id', renewingHosting.id);
+        .from(table)
+        .update(updatePayload)
+        .eq('id', renewingItem.id);
 
       if (error) throw error;
       
-      toast({ title: 'Hosting Renewed Successfully', description: `Expiry extended to ${safeFormatDate(calculatedExpiry)}.` });
-      setRenewingHosting(null);
+      const typeLabels = {
+        hosting: 'Hosting Package',
+        license: 'Product License',
+        domain: 'Domain Name',
+        email: 'Email Account'
+      };
+
+      toast({ 
+        title: `${typeLabels[renewingType]} Renewed Successfully`, 
+        description: `Expiry extended to ${safeFormatDate(calculatedExpiry)}.` 
+      });
+      
+      setRenewingItem(null);
+      setRenewingType(null);
       loadAll();
     } catch (err) {
-      toast({ title: 'Error Renewing Hosting', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error Renewing Item', description: err.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -1640,6 +1718,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                 <button onClick={() => setViewingLicense(lic)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View"><Eye size={14} /></button>
+                                <button onClick={() => { setRenewingItem(lic); setRenewingType('license'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={14} /></button>
                                 <button onClick={() => setEditingLicense(lic)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Edit"><Edit size={14} /></button>
                                 <button onClick={async () => {
                                   if (!confirm('Revoke this product license?')) return;
@@ -1701,11 +1780,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                             <td style={row}>{h.disk_usage || '—'} / {h.disk_usage_limit || '—'}</td>
                             <td style={row}>{h.bandwidth_usage || '—'} / {h.bandwidth_limit || '—'}</td>
                             <td style={row}>{formatPrice(h.price)}</td>
-                            <td style={row}><StatusBadge status={h.status} /></td>
+                            <td style={row}><StatusBadge status={h.calculatedStatus} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                 <button onClick={() => setViewingHosting(h)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View Details"><Eye size={14} /></button>
-                                <button onClick={() => setRenewingHosting(h)} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={14} /></button>
+                                <button onClick={() => { setRenewingItem(h); setRenewingType('hosting'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={14} /></button>
                                 <button onClick={() => setEditingHosting(h)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={14} /></button>
                                 <button onClick={() => deleteItem('hosting', h.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
                               </div>
@@ -1762,10 +1841,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                               </span>
                             </td>
                             <td style={row}>{formatPrice(d.price)}</td>
-                            <td style={row}><StatusBadge status={d.status} /></td>
+                            <td style={row}><StatusBadge status={d.calculatedStatus} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                 <button onClick={() => setViewingDomain(d)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View Details"><Eye size={14} /></button>
+                                <button onClick={() => { setRenewingItem(d); setRenewingType('domain'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={14} /></button>
                                 <button onClick={() => setEditingDomain(d)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={14} /></button>
                                 <button onClick={() => sendExpiryReminder('domain', d)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Send Reminder"><Bell size={14} /></button>
                                 <button onClick={() => deleteItem('domain', d.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
@@ -1823,7 +1903,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                                 {e.auto_renew ? 'Enabled' : 'Disabled'}
                               </span>
                             </td>
-                            <td style={row}><StatusBadge status={e.status} /></td>
+                            <td style={row}><StatusBadge status={e.calculatedStatus} /></td>
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                 {(e.email_username || e.email_password) && (
@@ -1831,6 +1911,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                                     <Lock size={11} /> Credentials
                                   </button>
                                 )}
+                                <button onClick={() => { setRenewingItem(e); setRenewingType('email'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={14} /></button>
                                 <button onClick={() => setEditingEmail(e)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={14} /></button>
                                 <button onClick={() => deleteEmailItem(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
                               </div>
@@ -3284,12 +3365,12 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
         c={c}
       />
 
-      {/* Renew Hosting Drawer side window */}
-      {renewingHosting && (
+      {/* Renew Drawer side window */}
+      {renewingItem && renewingType && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', justifyContent: 'flex-end' }}>
           {/* Backdrop */}
           <div 
-            onClick={() => setRenewingHosting(null)} 
+            onClick={() => { setRenewingItem(null); setRenewingType(null); }} 
             style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', transition: 'opacity 0.2s ease-in-out' }} 
           />
           
@@ -3316,13 +3397,21 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
             {/* Drawer Header */}
             <div style={{ padding: '20px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <span style={{ fontWeight: 700, fontSize: 16, color: c.text, display: 'block' }}>Renew Hosting Package</span>
+                <span style={{ fontWeight: 700, fontSize: 16, color: c.text, display: 'block' }}>
+                  {renewingType === 'hosting' && 'Renew Hosting Package'}
+                  {renewingType === 'license' && 'Renew Product License'}
+                  {renewingType === 'domain' && 'Renew Domain Name'}
+                  {renewingType === 'email' && 'Renew Email Account'}
+                </span>
                 <span style={{ fontSize: 12, color: c.subText, marginTop: 2, display: 'block' }}>
-                  Domain: <strong style={{ color: c.text }}>{renewingHosting.domain || '—'}</strong>
+                  {renewingType === 'hosting' && <>Domain: <strong style={{ color: c.text }}>{renewingItem.domain || '—'}</strong></>}
+                  {renewingType === 'license' && <>Product: <strong style={{ color: c.text }}>{renewingItem.name || '—'}</strong></>}
+                  {renewingType === 'domain' && <>Domain: <strong style={{ color: c.text }}>{renewingItem.domain_name || '—'}</strong></>}
+                  {renewingType === 'email' && <>Email: <strong style={{ color: c.text }}>{renewingItem.email || '—'}</strong></>}
                 </span>
               </div>
               <button 
-                onClick={() => setRenewingHosting(null)} 
+                onClick={() => { setRenewingItem(null); setRenewingType(null); }} 
                 style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: 4 }}
               >
                 <X size={20} />
@@ -3331,26 +3420,88 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
 
             {/* Drawer Body - Scrollable */}
             <div style={{ padding: 24, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* Package details card */}
+              {/* Item details card */}
               <div style={{ padding: 14, background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa', borderRadius: 8, border: `1px solid ${c.border}`, fontSize: 12.5 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Plan Name</span>
-                    <span style={{ color: c.text, fontWeight: 600 }}>{renewingHosting.plan_name || parsePackageSummary(renewingHosting.package_type).name}</span>
+                {renewingType === 'hosting' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Plan Name</span>
+                      <span style={{ color: c.text, fontWeight: 600 }}>{renewingItem.plan_name || parsePackageSummary(renewingItem.package_type).name}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Original Start Date</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.start_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Current Expiry</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.expiry_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Billing Period</span>
+                      <span style={{ color: c.text, textTransform: 'capitalize' }}>{renewingItem.billing_period || '—'}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Original Start Date</span>
-                    <span style={{ color: c.text }}>{safeFormatDate(renewingHosting.start_date)}</span>
+                )}
+                {renewingType === 'license' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Product Name</span>
+                      <span style={{ color: c.text, fontWeight: 600 }}>{renewingItem.name}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Original Start Date</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.start_date || renewingItem.purchase_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Current Expiry</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.expiry_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>License Key</span>
+                      <span style={{ color: c.text, fontFamily: 'monospace' }}>{renewingItem.license_key || '—'}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Current Expiry</span>
-                    <span style={{ color: c.text }}>{safeFormatDate(renewingHosting.expiry_date)}</span>
+                )}
+                {renewingType === 'domain' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Domain Name</span>
+                      <span style={{ color: c.text, fontWeight: 600 }}>{renewingItem.domain_name}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Original Start Date</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.start_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Current Expiry</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.expiry_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Registration Period</span>
+                      <span style={{ color: c.text, textTransform: 'capitalize' }}>{renewingItem.registration_period || '—'}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Billing Period</span>
-                    <span style={{ color: c.text, textTransform: 'capitalize' }}>{renewingHosting.billing_period || '—'}</span>
+                )}
+                {renewingType === 'email' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Email Address</span>
+                      <span style={{ color: c.text, fontWeight: 600 }}>{renewingItem.email}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Original Start Date</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.start_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Current Expiry</span>
+                      <span style={{ color: c.text }}>{safeFormatDate(renewingItem.expiry_date)}</span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Billing Period</span>
+                      <span style={{ color: c.text, textTransform: 'capitalize' }}>{renewingItem.registration_period || '—'}</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Renewal Form */}
@@ -3396,13 +3547,34 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                       boxSizing: 'border-box'
                     }}
                   >
-                    <option value="monthly">Monthly (1 Month)</option>
-                    <option value="quarterly">Quarterly (3 Months)</option>
-                    <option value="semi-annually">Semi-Annually (6 Months)</option>
-                    <option value="yearly">Yearly (1 Year)</option>
-                    <option value="2years">2 Years</option>
-                    <option value="3years">3 Years</option>
-                    <option value="5years">5 Years</option>
+                    {renewingType === 'hosting' && (
+                      <>
+                        <option value="monthly">Monthly (1 Month)</option>
+                        <option value="quarterly">Quarterly (3 Months)</option>
+                        <option value="semi-annually">Semi-Annually (6 Months)</option>
+                        <option value="yearly">Yearly (1 Year)</option>
+                        <option value="2years">2 Years</option>
+                        <option value="3years">3 Years</option>
+                        <option value="5years">5 Years</option>
+                      </>
+                    )}
+                    {renewingType === 'license' && (
+                      <>
+                        <option value="yearly">Yearly (1 Year)</option>
+                        <option value="2years">2 Years</option>
+                        <option value="3years">3 Years</option>
+                        <option value="5years">5 Years</option>
+                      </>
+                    )}
+                    {(renewingType === 'domain' || renewingType === 'email') && (
+                      <>
+                        <option value="1">1 Year</option>
+                        <option value="2">2 Years</option>
+                        <option value="3">3 Years</option>
+                        <option value="5">5 Years</option>
+                        <option value="10">10 Years</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -3429,10 +3601,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                 </div>
               </div>
 
-              {/* Timeline of Package */}
+              {/* Timeline of Item */}
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, marginBottom: 12 }}>
-                  Package History & Timeline
+                  {renewingType === 'hosting' && 'Package History & Timeline'}
+                  {renewingType === 'license' && 'License History & Timeline'}
+                  {renewingType === 'domain' && 'Domain History & Timeline'}
+                  {renewingType === 'email' && 'Email History & Timeline'}
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', paddingLeft: 16 }}>
                   {/* Vertical timeline line */}
@@ -3449,18 +3624,29 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                   {(() => {
                     let timelineItems = [];
                     try {
-                      if (renewingHosting.renewal_history && Array.isArray(renewingHosting.renewal_history)) {
-                        timelineItems = [...renewingHosting.renewal_history];
+                      if (renewingItem.renewal_history && Array.isArray(renewingItem.renewal_history)) {
+                        timelineItems = [...renewingItem.renewal_history];
                       }
                     } catch (e) {
                       console.error(e);
                     }
 
                     if (timelineItems.length === 0) {
+                      let initialPeriod = 'yearly';
+                      if (renewingType === 'hosting') {
+                        initialPeriod = renewingItem.billing_period || 'yearly';
+                      } else if (renewingType === 'license') {
+                        initialPeriod = 'yearly';
+                      } else if (renewingType === 'domain') {
+                        initialPeriod = renewingItem.registration_period || 'yearly';
+                      } else if (renewingType === 'email') {
+                        initialPeriod = renewingItem.registration_period || 'yearly';
+                      }
+
                       timelineItems.push({
-                        renew_start_date: renewingHosting.start_date || renewingHosting.created_at,
-                        renewal_time: renewingHosting.billing_period || 'Initial Purchase',
-                        expiry_date: renewingHosting.expiry_date
+                        renew_start_date: renewingItem.start_date || renewingItem.purchase_date || renewingItem.created_at,
+                        renewal_time: initialPeriod,
+                        expiry_date: renewingItem.expiry_date
                       });
                     }
 
@@ -3505,7 +3691,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
             {/* Drawer Footer */}
             <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', gap: 12 }}>
               <button 
-                onClick={() => setRenewingHosting(null)} 
+                onClick={() => { setRenewingItem(null); setRenewingType(null); }} 
                 style={{ 
                   flex: 1, 
                   padding: '10px', 
