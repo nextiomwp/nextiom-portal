@@ -122,6 +122,11 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   const [showEmailCreds, setShowEmailCreds] = useState(null);
   const [viewAllActivities, setViewAllActivities] = useState(false);
 
+  // Renewal Side Drawer States
+  const [renewingHosting, setRenewingHosting] = useState(null);
+  const [renewStartDate, setRenewStartDate] = useState('');
+  const [renewalPeriod, setRenewalPeriod] = useState('yearly');
+
   // Fields for creation modals
   const [jobTitle, setJobTitle] = useState('');
   const [jobCategory, setJobCategory] = useState('Web Design');
@@ -194,6 +199,17 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   };
 
   useEffect(() => { loadAll(); }, [customer?.id]);
+
+  useEffect(() => {
+    if (renewingHosting) {
+      const baseDate = renewingHosting.expiry_date ? new Date(renewingHosting.expiry_date) : new Date();
+      const year = baseDate.getFullYear();
+      const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+      const day = String(baseDate.getDate()).padStart(2, '0');
+      setRenewStartDate(`${year}-${month}-${day}`);
+      setRenewalPeriod(String(renewingHosting.billing_period || 'yearly').toLowerCase());
+    }
+  }, [renewingHosting]);
 
   const handleCopyText = (text, type = 'Copied') => {
     if (!text) return;
@@ -981,6 +997,94 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
     }
   };
 
+  const calculatedExpiry = (() => {
+    if (!renewStartDate || !renewalPeriod) return '';
+    const parts = renewStartDate.split('-');
+    if (parts.length !== 3) return '';
+    const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    if (isNaN(date.getTime())) return '';
+    
+    switch (renewalPeriod) {
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+      case 'quarterly':
+        date.setMonth(date.getMonth() + 3);
+        break;
+      case 'semi-annually':
+        date.setMonth(date.getMonth() + 6);
+        break;
+      case 'yearly':
+        date.setFullYear(date.getFullYear() + 1);
+        break;
+      case '2years':
+        date.setFullYear(date.getFullYear() + 2);
+        break;
+      case '3years':
+        date.setFullYear(date.getFullYear() + 3);
+        break;
+      case '5years':
+        date.setFullYear(date.getFullYear() + 5);
+        break;
+      default:
+        break;
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  })();
+
+  const handleSaveRenewal = async () => {
+    if (!renewingHosting || !renewStartDate || !calculatedExpiry) return;
+    try {
+      setLoading(true);
+      
+      let currentHistory = [];
+      if (renewingHosting.renewal_history && Array.isArray(renewingHosting.renewal_history)) {
+        currentHistory = [...renewingHosting.renewal_history];
+      }
+      
+      // If history is empty, insert the initial state as first history record
+      if (currentHistory.length === 0) {
+        currentHistory.push({
+          renew_start_date: renewingHosting.start_date || renewingHosting.created_at,
+          renewal_time: renewingHosting.billing_period || 'yearly',
+          expiry_date: renewingHosting.expiry_date
+        });
+      }
+      
+      // Push new renewal event
+      const newEntry = {
+        renew_start_date: new Date(renewStartDate).toISOString(),
+        renewal_time: renewalPeriod,
+        expiry_date: new Date(calculatedExpiry).toISOString(),
+        created_at: new Date().toISOString()
+      };
+      
+      const updatedHistory = [...currentHistory, newEntry];
+      
+      const { error } = await supabase
+        .from('hosting_requests')
+        .update({
+          expiry_date: new Date(calculatedExpiry).toISOString(),
+          billing_period: renewalPeriod,
+          renewal_history: updatedHistory
+        })
+        .eq('id', renewingHosting.id);
+
+      if (error) throw error;
+      
+      toast({ title: 'Hosting Renewed Successfully', description: `Expiry extended to ${safeFormatDate(calculatedExpiry)}.` });
+      setRenewingHosting(null);
+      loadAll();
+    } catch (err) {
+      toast({ title: 'Error Renewing Hosting', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSuspendHosting = async (h) => {
     try {
       const { error } = await supabase
@@ -1601,6 +1705,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                             <td style={{ ...row, textAlign: 'right' }}>
                               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                                 <button onClick={() => setViewingHosting(h)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View Details"><Eye size={14} /></button>
+                                <button onClick={() => setRenewingHosting(h)} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={14} /></button>
                                 <button onClick={() => setEditingHosting(h)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={14} /></button>
                                 <button onClick={() => deleteItem('hosting', h.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={14} /></button>
                               </div>
@@ -3178,6 +3283,265 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
         customer={customerData}
         c={c}
       />
+
+      {/* Renew Hosting Drawer side window */}
+      {renewingHosting && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', justifyContent: 'flex-end' }}>
+          {/* Backdrop */}
+          <div 
+            onClick={() => setRenewingHosting(null)} 
+            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)', transition: 'opacity 0.2s ease-in-out' }} 
+          />
+          
+          {/* Drawer container */}
+          <div style={{ 
+            position: 'relative', 
+            width: '100%', 
+            maxWidth: 460, 
+            height: '100%', 
+            background: c.card, 
+            borderLeft: `1px solid ${c.borderStrong}`, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            boxShadow: '-8px 0 32px rgba(0,0,0,0.4)',
+            animation: 'slideIn 0.2s ease-out'
+          }}>
+            <style>{`
+              @keyframes slideIn {
+                from { transform: translateX(100%); }
+                to { transform: translateX(0); }
+              }
+            `}</style>
+            
+            {/* Drawer Header */}
+            <div style={{ padding: '20px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: 16, color: c.text, display: 'block' }}>Renew Hosting Package</span>
+                <span style={{ fontSize: 12, color: c.subText, marginTop: 2, display: 'block' }}>
+                  Domain: <strong style={{ color: c.text }}>{renewingHosting.domain || '—'}</strong>
+                </span>
+              </div>
+              <button 
+                onClick={() => setRenewingHosting(null)} 
+                style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: 4 }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Drawer Body - Scrollable */}
+            <div style={{ padding: 24, flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Package details card */}
+              <div style={{ padding: 14, background: isDark ? 'rgba(255,255,255,0.02)' : '#fafafa', borderRadius: 8, border: `1px solid ${c.border}`, fontSize: 12.5 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Plan Name</span>
+                    <span style={{ color: c.text, fontWeight: 600 }}>{renewingHosting.plan_name || parsePackageSummary(renewingHosting.package_type).name}</span>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Original Start Date</span>
+                    <span style={{ color: c.text }}>{safeFormatDate(renewingHosting.start_date)}</span>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Current Expiry</span>
+                    <span style={{ color: c.text }}>{safeFormatDate(renewingHosting.expiry_date)}</span>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', color: c.subText, fontSize: 10, fontWeight: 700, textTransform: 'uppercase' }}>Billing Period</span>
+                    <span style={{ color: c.text, textTransform: 'capitalize' }}>{renewingHosting.billing_period || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Renewal Form */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, marginBottom: 6 }}>
+                    Renew Start Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={renewStartDate} 
+                    onChange={(e) => setRenewStartDate(e.target.value)} 
+                    style={{ 
+                      width: '100%', 
+                      padding: '9px 12px', 
+                      borderRadius: 8, 
+                      border: `1.5px solid ${c.border}`, 
+                      background: isDark ? '#22252C' : '#fff', 
+                      color: c.text, 
+                      fontSize: 13, 
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }} 
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, marginBottom: 6 }}>
+                    Renewal Period
+                  </label>
+                  <select 
+                    value={renewalPeriod} 
+                    onChange={(e) => setRenewalPeriod(e.target.value)} 
+                    style={{ 
+                      width: '100%', 
+                      padding: '9px 12px', 
+                      borderRadius: 8, 
+                      border: `1.5px solid ${c.border}`, 
+                      background: isDark ? '#22252C' : '#fff', 
+                      color: c.text, 
+                      fontSize: 13, 
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <option value="monthly">Monthly (1 Month)</option>
+                    <option value="quarterly">Quarterly (3 Months)</option>
+                    <option value="semi-annually">Semi-Annually (6 Months)</option>
+                    <option value="yearly">Yearly (1 Year)</option>
+                    <option value="2years">2 Years</option>
+                    <option value="3years">3 Years</option>
+                    <option value="5years">5 Years</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, marginBottom: 6 }}>
+                    Auto Calculated Expiry Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={calculatedExpiry} 
+                    disabled 
+                    style={{ 
+                      width: '100%', 
+                      padding: '9px 12px', 
+                      borderRadius: 8, 
+                      border: `1.5px solid ${c.border}`, 
+                      background: isDark ? 'rgba(255,255,255,0.04)' : '#ebebeb', 
+                      color: c.text, 
+                      fontSize: 13, 
+                      cursor: 'not-allowed',
+                      boxSizing: 'border-box'
+                    }} 
+                  />
+                </div>
+              </div>
+
+              {/* Timeline of Package */}
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, marginBottom: 12 }}>
+                  Package History & Timeline
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', paddingLeft: 16 }}>
+                  {/* Vertical timeline line */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    top: 8, 
+                    bottom: 8, 
+                    left: 4, 
+                    width: 2, 
+                    background: isDark ? 'rgba(255,255,255,0.1)' : '#ebebeb' 
+                  }} />
+
+                  {/* Compute Timeline Items */}
+                  {(() => {
+                    let timelineItems = [];
+                    try {
+                      if (renewingHosting.renewal_history && Array.isArray(renewingHosting.renewal_history)) {
+                        timelineItems = [...renewingHosting.renewal_history];
+                      }
+                    } catch (e) {
+                      console.error(e);
+                    }
+
+                    if (timelineItems.length === 0) {
+                      timelineItems.push({
+                        renew_start_date: renewingHosting.start_date || renewingHosting.created_at,
+                        renewal_time: renewingHosting.billing_period || 'Initial Purchase',
+                        expiry_date: renewingHosting.expiry_date
+                      });
+                    }
+
+                    return timelineItems.map((item, idx) => {
+                      const isLatest = idx === timelineItems.length - 1;
+                      return (
+                        <div key={idx} style={{ position: 'relative', paddingBottom: idx === timelineItems.length - 1 ? 0 : 20 }}>
+                          <div style={{ 
+                            position: 'absolute', 
+                            left: -16, 
+                            top: 4, 
+                            width: 10, 
+                            height: 10, 
+                            borderRadius: '50%', 
+                            background: isLatest ? c.brand : (isDark ? '#4b5563' : '#9ca3af'),
+                            border: `2px solid ${c.card}`,
+                            boxShadow: isLatest ? `0 0 8px ${c.brand}` : 'none',
+                            zIndex: 2
+                          }} />
+
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 700, color: isLatest ? c.brand : c.text }}>
+                                {idx === 0 ? 'Initial Purchase' : `Renewal #${idx}`}
+                              </span>
+                              <span style={{ fontSize: 11, background: isDark ? 'rgba(255,255,255,0.05)' : '#eaeaea', padding: '2px 6px', borderRadius: 4, color: c.subText, textTransform: 'capitalize' }}>
+                                {item.renewal_time || 'yearly'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: c.subText, marginTop: 4 }}>
+                              Duration: <strong>{safeFormatDate(item.renew_start_date)}</strong> to <strong>{safeFormatDate(item.expiry_date)}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${c.border}`, display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setRenewingHosting(null)} 
+                style={{ 
+                  flex: 1, 
+                  padding: '10px', 
+                  borderRadius: 8, 
+                  border: `1.5px solid ${c.border}`, 
+                  background: 'transparent', 
+                  color: c.text, 
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  cursor: 'pointer' 
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveRenewal}
+                style={{ 
+                  flex: 1, 
+                  padding: '10px', 
+                  borderRadius: 8, 
+                  border: 'none', 
+                  background: c.brand, 
+                  color: '#fff', 
+                  fontSize: 13, 
+                  fontWeight: 700, 
+                  cursor: 'pointer',
+                  opacity: !calculatedExpiry ? 0.6 : 1
+                }}
+                disabled={!calculatedExpiry}
+              >
+                Save Renewal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
