@@ -117,6 +117,16 @@ export const AuthProvider = ({ children }) => {
 
       setUser(authUser);
       setRole(userRole);
+
+      // Fetch and apply portal settings / theme color on login/session update
+      try {
+        const settings = await getPortalSettings();
+        if (settings?.themeColor) {
+          applyThemeColor(settings.themeColor);
+        }
+      } catch (themeErr) {
+        console.warn('Failed to load or apply theme color on session update:', themeErr);
+      }
     } catch (err) {
       console.error("Error handling user session:", err);
       clearStaleAuth();

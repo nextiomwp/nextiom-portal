@@ -1228,7 +1228,13 @@ export const getPortalSettings = async () => {
       .maybeSingle();
 
     if (error) throw error;
-    return fromPortalSettingsRecord(data || {});
+    const settings = fromPortalSettingsRecord(data || {});
+    try {
+      localStorage.setItem(PORTAL_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    } catch (e) {
+      console.warn('getPortalSettings: failed to mirror portal settings to localStorage', e?.message || e);
+    }
+    return settings;
   } catch (err) {
     console.warn('getPortalSettings: falling back to localStorage due to Supabase error', err?.message || err);
     try {
