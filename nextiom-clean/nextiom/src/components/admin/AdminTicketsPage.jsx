@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle } from 'lucide-react';
-import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, deleteTicket, addNotification, editTicketMessage, deleteTicketMessage } from '@/lib/storage';
+import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle, ArrowLeftRight } from 'lucide-react';
+import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, deleteTicket, addNotification, editTicketMessage, deleteTicketMessage, assignTicket, transferTicket } from '@/lib/storage';
 import LinkPreviewCard from '@/components/shared/LinkPreviewCard';
 import { extractUrls } from '@/lib/linkPreview';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -36,6 +36,8 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [customTransfer, setCustomTransfer] = useState('');
   const chatEndRef = useRef(null);
   const replyRef = useRef(null);
   const savedRangeRef = useRef(null);
@@ -113,6 +115,57 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
     };
   }, []);
 
+  async function handleAssign(assigneeName) {
+    if (!selected || !assigneeName.trim()) return;
+    try {
+      const result = await assignTicket(selected.id, assigneeName.trim());
+      
+      const updatedSelected = { ...selected, assignee: result.assignee };
+      setSelected(updatedSelected);
+      setMessages(msgs => [...msgs, result.systemMessage]);
+      setTickets(ts => ts.map(t => t.id === selected.id ? { ...t, assignee: result.assignee, updated_at: new Date().toISOString() } : t));
+      
+      await addNotification({
+        customer_id: selected.customer_id,
+        type: 'ticket_reply',
+        title: 'Ticket Assigned',
+        message: `Your ticket has been assigned to ${result.assignee}.`,
+      });
+
+      toast({ title: 'Ticket assigned successfully' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to assign ticket', variant: 'destructive' });
+    }
+  }
+
+  async function handleTransfer(assigneeName) {
+    if (!selected || !assigneeName.trim()) return;
+    try {
+      const prevAssignee = selected.assignee || 'Admin';
+      const result = await transferTicket(selected.id, assigneeName.trim(), prevAssignee);
+      
+      const updatedSelected = { ...selected, assignee: result.assignee };
+      setSelected(updatedSelected);
+      setMessages(msgs => [...msgs, result.systemMessage]);
+      setTickets(ts => ts.map(t => t.id === selected.id ? { ...t, assignee: result.assignee, updated_at: new Date().toISOString() } : t));
+      
+      await addNotification({
+        customer_id: selected.customer_id,
+        type: 'ticket_reply',
+        title: 'Ticket Transferred',
+        message: `Your ticket has been transferred to ${result.assignee}.`,
+      });
+
+      setShowTransferModal(false);
+      setCustomTransfer('');
+      toast({ title: 'Ticket transferred successfully' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to transfer ticket', variant: 'destructive' });
+    }
+  }
+
   async function handleSend() {
     const textToSend = reply.trim();
     if ((!textToSend && screenshots.length === 0) || !selected) return;
@@ -122,7 +175,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       if (screenshots.length > 0) {
         messageContent += '\n\n--- SCREENSHOTS ---\n' + screenshots.map(url => `[Screenshot](${url})`).join('\n');
       }
-      const msg = await addTicketMessage(selected.id, 'admin', messageContent.trim());
+      const msg = await addTicketMessage(selected.id, 'admin', messageContent.trim(), selected.assignee);
       setMessages(m => [...m, msg]);
       setReply('');
       setScreenshots([]);
@@ -1141,9 +1194,17 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
               <div style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject}</div>
               <div style={{ fontSize: 11, color: c.subText }}>
                 {selected.customers?.name} · {selected.customers?.email}
+                {selected.assignee && (
+                  <> · Assigned to: <span style={{ fontWeight: 700, color: c.brand }}>{selected.assignee}</span></>
+                )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+              {selected.status === 'open' && selected.assignee && (
+                <button onClick={() => setShowTransferModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
+                  <ArrowLeftRight size={13} /> Transfer
+                </button>
+              )}
               {selected.status === 'open' ? (
                 <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
                   <CheckCircle size={13} /> Close Ticket
@@ -1171,6 +1232,86 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
             ) : messages.length === 0 ? (
               <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>No messages yet.</div>
             ) : messages.map(msg => {
+              const isSystem = msg.sender_role === 'system';
+              if (isSystem) {
+                const isEditing = editingMsgId === msg.id;
+                return (
+                  <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '8px 0', width: '100%' }}>
+                    {isEditing ? (
+                      <div style={{ width: '100%', maxWidth: 400, background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 12 }}>
+                        <textarea
+                          value={editText}
+                          onChange={e => setEditText(e.target.value)}
+                          style={{
+                            width: '100%',
+                            minHeight: 60,
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: `1.5px solid ${c.border}`,
+                            background: isDark ? '#22252C' : '#fff',
+                            color: c.text,
+                            fontSize: 12,
+                            outline: 'none',
+                            fontFamily: 'inherit',
+                            resize: 'vertical',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                          <button
+                            onClick={() => { setEditingMsgId(null); setEditText(''); }}
+                            style={{ padding: '4px 10px', border: `1px solid ${c.border}`, borderRadius: 6, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveEdit}
+                            disabled={!editText.trim()}
+                            style={{ padding: '4px 10px', border: 'none', borderRadius: 6, background: c.brand, color: '#fff', cursor: editText.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.5 }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{
+                          background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                          color: c.subText,
+                          fontSize: 11,
+                          padding: '4px 12px',
+                          borderRadius: 12,
+                          fontWeight: 500,
+                          border: `1px solid ${c.border}`,
+                          textAlign: 'center'
+                        }}>
+                          {msg.message}
+                        </div>
+                        <div style={{ display: 'flex', gap: 2 }}>
+                          <button
+                            onClick={() => handleEditMessage(msg)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 6, opacity: 0.6 }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
+                            title="Edit system message"
+                          >
+                            <Edit3 size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef444490', display: 'flex', padding: 4, borderRadius: 6, opacity: 0.6 }}
+                            onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={e => e.currentTarget.style.opacity = '0.6'}
+                            title="Delete system message"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
               const isAdmin = msg.sender_role === 'admin';
               const isEditing = editingMsgId === msg.id;
               const isEdited = !!msg.edited_at;
@@ -1178,7 +1319,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
                   <div style={{ maxWidth: 'min(860px, 82%)', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                     <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isAdmin ? 'right' : 'left' }}>
-                      {isAdmin ? 'You (Admin)' : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
+                      {isAdmin ? `You (${msg.sender_name || 'Admin'})` : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
                     </div>
                     <div style={{
                       padding: '10px 14px',
@@ -1296,6 +1437,87 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
             {selected.status === 'closed' ? (
               <div style={{ padding: '10px 14px', background: c.hover, borderRadius: 8, fontSize: 12, color: c.subText, textAlign: 'center' }}>
                 This ticket is closed. Click <strong>Reopen Ticket</strong> above to resume the conversation.
+              </div>
+            ) : !selected.assignee ? (
+              <div style={{
+                padding: '24px',
+                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                borderRadius: 12,
+                border: `1.5px dashed ${c.border}`,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 12,
+                textAlign: 'center',
+                margin: '8px'
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>Assign Ticket Before Replying</div>
+                <div style={{ fontSize: 12, color: c.subText, maxWidth: 380, lineHeight: 1.5 }}>
+                  Before you can send the first reply, you must choose who is assigned to handle this ticket (e.g. Admin, Dev Team, Design Team).
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 6 }}>
+                  {['Admin', 'Dev Team', 'Design Team'].map(team => (
+                    <button
+                      key={team}
+                      onClick={() => handleAssign(team)}
+                      style={{
+                        padding: '8px 16px',
+                        background: isDark ? '#22252C' : '#fff',
+                        border: `1.5px solid ${c.border}`,
+                        borderRadius: 10,
+                        color: c.text,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = c.brand; e.currentTarget.style.color = c.brand; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.text; }}
+                    >
+                      {team}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 300, marginTop: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Or type custom assignee..."
+                    id="custom-assignee-input"
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      borderRadius: 10,
+                      border: `1.5px solid ${c.border}`,
+                      background: isDark ? '#1C1E24' : '#fff',
+                      color: c.text,
+                      fontSize: 12,
+                      outline: 'none'
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                        handleAssign(e.currentTarget.value);
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const val = document.getElementById('custom-assignee-input')?.value;
+                      if (val && val.trim()) handleAssign(val);
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      background: c.brand,
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 10,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Assign
+                  </button>
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
@@ -1642,6 +1864,75 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 20px', borderTop: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
               <button onClick={() => setShowLinkModal(false)} style={{ padding: '8px 16px', border: `1px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
               <button onClick={handleInsertLink} disabled={!linkUrl.trim() || !linkText.trim()} style={{ padding: '8px 16px', border: 'none', borderRadius: 8, background: c.brand, color: '#fff', cursor: !linkUrl.trim() || !linkText.trim() ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', opacity: !linkUrl.trim() || !linkText.trim() ? 0.6 : 1 }}>Insert</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTransferModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: 24 }}
+          onClick={() => setShowTransferModal(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, width: '100%', maxWidth: 400, boxShadow: '0 16px 48px rgba(0,0,0,0.3)', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${c.border}` }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: c.text }}>Transfer Ticket</span>
+              <button onClick={() => setShowTransferModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4, borderRadius: 6 }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 750, color: c.subText, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Quick Transfer Options</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {['Admin', 'Dev Team', 'Design Team'].filter(team => team !== selected?.assignee).map(team => (
+                    <button
+                      key={team}
+                      onClick={() => handleTransfer(team)}
+                      style={{
+                        padding: '6px 12px',
+                        background: isDark ? '#22252C' : '#f5f5f5',
+                        border: `1px solid ${c.border}`,
+                        borderRadius: 8,
+                        color: c.text,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.12s'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = c.brand; e.currentTarget.style.color = c.brand; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = c.border; e.currentTarget.style.color = c.text; }}
+                    >
+                      {team}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 750, color: c.subText, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Or type custom assignee</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    value={customTransfer}
+                    onChange={e => setCustomTransfer(e.target.value)}
+                    placeholder="e.g. Billing Team, Hosting Support..."
+                    style={{ ...inp, flex: 1, padding: '8px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#f5f5f5', color: c.text, fontSize: 12, boxSizing: 'border-box' }}
+                    onKeyDown={e => { if (e.key === 'Enter' && customTransfer.trim()) handleTransfer(customTransfer); }}
+                  />
+                  <button
+                    onClick={() => { if (customTransfer.trim()) handleTransfer(customTransfer); }}
+                    disabled={!customTransfer.trim()}
+                    style={{ padding: '8px 16px', border: 'none', borderRadius: 8, background: c.brand, color: '#fff', cursor: !customTransfer.trim() ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 700, opacity: !customTransfer.trim() ? 0.6 : 1 }}
+                  >
+                    Transfer
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 20px', borderTop: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
+              <button onClick={() => setShowTransferModal(false)} style={{ padding: '6px 14px', border: `1px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>Cancel</button>
             </div>
           </div>
         </div>

@@ -1039,7 +1039,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   const showList = !isMobile || !selected;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, maxWidth: selected ? 1200 : 900, margin: '0 auto', width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>My Tickets</h1>
@@ -1135,7 +1135,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
 
           {/* Chat panel */}
           {selected && (
-            <div style={{ ...cardS, display: 'flex', flexDirection: 'column', height: isMobile ? 'auto' : 'calc(100vh - 240px)', minHeight: 400 }}>
+            <div style={{ ...cardS, display: 'flex', flexDirection: 'column', height: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 240px)', minHeight: 400 }}>
               {/* Header */}
               <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', flexShrink: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -1158,14 +1158,33 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                 ) : messages.length === 0 ? (
                   <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>No messages yet.</div>
                 ) : messages.map(msg => {
+                  const isSystem = msg.sender_role === 'system';
+                  if (isSystem) {
+                    return (
+                      <div key={msg.id} style={{ display: 'flex', justifyContent: 'center', margin: '8px 0', width: '100%' }}>
+                        <div style={{
+                          background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                          color: c.subText,
+                          fontSize: 11,
+                          padding: '4px 12px',
+                          borderRadius: 12,
+                          fontWeight: 500,
+                          border: `1px solid ${c.border}`,
+                          textAlign: 'center'
+                        }}>
+                          {msg.message}
+                        </div>
+                      </div>
+                    );
+                  }
                   const isMe = msg.sender_role === 'customer';
                   const isEditing = editingMsgId === msg.id;
                   const isEdited = !!msg.edited_at && msg.sender_role === 'customer';
                   return (
                     <div key={msg.id} style={{ display: 'flex', justifyContent: isMe ? 'flex-end' : 'flex-start', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                      <div style={{ maxWidth: '72%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
+                      <div style={{ maxWidth: isMobile ? '90%' : '72%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                         <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isMe ? 'right' : 'left' }}>
-                          {isMe ? 'You' : 'Support Team'} · {fmtTime(msg.created_at)}
+                          {isMe ? 'You' : (msg.sender_name || 'Support Team')} · {fmtTime(msg.created_at)}
                         </div>
                         <div style={{
                           padding: '10px 14px',
@@ -1280,7 +1299,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                     This ticket is closed. Contact support to reopen.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: isMobile ? 'stretch' : 'stretch' }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0 }}>
                       <div style={{
                         display: 'flex', alignItems: 'center', gap: 2, padding: '6px 8px',

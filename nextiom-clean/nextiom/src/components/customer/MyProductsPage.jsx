@@ -213,6 +213,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   const [hoveredTab, setHoveredTab] = useState(null);
   const [showExpiredDownloadTip, setShowExpiredDownloadTip] = useState(false);
   const [showLicenseKey, setShowLicenseKey] = useState(false);
+  const [timelineItem, setTimelineItem] = useState(null);
 
   const bg = c?.bg || (isDark ? '#15161A' : '#f8f8f7');
   const card = c?.card || (isDark ? '#1C1E24' : '#fff');
@@ -708,6 +709,32 @@ export default function MyProductsPage({ user, isDark, c }) {
                   </div>
                 </div>
               </div>
+              
+              <div style={{ marginTop: 14 }}>
+                <button
+                  onClick={() => setTimelineItem(lic)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                    color: text,
+                    border: `1px solid ${border}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}
+                  onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6'}
+                >
+                  <Clock size={13} /> View License History & Timeline
+                </button>
+              </div>
             </div>
           )}
 
@@ -1067,7 +1094,23 @@ export default function MyProductsPage({ user, isDark, c }) {
                             </div>
 
                             {/* Status */}
-                            <div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTimelineItem(license);
+                                }}
+                                style={{
+                                  padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                  background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                                  color: text, border: `1px solid ${border}`,
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'background 0.15s',
+                                }}
+                                title="History / Timeline"
+                              >
+                                <Clock style={{ width: 13, height: 13 }} />
+                              </button>
                               {(() => {
                                 const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
                                 return (
@@ -1157,25 +1200,43 @@ export default function MyProductsPage({ user, isDark, c }) {
                               </div>
                             </div>
                             
-                            {(() => {
-                              const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
-                              return (
-                                <div style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                                  padding: '4px 8px', borderRadius: 6,
-                                  background: badgeCfg.bg,
-                                  border: `1px solid ${badgeCfg.border}`,
-                                  color: badgeCfg.color,
-                                  fontSize: 10.5, fontWeight: 600
-                                }}>
-                                  <span style={{
-                                    width: 5, height: 5, borderRadius: 1.5,
-                                    backgroundColor: badgeCfg.color
-                                  }} />
-                                  <span>{badgeCfg.text}</span>
-                                </div>
-                              );
-                            })()}
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTimelineItem(license);
+                                }}
+                                style={{
+                                  padding: '5px 8px', borderRadius: 6, cursor: 'pointer',
+                                  background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                                  color: text, border: `1px solid ${border}`,
+                                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'background 0.15s',
+                                }}
+                                title="History / Timeline"
+                              >
+                                <Clock style={{ width: 12, height: 12 }} />
+                              </button>
+                              {(() => {
+                                const badgeCfg = getStatusBadgeConfig(status, validity, license, lt);
+                                return (
+                                  <div style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    padding: '4px 8px', borderRadius: 6,
+                                    background: badgeCfg.bg,
+                                    border: `1px solid ${badgeCfg.border}`,
+                                    color: badgeCfg.color,
+                                    fontSize: 10.5, fontWeight: 600
+                                  }}>
+                                    <span style={{
+                                      width: 5, height: 5, borderRadius: 1.5,
+                                      backgroundColor: badgeCfg.color
+                                    }} />
+                                    <span>{badgeCfg.text}</span>
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           </div>
 
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '10px 0', borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
@@ -1384,6 +1445,179 @@ export default function MyProductsPage({ user, isDark, c }) {
           </div>
         </div>
       )}
+
+      <ItemTimelineModal
+        item={timelineItem}
+        type="license"
+        isOpen={!!timelineItem}
+        onClose={() => setTimelineItem(null)}
+        isDark={isDark}
+        c={c}
+      />
+    </div>
+  );
+}
+
+function ItemTimelineModal({ item, type, isOpen, onClose, isDark = false, c = {} }) {
+  if (!isOpen || !item) return null;
+
+  const border = c.border || '#ebebeb';
+  const text = c.text || '#1a1a1a';
+  const subText = c.subText || '#888';
+  const brand = c.brand || 'var(--brand-color)';
+  const brandLight = c.brandLight || 'var(--brand-color-light)';
+  const card = c.card || (isDark ? '#1C1E24' : '#fff');
+
+  const safeFormatDate = (dateVal) => {
+    if (!dateVal) return '—';
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return '—';
+    }
+  };
+
+  let timelineItems = [];
+  try {
+    if (item.renewal_history && Array.isArray(item.renewal_history)) {
+      timelineItems = [...item.renewal_history];
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  if (timelineItems.length === 0) {
+    let initialPeriod = 'yearly';
+    if (type === 'hosting') {
+      initialPeriod = item.billing_period || 'yearly';
+    } else if (type === 'license') {
+      initialPeriod = 'yearly';
+    } else if (type === 'domain') {
+      initialPeriod = item.registration_period || 'yearly';
+    } else if (type === 'email') {
+      initialPeriod = item.registration_period || 'yearly';
+    }
+
+    timelineItems.push({
+      renew_start_date: item.start_date || item.purchase_date || item.created_at,
+      renewal_time: initialPeriod,
+      expiry_date: item.expiry_date
+    });
+  }
+
+  const typeLabels = {
+    hosting: 'Hosting Package',
+    license: 'Product License',
+    domain: 'Domain Name',
+    email: 'Email Account'
+  };
+
+  const displayName = 
+    type === 'hosting' ? (item.package_name || item.packageName || 'Hosting Package') :
+    type === 'license' ? (item.name || 'Product License') :
+    type === 'domain' ? (item.name || item.domain_name || 'Domain Name') :
+    type === 'email' ? (item.email || 'Email Account') : 'Item';
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: '16px' }}>
+      <div style={{
+        background: card,
+        border: `1px solid ${border}`,
+        borderRadius: 24,
+        width: '100%', maxWidth: 480,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock style={{ width: 18, height: 18, color: brand }} />
+            </div>
+            <div>
+              <p style={{ color: text, fontWeight: 700, fontSize: 16, marginBottom: 2, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: 280 }}>
+                {displayName}
+              </p>
+              <p style={{ color: subText, fontSize: 12 }}>{typeLabels[type]} Timeline</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: isDark ? 'rgba(255,255,255,0.06)' : '#f5f5f5', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <X style={{ width: 16, height: 16, color: subText }} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '24px', maxHeight: '400px', overflowY: 'auto' }} className="no-scrollbar">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, position: 'relative', paddingLeft: 16 }}>
+            {/* Vertical timeline line */}
+            <div style={{ 
+              position: 'absolute', 
+              top: 8, 
+              bottom: 8, 
+              left: 4, 
+              width: 2, 
+              background: isDark ? 'rgba(255,255,255,0.1)' : '#ebebeb' 
+            }} />
+
+            {timelineItems.map((entry, idx) => {
+              const isLatest = idx === timelineItems.length - 1;
+              return (
+                <div key={idx} style={{ position: 'relative', paddingBottom: idx === timelineItems.length - 1 ? 0 : 20 }}>
+                  <div style={{ 
+                    position: 'absolute', 
+                    left: -16, 
+                    top: 4, 
+                    width: 10, 
+                    height: 10, 
+                    borderRadius: '50%', 
+                    background: isLatest ? brand : (isDark ? '#4b5563' : '#9ca3af'),
+                    border: `2px solid ${card}`,
+                    boxShadow: isLatest ? `0 0 8px ${brand}` : 'none',
+                    zIndex: 2
+                  }} />
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: isLatest ? brand : text }}>
+                        {idx === 0 ? 'Initial Purchase' : `Renewal #${idx}`}
+                      </span>
+                      <span style={{ fontSize: 11, background: isDark ? 'rgba(255,255,255,0.05)' : '#eaeaea', padding: '2px 6px', borderRadius: 4, color: subText, textTransform: 'capitalize' }}>
+                        {entry.renewal_time || 'yearly'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: subText, marginTop: 4 }}>
+                      Duration: <strong>{safeFormatDate(entry.renew_start_date)}</strong> to <strong>{safeFormatDate(entry.expiry_date)}</strong>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${border}`, display: 'flex', justifyContent: 'flex-end' }}>
+          <button 
+            onClick={onClose} 
+            style={{ 
+              padding: '8px 20px', 
+              borderRadius: 8, 
+              border: 'none', 
+              background: brand, 
+              color: '#fff', 
+              fontSize: 13, 
+              fontWeight: 700, 
+              cursor: 'pointer' 
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

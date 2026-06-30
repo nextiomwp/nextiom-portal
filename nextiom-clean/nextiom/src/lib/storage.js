@@ -1408,16 +1408,63 @@ export const deleteTicketMessage = async (messageId) => {
   return data;
 };
 
-export const addTicketMessage = async (ticketId, senderRole, message) => {
+export const addTicketMessage = async (ticketId, senderRole, message, senderName = null) => {
   const { data, error } = await supabase
     .from('ticket_messages')
-    .insert([{ ticket_id: ticketId, sender_role: senderRole, message }])
+    .insert([{ ticket_id: ticketId, sender_role: senderRole, message, sender_name: senderName }])
     .select()
     .single();
   if (error) handleSupabaseError(error, 'addTicketMessage');
   await supabase.from('tickets').update({ updated_at: new Date().toISOString() }).eq('id', ticketId);
   return data;
 };
+
+export const assignTicket = async (ticketId, assignee) => {
+  const { error: updateError } = await supabase
+    .from('tickets')
+    .update({ assignee, updated_at: new Date().toISOString() })
+    .eq('id', ticketId);
+  if (updateError) handleSupabaseError(updateError, 'assignTicket');
+
+  const systemMessageText = `Assigned this ticket to ${assignee}`;
+  const { data: msgData, error: msgError } = await supabase
+    .from('ticket_messages')
+    .insert([{
+      ticket_id: ticketId,
+      sender_role: 'system',
+      message: systemMessageText,
+      sender_name: 'System'
+    }])
+    .select()
+    .single();
+  if (msgError) handleSupabaseError(msgError, 'assignTicketSystemMessage');
+
+  return { assignee, systemMessage: msgData };
+};
+
+export const transferTicket = async (ticketId, newAssignee, previousAssignee = 'Admin') => {
+  const { error: updateError } = await supabase
+    .from('tickets')
+    .update({ assignee: newAssignee, updated_at: new Date().toISOString() })
+    .eq('id', ticketId);
+  if (updateError) handleSupabaseError(updateError, 'transferTicket');
+
+  const systemMessageText = `${previousAssignee} transferred this ticket to ${newAssignee}`;
+  const { data: msgData, error: msgError } = await supabase
+    .from('ticket_messages')
+    .insert([{
+      ticket_id: ticketId,
+      sender_role: 'system',
+      message: systemMessageText,
+      sender_name: 'System'
+    }])
+    .select()
+    .single();
+  if (msgError) handleSupabaseError(msgError, 'transferTicketSystemMessage');
+
+  return { assignee: newAssignee, systemMessage: msgData };
+};
+
 
 export const getTicketMessages = async (ticketId) => {
   const { data, error } = await supabase
