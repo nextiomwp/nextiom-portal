@@ -912,7 +912,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 }}>
                   {[
-                    { name: 'Bank Transfer', desc: 'Pay directly to our bank account', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
+                    { name: 'Bank Transfer', desc: 'Confirm manual payment', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
                     { name: 'Cash', desc: 'Pay in cash at our office', icon: <CashIcon size={16} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
                     { name: 'Cheque', desc: 'Pay by cheque', icon: <ChequeIcon size={16} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
                   ].map(m => (
