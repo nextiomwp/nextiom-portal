@@ -171,6 +171,25 @@ function AdminApprovedHostings({ isDark = true }) {
 
   return (
     <div>
+      <style>{`
+        .hosting-table-wrapper {
+          display: block;
+        }
+        .hosting-cards-wrapper {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .hosting-table-wrapper {
+            display: none;
+          }
+          .hosting-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+        }
+      `}</style>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '0 0 280px' }}>
@@ -210,7 +229,7 @@ function AdminApprovedHostings({ isDark = true }) {
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Hostings</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredHostings.length} record{filteredHostings.length !== 1 ? 's' : ''}</span>
         </div>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="hosting-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -265,6 +284,58 @@ function AdminApprovedHostings({ isDark = true }) {
               {filteredHostings.length === 0 && <tr><td colSpan={7} style={emptyS}>No approved hostings found</td></tr>}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="hosting-cards-wrapper">
+          {filteredHostings.map((h) => {
+            const parsed = parsePackageType(h.package_type);
+            const expiryDate = calcExpiry(h);
+            const days = expiryDate ? daysUntilExpiry(expiryDate) : null;
+            const urgentColor = days !== null && days <= 7 ? '#ef4444' : days !== null && days <= 30 ? '#f97316' : null;
+            return (
+              <div key={h.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div>
+                    <span style={{ fontWeight: 600, color: isDark ? '#86efac' : '#15803d', fontSize: 14 }}>{h.hosting_type || parsed.hostingType}</span>
+                    <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>{h.plan_name || parsed.planName}</div>
+                  </div>
+                  <StatusBadge status={h.status} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Customer</div>
+                    <div style={{ color: c.text, fontWeight: 500, marginTop: 2 }}>{h.customers?.name || 'Unknown'}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Start Date</div>
+                    <div style={{ color: c.text, marginTop: 2 }}>
+                      {h.start_date ? new Date(h.start_date).toLocaleDateString() : h.created_at ? new Date(h.created_at).toLocaleDateString() : '—'}
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Expiry Date</div>
+                    <div style={{ color: urgentColor || c.text, marginTop: 2, fontWeight: urgentColor ? 600 : 400 }}>
+                      {expiryDate ? expiryDate.toLocaleDateString() : '—'}
+                      {days !== null && (
+                        <span style={{ fontSize: 10, display: 'block', color: urgentColor || c.subText, marginTop: 1 }}>
+                          {days <= 0 ? '(Expired)' : `(in ${days} day${days !== 1 ? 's' : ''})`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
+                  <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
+                  <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
+                </div>
+              </div>
+            );
+          })}
+          {filteredHostings.length === 0 && <div style={emptyS}>No approved hostings found</div>}
         </div>
       </div>
 

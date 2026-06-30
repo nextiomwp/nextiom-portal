@@ -302,6 +302,25 @@ function AdminEmailRequestManagement({ isDark = true }) {
 
   return (
     <div>
+      <style>{`
+        .requests-table-wrapper {
+          display: block;
+        }
+        .requests-cards-wrapper {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .requests-table-wrapper {
+            display: none;
+          }
+          .requests-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+        }
+      `}</style>
       <DeleteModal open={!!deleteTarget} onCancel={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleteLoading} />
       <ApproveEmailDialog open={!!approveTarget} request={approveTarget} onClose={() => setApproveTarget(null)} onConfirm={handleApproveConfirm} saving={approveSaving} />
 
@@ -319,7 +338,7 @@ function AdminEmailRequestManagement({ isDark = true }) {
 
       <div style={cardS}>
         <SectionHeader title="Email Requests" accent="#ba7517" />
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="requests-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -369,6 +388,50 @@ function AdminEmailRequestManagement({ isDark = true }) {
               {filtered.length === 0 && <tr><td colSpan={6} style={emptyS}>No email requests found</td></tr>}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="requests-cards-wrapper">
+          {filtered.map((req) => (
+            <div key={req.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: c.text }}>Email Registration</span>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb', fontSize: 13, marginTop: 2 }}>{req.email || '—'}</div>
+                </div>
+                <StatusBadge status={fmtStatus(req.status)} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                <div>
+                  <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Customer</div>
+                  <div style={{ color: c.text, fontWeight: 500, marginTop: 2 }}>{getCustomerName(req)}</div>
+                </div>
+                <div>
+                  <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Requested Date</div>
+                  <div style={{ color: c.text, marginTop: 2 }}>
+                    {req.created_at ? format(new Date(req.created_at), 'MMM dd, yyyy HH:mm') : '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                {req.document_url && (
+                  <Btn color="#8B5CF6" onClick={() => handleViewDocument(req.document_url, req.id)} title="View attached document">
+                    {docLoading === req.id ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} Document
+                  </Btn>
+                )}
+                {isPending(req.status) && (
+                  <>
+                    <Btn color="#16a34a" filled onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.APPROVED)}><CheckCircle size={12} /> Approve</Btn>
+                    <Btn color="#ef4444" onClick={() => handleStatusUpdate(req.id, REQUEST_STATUS.REJECTED)}><XCircle size={12} /> Reject</Btn>
+                  </>
+                )}
+                <Btn color="#ef4444" onClick={() => setDeleteTarget(req.id)} title="Delete request"><Trash2 size={12} /> Delete</Btn>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && <div style={emptyS}>No email requests found</div>}
         </div>
       </div>
 

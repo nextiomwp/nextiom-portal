@@ -1293,12 +1293,67 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
 
   return (
     <div>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Good day, Admin</h1>
-        <p style={{ fontSize: 14, color: c.subText }}>Here's what's happening with your portal today.</p>
+      <style>{`
+        .overview-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(1, minmax(0, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        @media (min-width: 640px) {
+          .overview-stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 1024px) {
+          .overview-stats-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+
+        .overview-main-grid {
+          display: grid;
+          grid-template-columns: repeat(1, minmax(0, 1fr));
+          gap: 16px;
+        }
+        @media (min-width: 1024px) {
+          .overview-main-grid {
+            grid-template-columns: 2fr 1fr;
+          }
+        }
+
+        .pending-customers-table-wrapper {
+          display: block;
+          overflow-y: auto;
+          overflow-x: auto;
+          max-height: 320px;
+          margin-top: 8px;
+        }
+        .pending-customers-cards-wrapper {
+          display: none;
+          overflow-y: auto;
+          max-height: 360px;
+          margin-top: 8px;
+        }
+
+        @media (max-width: 768px) {
+          .pending-customers-table-wrapper {
+            display: none;
+          }
+          .pending-customers-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+        }
+      `}</style>
+
+      <div style={{ marginBottom: isMobile ? 20 : 32 }}>
+        <h1 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, marginBottom: 4 }}>Good day, Admin</h1>
+        <p style={{ fontSize: isMobile ? 12 : 14, color: c.subText }}>Here's what's happening with your portal today.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4,1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="overview-stats-grid">
         {statCards.map(s => (
           <div key={s.label} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -1316,8 +1371,8 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 16 }}>
-        <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column' }}>
+      <div className="overview-main-grid">
+        <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: isMobile ? 16 : 20, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start', flexShrink: 0 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>Pending Customers</div>
@@ -1325,8 +1380,10 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
             </div>
             <button onClick={() => onNavigate('customers')} style={{ color: c.brand, background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>View all →</button>
           </div>
-          <div style={{ overflowY: 'auto', overflowX: 'auto', maxHeight: 320, marginTop: 8 }}>
-            <table style={{ width: '100%', minWidth: isMobile ? 620 : '100%', borderCollapse: 'collapse' }}>
+
+          {/* Desktop Table View */}
+          <div className="pending-customers-table-wrapper">
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ position: 'sticky', top: 0, background: c.card, zIndex: 1 }}>
                 <tr style={{ color: c.subText, fontSize: 11, letterSpacing: '0.05em' }}>
                   <th style={{ paddingBottom: 10, fontWeight: 500, textAlign: 'left', textTransform: 'uppercase' }}>Customer</th>
@@ -1398,6 +1455,84 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="pending-customers-cards-wrapper">
+            {pendingCustomers.length === 0 && (
+              <div style={{ padding: '24px 0', textAlign: 'center', fontSize: 13, color: c.subText }}>No pending customers</div>
+            )}
+            {pendingCustomers.map((cu, i) => {
+              const col = avatarColor(cu.name);
+              return (
+                <div key={cu.id || i} style={{
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+                  border: `1px solid ${c.border}`,
+                  borderRadius: 8,
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => onViewCustomer(cu)}>
+                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: col, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{initials(cu.name)}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{cu.name}</div>
+                      <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cu.email}</div>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: c.subText, justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: c.subText, opacity: 0.7 }}>Phone</div>
+                      <div style={{ color: c.text, fontSize: 12, marginTop: 2 }}>{cu.phone || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: c.subText, opacity: 0.7 }}>Joined</div>
+                      <div style={{ color: c.text, fontSize: 12, marginTop: 2 }}>{cu.created_at ? timeAgo(cu.created_at) : '—'}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        width: 'fit-content',
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        fontSize: 9,
+                        fontWeight: 600,
+                        background: cu.email_otp_verified ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                        color: cu.email_otp_verified ? '#10b981' : '#ef4444',
+                        border: `1px solid ${cu.email_otp_verified ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`
+                      }}>
+                        Email: {cu.email_otp_verified ? 'Verified' : 'Pending'}
+                      </span>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        width: 'fit-content',
+                        padding: '1px 5px',
+                        borderRadius: 4,
+                        fontSize: 9,
+                        fontWeight: 600,
+                        background: cu.phone_otp_verified ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                        color: cu.phone_otp_verified ? '#10b981' : '#ef4444',
+                        border: `1px solid ${cu.phone_otp_verified ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`
+                      }}>
+                        Mobile: {cu.phone_otp_verified ? 'Verified' : 'Pending'}
+                      </span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button onClick={() => onConfirmCustomer(cu)} style={{ background: 'rgba(99,153,34,0.15)', color: '#639922', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Confirm</button>
+                      <button onClick={() => onRejectCustomer(cu)} style={{ background: 'rgba(229,57,53,0.12)', color: '#e53935', border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Reject</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

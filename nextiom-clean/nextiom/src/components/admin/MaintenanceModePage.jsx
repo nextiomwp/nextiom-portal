@@ -168,8 +168,59 @@ export default function MaintenanceModePage({ isDark }) {
 
   return (
     <form onSubmit={handleSave} style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 32px' }} noValidate>
+      <style>{`
+        .maintenance-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 24px;
+          margin-bottom: 24px;
+        }
+        .maintenance-banner {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          padding: 14px 20px;
+          border-radius: 14px;
+          margin-bottom: 24px;
+        }
+        .maintenance-grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .maintenance-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 16px;
+          padding: 16px 20px;
+          border-radius: 14px;
+        }
+        @media (max-width: 768px) {
+          .maintenance-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+          }
+          .maintenance-banner {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+          }
+          .maintenance-grid-2 {
+            grid-template-columns: 1fr;
+          }
+          .maintenance-footer {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+          }
+        }
+      `}</style>
       {/* ── Page Header ─────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, marginBottom: 24 }}>
+      <div className="maintenance-header">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>Temporary Maintenance Mode</h1>
           <p style={{ fontSize: 13, color: c.subText, marginTop: 4, maxWidth: 480 }}>
@@ -208,9 +259,7 @@ export default function MaintenanceModePage({ isDark }) {
 
       {/* ── Status Alert Banner ─────────────────── */}
       {settings.maintenanceMode && (
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16,
-          padding: '14px 20px', borderRadius: 14, marginBottom: 24,
+        <div className="maintenance-banner" style={{
           background: 'rgba(232,123,53,0.18)', border: '1px solid rgba(232,123,53,0.30)',
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -240,7 +289,7 @@ export default function MaintenanceModePage({ isDark }) {
       )}
 
       {/* ── Quick Stats Cards ───────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div className="maintenance-grid-2" style={{ marginBottom: 24 }}>
         <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Users size={22} style={{ color: '#3b82f6' }} />
@@ -267,7 +316,7 @@ export default function MaintenanceModePage({ isDark }) {
       {/* ── Maintenance Period ──────────────────── */}
       <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 20, marginBottom: 20 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: 0, marginBottom: 16 }}>Maintenance Period</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="maintenance-grid-2">
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: c.subText, marginBottom: 6 }}>
               <Calendar size={14} />
@@ -343,9 +392,7 @@ export default function MaintenanceModePage({ isDark }) {
       </div>
 
       {/* ── Footer Action Bar ───────────────────── */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16,
-        padding: '16px 20px', borderRadius: 14,
+      <div className="maintenance-footer" style={{
         background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
         border: `1px solid ${c.border}`,
       }}>

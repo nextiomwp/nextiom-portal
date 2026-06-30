@@ -755,9 +755,548 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
       setCustomerViewNotesText(job.customer_view_notes || '');
     }
   };
+  const renderExpandedDetails = (job, calculatedPosition, priorityColor, statusColor, statusBg) => {
+    return (
+      <div style={{ padding: isMobile ? '16px' : '24px 32px' }}>
+        {/* Job Details Header Summary */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h4 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px 0' }}>{job.title}</h4>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: c.subText }}>
+              <span>Customer: <strong>{job.customers?.name}</strong></span>
+              <span>Category: <strong>{job.category}</strong></span>
+              <span>Priority: <strong style={{ color: priorityColor }}>{job.priority}</strong></span>
+              <span>Created: <strong>{new Date(job.created_date).toLocaleDateString()}</strong></span>
+              <span>Queue Position: <strong>{job.status === 'Waiting' ? calculatedPosition : 'N/A'}</strong></span>
+              <span>Est. Start: <strong>{job.estimated_start || 'N/A'}</strong></span>
+            </div>
+          </div>
+          
+          <span style={{ 
+            color: statusColor, 
+            background: statusBg, 
+            padding: '4px 12px', 
+            borderRadius: 8, 
+            fontSize: 12, 
+            fontWeight: 700,
+            height: 'fit-content'
+          }}>
+            Status: {job.status}
+          </span>
+        </div>
+
+        {/* Progress Timeline Tracker */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: c.subText, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>PROGRESS TIMELINE {editingTimelineJobId === job.id ? '(Editing mode)' : '(Click step to advance/rewind)'}</span>
+            {editingTimelineJobId !== job.id ? (
+              <button
+                onClick={() => {
+                  setEditingTimelineJobId(job.id);
+                  setTempTimelineSteps([...(Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps)]);
+                  setTempProgressStep(job.progress_step);
+                }}
+                style={{
+                  background: 'none', border: 'none', color: c.brand, fontSize: 11,
+                  fontWeight: 600, cursor: 'pointer', padding: '2px 8px'
+                }}
+              >
+                🛠️ Edit Phases
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    if (tempTimelineSteps.length === 0) {
+                      toast({ title: 'Validation error', description: 'At least one phase is required.', variant: 'destructive' });
+                      return;
+                    }
+                    try {
+                      await updateJob(job.id, { 
+                        timeline_steps: tempTimelineSteps,
+                        progress_step: tempProgressStep
+                      });
+                      toast({ title: 'Success', description: 'Timeline phases updated' });
+                      
+                      const updatedJobs = jobs.map(j => j.id === job.id ? { 
+                        ...j, 
+                        timeline_steps: tempTimelineSteps,
+                        progress_step: tempProgressStep
+                      } : j);
+                      setJobs(updatedJobs);
+                      setEditingTimelineJobId(null);
+                    } catch (e) {
+                      toast({ title: 'Error saving timeline', description: e.message, variant: 'destructive' });
+                    }
+                  }}
+                  style={{
+                    background: '#10b981', color: '#fff', border: 'none', 
+                    borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  Save Phases
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingTimelineJobId(null);
+                  }}
+                  style={{
+                    background: 'none', border: `1px solid ${c.border}`, color: c.text,
+                    borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            position: 'relative',
+            padding: '10px 0',
+            overflowX: 'auto',
+            gap: 12
+          }}>
+            {/* Background connecting line */}
+            <div style={{ 
+              position: 'absolute', 
+              top: 24, 
+              left: '4%', 
+              right: '4%', 
+              height: 2, 
+              background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              zIndex: 1 
+            }} />
+            
+            {/* Active progress color line */}
+            <div style={{ 
+              position: 'absolute', 
+              top: 24, 
+              left: '4%', 
+              width: `${((editingTimelineJobId === job.id ? tempProgressStep : job.progress_step) / (Math.max(1, (editingTimelineJobId === job.id ? tempTimelineSteps : (Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps)).length - 1))) * 92}%`, 
+              height: 2, 
+              background: c.brand,
+              zIndex: 1,
+              transition: 'width 0.3s'
+            }} />
+
+            {(() => {
+              const stepsToRender = editingTimelineJobId === job.id 
+                ? tempTimelineSteps 
+                : (Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps);
+              const currentProgressStep = editingTimelineJobId === job.id ? tempProgressStep : job.progress_step;
+
+              return (
+                <>
+                  {stepsToRender.map((step, stepIdx) => {
+                    const isCompleted = stepIdx < currentProgressStep;
+                    const isCurrent = stepIdx === currentProgressStep;
+
+                    let circleBg = isDark ? '#22252c' : '#e2e8f0';
+                    let circleBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                    let textColor = c.subText;
+                    let circleContent = stepIdx + 1;
+
+                    if (isCompleted) {
+                      circleBg = '#10b981';
+                      circleBorder = '#10b981';
+                      textColor = '#10b981';
+                      circleContent = <Check size={12} color="#fff" />;
+                    } else if (isCurrent) {
+                      circleBg = '#f59e0b';
+                      circleBorder = '#f59e0b';
+                      textColor = '#f59e0b';
+                      circleContent = <Clock size={12} color="#fff" />;
+                    }
+
+                    return (
+                      <div 
+                        key={stepIdx} 
+                        onClick={() => {
+                          if (editingTimelineJobId !== job.id) {
+                            handleUpdateProgressStep(job.id, stepIdx);
+                          }
+                        }}
+                        style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          alignItems: 'center', 
+                          flex: 1, 
+                          zIndex: 2,
+                          cursor: editingTimelineJobId !== job.id ? 'pointer' : 'default',
+                          textAlign: 'center',
+                          minWidth: 70
+                        }}
+                      >
+                        {editingTimelineJobId === job.id ? (
+                          <div 
+                            onClick={() => {
+                              const newSteps = tempTimelineSteps.filter((_, idx) => idx !== stepIdx);
+                              setTempTimelineSteps(newSteps);
+                              
+                              // Adjust tempProgressStep
+                              let newProgress = tempProgressStep;
+                              if (stepIdx === tempProgressStep) {
+                                newProgress = Math.min(tempProgressStep, newSteps.length - 1);
+                              } else if (stepIdx < tempProgressStep) {
+                                newProgress = tempProgressStep - 1;
+                              }
+                              setTempProgressStep(Math.max(0, newProgress));
+                            }}
+                            style={{ 
+                              width: 28, 
+                              height: 28, 
+                              borderRadius: '50%', 
+                              background: '#ef4444', 
+                              border: '2px solid #ef4444',
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 5px rgba(239,68,68,0.3)',
+                              marginBottom: 8,
+                              transition: 'all 0.2s'
+                            }}
+                            title="Delete step"
+                          >
+                            <X size={12} color="#fff" />
+                          </div>
+                        ) : (
+                          <div style={{ 
+                            width: 28, 
+                            height: 28, 
+                            borderRadius: '50%', 
+                            background: circleBg, 
+                            border: `2px solid ${circleBorder}`,
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            fontSize: 11, 
+                            fontWeight: 700, 
+                            color: isCurrent || isCompleted ? '#fff' : c.subText,
+                            marginBottom: 8,
+                            boxShadow: isCurrent ? '0 0 10px rgba(245,158,11,0.5)' : 'none',
+                            transition: 'all 0.2s'
+                          }}>
+                            {circleContent}
+                          </div>
+                        )}
+
+                        {editingTimelineJobId === job.id ? (
+                          <input 
+                            type="text"
+                            value={step}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const newSteps = [...tempTimelineSteps];
+                              newSteps[stepIdx] = val;
+                              setTempTimelineSteps(newSteps);
+                            }}
+                            style={{
+                              fontSize: 10, padding: '2px 4px', 
+                              background: c.bg, 
+                              border: stepIdx === tempProgressStep ? `1.5px solid #f59e0b` : `1px solid ${c.border}`,
+                              borderRadius: 4, color: c.text, width: 80, textAlign: 'center', marginTop: 4,
+                              boxShadow: stepIdx === tempProgressStep ? '0 0 4px rgba(245,158,11,0.2)' : 'none'
+                            }}
+                            required
+                          />
+                        ) : (
+                          <span style={{ 
+                            fontSize: 10, 
+                            fontWeight: isCurrent ? 700 : 500, 
+                            color: textColor,
+                            maxWidth: 90
+                          }}>
+                            {step}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {editingTimelineJobId === job.id && (
+                    <div 
+                      onClick={() => {
+                        setTempTimelineSteps([...tempTimelineSteps, `New Phase ${tempTimelineSteps.length + 1}`]);
+                      }}
+                      style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        flex: 1, 
+                        zIndex: 2,
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        minWidth: 70
+                      }}
+                      title="Add a new phase"
+                    >
+                      <div style={{ 
+                        width: 28, 
+                        height: 28, 
+                        borderRadius: '50%', 
+                        background: c.hover, 
+                        border: `2px dashed ${c.borderStrong}`,
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        color: c.brand,
+                        marginBottom: 8
+                      }}>
+                        <Plus size={14} />
+                      </div>
+                      <span style={{ fontSize: 10, color: c.subText }}>Add Step</span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* Three Columns Section */}
+        <div className="jobs-expanded-cols-grid" style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20 }}>
+          
+          {/* Col 1: Customer Checklist */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h5 style={{ fontSize: 13, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ListTodo size={14} className="text-orange-500" /> Customer Checklist
+              </h5>
+            </div>
+            
+            {/* Add requirement input */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+              <input 
+                type="text" 
+                value={newRequirementText}
+                onChange={e => setNewRequirementText(e.target.value)}
+                placeholder="Add item..."
+                style={{
+                  flex: '1 1 150px', padding: '5px 8px', background: c.bg, border: `1px solid ${c.border}`, 
+                  borderRadius: 6, color: c.text, fontSize: 12
+                }}
+              />
+              <select 
+                value={newRequirementType}
+                onChange={e => setNewRequirementType(e.target.value)}
+                style={{
+                  padding: '5px', background: c.bg, border: `1px solid ${c.border}`, 
+                  borderRadius: 6, color: c.text, fontSize: 11
+                }}
+              >
+                <option value="text">Provide Text</option>
+                <option value="upload">Upload File</option>
+              </select>
+              <input 
+                type="number" 
+                min="1"
+                value={newRequirementHours}
+                onChange={e => setNewRequirementHours(e.target.value)}
+                placeholder="Hours"
+                style={{
+                  width: 60, padding: '5px 8px', background: c.bg, border: `1px solid ${c.border}`, 
+                  borderRadius: 6, color: c.text, fontSize: 12
+                }}
+              />
+              <button 
+                onClick={() => handleAddRequirement(job)}
+                style={{ 
+                  background: c.brand, border: 'none', color: '#fff', 
+                  borderRadius: 6, padding: '5px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600
+                }}
+              >
+                Add
+              </button>
+            </div>
+
+            {/* Checklist Items list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {!job.customer_requirements || job.customer_requirements.length === 0 ? (
+                <div style={{ fontSize: 11, color: c.subText, fontStyle: 'italic' }}>
+                  No requirements listed yet.
+                </div>
+              ) : (
+                job.customer_requirements.map(req => {
+                  const isDone = req.status === 'completed' || req.status === 'provided';
+                  return (
+                    <div 
+                      id={`admin-req-${req.id}`}
+                      key={req.id} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        justifyContent: 'space-between',
+                        background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                        padding: 8,
+                        borderRadius: 6,
+                        gap: 6
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, flex: 1 }}>
+                        <button 
+                          onClick={() => handleToggleRequirementStatus(job, req.id)}
+                          style={{ 
+                            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                            color: isDone ? '#10b981' : c.subText,
+                            marginTop: 2
+                          }}
+                        >
+                          <CheckCircle2 size={15} />
+                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ 
+                            fontSize: 12, 
+                            textDecoration: isDone ? 'line-through' : 'none',
+                            color: isDone ? c.subText : c.text,
+                            fontWeight: 500
+                          }}>
+                            {renderTextWithLinks(req.title)}
+                          </span>
+                          <span style={{ fontSize: 9, color: c.subText }}>
+                            Type: {req.type === 'upload' ? 'File Upload' : 'Provide Text'} ({req.status}) {req.due_hours && ` • Due in ${req.due_hours}h`}
+                          </span>
+                          {req.value && (
+                            <div style={{ 
+                              marginTop: 4, padding: '4px 6px', background: c.hover, 
+                              borderRadius: 4, fontSize: 11, wordBreak: 'break-all',
+                              color: c.brand, borderLeft: `2px solid ${c.brand}`
+                            }}>
+                              {req.type === 'upload' ? (
+                                <a href={req.value} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>
+                                  View Uploaded File
+                                </a>
+                              ) : (
+                                <span>Value: "{renderTextWithLinks(req.value)}"</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteRequirement(job, req.id)}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2 }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Col 2: Job Notes (Internal) */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h5 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <MessageSquare size={14} className="text-orange-500" /> Internal Notes (Staff Only)
+            </h5>
+            <textarea
+              value={internalNotesText}
+              onChange={e => setInternalNotesText(e.target.value)}
+              placeholder="Enter internal developer or staff notes..."
+              style={{
+                width: '100%', flex: 1, minHeight: 90, padding: 8, background: c.bg, 
+                border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, 
+                fontSize: 12, resize: 'none', marginBottom: 8
+              }}
+            />
+            <button
+              onClick={() => handleSaveInternalNotes(job.id)}
+              style={{
+                background: c.hover, color: c.text, border: `1px solid ${c.border}`,
+                padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
+                fontWeight: 600, alignSelf: 'flex-end'
+              }}
+            >
+              Save Internal Notes
+            </button>
+          </div>
+
+          {/* Col 3: Job Queue Information (Customer View) */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <h5 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Eye size={14} className="text-orange-500" /> Customer View Queue Information
+            </h5>
+            <textarea
+              value={customerViewNotesText}
+              onChange={e => setCustomerViewNotesText(e.target.value)}
+              placeholder="This notes block is displayed directly to the customer in their dashboard queue widget."
+              style={{
+                width: '100%', flex: 1, minHeight: 90, padding: 8, background: c.bg, 
+                border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, 
+                fontSize: 12, resize: 'none', marginBottom: 8
+              }}
+            />
+            <button
+              onClick={() => handleSaveCustomerNotes(job.id)}
+              style={{
+                background: c.hover, color: c.text, border: `1px solid ${c.border}`,
+                padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
+                fontWeight: 600, alignSelf: 'flex-end'
+              }}
+            >
+              Save Customer View Notes
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ paddingBottom: 60, position: 'relative' }}>
+      <style>{`
+        .jobs-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(1, minmax(0, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+        @media (min-width: 640px) {
+          .jobs-stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 1024px) {
+          .jobs-stats-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+
+        .jobs-table-wrapper {
+          display: block;
+        }
+        .jobs-cards-wrapper {
+          display: none;
+        }
+
+        .jobs-expanded-cols-grid {
+          display: grid;
+          grid-template-columns: repeat(1, minmax(0, 1fr));
+          gap: 24px;
+        }
+        @media (min-width: 1024px) {
+          .jobs-expanded-cols-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 768px) {
+          .jobs-table-wrapper {
+            display: none;
+          }
+          .jobs-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+        }
+      `}</style>
       {/* Title & Actions Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
         <div>
@@ -994,12 +1533,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
       )}
 
       {/* 1. Stats Bar (Top) */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', 
-        gap: 16, 
-        marginBottom: 24 
-      }}>
+      <div className="jobs-stats-grid">
         {/* Stat 1: Current Active Jobs */}
         <div style={{ 
           background: isDark ? 'rgba(232, 123, 53, 0.08)' : '#fff5ee', 
@@ -1063,7 +1597,16 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
       <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, overflow: 'hidden' }}>
         
         {/* Table Filter Tabs */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${c.border}`, padding: '0 16px', background: isDark ? '#1a1c22' : '#fafafa' }}>
+        <div style={{ 
+          display: 'flex', 
+          borderBottom: `1px solid ${c.border}`, 
+          padding: '0 16px', 
+          background: isDark ? '#1a1c22' : '#fafafa',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}>
           {['All', 'Active', 'Waiting', 'On Hold', 'Completed'].map(tab => (
             <button
               key={tab}
@@ -1086,7 +1629,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
         </div>
 
         {/* Table Element */}
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="jobs-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: c.subText }}>
               <RefreshCw className="animate-spin" style={{ margin: '0 auto 10px', color: c.brand }} />
@@ -1289,494 +1832,8 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
                         {/* 4. Job Details View (Expanded content below row) */}
                         {isExpanded && (
                           <tr style={{ background: isDark ? 'rgba(0,0,0,0.15)' : 'rgba(0,0,0,0.01)' }}>
-                            <td colSpan={10} style={{ padding: '24px 32px', borderBottom: `1px solid ${c.border}` }}>
-                              
-                              {/* Job Details Header Summary */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                                <div>
-                                  <h4 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 4px 0' }}>{job.title}</h4>
-                                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: c.subText }}>
-                                    <span>Customer: <strong>{job.customers?.name}</strong></span>
-                                    <span>Category: <strong>{job.category}</strong></span>
-                                    <span>Priority: <strong style={{ color: priorityColor }}>{job.priority}</strong></span>
-                                    <span>Created: <strong>{new Date(job.created_date).toLocaleDateString()}</strong></span>
-                                    <span>Queue Position: <strong>{job.status === 'Waiting' ? calculatedPosition : 'N/A'}</strong></span>
-                                    <span>Est. Start: <strong>{job.estimated_start || 'N/A'}</strong></span>
-                                  </div>
-                                </div>
-                                
-                                <span style={{ 
-                                  color: statusColor, 
-                                  background: statusBg, 
-                                  padding: '4px 12px', 
-                                  borderRadius: 8, 
-                                  fontSize: 12, 
-                                  fontWeight: 700,
-                                  height: 'fit-content'
-                                }}>
-                                  Status: {job.status}
-                                </span>
-                              </div>
-
-                              {/* Progress Timeline Tracker */}
-                              <div style={{ marginBottom: 28 }}>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: c.subText, marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <span>PROGRESS TIMELINE {editingTimelineJobId === job.id ? '(Editing mode)' : '(Click step to advance/rewind)'}</span>
-                                  {editingTimelineJobId !== job.id ? (
-                                    <button
-                                      onClick={() => {
-                                        setEditingTimelineJobId(job.id);
-                                        setTempTimelineSteps([...(Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps)]);
-                                        setTempProgressStep(job.progress_step);
-                                      }}
-                                      style={{
-                                        background: 'none', border: 'none', color: c.brand, fontSize: 11,
-                                        fontWeight: 600, cursor: 'pointer', padding: '2px 8px'
-                                      }}
-                                    >
-                                      🛠️ Edit Phases
-                                    </button>
-                                  ) : (
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                      <button
-                                        onClick={async () => {
-                                          if (tempTimelineSteps.length === 0) {
-                                            toast({ title: 'Validation error', description: 'At least one phase is required.', variant: 'destructive' });
-                                            return;
-                                          }
-                                          try {
-                                            await updateJob(job.id, { 
-                                              timeline_steps: tempTimelineSteps,
-                                              progress_step: tempProgressStep
-                                            });
-                                            toast({ title: 'Success', description: 'Timeline phases updated' });
-                                            
-                                            const updatedJobs = jobs.map(j => j.id === job.id ? { 
-                                              ...j, 
-                                              timeline_steps: tempTimelineSteps,
-                                              progress_step: tempProgressStep
-                                            } : j);
-                                            setJobs(updatedJobs);
-                                            setEditingTimelineJobId(null);
-                                          } catch (e) {
-                                            toast({ title: 'Error saving timeline', description: e.message, variant: 'destructive' });
-                                          }
-                                        }}
-                                        style={{
-                                          background: '#10b981', color: '#fff', border: 'none', 
-                                          borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer'
-                                        }}
-                                      >
-                                        Save Phases
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          setEditingTimelineJobId(null);
-                                        }}
-                                        style={{
-                                          background: 'none', border: `1px solid ${c.border}`, color: c.text,
-                                          borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer'
-                                        }}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                                <div style={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  position: 'relative',
-                                  padding: '10px 0',
-                                  overflowX: 'auto',
-                                  gap: 12
-                                }}>
-                                  {/* Background connecting line */}
-                                  <div style={{ 
-                                    position: 'absolute', 
-                                    top: 24, 
-                                    left: '4%', 
-                                    right: '4%', 
-                                    height: 2, 
-                                    background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                                    zIndex: 1 
-                                  }} />
-                                  
-                                  {/* Active progress color line */}
-                                  <div style={{ 
-                                    position: 'absolute', 
-                                    top: 24, 
-                                    left: '4%', 
-                                    width: `${((editingTimelineJobId === job.id ? tempProgressStep : job.progress_step) / (Math.max(1, (editingTimelineJobId === job.id ? tempTimelineSteps : (Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps)).length - 1))) * 92}%`, 
-                                    height: 2, 
-                                    background: c.brand,
-                                    zIndex: 1,
-                                    transition: 'width 0.3s'
-                                  }} />
-
-                                  {(() => {
-                                    const stepsToRender = editingTimelineJobId === job.id 
-                                      ? tempTimelineSteps 
-                                      : (Array.isArray(job.timeline_steps) ? job.timeline_steps : progressSteps);
-                                    const currentProgressStep = editingTimelineJobId === job.id ? tempProgressStep : job.progress_step;
-
-                                    return (
-                                      <>
-                                        {stepsToRender.map((step, stepIdx) => {
-                                          const isCompleted = stepIdx < currentProgressStep;
-                                          const isCurrent = stepIdx === currentProgressStep;
-                                          const isFuture = stepIdx > currentProgressStep;
-
-                                          let circleBg = isDark ? '#22252c' : '#e2e8f0';
-                                          let circleBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-                                          let textColor = c.subText;
-                                          let circleContent = stepIdx + 1;
-
-                                          if (isCompleted) {
-                                            circleBg = '#10b981';
-                                            circleBorder = '#10b981';
-                                            textColor = '#10b981';
-                                            circleContent = <Check size={12} color="#fff" />;
-                                          } else if (isCurrent) {
-                                            circleBg = '#f59e0b';
-                                            circleBorder = '#f59e0b';
-                                            textColor = '#f59e0b';
-                                            circleContent = <Clock size={12} color="#fff" />;
-                                          }
-
-                                          return (
-                                            <div 
-                                              key={stepIdx} 
-                                              onClick={() => {
-                                                if (editingTimelineJobId !== job.id) {
-                                                  handleUpdateProgressStep(job.id, stepIdx);
-                                                }
-                                              }}
-                                              style={{ 
-                                                display: 'flex', 
-                                                flexDirection: 'column', 
-                                                alignItems: 'center', 
-                                                flex: 1, 
-                                                zIndex: 2,
-                                                cursor: editingTimelineJobId !== job.id ? 'pointer' : 'default',
-                                                textAlign: 'center',
-                                                minWidth: 70
-                                              }}
-                                            >
-                                              {editingTimelineJobId === job.id ? (
-                                                <div 
-                                                  onClick={() => {
-                                                    const newSteps = tempTimelineSteps.filter((_, idx) => idx !== stepIdx);
-                                                    setTempTimelineSteps(newSteps);
-                                                    
-                                                    // Adjust tempProgressStep
-                                                    let newProgress = tempProgressStep;
-                                                    if (stepIdx === tempProgressStep) {
-                                                      newProgress = Math.min(tempProgressStep, newSteps.length - 1);
-                                                    } else if (stepIdx < tempProgressStep) {
-                                                      newProgress = tempProgressStep - 1;
-                                                    }
-                                                    setTempProgressStep(Math.max(0, newProgress));
-                                                  }}
-                                                  style={{ 
-                                                    width: 28, 
-                                                    height: 28, 
-                                                    borderRadius: '50%', 
-                                                    background: '#ef4444', 
-                                                    border: '2px solid #ef4444',
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'center', 
-                                                    cursor: 'pointer',
-                                                    boxShadow: '0 2px 5px rgba(239,68,68,0.3)',
-                                                    marginBottom: 8,
-                                                    transition: 'all 0.2s'
-                                                  }}
-                                                  title="Delete step"
-                                                >
-                                                  <X size={12} color="#fff" />
-                                                </div>
-                                              ) : (
-                                                <div style={{ 
-                                                  width: 28, 
-                                                  height: 28, 
-                                                  borderRadius: '50%', 
-                                                  background: circleBg, 
-                                                  border: `2px solid ${circleBorder}`,
-                                                  display: 'flex', 
-                                                  alignItems: 'center', 
-                                                  justifyContent: 'center', 
-                                                  fontSize: 11, 
-                                                  fontWeight: 700, 
-                                                  color: isCurrent || isCompleted ? '#fff' : c.subText,
-                                                  marginBottom: 8,
-                                                  boxShadow: isCurrent ? '0 0 10px rgba(245,158,11,0.5)' : 'none',
-                                                  transition: 'all 0.2s'
-                                                }}>
-                                                  {circleContent}
-                                                </div>
-                                              )}
-
-                                              {editingTimelineJobId === job.id ? (
-                                                <input 
-                                                  type="text"
-                                                  value={step}
-                                                  onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    const newSteps = [...tempTimelineSteps];
-                                                    newSteps[stepIdx] = val;
-                                                    setTempTimelineSteps(newSteps);
-                                                  }}
-                                                  style={{
-                                                    fontSize: 10, padding: '2px 4px', 
-                                                    background: c.bg, 
-                                                    border: stepIdx === tempProgressStep ? `1.5px solid #f59e0b` : `1px solid ${c.border}`,
-                                                    borderRadius: 4, color: c.text, width: 80, textAlign: 'center', marginTop: 4,
-                                                    boxShadow: stepIdx === tempProgressStep ? '0 0 4px rgba(245,158,11,0.2)' : 'none'
-                                                  }}
-                                                  required
-                                                />
-                                              ) : (
-                                                <span style={{ 
-                                                  fontSize: 10, 
-                                                  fontWeight: isCurrent ? 700 : 500, 
-                                                  color: textColor,
-                                                  maxWidth: 90
-                                                }}>
-                                                  {step}
-                                                </span>
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-
-                                        {editingTimelineJobId === job.id && (
-                                          <div 
-                                            onClick={() => {
-                                              setTempTimelineSteps([...tempTimelineSteps, `New Phase ${tempTimelineSteps.length + 1}`]);
-                                            }}
-                                            style={{ 
-                                              display: 'flex', 
-                                              flexDirection: 'column', 
-                                              alignItems: 'center', 
-                                              flex: 1, 
-                                              zIndex: 2,
-                                              cursor: 'pointer',
-                                              textAlign: 'center',
-                                              minWidth: 70
-                                            }}
-                                            title="Add a new phase"
-                                          >
-                                            <div style={{ 
-                                              width: 28, 
-                                              height: 28, 
-                                              borderRadius: '50%', 
-                                              background: c.hover, 
-                                              border: `2px dashed ${c.borderStrong}`,
-                                              display: 'flex', 
-                                              alignItems: 'center', 
-                                              justifyContent: 'center', 
-                                              color: c.brand,
-                                              marginBottom: 8
-                                            }}>
-                                              <Plus size={14} />
-                                            </div>
-                                            <span style={{ fontSize: 10, color: c.subText }}>Add Step</span>
-                                          </div>
-                                        )}
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-
-                              {/* Three Columns Section */}
-                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 24, borderTop: `1px solid ${c.border}`, paddingTop: 20 }}>
-                                
-                                {/* Col 1: Information Required From Customer */}
-                                <div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                    <h5 style={{ fontSize: 13, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <ListTodo size={14} className="text-orange-500" /> Customer Checklist
-                                    </h5>
-                                  </div>
-                                  
-                                  {/* Add requirement input */}
-                                  <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-                                    <input 
-                                      type="text" 
-                                      value={newRequirementText}
-                                      onChange={e => setNewRequirementText(e.target.value)}
-                                      placeholder="Add item..."
-                                      style={{
-                                        flex: 1, padding: '5px 8px', background: c.bg, border: `1px solid ${c.border}`, 
-                                        borderRadius: 6, color: c.text, fontSize: 12
-                                      }}
-                                    />
-                                    <select 
-                                      value={newRequirementType}
-                                      onChange={e => setNewRequirementType(e.target.value)}
-                                      style={{
-                                        padding: '5px', background: c.bg, border: `1px solid ${c.border}`, 
-                                        borderRadius: 6, color: c.text, fontSize: 11
-                                      }}
-                                    >
-                                      <option value="text">Provide Text</option>
-                                      <option value="upload">Upload File</option>
-                                    </select>
-                                    <input 
-                                      type="number" 
-                                      min="1"
-                                      value={newRequirementHours}
-                                      onChange={e => setNewRequirementHours(e.target.value)}
-                                      placeholder="Hours (default 24)"
-                                      style={{
-                                        width: 120, padding: '5px 8px', background: c.bg, border: `1px solid ${c.border}`, 
-                                        borderRadius: 6, color: c.text, fontSize: 12
-                                      }}
-                                    />
-                                    <button 
-                                      onClick={() => handleAddRequirement(job)}
-                                      style={{ 
-                                        background: c.brand, border: 'none', color: '#fff', 
-                                        borderRadius: 6, padding: '0 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600
-                                      }}
-                                    >
-                                      Add
-                                    </button>
-                                  </div>
-
-                                  {/* Checklist Items list */}
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {!job.customer_requirements || job.customer_requirements.length === 0 ? (
-                                      <div style={{ fontSize: 11, color: c.subText, fontStyle: 'italic' }}>
-                                        No requirements listed yet.
-                                      </div>
-                                    ) : (
-                                      job.customer_requirements.map(req => {
-                                        const isDone = req.status === 'completed' || req.status === 'provided';
-                                        return (
-                                          <div 
-                                            id={`admin-req-${req.id}`}
-                                            key={req.id} 
-                                            style={{ 
-                                              display: 'flex', 
-                                              alignItems: 'flex-start', 
-                                              justifyContent: 'space-between',
-                                              background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                                              padding: 8,
-                                              borderRadius: 6,
-                                              gap: 6
-                                            }}
-                                          >
-                                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, flex: 1 }}>
-                                              <button 
-                                                onClick={() => handleToggleRequirementStatus(job, req.id)}
-                                                style={{ 
-                                                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                                                  color: isDone ? '#10b981' : c.subText,
-                                                  marginTop: 2
-                                                }}
-                                              >
-                                                <CheckCircle2 size={15} />
-                                              </button>
-                                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <span style={{ 
-                                                  fontSize: 12, 
-                                                  textDecoration: isDone ? 'line-through' : 'none',
-                                                  color: isDone ? c.subText : c.text,
-                                                  fontWeight: 500
-                                                }}>
-                                                  {renderTextWithLinks(req.title)}
-                                                </span>
-                                                <span style={{ fontSize: 9, color: c.subText }}>
-                                                  Type: {req.type === 'upload' ? 'File Upload' : 'Provide Text'} ({req.status}) {req.due_hours && ` • Due in ${req.due_hours}h`}
-                                                </span>
-                                                {req.value && (
-                                                  <div style={{ 
-                                                    marginTop: 4, padding: '4px 6px', background: c.hover, 
-                                                    borderRadius: 4, fontSize: 11, wordBreak: 'break-all',
-                                                    color: c.brand, borderLeft: `2px solid ${c.brand}`
-                                                  }}>
-                                                    {req.type === 'upload' ? (
-                                                      <a href={req.value} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>
-                                                        View Uploaded File
-                                                      </a>
-                                                    ) : (
-                                                      <span>Value: "{renderTextWithLinks(req.value)}"</span>
-                                                    )}
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
-                                            <button 
-                                              onClick={() => handleDeleteRequirement(job, req.id)}
-                                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2 }}
-                                            >
-                                              <X size={14} />
-                                            </button>
-                                          </div>
-                                        );
-                                      })
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Col 2: Job Notes (Internal) */}
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <h5 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <MessageSquare size={14} className="text-orange-500" /> Internal Notes (Staff Only)
-                                  </h5>
-                                  <textarea
-                                    value={internalNotesText}
-                                    onChange={e => setInternalNotesText(e.target.value)}
-                                    placeholder="Enter internal developer or staff notes..."
-                                    style={{
-                                      width: '100%', flex: 1, minHeight: 90, padding: 8, background: c.bg, 
-                                      border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, 
-                                      fontSize: 12, resize: 'none', marginBottom: 8
-                                    }}
-                                  />
-                                  <button
-                                    onClick={() => handleSaveInternalNotes(job.id)}
-                                    style={{
-                                      background: c.hover, color: c.text, border: `1px solid ${c.border}`,
-                                      padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
-                                      fontWeight: 600, alignSelf: 'flex-end'
-                                    }}
-                                  >
-                                    Save Internal Notes
-                                  </button>
-                                </div>
-
-                                {/* Col 3: Job Queue Information (Customer View) */}
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <h5 style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Eye size={14} className="text-orange-500" /> Customer View Queue Information
-                                  </h5>
-                                  <textarea
-                                    value={customerViewNotesText}
-                                    onChange={e => setCustomerViewNotesText(e.target.value)}
-                                    placeholder="This notes block is displayed directly to the customer in their dashboard queue widget."
-                                    style={{
-                                      width: '100%', flex: 1, minHeight: 90, padding: 8, background: c.bg, 
-                                      border: `1px solid ${c.border}`, borderRadius: 6, color: c.text, 
-                                      fontSize: 12, resize: 'none', marginBottom: 8
-                                    }}
-                                  />
-                                  <button
-                                    onClick={() => handleSaveCustomerNotes(job.id)}
-                                    style={{
-                                      background: c.hover, color: c.text, border: `1px solid ${c.border}`,
-                                      padding: '5px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
-                                      fontWeight: 600, alignSelf: 'flex-end'
-                                    }}
-                                  >
-                                    Save Customer View Notes
-                                  </button>
-                                </div>
-
-                              </div>
+                            <td colSpan={10} style={{ padding: 0, borderBottom: `1px solid ${c.border}` }}>
+                              {renderExpandedDetails(job, calculatedPosition, priorityColor, statusColor, statusBg)}
                             </td>
                           </tr>
                         )}
@@ -1786,6 +1843,180 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
                 })()}
               </tbody>
             </table>
+          )}
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="jobs-cards-wrapper">
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: c.subText }}>
+              <RefreshCw className="animate-spin" style={{ margin: '0 auto 10px', color: c.brand }} />
+              Loading jobs...
+            </div>
+          ) : filteredJobs.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: c.subText }}>No jobs found matching this status.</div>
+          ) : (
+            filteredJobs.map((job, idx) => {
+              // Calculate position in queue for displaying
+              let calculatedPosition = '-';
+              if (job.status === 'Waiting') {
+                const wIdx = sortedWaitingJobs.findIndex(wj => wj.id === job.id);
+                calculatedPosition = wIdx !== -1 ? `#${wIdx + 1}` : '-';
+              }
+
+              // Color badges
+              let statusColor = '#888';
+              let statusBg = 'rgba(128,128,128,0.1)';
+              if (job.status === 'Active') { statusColor = '#10b981'; statusBg = 'rgba(16,185,129,0.1)'; }
+              else if (job.status === 'Waiting') { statusColor = '#3b82f6'; statusBg = 'rgba(59,130,246,0.1)'; }
+              else if (job.status === 'On Hold') { statusColor = '#f59e0b'; statusBg = 'rgba(245,158,11,0.1)'; }
+              else if (job.status === 'Completed') { statusColor = '#10b981'; statusBg = 'rgba(16,185,129,0.1)'; }
+
+              let priorityColor = '#888';
+              if (job.priority === 'High') priorityColor = '#ef4444';
+              else if (job.priority === 'Medium') priorityColor = '#f59e0b';
+              else if (job.priority === 'Low') priorityColor = '#10b981';
+
+              const isExpanded = expandedJobId === job.id;
+
+              return (
+                <div 
+                  key={job.id} 
+                  id={`admin-job-card-${job.id}`}
+                  style={{
+                    background: c.card,
+                    border: `1px solid ${c.border}`,
+                    borderRadius: 12,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div 
+                    onClick={() => handleToggleExpand(job)}
+                    style={{
+                      padding: 16,
+                      cursor: 'pointer',
+                      background: isExpanded ? (isDark ? 'rgba(232,123,53,0.03)' : 'rgba(232,123,53,0.01)') : 'transparent',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{job.title}</div>
+                        <div style={{ fontSize: 11, color: c.subText, marginTop: 2, fontFamily: 'monospace' }}>#{job.id.substring(0, 8).toUpperCase()}</div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                        <span style={{ 
+                          color: statusColor, 
+                          background: statusBg, 
+                          padding: '2px 8px', 
+                          borderRadius: 12, 
+                          fontSize: 10, 
+                          fontWeight: 600,
+                          border: `1px solid ${statusColor}15`
+                        }}>
+                          {job.status}
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 500 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: priorityColor }} />
+                          {job.priority}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, padding: '10px 0', borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, marginTop: 12, marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: c.subText, textTransform: 'uppercase' }}>Customer</div>
+                        <div style={{ color: c.text, fontWeight: 500, marginTop: 2 }}>{job.customers?.name || 'Unknown'}</div>
+                        {job.customers?.company && (
+                          <div style={{ fontSize: 10, color: c.subText }}>{job.customers?.company}</div>
+                        )}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: c.subText, textTransform: 'uppercase' }}>Category</div>
+                        <div style={{ color: c.text, fontWeight: 500, marginTop: 2 }}>{job.category}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: c.subText, textTransform: 'uppercase' }}>Created Date</div>
+                        <div style={{ color: c.text, marginTop: 2 }}>{new Date(job.created_date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: c.subText, textTransform: 'uppercase' }}>Queue Position</div>
+                        <div style={{ color: c.text, fontWeight: 600, marginTop: 2 }}>
+                          {job.status === 'Waiting' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>{calculatedPosition}</span>
+                              {settings.queue_position_mode === 'manual' && (
+                                <div style={{ display: 'inline-flex', gap: 4 }} onClick={e => e.stopPropagation()}>
+                                  <button 
+                                    onClick={() => handleShiftPosition(job, 'up')}
+                                    style={{ border: 'none', background: c.hover, borderRadius: 4, cursor: 'pointer', padding: 2, display: 'flex', color: c.text }}
+                                  >
+                                    <ArrowUp size={12} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleShiftPosition(job, 'down')}
+                                    style={{ border: 'none', background: c.hover, borderRadius: 4, cursor: 'pointer', padding: 2, display: 'flex', color: c.text }}
+                                  >
+                                    <ArrowDown size={12} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ) : '-'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
+                      <button 
+                        onClick={() => handleToggleExpand(job)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 6, background: isExpanded ? c.brand : c.hover, color: isExpanded ? '#fff' : c.text, border: 'none', borderRadius: 6, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        <Eye size={14} /> {isExpanded ? 'Hide Details' : 'View Details'}
+                      </button>
+                      
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button 
+                          onClick={() => handleOpenEdit(job)}
+                          style={{ border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 6, padding: 6, cursor: 'pointer' }}
+                          title="Edit job"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        
+                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <select 
+                            value={job.status} 
+                            onChange={(e) => handleUpdateStatus(job.id, e.target.value)}
+                            style={{ opacity: 0, width: 26, height: 26, position: 'absolute', right: 0, cursor: 'pointer', zIndex: 2 }}
+                          >
+                            {statuses.map(st => <option key={st} value={st}>{st}</option>)}
+                          </select>
+                          <button style={{ border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 6, padding: 6, pointerEvents: 'none' }}>
+                            <MoreVertical size={14} />
+                          </button>
+                        </div>
+
+                        <button 
+                          onClick={() => handleDeleteJob(job.id)}
+                          style={{ border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: 6, padding: 6, cursor: 'pointer' }}
+                          title="Delete job"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ borderTop: `1px solid ${c.border}`, background: isDark ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.005)' }}>
+                      {renderExpandedDetails(job, calculatedPosition, priorityColor, statusColor, statusBg)}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>

@@ -218,9 +218,26 @@ function AdminActivityLogPage({ isDark = true }) {
         .alog-grid { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: start; }
         .alog-bottom { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 20px; }
         .alog-filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .alog-table-wrapper {
+          display: block;
+        }
+        .alog-cards-wrapper {
+          display: none;
+        }
         @media (max-width: 900px) {
           .alog-grid { grid-template-columns: 1fr; }
           .alog-bottom { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+          .alog-table-wrapper {
+            display: none;
+          }
+          .alog-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
         }
         @media (max-width: 500px) {
           .alog-bottom { grid-template-columns: 1fr; }
@@ -268,7 +285,7 @@ function AdminActivityLogPage({ isDark = true }) {
               <div style={{ padding: 48, textAlign: 'center', color: c.subText }}>Loading…</div>
             ) : (
               <>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="alog-table-wrapper" style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
                     <thead>
                       <tr>
@@ -326,6 +343,54 @@ function AdminActivityLogPage({ isDark = true }) {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="alog-cards-wrapper">
+                  {paginated.map((log, i) => {
+                    const isAdm = !log.customer_id;
+                    const cu = log.customer_id ? custMap[log.customer_id] : null;
+                    const name = isAdm ? 'Admin' : (cu?.name || 'Customer');
+                    const email = isAdm ? '' : (cu?.email || '');
+                    const action = getAction(log.type);
+                    return (
+                      <div key={log.id || i} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 30, height: 30, borderRadius: '50%', background: isAdm ? 'rgba(232,123,53,0.18)' : 'rgba(96,165,250,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 700, color: isAdm ? c.brand : '#60a5fa' }}>
+                              {name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: c.text }}>{name}</div>
+                              {email && <div style={{ fontSize: 11, color: c.subText }}>{email}</div>}
+                            </div>
+                          </div>
+                          <span style={{ padding: '2px 9px', borderRadius: 12, fontSize: 10, fontWeight: 700, background: isAdm ? 'rgba(232,123,53,0.14)' : 'rgba(96,165,250,0.1)', color: isAdm ? c.brand : '#60a5fa' }}>
+                            {isAdm ? 'Admin' : 'Customer'}
+                          </span>
+                        </div>
+
+                        <div style={{ borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div>
+                            <span style={{ padding: '2px 9px', borderRadius: 12, fontSize: 10, fontWeight: 700, background: isDark ? action.bg : action.color + '22', color: action.color, display: 'inline-block', marginBottom: 4 }}>
+                              {action.label}
+                            </span>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: c.text }}>{log.title || '—'}</div>
+                            {log.message && <div style={{ fontSize: 12, color: c.subText, marginTop: 2, lineHeight: 1.4 }}>{log.message}</div>}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: c.subText }}>
+                          <span>Logged Time</span>
+                          <span>{log.created_at ? format(parseISO(log.created_at), 'MMM dd, yyyy HH:mm:ss') : '—'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {paginated.length === 0 && (
+                    <div style={{ padding: 32, textAlign: 'center', color: c.subText, fontSize: 13, fontStyle: 'italic' }}>No activity found</div>
+                  )}
+                </div>
+
                 <Pagination page={page} totalPages={totalPages} total={filtered.length} perPage={perPage} onPage={setPage} onPerPage={setPerPage} c={c} isDark={isDark} />
               </>
             )}

@@ -128,8 +128,33 @@ export default function SystemSettingsPage({ isDark }) {
 
   return (
     <form onSubmit={handleSave} style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 32px' }} noValidate>
+      <style>{`
+        .settings-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 24px;
+          margin-bottom: 24px;
+        }
+        .settings-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+        }
+        @media (max-width: 768px) {
+          .settings-header {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+          }
+          .settings-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+      `}</style>
       {/* ── Page Header ─────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24, marginBottom: 24 }}>
+      <div className="settings-header">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Settings size={22} style={{ color: c.brand }} />
@@ -177,7 +202,7 @@ export default function SystemSettingsPage({ isDark }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div className="settings-grid">
         {/* ── Left Column: Configuration ──────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Card: Brand Color Picker */}

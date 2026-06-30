@@ -149,6 +149,25 @@ function AdminDomainManagement({ isDark = true }) {
 
   return (
     <div>
+      <style>{`
+        .domains-table-wrapper {
+          display: block;
+        }
+        .domains-cards-wrapper {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .domains-table-wrapper {
+            display: none;
+          }
+          .domains-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+        }
+      `}</style>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '0 0 260px' }}>
@@ -188,7 +207,7 @@ function AdminDomainManagement({ isDark = true }) {
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Domains</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredDomains.length} domain{filteredDomains.length !== 1 ? 's' : ''}</span>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="domains-table-wrapper" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', minWidth: 920, borderCollapse: 'collapse' }}>
           <thead>
             <tr>
@@ -241,6 +260,52 @@ function AdminDomainManagement({ isDark = true }) {
             {filteredDomains.length === 0 && <tr><td colSpan={6} style={emptyS}>No approved domains found</td></tr>}
           </tbody>
         </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="domains-cards-wrapper">
+          {filteredDomains.map((d) => {
+            const days = daysUntilExpiry(d.expiry_date);
+            const urgentColor = days !== null && days <= 7 ? '#ef4444' : days !== null && days <= 30 ? '#f97316' : null;
+            return (
+              <div key={d.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#93c5fd' : '#2563eb', fontSize: 14 }}>{d.domain_name}</span>
+                    <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>{d.customers?.name || 'Unknown'}</div>
+                  </div>
+                  <StatusBadge status={d.status} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Start Date</div>
+                    <div style={{ color: c.text, marginTop: 2 }}>
+                      {d.start_date ? new Date(d.start_date).toLocaleDateString() : d.created_at ? new Date(d.created_at).toLocaleDateString() : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Expiry Date</div>
+                    <div style={{ color: urgentColor || c.text, marginTop: 2, fontWeight: urgentColor ? 600 : 400 }}>
+                      {d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '—'}
+                      {days !== null && days <= 30 && (
+                        <span style={{ fontSize: 10, display: 'block', color: urgentColor || c.subText, marginTop: 1 }}>
+                          {days <= 0 ? '(Expired)' : `(in ${days} day${days !== 1 ? 's' : ''})`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <Btn color="#378ADD" onClick={() => openEdit(d)} title="Edit"><Edit size={12} /> Edit</Btn>
+                  <Btn color={c.brand} onClick={() => handleNotify(d)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
+                  <Btn color="#ef4444" onClick={() => handleDelete(d)} title="Delete"><Trash2 size={12} /> Delete</Btn>
+                </div>
+              </div>
+            );
+          })}
+          {filteredDomains.length === 0 && <div style={emptyS}>No approved domains found</div>}
         </div>
       </div>
 

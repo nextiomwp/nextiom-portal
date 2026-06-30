@@ -171,6 +171,25 @@ function AdminApprovedEmails({ isDark = true }) {
 
   return (
     <div>
+      <style>{`
+        .email-table-wrapper {
+          display: block;
+        }
+        .email-cards-wrapper {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .email-table-wrapper {
+            display: none;
+          }
+          .email-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+        }
+      `}</style>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '0 0 280px' }}>
@@ -210,7 +229,7 @@ function AdminApprovedEmails({ isDark = true }) {
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Emails</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredEmails.length} record{filteredEmails.length !== 1 ? 's' : ''}</span>
         </div>
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="email-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -267,6 +286,62 @@ function AdminApprovedEmails({ isDark = true }) {
               {filteredEmails.length === 0 && <tr><td colSpan={7} style={emptyS}>No approved emails found</td></tr>}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="email-cards-wrapper">
+          {filteredEmails.map((h) => {
+            const parsed = parseEmailNameType(h.package_type);
+            const expiryDate = calcExpiry(h);
+            const days = expiryDate ? daysUntilExpiry(expiryDate) : null;
+            const urgentColor = days !== null && days <= 7 ? '#ef4444' : days !== null && days <= 30 ? '#f97316' : null;
+            return (
+              <div key={h.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isDark ? '#86efac' : '#15803d', fontSize: 14 }}>{h.email || '—'}</span>
+                    <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>{h.plan_name || parsed.planName || '—'}</div>
+                  </div>
+                  <StatusBadge status={h.status} />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Customer</div>
+                    <div style={{ color: c.text, fontWeight: 500, marginTop: 2 }}>{h.customers?.name || 'Unknown'}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Start Date</div>
+                    <div style={{ color: c.text, marginTop: 2 }}>
+                      {h.start_date ? new Date(h.start_date).toLocaleDateString() : h.created_at ? new Date(h.created_at).toLocaleDateString() : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Expiry Date</div>
+                    <div style={{ color: urgentColor || c.text, marginTop: 2, fontWeight: urgentColor ? 600 : 400 }}>
+                      {expiryDate ? expiryDate.toLocaleDateString() : '—'}
+                      {days !== null && (
+                        <span style={{ fontSize: 10, display: 'block', color: urgentColor || c.subText, marginTop: 1 }}>
+                          {days <= 0 ? '(Expired)' : `(in ${days} day${days !== 1 ? 's' : ''})`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Auto Renew</div>
+                    <div style={{ color: h.auto_renew ? '#16a34a' : c.subText, fontWeight: 600, marginTop: 2 }}>{h.auto_renew ? 'Enabled' : 'Disabled'}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
+                  <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
+                  <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
+                </div>
+              </div>
+            );
+          })}
+          {filteredEmails.length === 0 && <div style={emptyS}>No approved emails found</div>}
         </div>
       </div>
 
