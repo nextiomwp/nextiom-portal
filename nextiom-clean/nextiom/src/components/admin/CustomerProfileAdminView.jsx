@@ -50,6 +50,19 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
+  })
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)')
+    const listener = (event) => {
+      setIsMobile(event.matches)
+    }
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [])
+
   const c = isDark
     ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', borderStrong: 'rgba(255,255,255,0.12)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)' }
     : { bg: '#f8f8f7', card: '#fff', border: '#ebebeb', borderStrong: '#d1d1d1', text: '#1a1a1a', subText: '#888', hover: '#f5f5f5', brand: 'var(--brand-color)' };
@@ -1443,7 +1456,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
       </div>
 
       {/* Main Grid: Left content, Right sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start', gridTemplateAreas: '"main sidebar"' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: 20, alignItems: 'start', gridTemplateAreas: isMobile ? 'none' : '"main sidebar"' }}>
         
         {/* Left Column (Main Content) */}
         <div style={{ gridArea: 'main', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1599,7 +1612,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
           </div>
 
           {/* Service Summary Cards (Clickable to switch tab) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)', gap: 12 }}>
             {[
               { id: 'products', label: 'Products', count: counters.products.total, active: counters.products.active, extra: `${counters.products.expired} Expired`, icon: <Package size={18} />, color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' },
               { id: 'hosting', label: 'Hosting', count: counters.hosting.total, active: counters.hosting.active, extra: `${counters.hosting.suspended} Suspended`, value: `Rs. ${finances.activeCostYear?.toLocaleString()} / Yr`, icon: <ServerIcon size={18} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
@@ -2148,7 +2161,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
           </div>
 
           {/* Bottom Row: Dynamic Overview Cards (Always Visible) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 16 }}>
             {/* Hosting Packages Card */}
             <div style={{ ...cardS, marginBottom: 0 }}>
               <div style={{ padding: '14px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

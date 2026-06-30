@@ -206,6 +206,17 @@ function ImpersonationDashboard() {
   const [expandedMenus, setExpandedMenus] = useState([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
+  });
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)')
+    const listener = (event) => setIsMobile(event.matches)
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, []);
+
   const [startTime] = useState(() => Date.now());
 
   const [activeJobsCount, setActiveJobsCount] = useState(0);
@@ -848,14 +859,10 @@ function ImpersonationDashboard() {
   );
 
   return (
-    <div style={{ background: c.bg, minHeight: '100vh', display: 'flex' }}>
-      {/* Fixed Orange Impersonation Banner */}
+    <div style={{ background: c.bg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Impersonation Banner */}
       <div
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
           zIndex: 9999,
           background: 'var(--brand-color)',
           padding: '8px 20px',
@@ -925,39 +932,39 @@ function ImpersonationDashboard() {
         </div>
       </div>
 
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => setIsMobileSidebarOpen(true)}
-        style={{
-          position: 'fixed',
-          top: 50,
-          left: 10,
-          zIndex: 50,
-          padding: 8,
-          borderRadius: 8,
-          background: c.card,
-          border: `1px solid ${c.border}`,
-          color: c.text,
-          display: 'block',
-        }}
-        className="lg:hidden"
-      >
-        <Menu size={20} />
-      </button>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setIsMobileSidebarOpen(true)}
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            zIndex: 50,
+            padding: 8,
+            borderRadius: 8,
+            background: c.card,
+            border: `1px solid ${c.border}`,
+            color: c.text,
+            display: 'block',
+          }}
+          className="lg:hidden"
+        >
+          <Menu size={20} />
+        </button>
 
-      {/* Desktop Sidebar */}
-      <aside
-        className="hidden lg:flex flex-col flex-shrink-0 overflow-hidden"
-        style={{
-          width: isSidebarCollapsed ? 64 : 260,
-          height: '100vh',
-          paddingTop: 44,
-          transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
-          background: isSidebarCollapsed ? 'rgba(22,24,30,0.92)' : c.sidebar,
-          backdropFilter: isSidebarCollapsed ? 'blur(24px)' : 'none',
-          borderRight: isSidebarCollapsed ? 'none' : `1px solid ${c.border}`,
-        }}
-      >
+        {/* Desktop Sidebar */}
+        <aside
+          className="hidden lg:flex flex-col flex-shrink-0 overflow-hidden"
+          style={{
+            width: isSidebarCollapsed ? 64 : 260,
+            height: '100%',
+            transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
+            background: isSidebarCollapsed ? 'rgba(22,24,30,0.92)' : c.sidebar,
+            backdropFilter: isSidebarCollapsed ? 'blur(24px)' : 'none',
+            borderRight: isSidebarCollapsed ? 'none' : `1px solid ${c.border}`,
+          }}
+        >
         {/* Sidebar header */}
         <div
           className="h-14 flex items-center px-4 flex-shrink-0"
@@ -1054,7 +1061,7 @@ function ImpersonationDashboard() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto min-h-screen flex flex-col" style={{ paddingTop: 44 }}>
+      <main className="flex-1 overflow-auto flex flex-col">
         {/* Header bar */}
         <div
           className="h-14 flex items-center justify-between px-6 flex-shrink-0"
@@ -1132,6 +1139,7 @@ function ImpersonationDashboard() {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }

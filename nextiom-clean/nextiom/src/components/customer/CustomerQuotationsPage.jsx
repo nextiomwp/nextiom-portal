@@ -179,8 +179,8 @@ function QuotationDrawer({ quotation, settings, isDark, c, onClose, isMobile = f
         </div>
 
         {/* PDF-style document */}
-        <div style={{ margin: '20px 24px', background: '#f7f5f1', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', flex: 1, minHeight: 0, position: 'relative' }}>
-          <div style={{ padding: '32px 36px', color: '#1a1a1a', position: 'relative', zIndex: 1 }}>
+        <div style={{ margin: isMobile ? '10px' : '20px 24px', background: '#f7f5f1', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', flex: 1, minHeight: 0, position: 'relative' }}>
+          <div style={{ padding: isMobile ? '16px 14px' : '32px 36px', color: '#1a1a1a', position: 'relative', zIndex: 1 }}>
             
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
@@ -228,7 +228,7 @@ function QuotationDrawer({ quotation, settings, isDark, c, onClose, isMobile = f
 
             {/* Line items */}
             <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', marginBottom: 20 }}>
-              <table style={{ width: '100%', minWidth: 500, borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', minWidth: isMobile ? 400 : 500, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#f0ede8' }}>
                     <th style={{ textAlign: 'left', padding: '8px 10px', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: '#666' }}>Description</th>
@@ -503,7 +503,7 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
             
             <button
               onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', border: `1px solid ${c.borderStrong}`, background: isDark ? '#22252C' : '#fff', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 12 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', border: `1px solid ${c.borderStrong}`, background: isDark ? '#22252C' : '#fff', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 12, flex: isMobile ? 1 : 'none', justifyContent: isMobile ? 'center' : 'flex-start' }}
             >
               Date: {sortDir === 'desc' ? 'Newest' : 'Oldest'}
             </button>
@@ -517,6 +517,145 @@ export default function CustomerQuotationsPage({ user, isDark, c }) {
               <FileText size={44} style={{ margin: '0 auto 12px', opacity: 0.3, display: 'block' }} />
               <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>No quotations found</div>
               <div style={{ fontSize: 12, marginTop: 4 }}>There are no quotations matching your current filters.</div>
+            </div>
+          ) : isMobile ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 16 }}>
+              {pageItems.map((q) => {
+                const cur = q.currency === 'USD' ? 'USD' : 'LKR';
+                const isExpired = q.valid_until && new Date(q.valid_until + 'T23:59:59') < new Date();
+                const statusNode = q.status === 'accepted' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                    Accepted
+                  </span>
+                ) : q.status === 'declined' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#ef4444', background: 'rgba(239,68,68,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                    Declined
+                  </span>
+                ) : (q.status === 'expired' || ((q.status || 'active') === 'active' && q.valid_until && new Date(q.valid_until + 'T23:59:59') < new Date())) ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#888', background: 'rgba(136,136,136,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                    Expired
+                  </span>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand-color)', background: 'rgba(232,123,53,0.12)', borderRadius: 20, padding: '2px 9px' }}>
+                    Active
+                  </span>
+                );
+
+                return (
+                  <div
+                    key={q.id}
+                    style={{
+                      background: c.card,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 12,
+                      padding: 16,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                      transition: 'border-color 0.15s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = c.brand; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = c.border; }}
+                  >
+                    {/* Top Row: Quotation No, Status */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: c.brand, fontSize: 13 }}>{q.quotation_no}</span>
+                      {statusNode}
+                    </div>
+
+                    {/* Dates */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 10, color: c.subText, textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5, marginBottom: 2 }}>Date</div>
+                        <span style={{ fontSize: 13, color: c.text }}>{q.quotation_date}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 10, color: c.subText, textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5, marginBottom: 2 }}>Valid Until</div>
+                        <span style={{ fontSize: 13, color: c.text }}>{q.valid_until}</span>
+                      </div>
+                    </div>
+
+                    {/* Amount */}
+                    <div style={{ borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '10px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 12, color: c.subText }}>Total Amount</span>
+                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 14, color: c.text }}>{fmtCurrency(q.total, cur)}</span>
+                    </div>
+
+                    {/* Decision Row or Decision Status */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4, flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        {((q.status || 'active') === 'active' && !isExpired) ? (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button
+                              onClick={() => handleStatusChange(q.id, 'accepted')}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '6px 12px',
+                                background: 'rgba(34,197,94,0.15)',
+                                border: '1px solid rgba(34,197,94,0.3)',
+                                color: '#22c55e',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                transition: 'background 0.2s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(34,197,94,0.25)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(34,197,94,0.15)'}
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(q.id, 'declined')}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '6px 12px',
+                                background: 'rgba(239,68,68,0.15)',
+                                border: '1px solid rgba(239,68,68,0.3)',
+                                color: '#ef4444',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                transition: 'background 0.2s',
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.25)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.15)'}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: c.subText, fontStyle: 'italic' }}>
+                            {q.status === 'accepted' ? 'Accepted' : q.status === 'declined' ? 'Declined' : 'No Action'}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={() => setOpenQuotation(q)}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 12px', background: 'transparent', border: `1px solid ${c.border}`, color: c.text, borderRadius: 6, cursor: 'pointer', fontSize: 12 }}
+                        >
+                          <Eye size={13} /> View
+                        </button>
+                        <button
+                          onClick={() => handleDownload(q)}
+                          style={{ display: 'inline-flex', alignItems: 'center', padding: '6px 10px', background: 'transparent', border: `1px solid ${c.border}`, color: c.subText, borderRadius: 6, cursor: 'pointer' }}
+                          title="Download PDF"
+                        >
+                          <Download size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>

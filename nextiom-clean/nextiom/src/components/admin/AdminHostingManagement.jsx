@@ -409,39 +409,43 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
                   </button>
                 </div>
 
-                {/* Column headers */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.7fr 0.6fr 0.6fr 0.6fr 0.8fr 50px 50px 28px', gap: 6, marginBottom: 6, padding: '0 4px' }}>
-                  {['Plan Name *', 'Storage', 'Bandwidth', '$/mo', '1 Yr %', '2 Yr %', 'Ren %', 'Popular', 'Active', ''].map(h => (
-                    <span key={h} style={{ fontSize: 10, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</span>
-                  ))}
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {addRows.map((row, i) => (
-                    <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.7fr 0.6fr 0.6fr 0.6fr 0.8fr 50px 50px 28px', gap: 6, alignItems: 'center' }}>
-                      <input style={inputStyle} placeholder="e.g. Basic" value={row.plan_name} onChange={e => updateRow(i, 'plan_name', e.target.value)} />
-                      <input style={inputStyle} placeholder="10GB" value={row.storage} onChange={e => updateRow(i, 'storage', e.target.value)} />
-                      <input style={inputStyle} placeholder="100GB" value={row.bandwidth} onChange={e => updateRow(i, 'bandwidth', e.target.value)} />
-                      <input style={inputStyle} type="number" step="0.01" min="0" placeholder="2.99" value={row.price_monthly} onChange={e => updateRow(i, 'price_monthly', e.target.value)} />
-                      <input style={inputStyle} type="number" min="0" max="100" placeholder="20" value={row.discount_yearly} onChange={e => updateRow(i, 'discount_yearly', e.target.value)} />
-                      <input style={inputStyle} type="number" min="0" max="100" placeholder="30" value={row.discount_2years} onChange={e => updateRow(i, 'discount_2years', e.target.value)} />
-                      <input style={inputStyle} type="number" min="0" max="100" placeholder="10" value={row.renewal_percentage} onChange={e => updateRow(i, 'renewal_percentage', e.target.value)} />
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <PopularToggle value={row.is_popular} onChange={val => updateRow(i, 'is_popular', val)} />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Toggle value={row.is_active} onChange={val => updateRow(i, 'is_active', val)} isDark={isDark} />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeRow(i)}
-                        disabled={addRows.length === 1}
-                        style={{ background: 'none', border: 'none', cursor: addRows.length === 1 ? 'not-allowed' : 'pointer', color: addRows.length === 1 ? c.border : '#ef4444', display: 'flex', alignItems: 'center', padding: 4 }}
-                      >
-                        <X size={14} />
-                      </button>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <div style={{ minWidth: 680 }}>
+                    {/* Column headers */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.7fr 0.6fr 0.6fr 0.6fr 0.8fr 50px 50px 28px', gap: 6, marginBottom: 6, padding: '0 4px' }}>
+                      {['Plan Name *', 'Storage', 'Bandwidth', '$/mo', '1 Yr %', '2 Yr %', 'Ren %', 'Popular', 'Active', ''].map(h => (
+                        <span key={h} style={{ fontSize: 10, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</span>
+                      ))}
                     </div>
-                  ))}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {addRows.map((row, i) => (
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.7fr 0.6fr 0.6fr 0.6fr 0.8fr 50px 50px 28px', gap: 6, alignItems: 'center' }}>
+                          <input style={inputStyle} placeholder="e.g. Basic" value={row.plan_name} onChange={e => updateRow(i, 'plan_name', e.target.value)} />
+                          <input style={inputStyle} placeholder="10GB" value={row.storage} onChange={e => updateRow(i, 'storage', e.target.value)} />
+                          <input style={inputStyle} placeholder="100GB" value={row.bandwidth} onChange={e => updateRow(i, 'bandwidth', e.target.value)} />
+                          <input style={inputStyle} type="number" step="0.01" min="0" placeholder="2.99" value={row.price_monthly} onChange={e => updateRow(i, 'price_monthly', e.target.value)} />
+                          <input style={inputStyle} type="number" min="0" max="100" placeholder="20" value={row.discount_yearly} onChange={e => updateRow(i, 'discount_yearly', e.target.value)} />
+                          <input style={inputStyle} type="number" min="0" max="100" placeholder="30" value={row.discount_2years} onChange={e => updateRow(i, 'discount_2years', e.target.value)} />
+                          <input style={inputStyle} type="number" min="0" max="100" placeholder="10" value={row.renewal_percentage} onChange={e => updateRow(i, 'renewal_percentage', e.target.value)} />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <PopularToggle value={row.is_popular} onChange={val => updateRow(i, 'is_popular', val)} />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Toggle value={row.is_active} onChange={val => updateRow(i, 'is_active', val)} isDark={isDark} />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeRow(i)}
+                            disabled={addRows.length === 1}
+                            style={{ background: 'none', border: 'none', cursor: addRows.length === 1 ? 'not-allowed' : 'pointer', color: addRows.length === 1 ? c.border : '#ef4444', display: 'flex', alignItems: 'center', padding: 4 }}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <p style={{ fontSize: 11, color: c.subText, marginTop: 10 }}>
                   Rows with an empty Plan Name will be skipped. Price/mo is optional (leave blank for custom pricing). Discounts (1 Yr % / 2 Yr %) are percentages. Renewal % is added to the price.

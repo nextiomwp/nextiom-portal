@@ -58,6 +58,18 @@ interface Props {
 
 export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const { toast } = useToast()
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
+  })
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)')
+    const listener = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches)
+    }
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [])
   const [settings, setSettings] = useState<InvoiceSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [invoiceNo, setInvoiceNo] = useState('')
@@ -344,7 +356,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: 16, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={onBack} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center' }}>
             <ArrowLeft size={18} />
@@ -358,38 +370,38 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
           <button
             onClick={handleSaveTemplate}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', flex: isMobile ? 1 : 'none' }}
             title="Save current line items as a reusable template"
           >
-            <BookTemplate size={15} /> Save as Template
+            <BookTemplate size={15} /> {!isMobile && 'Save as Template'}
           </button>
           <button
             onClick={handleImportTemplate}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', flex: isMobile ? 1 : 'none' }}
             title="Import line items from a saved template"
           >
-            <Download size={15} /> Import Template
+            <Download size={15} /> {!isMobile && 'Import Template'}
           </button>
-          <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>
-            <Printer size={15} /> Print / PDF
+          <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit', flex: isMobile ? 1 : 'none' }}>
+            <Printer size={15} /> {!isMobile && 'Print / PDF'}
           </button>
-          <button onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', opacity: saving ? 0.7 : 1 }}>
-            <Save size={15} /> {saving ? 'Saving…' : existing ? 'Update invoice' : 'Save invoice'}
+          <button onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '8px 14px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', opacity: saving ? 0.7 : 1, flex: isMobile ? 1.5 : 'none' }}>
+            <Save size={15} /> {saving ? 'Saving…' : existing ? 'Update' : 'Save'}
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, alignItems: 'start' }}>
 
         {/* Left column */}
         <div>
           {/* Invoice details */}
           <div style={card}>
             <p style={secTitle}>Invoice details</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                   <label style={{ ...lbl, marginBottom: 0 }}>Invoice no.</label>
@@ -453,7 +465,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                 />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '160px 1fr', gap: 12 }}>
               <div>
                 <label style={lbl}>Status</label>
                 <select style={{ ...inp, cursor: 'pointer' }} value={status} onChange={e => setStatus(e.target.value as Invoice['status'])}>
@@ -472,7 +484,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
           {/* Client info */}
           <div style={card}>
             <p style={secTitle}>Bill to</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div ref={nameRef} style={{ position: 'relative' }}>
                 <label style={lbl}>Client name *</label>
                 <input style={inp} placeholder="Type name to search customers…" value={clientName} onChange={e => handleNameChange(e.target.value)} autoComplete="off" />
@@ -492,7 +504,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
               </div>
               <div><label style={lbl}>Company</label><input style={inp} placeholder="Company (optional)" value={clientCompany} onChange={e => setClientCompany(e.target.value)} /></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
               <div><label style={lbl}>Phone</label><input style={inp} placeholder="+94 7x xxx xxxx" value={clientPhone} onChange={e => setClientPhone(e.target.value)} /></div>
               <div><label style={lbl}>Email</label><input type="email" style={inp} placeholder="email@example.com" value={clientEmail} onChange={e => setClientEmail(e.target.value)} /></div>
             </div>
@@ -538,80 +550,181 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            <span>Description</span><span>Qty</span><span>Unit price</span><span>Discount</span>
-            <span style={{ textAlign: 'right' }}>Amount</span><span></span>
-          </div>
+          {!isMobile && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <span>Description</span><span>Qty</span><span>Unit price</span><span>Discount</span>
+              <span style={{ textAlign: 'right' }}>Amount</span><span></span>
+            </div>
+          )}
 
           <div style={{ marginBottom: 10 }}>
             {items.map((item, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'start', marginBottom: 12 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                  <input
-                    style={inp}
-                    placeholder={item.is_package ? "Package name" : "Service or product (Shift+Enter for link)"}
-                    value={item.description}
-                    onChange={e => updateItem(i, 'description', e.target.value)}
-                    onKeyDown={e => handleDescriptionKeyDown(e, i)}
-                  />
-                  {item.link_url !== undefined && (
-                    <input
-                      style={{ ...inp, fontSize: 11, padding: '4px 8px' }}
-                      placeholder="Enter link URL (e.g. https://...)"
-                      value={item.link_url || ''}
-                      onChange={e => updateItem(i, 'link_url', e.target.value)}
-                    />
-                  )}
-                  {item.is_package && (
-                    <div style={{ paddingLeft: 12, borderLeft: `2px solid ${c.brand}`, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sub-items</span>
-                      {(item.sub_items || []).map((sub, subIdx) => (
-                        <div key={subIdx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <input
-                            style={{ ...inp, padding: '4px 8px', fontSize: 12, border: `1px solid ${c.border}` }}
-                            placeholder={`Sub-item ${subIdx + 1} description`}
-                            value={sub}
-                            onChange={e => {
-                              const newSubs = [...(item.sub_items || [])]
-                              newSubs[subIdx] = e.target.value
-                              updateItem(i, 'sub_items', newSubs)
-                            }}
-                          />
+              isMobile ? (
+                <div key={i} style={{ 
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', 
+                  border: `1px solid ${c.border}`, 
+                  borderRadius: 10, 
+                  padding: 12, 
+                  marginBottom: 12, 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 10 
+                }}>
+                  {/* Top: Description field & Delete button */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={lbl}>Description</label>
+                      <input
+                        style={inp}
+                        placeholder={item.is_package ? "Package name" : "Service or product (Shift+Enter for link)"}
+                        value={item.description}
+                        onChange={e => updateItem(i, 'description', e.target.value)}
+                        onKeyDown={e => handleDescriptionKeyDown(e, i)}
+                      />
+                      {item.link_url !== undefined && (
+                        <input
+                          style={{ ...inp, fontSize: 11, padding: '4px 8px' }}
+                          placeholder="Enter link URL (e.g. https://...)"
+                          value={item.link_url || ''}
+                          onChange={e => updateItem(i, 'link_url', e.target.value)}
+                        />
+                      )}
+                      {item.is_package && (
+                        <div style={{ paddingLeft: 12, borderLeft: `2px solid ${c.brand}`, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sub-items</span>
+                          {(item.sub_items || []).map((sub, subIdx) => (
+                            <div key={subIdx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                style={{ ...inp, padding: '4px 8px', fontSize: 12, border: `1px solid ${c.border}` }}
+                                placeholder={`Sub-item ${subIdx + 1} description`}
+                                value={sub}
+                                onChange={e => {
+                                  const newSubs = [...(item.sub_items || [])]
+                                  newSubs[subIdx] = e.target.value
+                                  updateItem(i, 'sub_items', newSubs)
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newSubs = (item.sub_items || []).filter((_, sIdx) => sIdx !== subIdx)
+                                  updateItem(i, 'sub_items', newSubs)
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
                           <button
                             type="button"
                             onClick={() => {
-                              const newSubs = (item.sub_items || []).filter((_, sIdx) => sIdx !== subIdx)
+                              const newSubs = [...(item.sub_items || []), '']
                               updateItem(i, 'sub_items', newSubs)
                             }}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: c.brand, cursor: 'pointer', fontSize: 11, padding: '2px 0', alignSelf: 'flex-start', fontWeight: 600 }}
                           >
-                            <X size={12} />
+                            <Plus size={10} /> Add Sub-item
                           </button>
                         </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newSubs = [...(item.sub_items || []), '']
-                          updateItem(i, 'sub_items', newSubs)
-                        }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: c.brand, cursor: 'pointer', fontSize: 11, padding: '2px 0', alignSelf: 'flex-start', fontWeight: 600 }}
-                      >
-                        <Plus size={10} /> Add Sub-item
-                      </button>
+                      )}
                     </div>
-                  )}
+                    <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 8, borderRadius: 6, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center', marginTop: 18 }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  {/* Middle: Qty, Unit Price, Discount fields */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr', gap: 8 }}>
+                    <div>
+                      <label style={lbl}>Qty</label>
+                      <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Unit Price</label>
+                      <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                    </div>
+                    <div>
+                      <label style={lbl}>Discount</label>
+                      <input type="number" min={0} placeholder="0.00" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
+                    </div>
+                  </div>
+
+                  {/* Bottom: Subtotal Amount display */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px dashed ${c.border}`, paddingTop: 8 }}>
+                    <span style={{ fontSize: 12, color: c.subText }}>Amount</span>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
+                  </div>
                 </div>
-                <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
-                <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-                <input type="number" min={0} placeholder="0.00" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
-                <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text, paddingTop: 8 }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
-                <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: 6 }}>
-                  <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
-                    <Trash2 size={13} />
-                  </button>
+              ) : (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'start', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                    <input
+                      style={inp}
+                      placeholder={item.is_package ? "Package name" : "Service or product (Shift+Enter for link)"}
+                      value={item.description}
+                      onChange={e => updateItem(i, 'description', e.target.value)}
+                      onKeyDown={e => handleDescriptionKeyDown(e, i)}
+                    />
+                    {item.link_url !== undefined && (
+                      <input
+                        style={{ ...inp, fontSize: 11, padding: '4px 8px' }}
+                        placeholder="Enter link URL (e.g. https://...)"
+                        value={item.link_url || ''}
+                        onChange={e => updateItem(i, 'link_url', e.target.value)}
+                      />
+                    )}
+                    {item.is_package && (
+                      <div style={{ paddingLeft: 12, borderLeft: `2px solid ${c.brand}`, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sub-items</span>
+                        {(item.sub_items || []).map((sub, subIdx) => (
+                          <div key={subIdx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              style={{ ...inp, padding: '4px 8px', fontSize: 12, border: `1px solid ${c.border}` }}
+                              placeholder={`Sub-item ${subIdx + 1} description`}
+                              value={sub}
+                              onChange={e => {
+                                const newSubs = [...(item.sub_items || [])]
+                                newSubs[subIdx] = e.target.value
+                                updateItem(i, 'sub_items', newSubs)
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newSubs = (item.sub_items || []).filter((_, sIdx) => sIdx !== subIdx)
+                                updateItem(i, 'sub_items', newSubs)
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newSubs = [...(item.sub_items || []), '']
+                            updateItem(i, 'sub_items', newSubs)
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: c.brand, cursor: 'pointer', fontSize: 11, padding: '2px 0', alignSelf: 'flex-start', fontWeight: 600 }}
+                        >
+                          <Plus size={10} /> Add Sub-item
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
+                  <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+                  <input type="number" min={0} placeholder="0.00" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
+                  <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text, paddingTop: 8 }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: 6 }}>
+                    <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )
             ))}
           </div>
 

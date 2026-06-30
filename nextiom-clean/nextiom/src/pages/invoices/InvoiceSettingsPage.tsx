@@ -11,6 +11,19 @@ interface Props {
 
 export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
   const { toast } = useToast()
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
+  })
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 640px)')
+    const listener = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches)
+    }
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [])
+
   const fileRef = useRef<HTMLInputElement>(null)
   const [s, setS] = useState<InvoiceSettings>(defaultSettings())
   const [saving, setSaving] = useState(false)
@@ -61,9 +74,9 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
   const btnOutline: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: `1px solid ${c.border}`, background: c.card, color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto' }}>
+    <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '0 8px 16px' : '0 0 24px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: 16, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={onBack} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: 6, borderRadius: 8, display: 'flex', alignItems: 'center' }}>
             <ArrowLeft size={18} />
@@ -73,22 +86,24 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
             <p style={{ fontSize: 13, color: c.subText, marginTop: 2 }}>Company info and bank details shown on every invoice</p>
           </div>
         </div>
-        <button onClick={handleSave} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
-          <Save size={15} /> {saving ? 'Saving…' : 'Save changes'}
-        </button>
+        {!isMobile && (
+          <button onClick={handleSave} disabled={saving} style={{ ...btnPrimary, opacity: saving ? 0.7 : 1 }}>
+            <Save size={15} /> {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        )}
       </div>
 
       {/* Logo */}
       <div style={card}>
         <p style={secTitle}>Company logo</p>
         {s.logo_url ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: 16 }}>
             <img src={displayLogo} alt="logo" style={{ maxHeight: 56, maxWidth: 180, objectFit: 'contain', borderRadius: 8, border: `1px solid ${c.border}`, padding: 8, background: '#fff' }} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button style={btnOutline} onClick={() => fileRef.current?.click()} disabled={uploading}>
+            <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto' }}>
+              <button style={{ ...btnOutline, flex: isMobile ? 1 : 'none', justifyContent: 'center' }} onClick={() => fileRef.current?.click()} disabled={uploading}>
                 <Upload size={14} /> Replace
               </button>
-              <button style={{ ...btnOutline, color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }} onClick={() => update('logo_url', '')}>
+              <button style={{ ...btnOutline, flex: isMobile ? 1 : 'none', justifyContent: 'center', color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }} onClick={() => update('logo_url', '')}>
                 <X size={14} /> Remove
               </button>
             </div>
@@ -110,11 +125,11 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
       {/* Company details */}
       <div style={card}>
         <p style={secTitle}>Company details</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div><label style={lbl}>Company name</label><input style={inp} value={s.company_name} onChange={e => update('company_name', e.target.value)} /></div>
           <div><label style={lbl}>Registration no.</label><input style={inp} value={s.reg_no} onChange={e => update('reg_no', e.target.value)} /></div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div><label style={lbl}>Phone</label><input style={inp} value={s.phone} onChange={e => update('phone', e.target.value)} /></div>
           <div><label style={lbl}>Website</label><input style={inp} value={s.website} onChange={e => update('website', e.target.value)} /></div>
         </div>
@@ -124,11 +139,11 @@ export default function InvoiceSettingsPage({ c, isDark, onBack }: Props) {
       {/* Bank details */}
       <div style={card}>
         <p style={secTitle}>Bank details</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
           <div><label style={lbl}>Bank name</label><input style={inp} value={s.bank_name} onChange={e => update('bank_name', e.target.value)} /></div>
           <div><label style={lbl}>Branch</label><input style={inp} value={s.bank_branch} onChange={e => update('bank_branch', e.target.value)} /></div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
           <div><label style={lbl}>Account name</label><input style={inp} value={s.account_name} onChange={e => update('account_name', e.target.value)} /></div>
           <div><label style={lbl}>Account number</label><input style={inp} value={s.account_no} onChange={e => update('account_no', e.target.value)} /></div>
         </div>

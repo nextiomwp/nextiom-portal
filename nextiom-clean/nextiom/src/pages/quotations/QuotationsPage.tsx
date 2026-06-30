@@ -108,6 +108,18 @@ interface Props {
 
 export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
   const { toast } = useToast()
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
+  })
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)')
+    const listener = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches)
+    }
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [])
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -250,18 +262,18 @@ export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: 16, marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0, color: c.text }}>Quotations</h2>
           <p style={{ fontSize: 13, color: c.subText, marginTop: 2 }}>Manage client quotation requests and estimates</p>
         </div>
-        <button onClick={onNew} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit' }}>
+        <button onClick={onNew} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start' }}>
           <Plus size={15} /> New Quotation
         </button>
       </div>
 
       {/* Metrics Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 20 }}>
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
             <span style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Quotations</span>
@@ -280,18 +292,18 @@ export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
       </div>
 
       {/* Two-column layout: list + calendar */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 260px', gap: 16, alignItems: 'start' }}>
         {/* Left column: search, sorting, list */}
         <div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+            <div style={{ position: 'relative', flex: isMobile ? '1 1 100%' : 1, minWidth: 180 }}>
               <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.subText, pointerEvents: 'none' }} />
               <input style={{ ...inp, paddingLeft: 30, width: '100%' }} placeholder="Search by client, company, or quotation no…" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <button
               onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
               title={sortDir === 'desc' ? 'Newest first' : 'Oldest first'}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', border: `1px solid ${c.borderStrong}`, background: isDark ? '#22252C' : '#fff', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 12px', border: `1px solid ${c.borderStrong}`, background: isDark ? '#22252C' : '#fff', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', whiteSpace: 'nowrap', flex: isMobile ? 1 : 'none' }}
             >
               <ArrowUpDown size={13} /> {sortDir === 'desc' ? 'Newest' : 'Oldest'}
             </button>
@@ -316,81 +328,185 @@ export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 130px 110px', gap: 8, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                <span>Quotation</span><span>Client</span><span>Amount</span>
-                <span style={{ textAlign: 'right' }}>Date</span><span>Status</span><span></span>
-              </div>
-              {paginated.map(q => {
-                const isExpired = q.valid_until && new Date(q.valid_until + 'T23:59:59') < new Date()
-                return (
-                  <div
-                    key={q.id}
-                    style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 130px 110px', gap: 8, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
-                    onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
-                    onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
-                  >
-                    <span style={{ fontFamily: 'monospace', fontSize: 12, color: c.subText }}>{q.quotation_no}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.client_name}</div>
-                      {q.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.client_company}</div>}
-                    </div>
-                    <div>
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(q.total, q.currency ?? 'LKR')}</span>
-                      {isExpired ? (
-                        <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 600, marginTop: 2 }}>Expired</div>
-                      ) : (
-                        <div style={{ fontSize: 10, color: c.subText, marginTop: 2 }}>Valid to {q.valid_until}</div>
-                      )}
-                    </div>
-                    <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{q.quotation_date}</span>
-                    <div>
-                      <select
-                        value={q.status || 'active'}
-                        onChange={async (e) => {
-                          const newStatus = e.target.value
-                          try {
-                            await updateQuotationStatus(q.id!, newStatus)
-                            setQuotations(prev => prev.map(item => item.id === q.id ? { ...item, status: newStatus } : item))
-                            toast({ title: 'Quotation status updated' })
-                          } catch {
-                            toast({ title: 'Failed to update status', variant: 'destructive' })
-                          }
-                        }}
+              {isMobile ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '0 0 16px' }}>
+                  {paginated.map(q => {
+                    const isExpired = q.valid_until && new Date(q.valid_until + 'T23:59:59') < new Date()
+                    return (
+                      <div
+                        key={q.id}
                         style={{
-                          padding: '4px 8px',
-                          fontSize: 12,
-                          cursor: 'pointer',
-                          background: q.status === 'accepted' ? 'rgba(34,197,94,0.15)' : q.status === 'declined' ? 'rgba(239,68,68,0.15)' : q.status === 'expired' ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'var(--brand-color-light)',
-                          color: q.status === 'accepted' ? '#22c55e' : q.status === 'declined' ? '#ef4444' : q.status === 'expired' ? c.subText : c.brand,
-                          border: 'none',
-                          fontWeight: 700,
-                          borderRadius: 6,
-                          outline: 'none',
-                          width: '100%',
-                          maxWidth: 110,
-                          fontFamily: 'inherit',
+                          background: c.card,
+                          border: `1px solid ${c.border}`,
+                          borderRadius: 12,
+                          padding: 16,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                          transition: 'border-color 0.15s'
                         }}
+                        onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
+                        onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
                       >
-                        <option value="active" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Active</option>
-                        <option value="accepted" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Accepted</option>
-                        <option value="declined" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Declined</option>
-                        <option value="expired" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Expired</option>
-                      </select>
-                    </div>
-                    <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-                      <button onClick={() => handlePrint(q)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Preview / PDF">
-                        <Eye size={14} />
-                      </button>
-                      <button onClick={() => onEdit(q.id!)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Edit">
-                        <Edit3 size={14} />
-                      </button>
-                      <button onClick={() => { setDeleteId(q.id!); setDeleteNo(q.quotation_no) }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                        {/* Top Row: Quotation No, Date */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 600, color: c.brand }}>{q.quotation_no}</span>
+                          <span style={{ fontSize: 12, color: c.subText }}>{q.quotation_date}</span>
+                        </div>
+
+                        {/* Client */}
+                        <div>
+                          <div style={{ fontSize: 10, color: c.subText, textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.5, marginBottom: 2 }}>Client</div>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{q.client_name}</div>
+                          {q.client_company && <div style={{ fontSize: 11, color: c.subText }}>{q.client_company}</div>}
+                        </div>
+
+                        {/* Amount & Validity */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '10px 0' }}>
+                          <div>
+                            <div style={{ fontSize: 11, color: c.subText }}>Amount</div>
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(q.total, q.currency ?? 'LKR')}</span>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, color: c.subText }}>Validity</div>
+                            {isExpired ? (
+                              <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600 }}>Expired</span>
+                            ) : (
+                              <span style={{ fontSize: 11, color: c.subText }}>Valid to {q.valid_until}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Status and Action Buttons */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <div style={{ flex: 1, minWidth: 100 }}>
+                            <select
+                              value={q.status || 'active'}
+                              onChange={async (e) => {
+                                const newStatus = e.target.value
+                                try {
+                                  await updateQuotationStatus(q.id!, newStatus)
+                                  setQuotations(prev => prev.map(item => item.id === q.id ? { ...item, status: newStatus } : item))
+                                  toast({ title: 'Quotation status updated' })
+                                } catch {
+                                  toast({ title: 'Failed to update status', variant: 'destructive' })
+                                }
+                              }}
+                              style={{
+                                padding: '6px 10px',
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                background: q.status === 'accepted' ? 'rgba(34,197,94,0.15)' : q.status === 'declined' ? 'rgba(239,68,68,0.15)' : q.status === 'expired' ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'var(--brand-color-light)',
+                                color: q.status === 'accepted' ? '#22c55e' : q.status === 'declined' ? '#ef4444' : q.status === 'expired' ? c.subText : c.brand,
+                                border: 'none',
+                                fontWeight: 700,
+                                borderRadius: 6,
+                                outline: 'none',
+                                width: '100%',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              <option value="active" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Active</option>
+                              <option value="accepted" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Accepted</option>
+                              <option value="declined" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Declined</option>
+                              <option value="expired" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Expired</option>
+                            </select>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => handlePrint(q)} style={{ background: 'none', border: `1px solid ${c.border}`, color: c.subText, cursor: 'pointer', padding: '6px 8px', borderRadius: 6, display: 'flex' }} title="Preview / PDF">
+                              <Eye size={14} />
+                            </button>
+                            <button onClick={() => onEdit(q.id!)} style={{ background: 'none', border: `1px solid ${c.border}`, color: c.subText, cursor: 'pointer', padding: '6px 8px', borderRadius: 6, display: 'flex' }} title="Edit">
+                              <Edit3 size={14} />
+                            </button>
+                            <button onClick={() => { setDeleteId(q.id!); setDeleteNo(q.quotation_no) }} style={{ background: 'none', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer', padding: '6px 8px', borderRadius: 6, display: 'flex' }} title="Delete">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 130px 110px', gap: 8, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    <span>Quotation</span><span>Client</span><span>Amount</span>
+                    <span style={{ textAlign: 'right' }}>Date</span><span>Status</span><span></span>
                   </div>
-                )
-              })}
+                  {paginated.map(q => {
+                    const isExpired = q.valid_until && new Date(q.valid_until + 'T23:59:59') < new Date()
+                    return (
+                      <div
+                        key={q.id}
+                        style={{ display: 'grid', gridTemplateColumns: '110px 1fr 130px 90px 130px 110px', gap: 8, alignItems: 'center', padding: '12px 14px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, marginBottom: 6, transition: 'border-color 0.15s' }}
+                        onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.brand)}
+                        onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.borderColor = c.border)}
+                      >
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, color: c.subText }}>{q.quotation_no}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 500, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.client_name}</div>
+                          {q.client_company && <div style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.client_company}</div>}
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(q.total, q.currency ?? 'LKR')}</span>
+                          {isExpired ? (
+                            <div style={{ fontSize: 10, color: '#ef4444', fontWeight: 600, marginTop: 2 }}>Expired</div>
+                          ) : (
+                            <div style={{ fontSize: 10, color: c.subText, marginTop: 2 }}>Valid to {q.valid_until}</div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{q.quotation_date}</span>
+                        <div>
+                          <select
+                            value={q.status || 'active'}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value
+                              try {
+                                await updateQuotationStatus(q.id!, newStatus)
+                                setQuotations(prev => prev.map(item => item.id === q.id ? { ...item, status: newStatus } : item))
+                                toast({ title: 'Quotation status updated' })
+                              } catch {
+                                toast({ title: 'Failed to update status', variant: 'destructive' })
+                              }
+                            }}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 12,
+                              cursor: 'pointer',
+                              background: q.status === 'accepted' ? 'rgba(34,197,94,0.15)' : q.status === 'declined' ? 'rgba(239,68,68,0.15)' : q.status === 'expired' ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'var(--brand-color-light)',
+                              color: q.status === 'accepted' ? '#22c55e' : q.status === 'declined' ? '#ef4444' : q.status === 'expired' ? c.subText : c.brand,
+                              border: 'none',
+                              fontWeight: 700,
+                              borderRadius: 6,
+                              outline: 'none',
+                              width: '100%',
+                              maxWidth: 110,
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            <option value="active" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Active</option>
+                            <option value="accepted" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Accepted</option>
+                            <option value="declined" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Declined</option>
+                            <option value="expired" style={{ background: isDark ? '#1C1E24' : '#fff', color: c.text }}>Expired</option>
+                          </select>
+                        </div>
+                        <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                          <button onClick={() => handlePrint(q)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Preview / PDF">
+                            <Eye size={14} />
+                          </button>
+                          <button onClick={() => onEdit(q.id!)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Edit">
+                            <Edit3 size={14} />
+                          </button>
+                          <button onClick={() => { setDeleteId(q.id!); setDeleteNo(q.quotation_no) }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Delete">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (

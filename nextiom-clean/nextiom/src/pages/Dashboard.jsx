@@ -675,6 +675,7 @@ function Dashboard({ onLogout }) {
             key={refreshKey} 
             c={c} 
             isDark={isDark} 
+            isMobile={isMobile}
             highlightInvoiceNo={highlightInvoiceNo}
             clearHighlightInvoiceNo={() => setHighlightInvoiceNo(null)}
             onNew={() => setInvoiceView('new')} 

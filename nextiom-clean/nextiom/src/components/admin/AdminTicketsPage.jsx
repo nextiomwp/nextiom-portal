@@ -23,6 +23,32 @@ function fmtTime(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function getTicketCategory(ticket) {
+  if (!ticket) return 'Technical Support';
+  if (ticket.department && ticket.department !== 'Technical Support') {
+    return ticket.department;
+  }
+  const subject = (ticket.subject || '').toLowerCase();
+  const mapping = [
+    { cat: 'Hosting & Servers', keywords: ['hosting', 'vps', 'ssl', 'migration'] },
+    { cat: 'Website & WordPress', keywords: ['website', 'wordpress', 'plugin', 'theme'] },
+    { cat: 'Domains & Email', keywords: ['domain', 'email', 'dns issues'] },
+    { cat: 'SEO & Analytics', keywords: ['seo support', 'analytics setup', 'search console', 'site speed'] },
+    { cat: 'Social Media Support', keywords: ['fake account removal', 'hacked account recovery', 'account verification', 'content removal'] },
+    { cat: 'Business Services', keywords: ['business registration', 'payment gateway', 'virtual number'] },
+    { cat: 'Billing & Requests', keywords: ['service request', 'refund request', 'cancellation', 'general inquiry'] },
+    { cat: 'Development & Apps', keywords: ['app', 'custom development'] },
+  ];
+  for (const item of mapping) {
+    for (const kw of item.keywords) {
+      if (subject.includes(kw)) {
+        return item.cat;
+      }
+    }
+  }
+  return ticket.department || 'Technical Support';
+}
+
 export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1191,7 +1217,23 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
           {/* Chat header */}
           <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: c.card }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject}</span>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: c.brand,
+                  background: isDark ? 'rgba(232,123,53,0.15)' : 'rgba(232,123,53,0.08)',
+                  border: `1px solid ${isDark ? 'rgba(232,123,53,0.3)' : 'rgba(232,123,53,0.15)'}`,
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  display: 'inline-block'
+                }}>
+                  {getTicketCategory(selected)}
+                </span>
+              </div>
               <div style={{ fontSize: 11, color: c.subText }}>
                 {selected.customers?.name} · {selected.customers?.email}
                 {selected.assignee && (

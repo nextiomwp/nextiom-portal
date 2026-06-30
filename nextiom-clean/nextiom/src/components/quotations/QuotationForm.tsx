@@ -26,6 +26,18 @@ interface Props {
 
 export default function QuotationForm({ c, isDark, existing, existingId, onBack }: Props) {
   const { toast } = useToast()
+  const [isMobile, setIsMobile] = useState(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
+  })
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1024px)')
+    const listener = (event: MediaQueryListEvent) => {
+      setIsMobile(event.matches)
+    }
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [])
   const [settings, setSettings] = useState<any>(null)
   const [saving, setSaving] = useState(false)
   const [quotationNo, setQuotationNo] = useState('')
@@ -183,27 +195,27 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '10px 0 40px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: c.subText, fontSize: 13, fontWeight: 600 }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', marginBottom: 20, gap: 12 }}>
+        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, alignSelf: isMobile ? 'flex-start' : 'auto' }}>
           <ArrowLeft size={16} /> Back to List
         </button>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-            <Printer size={16} /> Preview / Save PDF
+        <div style={{ display: 'flex', gap: 10, width: isMobile ? '100%' : 'auto' }}>
+          <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px 16px', border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, flex: isMobile ? 1 : 'none' }}>
+            <Printer size={16} /> {!isMobile ? 'Preview / Save PDF' : 'Preview'}
           </button>
-          <button onClick={() => handleSave(false)} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px', border: 'none', background: c.brand, color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, opacity: saving ? 0.7 : 1 }}>
+          <button onClick={() => handleSave(false)} disabled={saving} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px 20px', border: 'none', background: c.brand, color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, opacity: saving ? 0.7 : 1, flex: isMobile ? 1.5 : 'none' }}>
             <Save size={16} /> {saving ? 'Saving...' : 'Save & Send'}
           </button>
         </div>
       </div>
 
-      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, padding: isMobile ? 16 : 24, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: c.text, marginBottom: 20, borderBottom: `1px solid ${c.border}`, paddingBottom: 12 }}>
           {existing ? `Edit Quotation — ${quotationNo}` : 'New Quotation'}
         </h2>
 
         {/* 1. Header Info */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20, marginBottom: 24 }}>
           <div style={fld}>
             <label style={lbl}>Quotation Number</label>
             <input type="text" value={quotationNo} onChange={e => setQuotationNo(e.target.value)} style={inp} />
@@ -235,7 +247,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
         </div>
 
         {/* 2. Customer details */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24, borderTop: `1px dashed ${c.border}`, paddingTop: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 24, marginBottom: 24, borderTop: `1px dashed ${c.border}`, paddingTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: c.text }}>Quoted To Customer</h3>
             
@@ -279,7 +291,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: c.text }}>Contact Info</h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
               <div style={fld}>
                 <label style={lbl}>Phone Number</label>
                 <input type="text" value={clientPhone} onChange={e => setClientPhone(e.target.value)} style={inp} />
@@ -303,48 +315,113 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {items.map((item, index) => (
-              <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 150px 120px 40px', gap: 12, alignItems: 'center' }}>
-                <input
-                  type="text"
-                  placeholder="Item description..."
-                  value={item.description}
-                  onChange={e => updateItem(index, 'description', e.target.value)}
-                  style={inp}
-                />
-                <input
-                  type="number"
-                  placeholder="Qty"
-                  min="0"
-                  step="any"
-                  value={item.qty}
-                  onChange={e => updateItem(index, 'qty', parseFloat(e.target.value) || 0)}
-                  style={{ ...inp, textAlign: 'center' }}
-                />
-                <input
-                  type="number"
-                  placeholder="Unit Price"
-                  min="0"
-                  step="any"
-                  value={item.unit_price}
-                  onChange={e => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                  style={{ ...inp, textAlign: 'right' }}
-                />
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: c.text, paddingRight: 8 }}>
-                  {fmtCurrency(item.qty * item.unit_price, currency)}
+              isMobile ? (
+                <div key={index} style={{
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+                  border: `1px solid ${c.border}`,
+                  borderRadius: 10,
+                  padding: 12,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10
+                }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={lbl}>Description</label>
+                      <input
+                        type="text"
+                        placeholder="Item description..."
+                        value={item.description}
+                        onChange={e => updateItem(index, 'description', e.target.value)}
+                        style={inp}
+                      />
+                    </div>
+                    <button
+                      onClick={() => removeItem(index)}
+                      disabled={items.length <= 1}
+                      style={{
+                        background: 'rgba(239, 68, 68, 0.1)', border: 'none', cursor: items.length > 1 ? 'pointer' : 'not-allowed',
+                        color: items.length > 1 ? '#ef4444' : c.border, display: 'flex', padding: 8, borderRadius: 6, marginTop: 18
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8 }}>
+                    <div>
+                      <label style={lbl}>Qty</label>
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        min="0"
+                        step="any"
+                        value={item.qty}
+                        onChange={e => updateItem(index, 'qty', parseFloat(e.target.value) || 0)}
+                        style={{ ...inp, textAlign: 'center' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={lbl}>Unit Price</label>
+                      <input
+                        type="number"
+                        placeholder="Unit Price"
+                        min="0"
+                        step="any"
+                        value={item.unit_price}
+                        onChange={e => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                        style={{ ...inp, textAlign: 'right' }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px dashed ${c.border}`, paddingTop: 8 }}>
+                    <span style={{ fontSize: 12, color: c.subText }}>Amount</span>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{fmtCurrency(item.qty * item.unit_price, currency)}</div>
+                  </div>
                 </div>
-                <button
-                  onClick={() => removeItem(index)}
-                  disabled={items.length <= 1}
-                  style={{
-                    background: 'none', border: 'none', cursor: items.length > 1 ? 'pointer' : 'not-allowed',
-                    color: items.length > 1 ? '#ef4444' : c.border, display: 'flex', padding: 8, borderRadius: 6
-                  }}
-                  onMouseEnter={e => { if (items.length > 1) e.currentTarget.style.background = 'rgba(239,68,68,0.1)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+              ) : (
+                <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 150px 120px 40px', gap: 12, alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    placeholder="Item description..."
+                    value={item.description}
+                    onChange={e => updateItem(index, 'description', e.target.value)}
+                    style={inp}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Qty"
+                    min="0"
+                    step="any"
+                    value={item.qty}
+                    onChange={e => updateItem(index, 'qty', parseFloat(e.target.value) || 0)}
+                    style={{ ...inp, textAlign: 'center' }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Unit Price"
+                    min="0"
+                    step="any"
+                    value={item.unit_price}
+                    onChange={e => updateItem(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                    style={{ ...inp, textAlign: 'right' }}
+                  />
+                  <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: c.text, paddingRight: 8 }}>
+                    {fmtCurrency(item.qty * item.unit_price, currency)}
+                  </div>
+                  <button
+                    onClick={() => removeItem(index)}
+                    disabled={items.length <= 1}
+                    style={{
+                      background: 'none', border: 'none', cursor: items.length > 1 ? 'pointer' : 'not-allowed',
+                      color: items.length > 1 ? '#ef4444' : c.border, display: 'flex', padding: 8, borderRadius: 6
+                    }}
+                    onMouseEnter={e => { if (items.length > 1) e.currentTarget.style.background = 'rgba(239,68,68,0.1)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )
             ))}
           </div>
 
@@ -361,7 +438,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
         </div>
 
         {/* 4. Timeline + Notes + Total */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 40, borderTop: `1px solid ${c.border}`, paddingTop: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: isMobile ? 20 : 40, borderTop: `1px solid ${c.border}`, paddingTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={fld}>
               <label style={lbl}>Project Timeline</label>
@@ -385,7 +462,7 @@ export default function QuotationForm({ c, isDark, existing, existingId, onBack 
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', paddingTop: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'flex-start' : 'flex-end', justifyContent: 'flex-start', paddingTop: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: 280, fontSize: 13, color: c.subText, marginBottom: 8 }}>
               <span>Subtotal:</span>
               <span>{fmtCurrency(total, currency)}</span>

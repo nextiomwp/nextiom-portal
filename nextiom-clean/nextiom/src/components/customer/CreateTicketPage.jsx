@@ -125,6 +125,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
   const [subject, setSubject] = useState('');
   const [priority, setPriority] = useState('normal');
   const [message, setMessage] = useState('');
+  const [department, setDepartment] = useState('Technical Support');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const { toast } = useToast();
@@ -166,10 +167,13 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
     message: `I need help with ${label}.\n\nPlease include details below:`,
   });
 
-  const applyAction = (action) => {
+  const applyAction = (action, categoryTitle) => {
     const template = buildActionTemplate(action.label);
     setSubject(template.subject);
     setMessage(template.message);
+    if (categoryTitle) {
+      setDepartment(categoryTitle);
+    }
   };
 
   async function handleSubmit(e) {
@@ -181,7 +185,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
         toast({ title: 'Required', description: 'Please fill in all fields.', variant: 'destructive' });
         return;
       }
-      const ticket = await createTicket(user.id, subject.trim(), priority);
+      const ticket = await createTicket(user.id, subject.trim(), priority, department);
       await addTicketMessage(ticket.id, 'customer', message.trim());
       await addNotification({
         customer_id: null,
@@ -419,7 +423,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => applyAction({ label: 'Technical Support' })}
+                    onClick={() => applyAction({ label: 'Technical Support' }, cat.title)}
                     className="ticket-category-card ticket-special-card"
                     style={{
                       gridColumn: cat.gridSpan || 'span 3',
@@ -509,7 +513,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                         <button
                           key={action.label}
                           type="button"
-                          onClick={() => applyAction(action)}
+                          onClick={() => applyAction(action, cat.title)}
                           className="ticket-category-action-button"
                           style={{
                             border: cat.noOutlineAndInnerColor
