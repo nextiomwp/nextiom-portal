@@ -3,7 +3,8 @@ import {
   Send, Ticket, CheckCircle, ChevronRight, AlertCircle, LockKeyhole, Globe, Mail,
   ArrowLeftRight, CreditCard, BriefcaseBusiness, Package, Paintbrush, Puzzle,
   Phone, Headphones, ReceiptText, CircleX, Info, Wrench, Monitor, Smartphone,
-  Server, Database, ShieldAlert, Code,
+  Server, Database, ShieldAlert, Code, Share2, UserX, ShieldCheck, BadgeCheck, Trash2,
+  TrendingUp, Search, BarChart3, Gauge, MessageSquare,
 } from 'lucide-react';
 import { createTicket, addTicketMessage, addNotification, assertPortalActionsAllowed } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
@@ -14,7 +15,7 @@ const QUICK_ACTION_CATEGORIES = [
     title: 'Hosting & Servers',
     desc: 'Server, hosting, SSL & migration',
     icon: Server,
-    color: '#3b82f6',
+    color: '#FFA95C',
     actions: [
       { label: 'Hosting', icon: Server },
       { label: 'VPS', icon: Database },
@@ -27,7 +28,7 @@ const QUICK_ACTION_CATEGORIES = [
     title: 'Website & WordPress',
     desc: 'Website, WordPress & related tools',
     icon: Monitor,
-    color: '#a855f7',
+    color: '#FFB27F',
     actions: [
       { label: 'Website', icon: Monitor },
       { label: 'WordPress', monogram: 'W' },
@@ -40,7 +41,7 @@ const QUICK_ACTION_CATEGORIES = [
     title: 'Domains & Email',
     desc: 'Domain, email & communication',
     icon: Globe,
-    color: '#0ea5e9',
+    color: '#FFC067',
     actions: [
       { label: 'Domain', icon: Globe },
       { label: 'Email', icon: Mail },
@@ -48,11 +49,37 @@ const QUICK_ACTION_CATEGORIES = [
     ]
   },
   {
+    id: 'seo_analytics',
+    title: 'SEO & Analytics',
+    desc: 'SEO, analytics & performance',
+    icon: TrendingUp,
+    color: '#E2725B',
+    actions: [
+      { label: 'SEO Support', icon: Search },
+      { label: 'Analytics Setup', icon: BarChart3 },
+      { label: 'Search Console', monogram: 'G' },
+      { label: 'Site Speed', icon: Gauge },
+    ]
+  },
+  {
+    id: 'social_media',
+    title: 'Social Media Support',
+    desc: 'Social media account & platform support',
+    icon: MessageSquare,
+    color: '#FF7F50',
+    actions: [
+      { label: 'Fake Account Removal', icon: UserX },
+      { label: 'Hacked Account Recovery', icon: ShieldCheck },
+      { label: 'Account Verification', icon: BadgeCheck },
+      { label: 'Content Removal', icon: Trash2 },
+    ]
+  },
+  {
     id: 'business',
     title: 'Business Services',
     desc: 'Business & professional services',
     icon: BriefcaseBusiness,
-    color: '#10b981',
+    color: '#FFB343',
     actions: [
       { label: 'Business Registration', icon: BriefcaseBusiness },
       { label: 'Payment Gateway', icon: CreditCard },
@@ -64,9 +91,9 @@ const QUICK_ACTION_CATEGORIES = [
     title: 'Billing & Requests',
     desc: 'Billing, requests & account related',
     icon: ReceiptText,
-    color: '#f43f5e',
+    color: '#8E5103',
     actions: [
-      { label: 'Service Request', image: '/self-service - Edited.png' },
+      { label: 'Service Request', icon: Wrench },
       { label: 'Refund Request', icon: ReceiptText },
       { label: 'Cancellation', icon: CircleX },
       { label: 'General Inquiry', icon: Info },
@@ -77,7 +104,7 @@ const QUICK_ACTION_CATEGORIES = [
     title: 'Development & Apps',
     desc: 'Apps, development & technical help',
     icon: Code,
-    color: '#ea580c',
+    color: '#FFA500',
     actions: [
       { label: 'App', icon: Smartphone },
       { label: 'Custom Development', icon: Code },
@@ -86,10 +113,11 @@ const QUICK_ACTION_CATEGORIES = [
   {
     id: 'tech_support',
     title: 'Technical Support',
-    desc: 'Open a ticket',
+    desc: 'General technical issues & troubleshooting',
     icon: Headphones,
-    color: '#ea580c',
+    color: '#E87B35',
     isSpecial: true,
+    gridSpan: 'span 6',
   }
 ];
 
@@ -282,6 +310,26 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           gap: 10px;
           padding: 14px;
         }
+        .actions-grid-4col {
+          grid-template-columns: repeat(4, 1fr);
+        }
+        .actions-grid-3col {
+          grid-template-columns: repeat(3, 1fr);
+        }
+        .actions-grid-2col {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .actions-grid-1col {
+          grid-template-columns: repeat(1, 1fr);
+        }
+        @media (max-width: 1300px) {
+          .actions-grid-4col {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .actions-grid-3col {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
         .ticket-category-action-button {
           min-width: 0;
           min-height: 82px;
@@ -374,7 +422,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                     onClick={() => applyAction({ label: 'Technical Support' })}
                     className="ticket-category-card ticket-special-card"
                     style={{
-                      gridColumn: index < 4 ? 'span 3' : 'span 2',
+                      gridColumn: cat.gridSpan || 'span 3',
                       border: `1px solid ${active ? cat.color : (isDark ? `${cat.color}25` : `${cat.color}1c`)}`,
                       boxShadow: active ? `0 0 14px ${cat.color}1a` : 'none',
                       background: c.card,
@@ -403,19 +451,27 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                   key={cat.id}
                   className="ticket-category-card"
                   style={{
-                    gridColumn: index < 4 ? 'span 3' : 'span 2',
-                    border: `1px solid ${hasActiveAction ? cat.color : (isDark ? `${cat.color}25` : `${cat.color}1c`)}`,
-                    boxShadow: hasActiveAction ? `0 0 14px ${cat.color}1a` : 'none',
-                    background: c.card,
+                    gridColumn: cat.gridSpan || 'span 3',
+                    border: cat.noOutlineAndInnerColor
+                      ? '1px solid transparent'
+                      : `1px solid ${hasActiveAction ? cat.color : (isDark ? `${cat.color}25` : `${cat.color}1c`)}`,
+                    boxShadow: cat.noOutlineAndInnerColor
+                      ? 'none'
+                      : (hasActiveAction ? `0 0 14px ${cat.color}1a` : 'none'),
+                    background: cat.noOutlineAndInnerColor ? 'transparent' : c.card,
                   }}
                 >
                   <div
                     className="ticket-category-header"
                     style={{
-                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                      background: isDark
-                        ? `linear-gradient(135deg, ${cat.color}15, transparent)`
-                        : `linear-gradient(135deg, ${cat.color}08, transparent)`,
+                      borderBottom: cat.noOutlineAndInnerColor
+                        ? '1px solid transparent'
+                        : `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                      background: cat.noOutlineAndInnerColor
+                        ? 'transparent'
+                        : (isDark
+                          ? `linear-gradient(135deg, ${cat.color}15, transparent)`
+                          : `linear-gradient(135deg, ${cat.color}08, transparent)`),
                     }}
                   >
                     <div className="ticket-category-header-left">
@@ -436,13 +492,13 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                   </div>
 
                   <div
-                    className="ticket-category-actions-grid"
-                    style={{
-                      gridTemplateColumns:
-                        cat.id === 'billing' ? 'repeat(2, 1fr)' :
-                        cat.id === 'development' ? 'repeat(1, 1fr)' :
-                        `repeat(${cat.actions.length}, 1fr)`,
-                    }}
+                    className={`ticket-category-actions-grid ${
+                      cat.id === 'billing' ? 'actions-grid-2col' :
+                      cat.id === 'development' ? 'actions-grid-1col' :
+                      cat.actions.length === 4 ? 'actions-grid-4col' :
+                      cat.actions.length === 3 ? 'actions-grid-3col' :
+                      'actions-grid-2col'
+                    }`}
                   >
                     {cat.actions.map(action => {
                       const Icon = action.icon;
@@ -456,10 +512,14 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                           onClick={() => applyAction(action)}
                           className="ticket-category-action-button"
                           style={{
-                            border: `1.5px solid ${active ? cat.color : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)')}`,
-                            background: active
-                              ? (isDark ? `${cat.color}1f` : `${cat.color}12`)
-                              : (isDark ? 'rgba(255,255,255,0.015)' : c.panel2),
+                            border: cat.noOutlineAndInnerColor
+                              ? '1.5px solid transparent'
+                              : `1.5px solid ${active ? cat.color : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)')}`,
+                            background: cat.noOutlineAndInnerColor
+                              ? (active ? (isDark ? `${cat.color}12` : `${cat.color}08`) : 'transparent')
+                              : (active
+                                ? (isDark ? `${cat.color}1f` : `${cat.color}12`)
+                                : (isDark ? 'rgba(255, 255, 255, 0.015)' : c.panel2)),
                             color: active ? cat.color : c.text,
                           }}
                         >
