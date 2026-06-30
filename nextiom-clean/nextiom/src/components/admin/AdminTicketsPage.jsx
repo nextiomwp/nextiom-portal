@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronRight, RefreshCw, AlertCircle, Trash2, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle, ArrowLeftRight } from 'lucide-react';
+import { Ticket, Send, X, CheckCircle, Clock, User, MessageSquare, ChevronLeft, ChevronRight, RefreshCw, AlertCircle, Trash2, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle, ArrowLeftRight } from 'lucide-react';
 import { getAllTickets, getTicketMessages, addTicketMessage, closeTicket, reopenTicket, deleteTicket, addNotification, editTicketMessage, deleteTicketMessage, assignTicket, transferTicket } from '@/lib/storage';
 import LinkPreviewCard from '@/components/shared/LinkPreviewCard';
 import { extractUrls } from '@/lib/linkPreview';
@@ -1147,7 +1147,19 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
   const showList = !isMobile || !selected;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(360px, 26vw) minmax(0, 1fr)', gap: 0, width: '100%', height: isMobile ? 'auto' : 'calc(100vh - 180px)', minHeight: 500, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxSizing: 'border-box' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : 'minmax(360px, 26vw) minmax(0, 1fr)',
+      gap: 0,
+      width: '100%',
+      height: '100%',
+      flex: 1,
+      minHeight: isMobile ? 'auto' : 500,
+      border: `1px solid ${c.border}`,
+      borderRadius: 14,
+      overflow: 'hidden',
+      boxSizing: 'border-box'
+    }}>
       {/* Inbox list */}
       <div style={{ borderRight: isMobile ? 'none' : `1px solid ${c.border}`, display: showList ? 'flex' : 'none', flexDirection: 'column', background: c.card, minHeight: 0 }}>
         <div style={{ padding: '14px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
@@ -1215,7 +1227,24 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       {selected ? (
         <div style={{ display: 'flex', flexDirection: 'column', background: isDark ? '#15161A' : '#f8f8f7', minHeight: 0, gridColumn: isMobile ? '1' : 'auto' }}>
           {/* Chat header */}
-          <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: c.card }}>
+          <div style={{ padding: isMobile ? '10px 12px' : '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, background: c.card }}>
+            {isMobile && (
+              <button
+                onClick={() => setSelected(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: c.subText,
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '4px 6px 4px 0',
+                }}
+                title="Back to list"
+              >
+                <ChevronLeft size={22} style={{ color: c.brand }} />
+              </button>
+            )}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject}</span>
@@ -1241,29 +1270,31 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                 )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: isMobile ? 4 : 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
               {selected.status === 'open' && selected.assignee && (
-                <button onClick={() => setShowTransferModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                  <ArrowLeftRight size={13} /> Transfer
+                <button onClick={() => setShowTransferModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: isMobile ? '5px 8px' : '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: isMobile ? 11 : 12, fontFamily: 'inherit' }}>
+                  <ArrowLeftRight size={isMobile ? 12 : 13} /> Transfer
                 </button>
               )}
               {selected.status === 'open' ? (
-                <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                  <CheckCircle size={13} /> Close Ticket
+                <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: isMobile ? '5px 8px' : '6px 12px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 8, cursor: 'pointer', fontSize: isMobile ? 11 : 12, fontFamily: 'inherit' }}>
+                  <CheckCircle size={isMobile ? 12 : 13} /> {isMobile ? 'Close' : 'Close Ticket'}
                 </button>
               ) : (
                 <>
-                  <button onClick={handleDeleteTicket} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid #ef4444`, background: 'transparent', color: '#ef4444', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                    <Trash2 size={13} /> Delete
+                  <button onClick={handleDeleteTicket} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: isMobile ? '5px 8px' : '6px 12px', border: `1px solid #ef4444`, background: 'transparent', color: '#ef4444', borderRadius: 8, cursor: 'pointer', fontSize: isMobile ? 11 : 12, fontFamily: 'inherit' }}>
+                    <Trash2 size={isMobile ? 12 : 13} /> {!isMobile && 'Delete'}
                   </button>
-                  <button onClick={handleReopen} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', border: `1px solid ${c.brand}`, background: 'transparent', color: c.brand, borderRadius: 8, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}>
-                    <RefreshCw size={13} /> Reopen Ticket
+                  <button onClick={handleReopen} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: isMobile ? '5px 8px' : '6px 12px', border: `1px solid ${c.brand}`, background: 'transparent', color: c.brand, borderRadius: 8, cursor: 'pointer', fontSize: isMobile ? 11 : 12, fontFamily: 'inherit' }}>
+                    <RefreshCw size={isMobile ? 12 : 13} /> {isMobile ? 'Reopen' : 'Reopen Ticket'}
                   </button>
                 </>
               )}
-              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}>
-                <X size={16} />
-              </button>
+              {!isMobile && (
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}>
+                  <X size={16} />
+                </button>
+              )}
             </div>
           </div>
 
@@ -1359,7 +1390,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
               const isEdited = !!msg.edited_at;
               return (
                 <div key={msg.id} style={{ display: 'flex', justifyContent: isAdmin ? 'flex-end' : 'flex-start', flexDirection: 'column', alignItems: isAdmin ? 'flex-end' : 'flex-start' }}>
-                  <div style={{ maxWidth: 'min(860px, 82%)', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
+                  <div style={{ maxWidth: isMobile ? '90%' : 'min(860px, 82%)', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                     <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isAdmin ? 'right' : 'left' }}>
                       {isAdmin ? `You (${msg.sender_name || 'Admin'})` : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
                     </div>
@@ -1562,7 +1593,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', gap: 12, alignItems: 'stretch' }}>
+              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 12, alignItems: isMobile ? 'stretch' : 'stretch' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0 }}>
                   <div style={{
                     display: 'flex', alignItems: 'center', gap: 2, padding: '6px 8px',
@@ -1644,7 +1675,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                         fontSize: 13,
                         minWidth: 0,
                         minHeight: 80,
-                        maxHeight: 500,
+                        maxHeight: isMobile ? 120 : 500,
                         overflowY: 'auto',
                         outline: 'none',
                         whiteSpace: 'pre-wrap',
@@ -1860,10 +1891,12 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: c.subText, background: isDark ? '#15161A' : '#f8f8f7' }}>
-          <Ticket size={40} style={{ opacity: 0.2 }} />
-          <p style={{ fontSize: 13 }}>Select a ticket to view the conversation</p>
-        </div>
+        !isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: c.subText, background: isDark ? '#15161A' : '#f8f8f7' }}>
+            <Ticket size={40} style={{ opacity: 0.2 }} />
+            <p style={{ fontSize: 13 }}>Select a ticket to view the conversation</p>
+          </div>
+        )
       )}
 
       {showLinkModal && (

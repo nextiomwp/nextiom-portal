@@ -1166,7 +1166,14 @@ function Dashboard({ onLogout }) {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '0 16px 20px' : '0 32px 32px' }}>
+        <div style={{
+          flex: 1,
+          overflowY: active === 'logs' ? 'hidden' : 'auto',
+          padding: active === 'logs' ? (isMobile ? '0 16px 16px' : '0 32px 32px') : (isMobile ? '0 16px 20px' : '0 32px 32px'),
+          display: active === 'logs' ? 'flex' : 'block',
+          flexDirection: 'column',
+          minHeight: 0
+        }}>
           {renderContent()}
         </div>
       </div>
