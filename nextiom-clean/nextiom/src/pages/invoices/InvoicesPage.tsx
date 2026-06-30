@@ -128,10 +128,19 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
                 <div>
                   <div style={lbl}>Customer</div>
                   <div style={val}>{invoice.client_name} ({invoice.client_email})</div>
-                  <div style={lbl}>Bank Name</div>
+                  <div style={lbl}>Bank Name / Payment Method</div>
                   <div style={val}>{payment.bank_account_name || '—'}</div>
-                  <div style={lbl}>Transaction ID / Reference</div>
-                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
+                  {payment.bank_account_name === 'Cheque' ? (
+                    <>
+                      <div style={lbl}>Cheque Number</div>
+                      <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
+                    </>
+                  ) : payment.bank_account_name === 'Cash' ? null : (
+                    <>
+                      <div style={lbl}>Transaction ID / Reference</div>
+                      <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const }}>{payment.transaction_id}</div>
+                    </>
+                  )}
                   <div style={lbl}>Paid Amount (This Txn)</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' as const, fontWeight: 700, color: c.brand }}>{fmtCurrency(payment.paid_amount, invoiceCurrency(invoice))}</div>
                   <div style={lbl}>Payment Date</div>

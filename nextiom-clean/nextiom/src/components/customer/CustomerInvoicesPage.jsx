@@ -671,10 +671,19 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
                       <BadgeComponent status="payment_submitted" />
                     )}
                   </div>
-                  <div style={lbl}>Bank Name</div>
+                  <div style={lbl}>Bank Name / Payment Method</div>
                   <div style={val}>{payment.bank_account_name || '—'}</div>
-                  <div style={lbl}>Transaction ID</div>
-                  <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' }}>{payment.transaction_id}</div>
+                  {payment.bank_account_name === 'Cheque' ? (
+                    <>
+                      <div style={lbl}>Cheque Number</div>
+                      <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' }}>{payment.transaction_id}</div>
+                    </>
+                  ) : payment.bank_account_name === 'Cash' ? null : (
+                    <>
+                      <div style={lbl}>Transaction ID</div>
+                      <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace' }}>{payment.transaction_id}</div>
+                    </>
+                  )}
                   <div style={lbl}>Paid Amount</div>
                   <div style={{ ...val, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: c.brand }}>{fmtAmt(payment.paid_amount, invoice.currency)}</div>
                   <div style={lbl}>Payment Date</div>
@@ -731,16 +740,51 @@ function PaymentStatusDialog({ invoice, isDark, c, onClose, onChanged, isMobile 
   );
 }
 
+const BankIcon = ({ size = 16, color = 'currentColor' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="3" y1="22" x2="21" y2="22"></line>
+    <line x1="6" y1="18" x2="6" y2="11"></line>
+    <line x1="10" y1="18" x2="10" y2="11"></line>
+    <line x1="14" y1="18" x2="14" y2="11"></line>
+    <line x1="18" y1="18" x2="18" y2="11"></line>
+    <polygon points="12 2 2 7 22 7"></polygon>
+  </svg>
+);
+
+const CashIcon = ({ size = 16, color = 'currentColor' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+    <circle cx="12" cy="12" r="2"></circle>
+    <path d="M6 12h.01M18 12h.01"></path>
+  </svg>
+);
+
+const ChequeIcon = ({ size = 16, color = 'currentColor' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+    <line x1="2" y1="10" x2="22" y2="10"></line>
+    <line x1="6" y1="14" x2="10" y2="14"></line>
+    <line x1="6" y1="16" x2="14" y2="16"></line>
+  </svg>
+);
+
 function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, isMobile = false }) {
+  const [paymentMethod, setPaymentMethod] = useState(''); // '', 'Bank Transfer', 'Cash', 'Cheque'
   const [txn, setTxn] = useState('');
   const [bankName, setBankName] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef(null);
+  const [chequeNo, setChequeNo] = useState('');
+  const [showMethodDropdown, setShowMethodDropdown] = useState(false);
+  const [showBankDropdown, setShowBankDropdown] = useState(false);
+  const methodDropdownRef = useRef(null);
+  const bankDropdownRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowDropdown(false);
+      if (methodDropdownRef.current && !methodDropdownRef.current.contains(event.target)) {
+        setShowMethodDropdown(false);
+      }
+      if (bankDropdownRef.current && !bankDropdownRef.current.contains(event.target)) {
+        setShowBankDropdown(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -762,15 +806,27 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
   const handleSubmit = async () => {
     try {
       await assertPortalActionsAllowed();
-      if (!bankName.trim()) { setErr('Bank Account Name is required'); return; }
-      if (!txn.trim()) { setErr('Reference Number / Transaction ID is required'); return; }
+      if (!paymentMethod) { setErr('Payment Method is required'); return; }
+
+      if (paymentMethod === 'Bank Transfer') {
+        if (!bankName.trim()) { setErr('Bank Name is required'); return; }
+        if (!txn.trim()) { setErr('Reference Number / Transaction ID is required'); return; }
+      } else if (paymentMethod === 'Cheque') {
+        if (!chequeNo.trim()) { setErr('Cheque Number is required'); return; }
+      }
       if (!amount || Number(amount) <= 0) { setErr('Paid amount is required'); return; }
       if (!payDate) { setErr('Payment date is required'); return; }
       setErr('');
       setSubmitting(true);
+
+      const dbBankName = paymentMethod === 'Bank Transfer' ? bankName.trim() : paymentMethod;
+      const dbTxn = paymentMethod === 'Bank Transfer' 
+        ? txn.trim() 
+        : (paymentMethod === 'Cheque' ? chequeNo.trim() : 'Cash');
+
       await submitInvoicePayment(invoice, {
-        bank_account_name: bankName.trim(),
-        transaction_id: txn.trim(),
+        bank_account_name: dbBankName,
+        transaction_id: dbTxn,
         paid_amount: Number(amount),
         payment_date: payDate,
         notes: notes.trim() || undefined,
@@ -806,64 +862,187 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
         <div style={{ padding: 22, overflowY: 'auto', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 22 }}>
           {/* Left: form */}
           <div>
-            <div style={{ position: 'relative', marginBottom: 14 }} ref={dropdownRef}>
-              <label style={label}>Your Bank Name *</label>
-              <input
-                style={inp}
-                value={bankName}
-                onChange={e => {
-                  setBankName(e.target.value);
-                  setShowDropdown(true);
-                }}
-                onFocus={() => setShowDropdown(true)}
-                placeholder="Type to search bank..."
-              />
-              {showDropdown && (
+            <div style={{ position: 'relative', marginBottom: 14 }} ref={methodDropdownRef}>
+              <label style={label}>Payment Method *</label>
+              <div style={{ position: 'relative' }}>
+                <div
+                  onClick={() => setShowMethodDropdown(!showMethodDropdown)}
+                  style={{
+                    ...inp,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    minHeight: 38,
+                  }}
+                >
+                  {paymentMethod ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 20,
+                        height: 20,
+                        borderRadius: 4,
+                        backgroundColor: paymentMethod === 'Cash' ? 'rgba(34,197,94,0.15)' : (paymentMethod === 'Cheque' ? 'rgba(59,130,246,0.15)' : 'rgba(232,123,53,0.15)'),
+                        color: paymentMethod === 'Cash' ? '#22c55e' : (paymentMethod === 'Cheque' ? '#3b82f6' : c.brand),
+                      }}>
+                        {paymentMethod === 'Cash' ? <CashIcon size={12} /> : (paymentMethod === 'Cheque' ? <ChequeIcon size={12} /> : <BankIcon size={12} />)}
+                      </div>
+                      <span style={{ fontWeight: 600 }}>{paymentMethod}</span>
+                    </div>
+                  ) : (
+                    <span style={{ color: c.subText }}>Select payment method...</span>
+                  )}
+                  <ChevronDown size={16} style={{ color: c.subText }} />
+                </div>
+              </div>
+              {showMethodDropdown && (
                 <div style={{
                   position: 'absolute',
                   top: '100%',
                   left: 0,
                   right: 0,
-                  maxHeight: 180,
-                  overflowY: 'auto',
                   background: isDark ? '#22252C' : '#fff',
                   border: `1.5px solid ${c.border}`,
                   borderRadius: 8,
                   marginTop: 4,
-                  zIndex: 310,
+                  zIndex: 320,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 }}>
-                  {filteredBanks.length > 0 ? (
-                    filteredBanks.map(b => (
-                      <div
-                        key={b}
-                        onClick={() => {
-                          setBankName(b);
-                          setShowDropdown(false);
-                        }}
-                        style={{
-                          padding: '8px 12px',
-                          cursor: 'pointer',
-                          fontSize: 13,
-                          color: c.text,
-                          transition: 'background 0.15s',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        {b}
+                  {[
+                    { name: 'Bank Transfer', desc: 'Pay directly to our bank account', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
+                    { name: 'Cash', desc: 'Pay in cash at our office', icon: <CashIcon size={16} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
+                    { name: 'Cheque', desc: 'Pay by cheque', icon: <ChequeIcon size={16} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+                  ].map(m => (
+                    <div
+                      key={m.name}
+                      onClick={() => {
+                        setPaymentMethod(m.name);
+                        setShowMethodDropdown(false);
+                      }}
+                      style={{
+                        padding: '10px 14px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}
+                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 32,
+                        height: 32,
+                        borderRadius: 6,
+                        backgroundColor: m.bg,
+                        color: m.color,
+                      }}>
+                        {m.icon}
                       </div>
-                    ))
-                  ) : (
-                    <div style={{ padding: '8px 12px', fontSize: 13, color: c.subText }}>No matches found</div>
-                  )}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{m.name}</span>
+                        <span style={{ fontSize: 11, color: c.subText }}>{m.desc}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-            <div style={{ marginBottom: 14 }}>
-              <label style={label}>Reference Number / Transaction ID *</label>
-              <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. Bank/Paypal" />
-            </div>
+
+            {paymentMethod === 'Bank Transfer' && (
+              <>
+                <div style={{ position: 'relative', marginBottom: 14 }} ref={bankDropdownRef}>
+                  <label style={label}>Your Bank Name *</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      style={{ ...inp, paddingRight: 36 }}
+                      value={bankName}
+                      onChange={e => {
+                        setBankName(e.target.value);
+                        setShowBankDropdown(true);
+                      }}
+                      onFocus={() => setShowBankDropdown(true)}
+                      placeholder="Type to search bank..."
+                    />
+                    <div
+                      onClick={() => setShowBankDropdown(!showBankDropdown)}
+                      style={{
+                        position: 'absolute',
+                        right: 12,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        cursor: 'pointer',
+                        color: c.subText,
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
+                  {showBankDropdown && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      maxHeight: 180,
+                      overflowY: 'auto',
+                      background: isDark ? '#22252C' : '#fff',
+                      border: `1.5px solid ${c.border}`,
+                      borderRadius: 8,
+                      marginTop: 4,
+                      zIndex: 310,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}>
+                      {filteredBanks.length > 0 ? (
+                        filteredBanks.map(b => (
+                          <div
+                            key={b}
+                            onClick={() => {
+                              setBankName(b);
+                              setShowBankDropdown(false);
+                            }}
+                            style={{
+                              padding: '8px 12px',
+                              cursor: 'pointer',
+                              fontSize: 13,
+                              color: c.text,
+                              transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6'}
+                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            {b}
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ padding: '8px 12px', fontSize: 13, color: c.subText }}>No matches found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={label}>Reference Number / Transaction ID *</label>
+                  <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="e.g. Bank/Paypal" />
+                </div>
+              </>
+            )}
+
+            {paymentMethod === 'Cheque' && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={label}>Cheque Number *</label>
+                <input style={inp} value={chequeNo} onChange={e => setChequeNo(e.target.value)} placeholder="Enter cheque number..." />
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={label}>Paid Amount ({invoice.currency || 'LKR'}) *</label>
@@ -890,19 +1069,21 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
 
           {/* Right: bank details + summary */}
           <div>
-            <div style={{ background: isDark ? '#22252C' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Our Bank Details</div>
-              {settings ? (
-                <div style={{ fontSize: 13, color: c.text, lineHeight: 1.7 }}>
-                  <div><span style={{ color: c.subText }}>Bank:</span> {settings.bank_name}</div>
-                  <div><span style={{ color: c.subText }}>Branch:</span> {settings.bank_branch}</div>
-                  <div><span style={{ color: c.subText }}>Account Name:</span> {settings.account_name}</div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace' }}><span style={{ color: c.subText, fontFamily: 'inherit' }}>Account #:</span> {settings.account_no}</div>
-                </div>
-              ) : (
-                <div style={{ fontSize: 12, color: c.subText }}>Loading bank details…</div>
-              )}
-            </div>
+            {paymentMethod !== 'Cash' && (
+              <div style={{ background: isDark ? '#22252C' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Our Bank Details</div>
+                {settings ? (
+                  <div style={{ fontSize: 13, color: c.text, lineHeight: 1.7 }}>
+                    <div><span style={{ color: c.subText }}>Bank:</span> {settings.bank_name}</div>
+                    <div><span style={{ color: c.subText }}>Branch:</span> {settings.bank_branch}</div>
+                    <div><span style={{ color: c.subText }}>Account Name:</span> {settings.account_name}</div>
+                    <div style={{ fontFamily: 'JetBrains Mono, monospace' }}><span style={{ color: c.subText, fontFamily: 'inherit' }}>Account #:</span> {settings.account_no}</div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: c.subText }}>Loading bank details…</div>
+                )}
+              </div>
+            )}
             <div style={{ background: isDark ? 'rgba(232,123,53,0.08)' : 'rgba(232,123,53,0.06)', border: `1px solid ${c.brand}40`, borderRadius: 10, padding: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>Invoice Summary</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.text, marginBottom: 4 }}>

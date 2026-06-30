@@ -70,13 +70,28 @@ serve(async (req) => {
 
     // ── Auth (admin only) ─────────────────────────────────────────────────────
     // ── Auth (admin or service role) ──────────────────────────────────────────
-    const token = req.headers.get('Authorization')?.replace('Bearer ', '')
+    const authHeader = req.headers.get('Authorization')
+    const token = authHeader?.replace(/^Bearer\s+/i, '').trim()
     if (!token) return jsonRes({ error: 'Unauthorized' }, 401)
 
+    // Decode token helper to check JWT role
+    const isServiceRoleToken = (jwtToken: string): boolean => {
+      try {
+        const parts = jwtToken.split('.')
+        if (parts.length !== 3) return false
+        const base64Url = parts[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+        const payload = JSON.parse(atob(base64))
+        return payload?.role === 'service_role'
+      } catch {
+        return false
+      }
+    }
+
     let authorized = false
-    if (token === SUPABASE_SERVICE_ROLE_KEY) {
+    if (token === SUPABASE_SERVICE_ROLE_KEY || isServiceRoleToken(token)) {
       authorized = true
-      console.log('[renewal-sms-reminders] Authenticated via service role key');
+      console.log('[renewal-sms-reminders] Authenticated via service role key / token claim');
     } else {
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { persistSession: false },

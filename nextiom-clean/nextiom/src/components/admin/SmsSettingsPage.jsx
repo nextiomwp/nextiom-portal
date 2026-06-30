@@ -620,13 +620,13 @@ export default function SmsSettingsPage({ isDark }) {
       </div>
 
       {/* ── Expiring Services Overview ────────────────────── */}
-      <ExpiringServicesPanel isDark={isDark} c={c} cardStyle={cardStyle} />
+      <ExpiringServicesPanel isDark={isDark} c={c} cardStyle={cardStyle} settings={settings} />
     </form>
   );
 }
 
 // ── Expiring Services overview panel ─────────────────────────────────────────
-function ExpiringServicesPanel({ isDark, c, cardStyle }) {
+function ExpiringServicesPanel({ isDark, c, cardStyle, settings }) {
   const [data, setData] = useState({ domains: [], hostings: [], emails: [], products: [] });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -750,7 +750,7 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${c.border}` }}>
-                {['Customer', 'Service', 'Type', 'Expiry Date', 'Days Left', 'Phone'].map(h => (
+                {['Customer', 'Service', 'Type', 'Expiry Date', 'Days Left', 'Auto Trigger', 'Phone'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -759,6 +759,8 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
               {allItems.map(item => {
                 const days = daysUntil(item.expiry_date);
                 const col = urgencyColor(days);
+                const isAutoTrigger = settings?.sms_enabled && settings?.renewal_reminder && days >= 0 && days <= (settings?.reminder_days ?? 3) && !!item.customers?.phone;
+
                 return (
                   <tr
                     key={item.id + item.serviceType}
@@ -791,6 +793,23 @@ function ExpiringServicesPanel({ isDark, c, cardStyle }) {
                       }}>
                         {days <= 0 ? 'Expired' : `${days}d`}
                       </span>
+                    </td>
+                    <td style={{ padding: '11px 12px' }}>
+                      {isAutoTrigger ? (
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                          background: 'rgba(34,197,94,0.12)', color: '#22c55e'
+                        }}>
+                          Yes
+                        </span>
+                      ) : (
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                          background: 'rgba(100,116,139,0.12)', color: '#64748b'
+                        }}>
+                          No
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: '11px 12px', color: c.subText, fontFamily: 'monospace', fontSize: 12 }}>
                       {item.customers?.phone || <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
