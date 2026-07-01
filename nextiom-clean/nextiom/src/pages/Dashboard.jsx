@@ -143,29 +143,45 @@ const playNotificationSound = () => {
     if (!AudioContext) return;
     const ctx = new AudioContext();
     
-    // Play a beautiful, modern double-tone chime
-    const playTone = (freq, time, duration, volume) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+    const play = () => {
+      // Play a beautiful, modern double-tone chime
+      const playTone = (freq, time, duration, volume) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, time);
+        
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(volume, time + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start(time);
+        osc.stop(time + duration);
+      };
       
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, time);
+      const now = ctx.currentTime;
+      // Premium soft chime sound (C5 then E5)
+      playTone(523.25, now, 0.4, 0.15);
+      playTone(659.25, now + 0.10, 0.5, 0.15);
       
-      gain.gain.setValueAtTime(0, time);
-      gain.gain.linearRampToValueAtTime(volume, time + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.start(time);
-      osc.stop(time + duration);
+      // Close the context to release hardware resources and prevent the maximum contexts limit error
+      setTimeout(() => {
+        ctx.close().catch(() => {});
+      }, 1000);
     };
-    
-    const now = ctx.currentTime;
-    // Premium soft chime sound (C5 then E5)
-    playTone(523.25, now, 0.4, 0.15);
-    playTone(659.25, now + 0.10, 0.5, 0.15);
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(play).catch((err) => {
+        console.warn('Failed to resume AudioContext for notification sound:', err);
+        ctx.close().catch(() => {});
+      });
+    } else {
+      play();
+    }
   } catch (err) {
     console.error('Failed to play notification sound:', err);
   }

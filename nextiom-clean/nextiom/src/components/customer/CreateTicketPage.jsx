@@ -128,6 +128,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
   const [department, setDepartment] = useState('Technical Support');
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+  const [actionSelected, setActionSelected] = useState(false);
   const { toast } = useToast();
 
   const inp = {
@@ -174,6 +175,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
     if (categoryTitle) {
       setDepartment(categoryTitle);
     }
+    setActionSelected(true);
   };
 
   async function handleSubmit(e) {
@@ -214,7 +216,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
             <button
-              onClick={() => { setDone(false); setSubject(''); setMessage(''); setPriority('normal'); }}
+              onClick={() => { setDone(false); setSubject(''); setMessage(''); setPriority('normal'); setActionSelected(false); }}
               style={{ padding: '10px 20px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 10, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
             >
               New Ticket
@@ -573,15 +575,57 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           <span style={{ fontWeight: 700, fontSize: 14, color: c.text }}>New Ticket</span>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18, position: 'relative' }}>
+          {!actionSelected && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: isDark ? 'rgba(28, 30, 36, 0.82)' : 'rgba(255, 255, 255, 0.82)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 24,
+              textAlign: 'center',
+              zIndex: 10,
+              borderRadius: '0 0 16px 16px',
+            }}>
+              <div style={{
+                width: 50,
+                height: 50,
+                borderRadius: '50%',
+                background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 14,
+                color: c.brand,
+                boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.2)' : '0 4px 12px rgba(0,0,0,0.05)',
+              }}>
+                <LockKeyhole size={22} style={{ color: c.brand }} />
+              </div>
+              <h4 style={{ fontSize: 15, fontWeight: 700, color: c.text, marginBottom: 8 }}>Form Locked</h4>
+              <p style={{ fontSize: 12.5, color: c.subText, maxWidth: 260, margin: 0, lineHeight: 1.6 }}>
+                Please select a <strong>Quick Action</strong> on the left to start typing your support ticket.
+              </p>
+            </div>
+          )}
+
           <div>
             <label style={labelS}>Subject</label>
             <input
-              style={inp}
-              placeholder="Briefly describe your issue"
+              style={{
+                ...inp,
+                cursor: !actionSelected ? 'not-allowed' : 'text',
+                opacity: !actionSelected ? 0.6 : 1,
+              }}
+              placeholder={actionSelected ? "Briefly describe your issue" : "Select a Quick Action first"}
               value={subject}
               onChange={e => setSubject(e.target.value)}
               required
+              disabled={!actionSelected}
               onFocus={e => e.target.style.borderColor = c.brand}
               onBlur={e => e.target.style.borderColor = c.border}
             />
@@ -590,9 +634,15 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           <div>
             <label style={labelS}>Priority</label>
             <select
-              style={{ ...inp, appearance: 'none', cursor: 'pointer' }}
+              style={{
+                ...inp,
+                appearance: 'none',
+                cursor: !actionSelected ? 'not-allowed' : 'pointer',
+                opacity: !actionSelected ? 0.6 : 1,
+              }}
               value={priority}
               onChange={e => setPriority(e.target.value)}
+              disabled={!actionSelected}
             >
               <option value="low">Low — General inquiry</option>
               <option value="normal">Normal — Something not working</option>
@@ -603,11 +653,19 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           <div>
             <label style={labelS}>Message</label>
             <textarea
-              style={{ ...inp, minHeight: 160, resize: 'vertical', lineHeight: 1.6 }}
-              placeholder="Describe your issue in detail. Include any error messages or steps to reproduce."
+              style={{
+                ...inp,
+                minHeight: 160,
+                resize: !actionSelected ? 'none' : 'vertical',
+                lineHeight: 1.6,
+                cursor: !actionSelected ? 'not-allowed' : 'text',
+                opacity: !actionSelected ? 0.6 : 1,
+              }}
+              placeholder={actionSelected ? "Describe your issue in detail. Include any error messages or steps to reproduce." : "Select a Quick Action first"}
               value={message}
               onChange={e => setMessage(e.target.value)}
               required
+              disabled={!actionSelected}
               onFocus={e => e.target.style.borderColor = c.brand}
               onBlur={e => e.target.style.borderColor = c.border}
             />
@@ -621,8 +679,23 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
 
           <button
             type="submit"
-            disabled={sending}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 22px', borderRadius: 10, border: 'none', background: c.brand, color: '#fff', fontSize: 14, fontWeight: 700, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1, fontFamily: 'inherit' }}
+            disabled={sending || !actionSelected}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '12px 22px',
+              borderRadius: 10,
+              border: 'none',
+              background: c.brand,
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: (sending || !actionSelected) ? 'not-allowed' : 'pointer',
+              opacity: (sending || !actionSelected) ? 0.6 : 1,
+              fontFamily: 'inherit',
+            }}
           >
             <Send size={15} /> {sending ? 'Submitting…' : 'Submit Ticket'}
           </button>
