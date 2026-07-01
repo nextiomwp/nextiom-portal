@@ -1455,6 +1455,25 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
         <span style={{ color: c.text, fontSize: 13, fontWeight: 600 }}>Customer Details</span>
       </div>
 
+      <style>{`
+        .prof-table-products, .prof-table-hosting, .prof-table-domains, .prof-table-emails, .prof-table-jobs, .prof-table-tickets {
+          display: block;
+        }
+        .prof-cards-products, .prof-cards-hosting, .prof-cards-domains, .prof-cards-emails, .prof-cards-jobs, .prof-cards-tickets {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .prof-table-products, .prof-table-hosting, .prof-table-domains, .prof-table-emails, .prof-table-jobs, .prof-table-tickets {
+            display: none;
+          }
+          .prof-cards-products, .prof-cards-hosting, .prof-cards-domains, .prof-cards-emails, .prof-cards-jobs, .prof-cards-tickets {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+        }
+      `}</style>
       {/* Main Grid: Left content, Right sidebar */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: 20, alignItems: 'start', gridTemplateAreas: isMobile ? 'none' : '"main sidebar"' }}>
         
@@ -1689,7 +1708,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     </select>
                   </div>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="prof-table-products" style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -1748,6 +1767,68 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="prof-cards-products">
+                  {filteredLicenses.map((lic) => {
+                    const pImg = lic.product?.image_url || null;
+                    const type = lic.license_type || lic.product?.license_type || 'one_time';
+                    return (
+                      <div key={lic.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {pImg ? (
+                              <img src={pImg} style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover' }} alt="" />
+                            ) : (
+                              <div style={{ width: 28, height: 28, borderRadius: 4, background: 'var(--brand-color-light)', color: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={14} /></div>
+                            )}
+                            <div>
+                              <span style={{ fontWeight: 600, color: c.text, fontSize: 14 }}>{lic.name}</span>
+                              <div style={{ fontSize: 11, color: c.subText }}>Version: {lic.version || lic.product?.version || '1.0.0'}</div>
+                            </div>
+                          </div>
+                          <StatusBadge status={lic.calculatedStatus} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Type</div>
+                            <div style={{ color: c.text, fontWeight: 500, marginTop: 2, textTransform: 'capitalize' }}>{type.replace('_', ' ')}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Purchase Price</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>Rs. {lic.price?.toLocaleString() || lic.product?.price?.toLocaleString() || '0'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Renewal Price</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>Rs. {lic.renewal_price?.toLocaleString() || lic.product?.renewal_price?.toLocaleString() || '0'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Start Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{lic.start_date ? format(new Date(lic.start_date), 'MMM dd, yyyy') : '—'}</div>
+                          </div>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Expiry Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{lic.expiry_date ? format(new Date(lic.expiry_date), 'MMM dd, yyyy') : '—'}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                          <button onClick={() => setViewingLicense(lic)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View"><Eye size={16} /></button>
+                          <button onClick={() => { setRenewingItem(lic); setRenewingType('license'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={16} /></button>
+                          <button onClick={() => setEditingLicense(lic)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Edit"><Edit size={16} /></button>
+                          <button onClick={async () => {
+                            if (!confirm('Revoke this product license?')) return;
+                            await deleteLicense(lic.id);
+                            toast({ title: 'License revoked' });
+                            loadAll();
+                          }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredLicenses.length === 0 && <div style={emptyS}>No products assigned.</div>}
+                </div>
               </div>
             )}
 
@@ -1767,7 +1848,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <option value="expired">Expired</option>
                   </select>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="prof-table-hosting" style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -1809,6 +1890,54 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="prof-cards-hosting">
+                  {filteredHosting.map((h) => {
+                    const packageLabel = parsePackageSummary(h.package_type).name;
+                    return (
+                      <div key={h.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div>
+                            <span style={{ fontWeight: 600, color: c.text, fontSize: 14 }}>{h.plan_name || packageLabel}</span>
+                          </div>
+                          <StatusBadge status={h.calculatedStatus} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Start Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{safeFormatDate(h.start_date)}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>End Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{safeFormatDate(h.expiry_date)}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Disk Usage</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{h.disk_usage || '—'} / {h.disk_usage_limit || '—'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Bandwidth</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{h.bandwidth_usage || '—'} / {h.bandwidth_limit || '—'}</div>
+                          </div>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Price</div>
+                            <div style={{ color: c.text, marginTop: 2, fontWeight: 600 }}>{formatPrice(h.price)}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                          <button onClick={() => setViewingHosting(h)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View Details"><Eye size={16} /></button>
+                          <button onClick={() => { setRenewingItem(h); setRenewingType('hosting'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={16} /></button>
+                          <button onClick={() => setEditingHosting(h)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={16} /></button>
+                          <button onClick={() => deleteItem('hosting', h.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredHosting.length === 0 && <div style={emptyS}>No hosting packages.</div>}
+                </div>
               </div>
             )}
 
@@ -1827,7 +1956,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <option value="expired">Expired</option>
                   </select>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="prof-table-domains" style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -1871,6 +2000,52 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="prof-cards-domains">
+                  {filteredDomains.map((d) => {
+                    return (
+                      <div key={d.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#3b82f6', fontSize: 14 }}>{d.domain_name}</span>
+                          </div>
+                          <StatusBadge status={d.calculatedStatus} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Start Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{safeFormatDate(d.start_date)}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>End Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{safeFormatDate(d.expiry_date)}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Auto Renewal</div>
+                            <div style={{ color: d.auto_renew ? '#22c55e' : c.subText, fontWeight: 600, marginTop: 2 }}>
+                              {d.auto_renew ? 'Enabled' : 'Disabled'}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Price</div>
+                            <div style={{ color: c.text, marginTop: 2, fontWeight: 600 }}>{formatPrice(d.price)}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                          <button onClick={() => setViewingDomain(d)} style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 4 }} title="View Details"><Eye size={16} /></button>
+                          <button onClick={() => { setRenewingItem(d); setRenewingType('domain'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={16} /></button>
+                          <button onClick={() => setEditingDomain(d)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={16} /></button>
+                          <button onClick={() => sendExpiryReminder('domain', d)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Send Reminder"><Bell size={16} /></button>
+                          <button onClick={() => deleteItem('domain', d.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredDomains.length === 0 && <div style={emptyS}>No domains assigned.</div>}
+                </div>
               </div>
             )}
 
@@ -1889,7 +2064,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="prof-table-emails" style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -1936,6 +2111,52 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="prof-cards-emails">
+                  {filteredEmails.map((e) => {
+                    return (
+                      <div key={e.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div>
+                            <span style={{ fontWeight: 600, color: c.text, fontSize: 14 }}>{e.email}</span>
+                            <div style={{ fontSize: 11, color: c.subText, marginTop: 2 }}>{e.plan_name || e.email_type || 'Starter Email'}</div>
+                          </div>
+                          <StatusBadge status={e.calculatedStatus} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Start Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{e.start_date ? format(new Date(e.start_date), 'MMM dd, yyyy') : '—'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Expiry</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{e.expiry_date ? format(new Date(e.expiry_date), 'MMM dd, yyyy') : '—'}</div>
+                          </div>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Auto Renew</div>
+                            <div style={{ color: e.auto_renew ? '#22c55e' : c.subText, fontWeight: 600, marginTop: 2 }}>
+                              {e.auto_renew ? 'Enabled' : 'Disabled'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                          {(e.email_username || e.email_password) && (
+                            <button onClick={() => setShowEmailCreds(e)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 8px', borderRadius: 6, border: `1px solid ${c.border}`, background: isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3', color: '#ca8a04', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                              <Lock size={11} /> Credentials
+                            </button>
+                          )}
+                          <button onClick={() => { setRenewingItem(e); setRenewingType('email'); }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Renew & Timeline"><RefreshCw size={16} /></button>
+                          <button onClick={() => setEditingEmail(e)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={16} /></button>
+                          <button onClick={() => deleteEmailItem(e.id)} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredEmails.length === 0 && <div style={emptyS}>No email accounts assigned.</div>}
+                </div>
               </div>
             )}
 
@@ -1956,7 +2177,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
-                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <div className="prof-table-jobs" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   <table style={{ width: '100%', minWidth: 900, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                     <thead>
                       <tr>
@@ -2027,6 +2248,59 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     </tbody>
                   </table>
                 </div>
+
+                {/* Mobile Cards View */}
+                <div className="prof-cards-jobs">
+                  {filteredJobs.map((j) => {
+                    const DEFAULT_STEPS = ['Request Submitted','Under Review','Waiting for Customer','Job Created','Design Phase','Development','Testing','Client Review','Completed'];
+                    const steps = Array.isArray(j.timeline_steps) && j.timeline_steps.length > 0 ? j.timeline_steps : DEFAULT_STEPS;
+                    const progressStep = j.progress_step ?? 0;
+                    const pct = Math.round((progressStep / Math.max(1, steps.length - 1)) * 100);
+                    const currentStepLabel = steps[progressStep] || steps[steps.length - 1];
+                    return (
+                      <div key={j.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 600, color: c.brand, fontSize: 14 }}>JOB-{j.id.slice(0, 4).toUpperCase()}</span>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: c.text, marginTop: 2 }}>{j.title}</div>
+                          </div>
+                          <StatusBadge status={j.status} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Priority</div>
+                            <div style={{ color: j.priority === 'Critical' || j.priority === 'High' ? '#f87171' : c.text, fontWeight: 600, marginTop: 2 }}>{j.priority}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Assigned Staff</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{j.assign_to || 'Unassigned'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Due Date</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{j.due_date ? format(new Date(j.due_date), 'MMM dd, yyyy') : '—'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Progress</div>
+                            <div style={{ color: pct === 100 ? '#10b981' : c.text, fontWeight: 700, marginTop: 2 }}>{pct}% ({currentStepLabel})</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                          <button onClick={() => setEditingJob(j)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={16} /></button>
+                          <button onClick={() => handleQuickJobProgress(j)} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Progress"><SlidersIcon size={16} /></button>
+                          <button onClick={async () => {
+                            if (!confirm('Delete this job?')) return;
+                            await deleteJob(j.id);
+                            toast({ title: 'Job deleted' });
+                            loadAll();
+                          }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredJobs.length === 0 && <div style={emptyS}>No jobs found.</div>}
+                </div>
               </div>
             )}
 
@@ -2046,7 +2320,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                     <option value="closed">Closed</option>
                   </select>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
+                <div className="prof-table-tickets" style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -2119,6 +2393,75 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                       {filteredTickets.length === 0 && <tr><td colSpan={9} style={emptyS}>No tickets found.</td></tr>}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="prof-cards-tickets">
+                  {filteredTickets.map((t) => {
+                    const isOverdue = ['open', 'awaiting customer'].includes(String(t.status).toLowerCase()) && 
+                      (String(t.priority).toLowerCase() === 'critical' || 
+                       (t.created_at && (Date.now() - new Date(t.created_at).getTime() > 24 * 3600000)));
+                    return (
+                      <div key={t.id} style={{ background: c.card, border: `1px solid ${isOverdue ? '#ef4444' : c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: isOverdue ? '0 0 10px rgba(239,68,68,0.1)' : 'none' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                          <div>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 600, color: c.brand, fontSize: 13 }}>TKT-{t.id.slice(0, 4).toUpperCase()}</span>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: isOverdue ? '#ef4444' : c.text, marginTop: 2 }}>{t.subject}</div>
+                          </div>
+                          <StatusBadge status={t.status} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Priority</div>
+                            <div style={{ color: ['critical', 'high'].includes(String(t.priority).toLowerCase()) ? '#ef4444' : c.text, fontWeight: 700, marginTop: 2 }}>{t.priority}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Department</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{t.department || 'Technical Support'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Assigned Staff</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>{t.assigned_staff || 'Unassigned'}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Last Reply</div>
+                            <div style={{ color: c.text, marginTop: 2 }}>
+                              {t.last_reply_time ? format(new Date(t.last_reply_time), 'MMM dd, hh:mm a') : format(new Date(t.updated_at || t.created_at), 'MMM dd, hh:mm a')}
+                            </div>
+                          </div>
+                          <div style={{ gridColumn: 'span 2' }}>
+                            <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>SLA</div>
+                            <div style={{ color: c.text, marginTop: 2, fontWeight: 600 }}>{t.response_sla || '24 Hours'}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
+                          {t.status !== 'closed' ? (
+                            <button onClick={async () => {
+                              await closeTicket(t.id);
+                              toast({ title: 'Ticket Closed' });
+                              loadAll();
+                            }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Close Ticket"><Lock size={16} /></button>
+                          ) : (
+                            <button onClick={async () => {
+                              await reopenTicket(t.id);
+                              toast({ title: 'Ticket Reopened' });
+                              loadAll();
+                            }} style={{ background: 'none', border: 'none', color: '#22c55e', cursor: 'pointer', padding: 4 }} title="Reopen Ticket"><RefreshCw size={16} /></button>
+                          )}
+                          <button onClick={() => setEditingTicket(t)} style={{ background: 'none', border: 'none', color: c.brand, cursor: 'pointer', padding: 4 }} title="Quick Edit"><Edit size={16} /></button>
+                          <button onClick={async () => {
+                            if (!confirm('Delete this ticket thread?')) return;
+                            await deleteTicket(t.id);
+                            toast({ title: 'Ticket deleted' });
+                            loadAll();
+                          }} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 4 }} title="Delete"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {filteredTickets.length === 0 && <div style={emptyS}>No tickets found.</div>}
                 </div>
               </div>
             )}

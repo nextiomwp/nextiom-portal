@@ -1066,10 +1066,30 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
         </div>
       )}
 
+      <style>{`
+        .customers-table-wrapper {
+          display: block;
+        }
+        .customers-cards-wrapper {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .customers-table-wrapper {
+            display: none;
+          }
+          .customers-cards-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+          }
+        }
+      `}</style>
+
       {/* Customers Table */}
       <div style={cardS}>
         <SectionHeader title="Customers" accent={c.brand} />
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <div className="customers-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: 36 }} />         {/* checkbox */}
@@ -1217,6 +1237,122 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
               {filteredCustomers.length === 0 && <tr><td colSpan={15} style={emptyS}>No customers found</td></tr>}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="customers-cards-wrapper">
+          {filteredCustomers.map((customer) => {
+            const healthColor = customer.health.startsWith('🟢') ? '#10b981' : customer.health.startsWith('🟡') ? '#f59e0b' : '#ef4444';
+            const healthLabel = customer.health.replace(/^[\p{Emoji}\s]+/u, '');
+            return (
+              <div key={customer.id} style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Header: Checkbox + Initials + Name + Actions */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedCustomerIds.includes(customer.id)}
+                      onChange={e => handleSelectCustomer(customer.id, e.target.checked)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                      onClick={() => setSelectedCustomer(customer)}
+                    >
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                        background: c.brand + '20', color: c.brand,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11, fontWeight: 700
+                      }}>
+                        {getInitials(customer.name)}
+                      </div>
+                      <span style={{ fontWeight: 600, color: c.text }}>{customer.name}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        if (openMenuCustomerId === customer.id) {
+                          setOpenMenuCustomerId(null);
+                        } else {
+                          const spaceBelow = window.innerHeight - rect.bottom;
+                          const openAbove = spaceBelow < 320 && rect.top > spaceBelow;
+                          setOpenMenuCustomerId(customer.id);
+                          setMenuPos({
+                            x: Math.min(rect.right, window.innerWidth - 10),
+                            y: openAbove ? rect.top : rect.bottom,
+                            openAbove
+                          });
+                        }
+                      }}
+                      style={{ background: 'transparent', border: 'none', color: c.subText, cursor: 'pointer', padding: '4px 8px', display: 'inline-flex' }}
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status and Health Badges */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <StatusBadge status={customer.status} />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: healthColor + '15', color: healthColor, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                    {healthLabel}
+                  </span>
+                </div>
+
+                {/* Contact and Join Dates */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '8px 0' }}>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Email</div>
+                    <div style={{ color: c.text, fontWeight: 500, marginTop: 2, wordBreak: 'break-all' }}>{customer.email}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Company</div>
+                    <div style={{ color: c.text, marginTop: 2 }}>{customer.company || '—'}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Joined</div>
+                    <div style={{ color: c.text, marginTop: 2 }}>{new Date(customer.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: c.subText, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>Last Activity</div>
+                    <div style={{ color: c.text, marginTop: 2 }}>{formatLastActivity(customer.lastActivity)}</div>
+                  </div>
+                </div>
+
+                {/* Service Icons Count */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 4, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', padding: '6px 12px', borderRadius: 8, fontSize: 12 }}>
+                  <div title="Products">📦 {customer.productsCount}</div>
+                  <div title="Hosting">🖥 {customer.hostingCount}</div>
+                  <div title="Domains">🌐 {customer.domainsCount}</div>
+                  <div title="Emails">📧 {customer.emailsCount}</div>
+                  <div title="Jobs">💼 {customer.jobsCount}</div>
+                  <div title="Tickets">🎫 {customer.ticketsCount}</div>
+                </div>
+
+                {/* Primary Button Actions */}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
+                  <button
+                    onClick={() => setSelectedCustomer(customer)}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #378add`, background: 'transparent', color: '#378add', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() => handleLoginAsCustomer(customer)}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #8b5cf6`, background: 'transparent', color: '#8b5cf6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Login As
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {filteredCustomers.length === 0 && <div style={emptyS}>No customers found</div>}
         </div>
       </div>
 
