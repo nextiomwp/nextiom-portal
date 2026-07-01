@@ -1069,7 +1069,25 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0 }}>My Tickets</h1>
-          <p style={{ fontSize: 13, color: c.subText, marginTop: 4 }}>Track and communicate with our support team</p>
+          <p style={{ fontSize: 13, color: c.subText, marginTop: 4, marginBottom: 12 }}>Track and communicate with our support team</p>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 14px',
+            background: c.brandLight || 'rgba(232, 123, 53, 0.1)',
+            border: `1px solid ${c.brand}33`,
+            borderRadius: 8,
+            fontSize: 12.5,
+            color: c.brand,
+            fontWeight: 500,
+            lineHeight: 1.4
+          }}>
+            <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: c.brand, animation: 'pulse 2s infinite' }} />
+            <span>
+              <strong>Response Time:</strong> 30 Min – 1 Hr <span style={{ opacity: 0.8 }}>(May take up to 24 Hrs during busy periods)</span>
+            </span>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
           <button onClick={load} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 13px', border: `1px solid ${c.border}`, background: c.card, color: c.subText, borderRadius: 9, cursor: 'pointer', fontSize: 13 }}>
