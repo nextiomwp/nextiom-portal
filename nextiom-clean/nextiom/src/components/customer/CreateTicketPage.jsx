@@ -129,6 +129,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [actionSelected, setActionSelected] = useState(false);
+  const [selectedQuickAction, setSelectedQuickAction] = useState('');
   const { toast } = useToast();
 
   const inp = {
@@ -175,6 +176,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
     if (categoryTitle) {
       setDepartment(categoryTitle);
     }
+    setSelectedQuickAction(action.label);
     setActionSelected(true);
   };
 
@@ -187,7 +189,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
         toast({ title: 'Required', description: 'Please fill in all fields.', variant: 'destructive' });
         return;
       }
-      const ticket = await createTicket(user.id, subject.trim(), priority, department);
+      const ticket = await createTicket(user.id, subject.trim(), priority, department, selectedQuickAction);
       await addTicketMessage(ticket.id, 'customer', message.trim());
       await addNotification({
         customer_id: null,
@@ -216,7 +218,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
           </p>
           <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
             <button
-              onClick={() => { setDone(false); setSubject(''); setMessage(''); setPriority('normal'); setActionSelected(false); }}
+              onClick={() => { setDone(false); setSubject(''); setMessage(''); setPriority('normal'); setActionSelected(false); setSelectedQuickAction(''); }}
               style={{ padding: '10px 20px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 10, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}
             >
               New Ticket

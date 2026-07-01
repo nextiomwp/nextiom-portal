@@ -73,25 +73,47 @@ serve(async (req) => {
   try {
     // ── Auth check — admin only ────────────────────────────────────────────────
     const authHeader = req.headers.get('Authorization')
-    const token = authHeader?.replace('Bearer ', '').trim()
+    const token = authHeader?.replace(/^Bearer\s+/i, '').trim()
     if (!token) {
       console.warn('[send-sms] Missing authorization token');
       return jsonRes({ error: 'Unauthorized: missing token' }, 401)
     }
 
+    const isServiceRoleToken = (jwtToken: string): boolean => {
+      try {
+        const parts = jwtToken.split('.')
+        if (parts.length !== 3) return false
+        const base64Url = parts[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+        const payload = JSON.parse(atob(base64))
+        return payload?.role === 'service_role'
+      } catch {
+        return false
+      }
+    }
+
+    let authorized = false
+    if (token === SUPABASE_SERVICE_ROLE_KEY || isServiceRoleToken(token)) {
+      authorized = true
+      console.log('[send-sms] Authenticated via service role key');
+    } else {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false },
+      })
+      const { data: { user }, error: uErr } = await supabase.auth.getUser(token)
+      if (!uErr && user && user.app_metadata?.role === 'admin') {
+        authorized = true
+        console.log(`[send-sms] Authenticated via admin user: ${user.email}`);
+      }
+    }
+
+    if (!authorized) {
+      return jsonRes({ error: 'Admins or service role only' }, 403)
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false },
     })
-
-    const { data: { user }, error: uErr } = await supabase.auth.getUser(token)
-    if (uErr || !user) {
-      console.error('[send-sms] User auth verification failed:', uErr?.message);
-      return jsonRes({ error: 'Invalid or expired token' }, 401)
-    }
-    if (user.app_metadata?.role !== 'admin') {
-      console.warn(`[send-sms] Unauthorized role access attempt: ${user.app_metadata?.role}`);
-      return jsonRes({ error: 'Admins only' }, 403)
-    }
 
     // ── Parse body ────────────────────────────────────────────────────────────
     let body: any = {}

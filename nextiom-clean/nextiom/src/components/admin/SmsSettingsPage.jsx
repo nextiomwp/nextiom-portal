@@ -118,6 +118,8 @@ export default function SmsSettingsPage({ isDark }) {
     renewal_reminder: true,
     purchase_sms: true,
     reminder_days: 3,
+    ticket_sms: false,
+    ticket_sms_admin_numbers: [],
   });
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -236,6 +238,36 @@ export default function SmsSettingsPage({ isDark }) {
     } finally {
       setReminderRunning(false);
     }
+  };
+
+  const handleAddAdminNumber = () => {
+    const input = document.getElementById('new-admin-number');
+    const val = input?.value?.trim();
+    if (!val) return;
+    
+    // Simple verification (needs to be digits or starts with +)
+    if (!/^\+?[0-9]{9,15}$/.test(val)) {
+      toast({ title: 'Invalid Phone Number', description: 'Please enter a valid phone number format.', variant: 'destructive' });
+      return;
+    }
+
+    if (settings.ticket_sms_admin_numbers?.includes(val)) {
+      toast({ title: 'Duplicate Number', description: 'This number is already in the list.', variant: 'destructive' });
+      return;
+    }
+
+    setSettings(s => ({
+      ...s,
+      ticket_sms_admin_numbers: [...(s.ticket_sms_admin_numbers || []), val]
+    }));
+    if (input) input.value = '';
+  };
+
+  const handleRemoveAdminNumber = (numToRemove) => {
+    setSettings(s => ({
+      ...s,
+      ticket_sms_admin_numbers: (s.ticket_sms_admin_numbers || []).filter(n => n !== numToRemove)
+    }));
   };
 
   const inputStyle = {
@@ -424,6 +456,99 @@ export default function SmsSettingsPage({ isDark }) {
                 <span style={{ fontSize: 13, color: c.subText }}>days before expiry</span>
               </div>
             </div>
+          </div>
+
+          {/* Ticket SMS Notifications Card */}
+          <div className="sms-card" style={cardStyle}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <MessageSquare size={16} style={{ color: c.brand }} />
+              Ticket SMS Settings
+            </h2>
+            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 4px 0' }}>
+              Enable or disable SMS alerts for ticket creation.
+            </p>
+
+            <SettingRow
+              id="sms-ticket-toggle"
+              label="Enable Ticket SMS"
+              description="Notify admin users via SMS when a customer creates a ticket."
+              value={settings.ticket_sms}
+              onChange={v => setSettings(s => ({ ...s, ticket_sms: v }))}
+              disabled={!settings.sms_enabled}
+              c={c}
+            />
+
+            {settings.ticket_sms && (
+              <div style={{ marginTop: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>
+                  Admin Phone Numbers to Notify
+                </label>
+                
+                {/* Input row */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <input
+                    type="tel"
+                    id="new-admin-number"
+                    placeholder="e.g. +94771234567"
+                    style={{ ...inputStyle, flex: 1 }}
+                    onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
+                    onBlur={e => e.target.style.borderColor = c.inputBorder}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddAdminNumber();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddAdminNumber}
+                    style={{
+                      padding: '0 16px', borderRadius: 10, border: 'none',
+                      background: 'var(--brand-color)', color: '#fff',
+                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {/* List of numbers */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {(settings.ticket_sms_admin_numbers || []).length === 0 ? (
+                    <span style={{ fontSize: 12, color: c.subText, fontStyle: 'italic' }}>
+                      No numbers added yet. Adding numbers is required.
+                    </span>
+                  ) : (
+                    (settings.ticket_sms_admin_numbers || []).map((num, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: c.hover, border: `1px solid ${c.border}`,
+                          padding: '4px 10px', borderRadius: 8, fontSize: 12, color: c.text
+                        }}
+                      >
+                        <span style={{ fontFamily: 'monospace' }}>{num}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdminNumber(num)}
+                          style={{
+                            background: 'none', border: 'none', color: '#ef4444',
+                            cursor: 'pointer', padding: 0, fontSize: 14, fontWeight: 'bold',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: 16, height: 16
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
