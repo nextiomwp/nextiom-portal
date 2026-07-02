@@ -5,7 +5,7 @@ import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
-  CreditCard, FileText, Info, Briefcase, Megaphone, Search
+  CreditCard, FileText, Info, Briefcase, Megaphone, Search, BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -28,6 +28,7 @@ import CustomerInvoicesPage from '@/components/customer/CustomerInvoicesPage';
 import CustomerQuotationsPage from '@/components/customer/CustomerQuotationsPage';
 import CreateTicketPage from '@/components/customer/CreateTicketPage';
 import MyTicketsPage from '@/components/customer/MyTicketsPage';
+import KnowledgebasePage from '@/components/customer/KnowledgebasePage';
 import PortalRestrictionBanner from '@/components/customer/PortalRestrictionBanner';
 import { usePortalRestriction } from '@/hooks/usePortalRestriction';
 import useDisableRightClick from '@/hooks/useDisableRightClick';
@@ -184,6 +185,7 @@ const NAV_STRUCTURE = [
     ],
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
+  { id: 'knowledgebase', label: 'Knowledgebase', icon: BookOpen, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
@@ -215,7 +217,7 @@ function getGreeting() {
   return 'Good morning';
 }
 
-const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements'];
+const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
 
 function CustomerDashboard() {
   useDisableRightClick();
@@ -781,6 +783,7 @@ function CustomerDashboard() {
         {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
         {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}
         {mountedTabs.has('agreements') && wrap('agreements', <CustomerAgreementManagement user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('knowledgebase') && wrap('knowledgebase', <KnowledgebasePage isDark={isDark} c={c} />)}
       </>
     );
   };
