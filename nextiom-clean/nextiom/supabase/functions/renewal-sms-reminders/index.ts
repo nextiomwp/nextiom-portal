@@ -146,170 +146,266 @@ serve(async (req) => {
     }
 
     if (!settings?.sms_enabled) return jsonRes({ skipped: true, reason: 'SMS disabled in settings' })
-    if (!settings?.renewal_reminder) return jsonRes({ skipped: true, reason: 'Renewal reminders disabled in settings' })
-
-    const reminderDays = settings.reminder_days ?? 3
-    console.log(`[renewal-sms-reminders] reminderDays=${reminderDays}, forceRun=${forceRun}`);
 
     // Use a clean UTC "today" baseline for consistent comparison
     const nowUtc = new Date()
     const todayMs = Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate())
 
-    // ── Fetch active domains ──────────────────────────────────────────────────
-    const { data: domains } = await supabase
-      .from('domain_requests')
-      .select('id, customer_id, domain_name, expiry_date, customers(name, phone)')
-      .in('status', ['approved', 'active', 'completed'])
-      .not('expiry_date', 'is', null)
-
-    // ── Fetch active hosting packages ─────────────────────────────────────────
-    const { data: hostings } = await supabase
-      .from('hosting_requests')
-      .select('id, customer_id, plan_name, expiry_date, customers(name, phone)')
-      .in('status', ['approved', 'active', 'completed'])
-      .not('expiry_date', 'is', null)
-
-    // ── Fetch active email accounts ───────────────────────────────────────────
-    const { data: emails } = await supabase
-      .from('email_requests')
-      .select('id, customer_id, email, expiry_date, customers(name, phone)')
-      .in('status', ['approved', 'active', 'completed'])
-      .not('expiry_date', 'is', null)
-
-    // ── Fetch active product licenses (yearly/monthly only) ───────────────────
-    const { data: licenses } = await supabase
-      .from('licenses')
-      .select('id, customer_id, expiry_date, license_type, products(name), customers(name, phone)')
-      .in('license_type', ['yearly', 'monthly'])
-      .not('expiry_date', 'is', null)
-      .neq('status', 'Disabled')
-      .neq('status', 'Suspended')
-      .neq('status', 'Expired')
-
-    console.log(`[renewal-sms-reminders] Found: ${domains?.length ?? 0} domains, ${hostings?.length ?? 0} hostings, ${emails?.length ?? 0} emails, ${licenses?.length ?? 0} product licenses`);
-
     const sent: string[] = []
     const failed: string[] = []
 
-    type ServiceItem = {
-      id: string
-      customer_id: string
-      label: string
-      expiry_date: string
-      customers: { name: string; phone: string } | null
-      logType: string
-    }
+    // ── Run renewal reminders if enabled ─────────────────────────────────────
+    if (settings.renewal_reminder) {
+      const reminderDays = settings.reminder_days ?? 3
+      console.log(`[renewal-sms-reminders] reminderDays=${reminderDays}, forceRun=${forceRun}`);
 
-    // Check if a service expires within the reminder window (0 to reminderDays inclusive)
-    const isExpiringSoon = (expiryStr: string): boolean => {
-      // Parse just the date portion (YYYY-MM-DD) to avoid timezone shifts
-      const parts = expiryStr.substring(0, 10).split('-')
-      const expMs = Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
-      const diffDays = Math.round((expMs - todayMs) / (1000 * 60 * 60 * 24))
-      console.log(`[renewal-sms-reminders] expiry=${expiryStr}, diffDays=${diffDays}, inWindow=${diffDays >= 0 && diffDays <= reminderDays}`);
-      return diffDays >= 0 && diffDays <= reminderDays
-    }
+      // ── Fetch active domains ──────────────────────────────────────────────────
+      const { data: domains } = await supabase
+        .from('domain_requests')
+        .select('id, customer_id, domain_name, expiry_date, customers(name, phone)')
+        .in('status', ['approved', 'active', 'completed'])
+        .not('expiry_date', 'is', null)
 
-    const items: ServiceItem[] = [
-      ...(domains || []).map((d: any) => ({
-        id: d.id,
-        customer_id: d.customer_id,
-        label: `domain "${d.domain_name}"`,
-        expiry_date: d.expiry_date,
-        customers: d.customers,
-        logType: 'renewal_reminder_domain',
-      })),
-      ...(hostings || []).map((h: any) => ({
-        id: h.id,
-        customer_id: h.customer_id,
-        label: `hosting plan "${h.plan_name || 'your plan'}"`,
-        expiry_date: h.expiry_date,
-        customers: h.customers,
-        logType: 'renewal_reminder_hosting',
-      })),
-      ...(emails || []).map((e: any) => ({
-        id: e.id,
-        customer_id: e.customer_id,
-        label: `email account "${e.email || 'your email'}"`,
-        expiry_date: e.expiry_date,
-        customers: e.customers,
-        logType: 'renewal_reminder_email',
-      })),
-      ...(licenses || []).map((l: any) => ({
-        id: l.id,
-        customer_id: l.customer_id,
-        label: `product license "${l.products?.name || 'your product'}"`,
-        expiry_date: l.expiry_date,
-        customers: l.customers,
-        logType: 'renewal_reminder_product',
-      })),
-    ]
+      // ── Fetch active hosting packages ─────────────────────────────────────────
+      const { data: hostings } = await supabase
+        .from('hosting_requests')
+        .select('id, customer_id, plan_name, expiry_date, customers(name, phone)')
+        .in('status', ['approved', 'active', 'completed'])
+        .not('expiry_date', 'is', null)
 
-    // Load recently-sent reminders to avoid duplicates within 24h
-    // When force=true (manual trigger from admin), skip the dedup check entirely
-    let alreadySent = new Set<string>()
-    if (!forceRun) {
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      const { data: recentLogs } = await supabase
-        .from('sms_logs')
-        .select('customer_id, type')
-        .in('type', ['renewal_reminder_domain', 'renewal_reminder_hosting', 'renewal_reminder_email', 'renewal_reminder_product'])
-        .gte('sent_at', twentyFourHoursAgo)
-      alreadySent = new Set((recentLogs || []).map(r => `${r.customer_id}:${r.type}`))
-      console.log(`[renewal-sms-reminders] Dedup: ${alreadySent.size} recent sends found`);
-    } else {
-      console.log('[renewal-sms-reminders] Force mode — skipping dedup check');
-    }
+      // ── Fetch active email accounts ───────────────────────────────────────────
+      const { data: emails } = await supabase
+        .from('email_requests')
+        .select('id, customer_id, email, expiry_date, customers(name, phone)')
+        .in('status', ['approved', 'active', 'completed'])
+        .not('expiry_date', 'is', null)
 
-    for (const item of items) {
-      if (!isExpiringSoon(item.expiry_date)) {
-        continue
-      }
-      const phone = item.customers?.phone
-      if (!phone) {
-        console.log(`[renewal-sms-reminders] Skipping ${item.label}: no phone number`);
-        continue
+      // ── Fetch active product licenses (yearly/monthly only) ───────────────────
+      const { data: licenses } = await supabase
+        .from('licenses')
+        .select('id, customer_id, expiry_date, license_type, products(name), customers(name, phone)')
+        .in('license_type', ['yearly', 'monthly'])
+        .not('expiry_date', 'is', null)
+        .neq('status', 'Disabled')
+        .neq('status', 'Suspended')
+        .neq('status', 'Expired')
+
+      console.log(`[renewal-sms-reminders] Found: ${domains?.length ?? 0} domains, ${hostings?.length ?? 0} hostings, ${emails?.length ?? 0} emails, ${licenses?.length ?? 0} product licenses`);
+
+      type ServiceItem = {
+        id: string
+        customer_id: string
+        label: string
+        expiry_date: string
+        customers: { name: string; phone: string } | null
+        logType: string
       }
 
-      // Skip if a reminder was already sent to this customer+service in the last 24h
-      if (alreadySent.has(`${item.customer_id}:${item.logType}`)) {
-        console.log(`[renewal-sms-reminders] Skipping ${item.label} for ${item.customers?.name}: already sent within 24h`);
-        continue
+      // Check if a service expires within the reminder window (0 to reminderDays inclusive)
+      const isExpiringSoon = (expiryStr: string): boolean => {
+        const parts = expiryStr.substring(0, 10).split('-')
+        const expMs = Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+        const diffDays = Math.round((expMs - todayMs) / (1000 * 60 * 60 * 24))
+        console.log(`[renewal-sms-reminders] expiry=${expiryStr}, diffDays=${diffDays}, inWindow=${diffDays >= 0 && diffDays <= reminderDays}`);
+        return diffDays >= 0 && diffDays <= reminderDays
       }
 
-      const customerName = item.customers?.name || 'Valued Customer'
-      const exp = new Date(item.expiry_date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-      const expParts = item.expiry_date.substring(0, 10).split('-')
-      const expMs = Date.UTC(Number(expParts[0]), Number(expParts[1]) - 1, Number(expParts[2]))
-      const expDiff = Math.round((expMs - todayMs) / (1000 * 60 * 60 * 24))
+      const items: ServiceItem[] = [
+        ...(domains || []).map((d: any) => ({
+          id: d.id,
+          customer_id: d.customer_id,
+          label: `domain "${d.domain_name}"`,
+          expiry_date: d.expiry_date,
+          customers: d.customers,
+          logType: 'renewal_reminder_domain',
+        })),
+        ...(hostings || []).map((h: any) => ({
+          id: h.id,
+          customer_id: h.customer_id,
+          label: `hosting plan "${h.plan_name || 'your plan'}"`,
+          expiry_date: h.expiry_date,
+          customers: h.customers,
+          logType: 'renewal_reminder_hosting',
+        })),
+        ...(emails || []).map((e: any) => ({
+          id: e.id,
+          customer_id: e.customer_id,
+          label: `email account "${e.email || 'your email'}"`,
+          expiry_date: e.expiry_date,
+          customers: e.customers,
+          logType: 'renewal_reminder_email',
+        })),
+        ...(licenses || []).map((l: any) => ({
+          id: l.id,
+          customer_id: l.customer_id,
+          label: `product license "${l.products?.name || 'your product'}"`,
+          expiry_date: l.expiry_date,
+          customers: l.customers,
+          logType: 'renewal_reminder_product',
+        })),
+      ]
 
-      const message =
-        `Dear ${customerName}, your ${item.label} with Nextiom is expiring on ${exp} ` +
-        `(${expDiff} day${expDiff === 1 ? '' : 's'} remaining). Please log in to your portal to renew and avoid service interruption. ` +
-        `Visit: portal.nextiom.com`
+      // Load recently-sent reminders to avoid duplicates within 24h
+      let alreadySent = new Set<string>()
+      if (!forceRun) {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        const { data: recentLogs } = await supabase
+          .from('sms_logs')
+          .select('customer_id, type')
+          .in('type', ['renewal_reminder_domain', 'renewal_reminder_hosting', 'renewal_reminder_email', 'renewal_reminder_product'])
+          .gte('sent_at', twentyFourHoursAgo)
+        alreadySent = new Set((recentLogs || []).map(r => `${r.customer_id}:${r.type}`))
+        console.log(`[renewal-sms-reminders] Dedup: ${alreadySent.size} recent sends found`);
+      } else {
+        console.log('[renewal-sms-reminders] Force mode — skipping dedup check');
+      }
 
-      const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
+      for (const item of items) {
+        if (!isExpiringSoon(item.expiry_date)) {
+          continue
+        }
+        const phone = item.customers?.phone
+        if (!phone) {
+          console.log(`[renewal-sms-reminders] Skipping ${item.label}: no phone number`);
+          continue
+        }
 
-      const status = ok ? 'sent' : 'failed'
-      await supabase.from('sms_logs').insert({
-        customer_id: item.customer_id,
-        phone,
-        message,
-        type: item.logType,
-        status,
-        provider_ref: providerRes?.data?.uid || null,
-        error_msg: ok ? null : (providerRes?.message || providerRes?.error || 'Provider error'),
-      })
+        if (alreadySent.has(`${item.customer_id}:${item.logType}`)) {
+          console.log(`[renewal-sms-reminders] Skipping ${item.label} for ${item.customers?.name}: already sent within 24h`);
+          continue
+        }
 
-      if (ok) sent.push(item.id)
-      else failed.push(item.id)
+        const customerName = item.customers?.name || 'Valued Customer'
+        const exp = new Date(item.expiry_date).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+        const expParts = item.expiry_date.substring(0, 10).split('-')
+        const expMs = Date.UTC(Number(expParts[0]), Number(expParts[1]) - 1, Number(expParts[2]))
+        const expDiff = Math.round((expMs - todayMs) / (1000 * 60 * 60 * 24))
+
+        const message =
+          `Dear ${customerName}, your ${item.label} with Nextiom is expiring on ${exp} ` +
+          `(${expDiff} day${expDiff === 1 ? '' : 's'} remaining). Please log in to your portal to renew and avoid service interruption. ` +
+          `Visit: portal.nextiom.com`
+
+        const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
+
+        const status = ok ? 'sent' : 'failed'
+        await supabase.from('sms_logs').insert({
+          customer_id: item.customer_id,
+          phone,
+          message,
+          type: item.logType,
+          status,
+          provider_ref: providerRes?.data?.uid || null,
+          error_msg: ok ? null : (providerRes?.message || providerRes?.error || 'Provider error'),
+        })
+
+        if (ok) sent.push(item.id)
+        else failed.push(item.id)
+      }
     }
 
-    return jsonRes({ success: true, sent: sent.length, failed: failed.length })
+    // ── Run invoice reminders if enabled ─────────────────────────────────────
+    let invoiceSentCount = 0
+    let invoiceFailedCount = 0
+
+    if (settings.invoice_sms) {
+      const invoiceReminderDays = 3
+      console.log(`[renewal-sms-reminders] Running invoice reminders check: invoiceReminderDays=${invoiceReminderDays}, forceRun=${forceRun}`);
+      
+      const { data: invoices, error: invError } = await supabase
+        .from('invoices')
+        .select('id, user_id, invoice_no, client_email, client_name, client_phone, total, currency, due_date, status')
+        .in('status', ['unpaid', 'overdue', 'partially_paid'])
+        .is('deleted_at', null)
+        .not('due_date', 'is', null)
+
+      if (invError) {
+        console.error('[renewal-sms-reminders] Error fetching invoices:', invError);
+      } else if (invoices && invoices.length > 0) {
+        const { data: customers } = await supabase
+          .from('customers')
+          .select('id, email, phone, name')
+
+        const customerMap = new Map()
+        if (customers) {
+          for (const c of customers) {
+            if (c.email) customerMap.set(c.email.toLowerCase(), c)
+          }
+        }
+
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        const { data: recentLogs } = await supabase
+          .from('sms_logs')
+          .select('customer_id, type, message')
+          .in('type', ['invoice_reminder', 'invoice_overdue'])
+          .gte('sent_at', twentyFourHoursAgo)
+
+        for (const invoice of invoices) {
+          const emailKey = invoice.client_email ? invoice.client_email.toLowerCase() : ''
+          const customer = customerMap.get(emailKey)
+          const customerId = customer?.id || null
+          const customerName = invoice.client_name || customer?.name || 'Customer'
+          const phone = invoice.client_phone || customer?.phone
+
+          if (!phone) {
+            console.log(`[renewal-sms-reminders] Skipping invoice ${invoice.invoice_no}: no phone number`);
+            continue
+          }
+
+          const parts = invoice.due_date.substring(0, 10).split('-')
+          const dueMs = Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+          const diffDays = Math.round((dueMs - todayMs) / (1000 * 60 * 60 * 24))
+
+          let expectedType = ''
+          let message = ''
+
+          if (diffDays === invoiceReminderDays) {
+            expectedType = 'invoice_reminder'
+            message = `Dear ${customerName}, your invoice ${invoice.invoice_no} of ${invoice.total} ${invoice.currency} is due in ${invoiceReminderDays} days (due on ${invoice.due_date}). Please log in to your portal to settle the payment. – Team Nextiom`
+          } else if (diffDays === 0) {
+            expectedType = 'invoice_overdue'
+            message = `Dear ${customerName}, your invoice ${invoice.invoice_no} of ${invoice.total} ${invoice.currency} is due today (${invoice.due_date}). Please log in to your portal to complete the payment. – Team Nextiom`
+          }
+
+          if (!expectedType || !message) {
+            continue
+          }
+
+          const alreadySentSms = (recentLogs || []).some(log => 
+            log.type === expectedType && 
+            log.customer_id === customerId && 
+            log.message.includes(invoice.invoice_no)
+          )
+
+          if (alreadySentSms && !forceRun) {
+            console.log(`[renewal-sms-reminders] Skipping invoice ${invoice.invoice_no}: ${expectedType} already sent within 24h`);
+            continue
+          }
+
+          const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
+          const status = ok ? 'sent' : 'failed'
+
+          await supabase.from('sms_logs').insert({
+            customer_id: customerId,
+            phone,
+            message,
+            type: expectedType,
+            status,
+            provider_ref: providerRes?.data?.uid || null,
+            error_msg: ok ? null : (providerRes?.message || providerRes?.error || 'Provider error'),
+          })
+
+          if (ok) invoiceSentCount++
+          else invoiceFailedCount++
+        }
+      }
+    }
+
+    return jsonRes({ success: true, sent: sent.length + invoiceSentCount, failed: failed.length + invoiceFailedCount })
   } catch (err) {
     console.error('renewal-sms-reminders error:', err)
     return jsonRes({ error: err.message || 'Internal error' }, 500)

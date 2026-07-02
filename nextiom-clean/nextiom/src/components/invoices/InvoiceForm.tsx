@@ -244,6 +244,28 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
               title: `New invoice — ${invoiceNo}`,
               message: notificationMsg,
             }).catch(() => {})
+
+            // Send SMS if enabled
+            try {
+              const { getSmsSettings, sendSms } = await import('@/lib/sms')
+              const smsSettings = await getSmsSettings()
+              if (smsSettings?.sms_enabled && smsSettings?.invoice_sms) {
+                const targetPhone = clientPhone?.trim() || customer.phone
+                if (targetPhone) {
+                  const smsMsg = `Dear ${clientName || 'Customer'}, a new invoice (${invoiceNo}) has been created for ${fmtCurrency(total, currency)}.` +
+                    (hasDueDate && dueDate ? ` Due date: ${dueDate}.` : '') +
+                    ` Please log in to your Nextiom portal to view and pay. – Team Nextiom`
+                  await sendSms({
+                    phone: targetPhone,
+                    message: smsMsg,
+                    type: 'invoice_created',
+                    customerId: customer.id
+                  })
+                }
+              }
+            } catch (smsErr) {
+              console.error('Failed to send invoice creation SMS:', smsErr)
+            }
           }
         }
       }

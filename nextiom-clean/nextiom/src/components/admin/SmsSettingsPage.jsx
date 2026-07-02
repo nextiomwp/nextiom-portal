@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   MessageSquare, Save, RefreshCw, Loader2, Send, CheckCircle2, XCircle,
-  Bell, Clock, Smartphone, AlertCircle,
+  Bell, Clock, Smartphone, AlertCircle, FileText,
   History, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { getSmsSettings, saveSmsSettings, getSmsLogs, sendSms, triggerRenewalReminders } from '@/lib/sms';
@@ -81,6 +81,9 @@ const TYPE_LABELS = {
   purchase: 'Purchase',
   otp: 'OTP',
   manual: 'Manual',
+  invoice_created: 'Invoice Created',
+  invoice_reminder: 'Invoice Reminder',
+  invoice_overdue: 'Invoice Overdue',
 };
 function TypeBadge({ type }) {
   const label = TYPE_LABELS[type] || type;
@@ -92,6 +95,9 @@ function TypeBadge({ type }) {
     purchase: { bg: 'rgba(168,85,247,0.13)', color: '#a855f7' },
     otp: { bg: 'rgba(249,115,22,0.13)', color: '#f97316' },
     manual: { bg: 'rgba(100,116,139,0.13)', color: '#64748b' },
+    invoice_created: { bg: 'rgba(37,99,235,0.13)', color: '#2563eb' },
+    invoice_reminder: { bg: 'rgba(217,119,6,0.13)', color: '#d97706' },
+    invoice_overdue: { bg: 'rgba(220,38,38,0.13)', color: '#dc2626' },
   };
   const s = colors[type] || { bg: 'rgba(100,116,139,0.13)', color: '#64748b' };
   return (
@@ -120,6 +126,8 @@ export default function SmsSettingsPage({ isDark }) {
     reminder_days: 3,
     ticket_sms: false,
     ticket_sms_admin_numbers: [],
+    invoice_sms: false,
+    invoice_reminder_days: 2,
   });
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -411,6 +419,15 @@ export default function SmsSettingsPage({ isDark }) {
               description="Send a thank-you message when hosting/domain/email or license is activated."
               value={settings.purchase_sms}
               onChange={v => setSettings(s => ({ ...s, purchase_sms: v }))}
+              disabled={!settings.sms_enabled}
+              c={c}
+            />
+            <SettingRow
+              id="sms-invoice-reminder"
+              label="Invoice Reminders"
+              description="Send an SMS to customers when invoices are created, 3 days before they are overdue, and on the overdue date."
+              value={settings.invoice_sms}
+              onChange={v => setSettings(s => ({ ...s, invoice_sms: v }))}
               disabled={!settings.sms_enabled}
               c={c}
             />
@@ -744,6 +761,9 @@ export default function SmsSettingsPage({ isDark }) {
         )}
       </div>
 
+      {/* ── Invoice SMS Settings & Reminders Area ─────────── */}
+      <InvoiceRemindersPanel isDark={isDark} c={c} cardStyle={cardStyle} settings={settings} setSettings={setSettings} />
+
       {/* ── Expiring Services Overview ────────────────────── */}
       <ExpiringServicesPanel isDark={isDark} c={c} cardStyle={cardStyle} settings={settings} />
     </form>
@@ -944,6 +964,170 @@ function ExpiringServicesPanel({ isDark, c, cardStyle, settings }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Invoice SMS Settings & Reminders panel ───────────────────────────────────
+function InvoiceRemindersPanel({ isDark, c, cardStyle, settings, setSettings }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showTable, setShowTable] = useState(false);
+  const { toast } = useToast();
+
+  const fetchInvoices = useCallback(async () => {
+    try {
+      const { supabase } = await import('@/lib/customSupabaseClient');
+      const { data: invoices, error } = await supabase
+        .from('invoices')
+        .select('id, invoice_no, due_date, client_name, client_phone, client_email, total, currency, status')
+        .in('status', ['unpaid', 'overdue', 'partially_paid'])
+        .is('deleted_at', null)
+        .order('due_date', { ascending: true });
+
+      if (error) throw error;
+      setData(invoices || []);
+    } catch (err) {
+      console.error('InvoiceRemindersPanel error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInvoices();
+  }, [fetchInvoices]);
+
+  const daysUntil = (dueStr) => {
+    if (!dueStr) return 0;
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const due = new Date(dueStr); due.setHours(0, 0, 0, 0);
+    return Math.round((due - now) / (1000 * 60 * 60 * 24));
+  };
+
+  const urgencyColor = (days) => {
+    if (days <= 0) return '#ef4444'; // Overdue
+    if (days <= 2) return '#f97316'; // Warning
+    if (days <= 7) return '#f59e0b'; // Upcoming
+    return '#22c55e';
+  };
+
+  // Filter invoices to only show those that are due in 0 to 3 days (approaching due date, not yet overdue)
+  const filteredData = data.filter(item => {
+    const days = daysUntil(item.due_date);
+    return days >= 0 && days <= 3;
+  });
+
+  return (
+    <div className="sms-card" style={cardStyle}>
+      <button
+        type="button"
+        onClick={() => setShowTable(v => !v)}
+        style={{
+          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: 0, color: c.text, textAlign: 'left'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FileText size={16} style={{ color: c.brand }} />
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: 0 }}>
+              Invoice SMS Settings & Reminders
+            </h2>
+            <p style={{ fontSize: 12, color: c.subText, marginTop: 4 }}>
+              Overdue warning notifications (fixed to 3 days before overdue date).
+            </p>
+          </div>
+        </div>
+        {showTable ? <ChevronUp size={16} style={{ color: c.subText }} /> : <ChevronDown size={16} style={{ color: c.subText }} />}
+      </button>
+
+      {showTable && (
+        <div style={{ marginTop: 20 }}>
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13, padding: '16px 0' }}>
+              <Loader2 size={16} className="animate-spin" /> Loading unpaid invoices…
+            </div>
+          ) : filteredData.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px 0', color: c.subText, fontSize: 13 }}>
+              <CheckCircle2 size={28} style={{ color: '#22c55e', marginBottom: 8 }} />
+              <div>No unpaid or overdue invoices found within 3 days.</div>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+                    {['Customer', 'Invoice No', 'Amount', 'Due Date', 'Days Left', 'Auto Trigger', 'Phone'].map(h => (
+                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredData.map(item => {
+                    const days = daysUntil(item.due_date);
+                    const col = urgencyColor(days);
+                    const isAutoTrigger = settings?.sms_enabled && settings?.invoice_sms && 
+                      days === 3 && 
+                      !!item.client_phone;
+
+                    return (
+                      <tr
+                        key={item.id}
+                        style={{ borderBottom: `1px solid ${c.border}`, transition: 'background 0.1s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = c.hover}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td style={{ padding: '11px 12px', fontWeight: 600, color: c.text }}>
+                          {item.client_name || '—'}
+                        </td>
+                        <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
+                          {item.invoice_no}
+                        </td>
+                        <td style={{ padding: '11px 12px', color: c.text, fontWeight: 500 }}>
+                          {item.total} {item.currency}
+                        </td>
+                        <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
+                          {new Date(item.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </td>
+                        <td style={{ padding: '11px 12px' }}>
+                          <span style={{
+                            fontWeight: 700, fontSize: 13, color: col,
+                            background: col + '18', padding: '2px 8px', borderRadius: 6,
+                          }}>
+                            {days < 0 ? `Overdue (${Math.abs(days)}d)` : days === 0 ? 'Due Today' : `${days}d`}
+                          </span>
+                        </td>
+                        <td style={{ padding: '11px 12px' }}>
+                          {isAutoTrigger ? (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                              background: 'rgba(34,197,94,0.12)', color: '#22c55e'
+                            }}>
+                              Yes
+                            </span>
+                          ) : (
+                            <span style={{
+                              padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                              background: 'rgba(100,116,139,0.12)', color: '#64748b'
+                            }}>
+                              No
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '11px 12px', color: c.subText, fontFamily: 'monospace', fontSize: 12 }}>
+                          {item.client_phone || <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
