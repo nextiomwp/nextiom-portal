@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { fmtCurrency, InvoiceCurrency, resolveLogoUrl } from '@/lib/invoices'
+import { fmtCurrency, InvoiceCurrency, resolveLogoUrl, getInvoicePayments } from '@/lib/invoices'
 
 function formatPrintDate(value?: string) {
   if (!value) return ''
@@ -60,6 +60,7 @@ function getDisplayEmail(website?: string): string {
 export default function InvoicePrintPage() {
   const [data, setData] = useState<any>(null)
   const [logoUrl, setLogoUrl] = useState('')
+  const [paymentMethodText, setPaymentMethodText] = useState('')
 
   useEffect(() => {
     try {
@@ -73,6 +74,26 @@ export default function InvoicePrintPage() {
         // are not directly fetchable.
         if (parsed?.settings?.logo_url) {
           resolveLogoUrl(parsed.settings.logo_url).then(setLogoUrl)
+        }
+        if (parsed?.id) {
+          getInvoicePayments(parsed.id).then(payments => {
+            const approved = payments.find(p => p.status === 'approved')
+            const latest = approved || payments[0]
+            if (latest) {
+              const bank = latest.bank_account_name
+              if (bank === 'Online payment') {
+                setPaymentMethodText('Online payment')
+              } else if (bank === 'Cash') {
+                setPaymentMethodText('Cash')
+              } else if (bank === 'Cheque') {
+                setPaymentMethodText('Cheque')
+              } else if (bank) {
+                setPaymentMethodText('Bank Transfer')
+              }
+            }
+          }).catch(err => {
+            console.error('Error fetching payments:', err)
+          })
         }
       }
     } catch {}
@@ -196,6 +217,32 @@ export default function InvoicePrintPage() {
             </div>
           )}
 
+          {status === 'paid' && (
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              top: '40%',
+              transform: 'translate(-50%, -50%) rotate(-25deg)',
+              fontSize: 64,
+              fontWeight: 900,
+              color: 'var(--brand-color)',
+              opacity: 0.12,
+              letterSpacing: 6,
+              border: '6px solid var(--brand-color)',
+              padding: '12px 36px',
+              borderRadius: 16,
+              pointerEvents: 'none',
+              zIndex: 10,
+              textTransform: 'uppercase',
+              fontFamily: 'system-ui, sans-serif',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              lineHeight: 1.1,
+            }}>
+              PAID
+            </div>
+          )}
+
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36, paddingBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
             {/* Left side: Company details */}
@@ -228,6 +275,9 @@ export default function InvoicePrintPage() {
                   <div><strong style={{ fontWeight: 700 }}>No:</strong> {invoice_no}</div>
                   <div><strong style={{ fontWeight: 700 }}>Date:</strong> {printInvoiceDate}</div>
                   {printDueDate && <div><strong style={{ fontWeight: 700 }}>Due:</strong> {printDueDate}</div>}
+                  {paymentMethodText && (
+                    <div><strong style={{ fontWeight: 700 }}>Payment Method -</strong> {paymentMethodText}</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -311,22 +361,6 @@ export default function InvoicePrintPage() {
 
           {/* Totals */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginBottom: 32 }}>
-            {status === 'paid' && (
-              <img
-                src="/PAID STUMP.png"
-                alt="PAID"
-                style={{
-                  position: 'absolute',
-                  left: '48%',
-                  top: '50%',
-                  transform: 'translate(-50%, -50%) rotate(-10deg)',
-                  width: 100,
-                  height: 100,
-                  objectFit: 'contain',
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
               <span>Subtotal</span><span>{fmtCurrency(subtotal, currency)}</span>
             </div>
@@ -349,14 +383,28 @@ export default function InvoicePrintPage() {
               </>
             ) : null}
             <div style={{ display: 'flex', gap: 56, fontSize: 16, fontWeight: 700, borderTop: '2px solid #111', paddingTop: 8, marginTop: 4 }}>
-              <span>{refunded_amount && Number(refunded_amount) > 0 ? 'Net Paid' : 'Due total'}</span>
+              <span>{refunded_amount && Number(refunded_amount) > 0 ? 'Net Paid' : (status === 'paid' ? 'Total Amount' : 'Due total')}</span>
               <span>{fmtCurrency(refunded_amount && Number(refunded_amount) > 0 ? Math.max(0, Number(data.paid_amount || total) - Number(refunded_amount)) : total, currency)}</span>
             </div>
           </div>
 
           {/* Footer */}
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18 }}>
-            {s?.bank_name && (
+            {paymentMethodText ? (
+              <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', marginBottom: 5 }}>Payment method</div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>Payment Method - {paymentMethodText}</div>
+                {paymentMethodText === 'Bank Transfer' && s?.bank_name && (
+                  <div style={{ fontSize: 12, color: '#4b5563', lineHeight: 1.9, marginTop: 4 }}>
+                    <div>Name: {s.account_name}</div>
+                    <div>Account number: {s.account_no}</div>
+                    <div>Bank: {s.bank_name} </div>
+                    <div> Branch: Gampaha</div>
+                    <div> Swift Code : CCEYLKLX </div>
+                  </div>
+                )}
+              </div>
+            ) : s?.bank_name ? (
               <div style={{ flex: '1 1 0', minWidth: 0 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', marginBottom: 5 }}>Payment method</div>
                 <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>Bank Transfer ({currency})</div>
@@ -373,17 +421,19 @@ export default function InvoicePrintPage() {
                   </div>
                 )}
               </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#111', textAlign: 'center' }}>
-                Scan and Pay with {currency === 'USD' ? 'PayPal' : 'LankaQR'}
+            ) : null}
+            {status !== 'paid' && status !== 'refunded' && status !== 'partially_refunded' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0, marginTop: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#111', textAlign: 'center' }}>
+                  Scan and Pay with {currency === 'USD' ? 'PayPal' : 'LankaQR'}
+                </div>
+                <img
+                  src={paymentImage}
+                  alt={`${currency} payment details`}
+                  style={{ display: 'block', width: 140, height: 'auto', objectFit: 'contain' }}
+                />
               </div>
-              <img
-                src={paymentImage}
-                alt={`${currency} payment details`}
-                style={{ display: 'block', width: 140, height: 'auto', objectFit: 'contain' }}
-              />
-            </div>
+            )}
             <div style={{ textAlign: 'right', flexShrink: 0, width: 220 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#E8650A' }}>Thank you for your business!</div>
               {s?.company_name && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{s.company_name}</div>}

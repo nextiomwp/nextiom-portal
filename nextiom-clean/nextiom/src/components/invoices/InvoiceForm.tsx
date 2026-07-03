@@ -277,6 +277,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const handlePrint = () => {
     if (!clientName.trim()) { toast({ title: 'Fill in client name before printing', variant: 'destructive' }); return }
     localStorage.setItem('nxt_invoice_print', JSON.stringify({
+      id: existing?.id,
       invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: hasDueDate ? dueDate : null, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress,
@@ -771,7 +772,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
               <span>Grand total</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500, marginTop: 4, color: c.text }}>
-              <span>Due total</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
+              <span>{status === 'paid' ? 'Total Amount' : 'Due total'}</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
             </div>
           </div>
 
