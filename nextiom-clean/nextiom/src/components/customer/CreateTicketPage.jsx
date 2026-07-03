@@ -172,7 +172,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
   const applyAction = (action, categoryTitle) => {
     const template = buildActionTemplate(action.label);
     setSubject(template.subject);
-    setMessage(template.message);
+    setMessage('');
     if (categoryTitle) {
       setDepartment(categoryTitle);
     }
@@ -663,7 +663,11 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
                 cursor: !actionSelected ? 'not-allowed' : 'text',
                 opacity: !actionSelected ? 0.6 : 1,
               }}
-              placeholder={actionSelected ? "Describe your issue in detail. Include any error messages or steps to reproduce." : "Select a Quick Action first"}
+              placeholder={
+                selectedQuickAction
+                  ? `I need help with ${selectedQuickAction}.\n\nPlease include details below:`
+                  : (actionSelected ? "Describe your issue in detail. Include any error messages or steps to reproduce." : "Select a Quick Action first")
+              }
               value={message}
               onChange={e => setMessage(e.target.value)}
               required

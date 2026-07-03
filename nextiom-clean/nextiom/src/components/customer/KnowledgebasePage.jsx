@@ -455,7 +455,6 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
     background: cardBg,
     border: `1px solid ${border}`,
     borderRadius: 20,
-    padding: 24,
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.2)' : '0 2px 16px rgba(0,0,0,0.05)',
@@ -593,7 +592,7 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
             </button>
 
             {/* List of categories */}
-            <div className="rounded-xl border p-4 flex flex-col gap-2" style={{ backgroundColor: cardBg, borderColor: border }}>
+            <div className="hidden lg:flex rounded-xl border p-4 flex-col gap-2" style={{ backgroundColor: cardBg, borderColor: border }}>
               <span className="text-[10px] font-extrabold uppercase tracking-wider mb-2" style={{ color: subText }}>Categories</span>
               {SECTIONS.map(sec => {
                 const isCurrent = selectedSection?.id === sec.id;
@@ -627,7 +626,7 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
           {selectedArticle ? (
             
             // ARTICLE VIEW
-            <div style={cardStyle} className="flex flex-col gap-6">
+            <div style={cardStyle} className="p-4 md:p-6 flex flex-col gap-6">
               {/* Back to section subcategories list or search results */}
               <button 
                 onClick={handleBackToSection} 
@@ -706,7 +705,7 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
           ) : searchQuery.trim() ? (
             
             // SEARCH RESULTS VIEW
-            <div style={cardStyle}>
+            <div style={cardStyle} className="p-4 md:p-6">
               <h3 className="text-lg font-bold mb-4" style={{ color: text }}>
                 Search Results ({searchResults.length})
               </h3>
@@ -747,7 +746,7 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
                   <div 
                     key={sec.id}
                     style={cardStyle}
-                    className="flex flex-col justify-between hover:scale-[1.01] transition-transform duration-200 cursor-pointer"
+                    className="p-4 md:p-6 flex flex-col justify-between hover:scale-[1.01] transition-transform duration-200 cursor-pointer"
                     onClick={() => {
                       setSelectedSection(sec);
                       setSelectedSubcategory(sec.subcategories[0]);
@@ -778,7 +777,7 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                 
                 {/* Recent Articles */}
-                <div style={cardStyle} className="flex flex-col gap-4">
+                <div style={cardStyle} className="p-4 md:p-6 flex flex-col gap-4">
                   <div className="flex items-center gap-2 border-b pb-3" style={{ borderColor: border }}>
                     <BookOpen className="w-4 h-4" style={{ color: brand }} />
                     <h3 className="font-bold text-sm" style={{ color: text }}>Recent Articles</h3>
@@ -788,12 +787,12 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
                       <div 
                         key={idx}
                         onClick={() => handleArticleClick(item.section, item.subcategory, item.article)}
-                        className="flex justify-between items-center cursor-pointer group"
+                        className="flex items-center justify-between gap-4 cursor-pointer group py-1"
                       >
-                        <span className="text-xs font-medium group-hover:underline" style={{ color: text }}>
+                        <span className="text-xs font-medium group-hover:underline line-clamp-2 flex-1 text-left" style={{ color: text }}>
                           📄 {item.article.title}
                         </span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: brandLight, color: brand }}>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap flex-shrink-0" style={{ backgroundColor: brandLight, color: brand }}>
                           {item.section.title}
                         </span>
                       </div>
@@ -802,7 +801,7 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
                 </div>
 
                 {/* Frequently Asked */}
-                <div style={cardStyle} className="flex flex-col gap-4">
+                <div style={cardStyle} className="p-4 md:p-6 flex flex-col gap-4">
                   <div className="flex items-center gap-2 border-b pb-3" style={{ borderColor: border }}>
                     <HelpCircle className="w-4 h-4" style={{ color: brand }} />
                     <h3 className="font-bold text-sm" style={{ color: text }}>Frequently Asked Questions</h3>
@@ -810,34 +809,34 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
                   <div className="flex flex-col gap-3">
                     <div 
                       onClick={() => handleArticleClick(SECTIONS[5], SECTIONS[5].subcategories[0], SECTIONS[5].subcategories[0].articles[0])}
-                      className="flex justify-between items-center cursor-pointer group"
+                      className="flex items-center justify-between gap-4 cursor-pointer group py-1"
                     >
-                      <span className="text-xs font-medium group-hover:underline" style={{ color: text }}>
+                      <span className="text-xs font-medium group-hover:underline line-clamp-2 flex-1 text-left" style={{ color: text }}>
                         ❓ How do I submit a bank receipt / payment slip?
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: brandLight, color: brand }}>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap flex-shrink-0" style={{ backgroundColor: brandLight, color: brand }}>
                         Billing
                       </span>
                     </div>
                     <div 
                       onClick={() => handleArticleClick(SECTIONS[2], SECTIONS[2].subcategories[0], SECTIONS[2].subcategories[0].articles[0])}
-                      className="flex justify-between items-center cursor-pointer group"
+                      className="flex items-center justify-between gap-4 cursor-pointer group py-1"
                     >
-                      <span className="text-xs font-medium group-hover:underline" style={{ color: text }}>
+                      <span className="text-xs font-medium group-hover:underline line-clamp-2 flex-1 text-left" style={{ color: text }}>
                         ❓ How to order a new hosting plan?
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: brandLight, color: brand }}>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap flex-shrink-0" style={{ backgroundColor: brandLight, color: brand }}>
                         Hosting
                       </span>
                     </div>
                     <div 
                       onClick={() => handleArticleClick(SECTIONS[8], SECTIONS[8].subcategories[0], SECTIONS[8].subcategories[0].articles[0])}
-                      className="flex justify-between items-center cursor-pointer group"
+                      className="flex items-center justify-between gap-4 cursor-pointer group py-1"
                     >
-                      <span className="text-xs font-medium group-hover:underline" style={{ color: text }}>
+                      <span className="text-xs font-medium group-hover:underline line-clamp-2 flex-1 text-left" style={{ color: text }}>
                         ❓ How to create a support ticket?
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: brandLight, color: brand }}>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap flex-shrink-0" style={{ backgroundColor: brandLight, color: brand }}>
                         Support
                       </span>
                     </div>
@@ -850,7 +849,7 @@ export default function KnowledgebasePage({ isDark = false, c = {} }) {
           ) : (
             
             // SECTION VIEW WITH SUBCATEGORIES
-            <div style={cardStyle} className="flex flex-col gap-6">
+            <div style={cardStyle} className="p-4 md:p-6 flex flex-col gap-6">
               <div className="flex items-center gap-3">
                 <div 
                   className="w-10 h-10 rounded-xl flex items-center justify-center"

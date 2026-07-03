@@ -5,7 +5,7 @@ import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
-  CreditCard, FileText, Info, Briefcase, Megaphone, Search, BookOpen
+  CreditCard, FileText, Info, Briefcase, Megaphone, Search, BookOpen, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -256,6 +256,37 @@ function CustomerDashboard() {
   );
   const { user, signOut, customerProfile } = useAuth();
   const c = isDark ? DARK : LIGHT;
+
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
+  useEffect(() => {
+    if (customerProfile && customerProfile.welcome_modal_shown === false) {
+      const timer = setTimeout(() => {
+        setShowWelcomeModal(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [customerProfile]);
+
+  const handleCloseWelcomeModal = async (goToKb = false) => {
+    setShowWelcomeModal(false);
+    if (customerProfile) {
+      customerProfile.welcome_modal_shown = true;
+    }
+    if (goToKb) {
+      setActiveTab('knowledgebase');
+    }
+    try {
+      if (customerProfile?.id) {
+        await supabase
+          .from('customers')
+          .update({ welcome_modal_shown: true })
+          .eq('id', customerProfile.id);
+      }
+    } catch (err) {
+      console.error("Failed to save welcome modal status:", err);
+    }
+  };
 
   const [activeJobsCount, setActiveJobsCount] = useState(0);
   const [waitingJobsCount, setWaitingJobsCount] = useState(0);
@@ -1166,6 +1197,117 @@ function CustomerDashboard() {
               </motion.div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Welcome & Knowledgebase Introduction Pop-up Modal */}
+      <AnimatePresence>
+        {showWelcomeModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => handleCloseWelcomeModal(false)}
+              className="absolute inset-0 backdrop-blur-md bg-black/60"
+            />
+            
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-md overflow-hidden rounded-2xl border shadow-2xl p-6 flex flex-col items-center text-center gap-6"
+              style={{
+                backgroundColor: c.card,
+                borderColor: c.border,
+                color: c.text,
+                backdropFilter: 'blur(20px)',
+              }}
+            >
+              {/* Decorative brand gradient circle at the top */}
+              <div 
+                className="w-16 h-16 rounded-2xl flex items-center justify-center relative overflow-hidden flex-shrink-0"
+                style={{
+                  background: `linear-gradient(135deg, ${c.brand}, ${isDark ? '#f97316' : '#ea580c'})`,
+                  boxShadow: `0 8px 24px rgba(232, 123, 53, 0.25)`,
+                }}
+              >
+                <BookOpen className="w-8 h-8 text-white animate-pulse" />
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                <h3 className="text-xl font-extrabold tracking-tight">
+                  Welcome to Nextiom Portal!
+                </h3>
+                <p className="text-xs" style={{ color: c.brand, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                  Your Account is Ready
+                </p>
+              </div>
+
+              <p className="text-sm leading-relaxed" style={{ color: c.subText }}>
+                We're excited to have you on board! To help you get started, we've created a comprehensive{' '}
+                <strong style={{ color: c.text }}>Knowledgebase</strong> containing detailed setup guides, cPanel tutorials, invoice guides, and FAQs.
+              </p>
+
+              <div 
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl border text-left text-xs"
+                style={{
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                  borderColor: c.border,
+                }}
+              >
+                <div 
+                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: c.brandLight, color: c.brand }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-bold block" style={{ color: c.text }}>Quick Access Tip</span>
+                  <span style={{ color: c.subText }}>Find the <strong style={{ color: c.text }}>Knowledgebase</strong> tab in the sidebar menu to search tutorials at any time!</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="w-full flex flex-col sm:flex-row gap-3 mt-2">
+                <button
+                  onClick={() => handleCloseWelcomeModal(false)}
+                  className="flex-1 px-4 py-3 rounded-xl border text-xs font-bold transition-all"
+                  style={{
+                    borderColor: c.border,
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#ffffff',
+                    color: c.text,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.07)' : '#f9f9fa';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : '#ffffff';
+                  }}
+                >
+                  Explore Dashboard
+                </button>
+                <button
+                  onClick={() => handleCloseWelcomeModal(true)}
+                  className="flex-1 px-4 py-3 rounded-xl text-xs font-bold text-white transition-all shadow-md shadow-orange-500/10 hover:shadow-orange-500/20"
+                  style={{
+                    backgroundColor: c.brand,
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.opacity = '0.9';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.opacity = '1';
+                  }}
+                >
+                  Take Me to Knowledgebase
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
