@@ -35,7 +35,7 @@ const CollapsibleMenuItem = ({
 
   return (
     <div className="mb-0.5">
-      <div className={cn('rounded-lg', isBlinking && 'blink-yellow')} style={{ position: 'relative' }}>
+      <div className="rounded-lg" style={{ position: 'relative' }}>
       <button
         onClick={hasSubItems ? onToggle : onClick}
         title={collapsed ? label : undefined}
@@ -43,21 +43,21 @@ const CollapsibleMenuItem = ({
           'w-full flex items-center py-2.5 rounded-lg transition-colors text-sm font-medium select-none touch-manipulation',
           collapsed ? 'justify-center px-2' : 'justify-between px-3'
         )}
-        style={{ backgroundColor: isBlinking ? undefined : (isItemActive ? brandLight : 'transparent') }}
+        style={{ backgroundColor: isItemActive ? brandLight : 'transparent' }}
         onMouseEnter={e => {
-          if (!isActive && !isBlinking) e.currentTarget.style.backgroundColor = hover;
+          if (!isActive) e.currentTarget.style.backgroundColor = hover;
         }}
         onMouseLeave={e => {
-          e.currentTarget.style.backgroundColor = isBlinking ? '' : (isItemActive ? brandLight : 'transparent');
+          e.currentTarget.style.backgroundColor = isItemActive ? brandLight : 'transparent';
         }}
         aria-expanded={isExpanded}
       >
-        <div className={cn('flex items-center', collapsed ? '' : 'gap-3')}>
+        <div className={cn('flex items-center', collapsed ? '' : 'gap-3', isBlinking && 'animate-orange-shine-blink')}>
           {Icon && (
             <div className="relative">
               <Icon
                 className="w-5 h-5 flex-shrink-0"
-                style={{ color: isActive ? brand : subText }}
+                style={{ color: (isActive || isBlinking) ? brand : subText }}
               />
               {badge > 0 && (
                 <span
@@ -118,7 +118,7 @@ const CollapsibleMenuItem = ({
             </div>
           )}
           {!collapsed && (
-            <span style={{ color: isActive ? brand : textColor }}>{label}</span>
+            <span style={{ color: (isActive || isBlinking) ? brand : textColor }}>{label}</span>
           )}
         </div>
 

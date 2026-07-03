@@ -6,7 +6,7 @@ import {
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
   CreditCard, FileText, Info, Briefcase, Megaphone, Search, BookOpen, Sparkles,
-  CheckCircle, AlertTriangle
+  CheckCircle, AlertTriangle, Headphones
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -208,14 +208,6 @@ function getActiveLabel(activeTab) {
     }
   }
   return 'Dashboard';
-}
-
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour >= 20) return 'Good night';
-  if (hour >= 16) return 'Good evening';
-  if (hour >= 12) return 'Good afternoon';
-  return 'Good morning';
 }
 
 const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
@@ -849,7 +841,7 @@ function CustomerDashboard() {
   }
 
   return (
-    <div style={{ background: c.bg }} className="min-h-screen flex font-sans">
+    <div style={{ background: c.bg }} className="min-h-screen flex font-sans customer-dashboard-container">
       <Helmet><title>Customer Dashboard – Nextiom</title></Helmet>
 
       {/* Mobile hamburger */}
@@ -925,32 +917,60 @@ function CustomerDashboard() {
             boxShadow: isDark ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
           }}
         >
-          <div className="pl-8 lg:pl-0 font-semibold truncate max-w-[120px] sm:max-w-none" style={{ color: c.text }}>
-            {activeTab === 'dashboard'
-              ? `${getGreeting()}, ${customerProfile?.name || user?.email || 'Customer'}`
-              : getActiveLabel(activeTab)}
+          <div className="pl-8 lg:pl-0 font-semibold truncate flex-1 min-w-0" style={{ color: c.text }}>
+            {activeTab === 'dashboard' ? (
+              <>
+                Welcome Back, <span style={{ color: c.brand }}>{customerProfile?.name || 'Customer'}</span>
+              </>
+            ) : (
+              getActiveLabel(activeTab)
+            )}
           </div>
 
-          {/* Desktop Search Button */}
-          <div className="hidden md:flex flex-1 max-w-sm mx-4">
+          {/* Desktop Search & Support Ticket Container */}
+          <div className="hidden md:flex items-center gap-3 mx-4 flex-shrink-0">
+            <div className="w-full max-w-xs xl:max-w-sm">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all text-left cursor-pointer hover:opacity-85"
+                style={{
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                  borderColor: c.border,
+                  color: c.subText,
+                }}
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Search products, domains, hosting...</span>
+              </button>
+            </div>
+
+            {/* Open Support Ticket button */}
             <button
-              onClick={() => setIsSearchOpen(true)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs border transition-all text-left cursor-pointer hover:opacity-85"
+              onClick={() => navigate('support_create')}
+              className="w-10 h-10 rounded-xl transition-all flex items-center justify-center cursor-pointer flex-shrink-0"
+              title="Open Support Ticket"
               style={{
-                background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-                borderColor: c.border,
-                color: c.subText,
+                background: `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`,
+                color: '#fff',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                e.currentTarget.style.filter = 'brightness(1.05)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                e.currentTarget.style.filter = 'none';
               }}
             >
-              <Search className="w-3.5 h-3.5" />
-              <span>Search products, domains, hosting...</span>
-              <span className="ml-auto px-1.5 py-0.5 rounded text-[9px] font-bold border" style={{ borderColor: c.border, background: c.hover }}>
-                ⌘K
-              </span>
+              <MessageSquare className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 justify-end">
             {/* Mobile Search Button */}
             <button
               onClick={() => setIsSearchOpen(true)}
@@ -962,27 +982,47 @@ function CustomerDashboard() {
             >
               <Search className="w-4 h-4" />
             </button>
-            {/* Status button — always cositive green pulse */}
-            <div className="pulse-green">
-              <a
-                href="https://nextiom.com/hosting-status/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 border"
-                style={{
-                  borderColor: 'rgba(34, 197, 94, 0.5)',
-                  color: 'rgb(34, 197, 94)',
-                  background: 'transparent',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.12)';
-                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.9)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.5)';
-                }}
-              >
+
+            {/* Knowledgebase button */}
+            <button
+              onClick={() => navigate('knowledgebase')}
+              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              title="Knowledgebase"
+              style={{
+                color: c.text,
+                background: 'transparent',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = c.hover;
+                e.currentTarget.style.color = c.brand;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = c.text;
+              }}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Knowledgebase</span>
+            </button>
+
+            {/* Status button */}
+            <a
+              href="https://nextiom.com/hosting-status/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              style={{
+                color: 'rgb(34, 197, 94)',
+                background: 'transparent',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.08)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <span className="flex items-center gap-1.5 animate-green-shine-blink">
                 <span style={{
                   width: 6,
                   height: 6,
@@ -992,8 +1032,8 @@ function CustomerDashboard() {
                   flexShrink: 0,
                 }} />
                 Status
-              </a>
-            </div>
+              </span>
+            </a>
 
             {/* Dark mode toggle */}
             <button

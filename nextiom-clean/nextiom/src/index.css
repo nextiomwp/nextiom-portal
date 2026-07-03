@@ -162,36 +162,68 @@
   animation: pulse-ring-2 2s cubic-bezier(0.4, 0, 0.6, 1) 0.4s infinite;
 }
 
-/* Customer Jobs Page cursor styling: prevent I-beam cursor on static elements */
+/* Customer Side Dashboard cursor styling: prevent I-beam cursor on static elements */
+.customer-dashboard-container,
 .customer-jobs-page {
   cursor: default;
 }
 
+.customer-dashboard-container *,
 .customer-jobs-page * {
   cursor: default;
 }
 
-/* Maintain proper pointer cursor on interactive elements */
+/* Maintain proper pointer cursor on interactive elements and their descendants */
+.customer-dashboard-container a,
+.customer-dashboard-container a *,
+.customer-dashboard-container button,
+.customer-dashboard-container button *,
+.customer-dashboard-container select,
+.customer-dashboard-container select *,
+.customer-dashboard-container [role="button"],
+.customer-dashboard-container [role="button"] *,
+.customer-dashboard-container label,
+.customer-dashboard-container label *,
+.customer-dashboard-container .cursor-pointer,
+.customer-dashboard-container .cursor-pointer *,
 .customer-jobs-page a,
+.customer-jobs-page a *,
 .customer-jobs-page button,
+.customer-jobs-page button *,
 .customer-jobs-page select,
+.customer-jobs-page select *,
 .customer-jobs-page [role="button"],
+.customer-jobs-page [role="button"] *,
 .customer-jobs-page label,
-.customer-jobs-page label * {
+.customer-jobs-page label *,
+.customer-jobs-page .cursor-pointer,
+.customer-jobs-page .cursor-pointer * {
   cursor: pointer;
 }
 
 /* Maintain help cursor on elements that specify it */
+.customer-dashboard-container [style*="cursor: help"],
+.customer-dashboard-container [style*="cursor:help"],
 .customer-jobs-page [style*="cursor: help"],
 .customer-jobs-page [style*="cursor:help"] {
   cursor: help;
 }
 
 /* Maintain text I-beam cursor exclusively in typing/input areas */
+.customer-dashboard-container input,
+.customer-dashboard-container input *,
+.customer-dashboard-container textarea,
+.customer-dashboard-container textarea *,
+.customer-dashboard-container input[type="text"],
+.customer-dashboard-container [contenteditable="true"],
+.customer-dashboard-container [contenteditable="true"] *,
 .customer-jobs-page input,
+.customer-jobs-page input *,
 .customer-jobs-page textarea,
+.customer-jobs-page textarea *,
 .customer-jobs-page input[type="text"],
-.customer-jobs-page textarea * {
+.customer-jobs-page [contenteditable="true"],
+.customer-jobs-page [contenteditable="true"] * {
   cursor: text !important;
 }
 
@@ -203,4 +235,50 @@
   .row5-card-container {
     height: 470px;
   }
+}
+
+/* Custom cositive (cosine-like) smooth blink animation for Status button */
+@keyframes cositive-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.animate-cositive-blink {
+  animation: cositive-blink 1.8s ease-in-out infinite;
+}
+
+/* Custom orange shine blink animation for sidebar Jobs item */
+@keyframes orange-shine-blink {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(var(--brand-color-rgb), 0.85));
+  }
+  50% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 0px rgba(var(--brand-color-rgb), 0));
+  }
+}
+
+.animate-orange-shine-blink {
+  animation: orange-shine-blink 1.8s ease-in-out infinite;
+}
+
+/* Custom green shine blink animation for status button */
+@keyframes green-shine-blink {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(34, 197, 94, 0.85));
+  }
+  50% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 0px rgba(34, 197, 94, 0));
+  }
+}
+
+.animate-green-shine-blink {
+  animation: green-shine-blink 1.8s ease-in-out infinite;
 }

@@ -595,7 +595,7 @@ function ServiceSubCard({ label, description, activeCount, expiredCount, icon: I
       onMouseLeave={() => setHovered(false)}
       style={{
         background: isDark ? 'rgba(28,30,36,0.5)' : '#fff',
-        border: `1px solid ${hovered ? brand : border}`,
+        border: `1px solid ${border}`,
         borderRadius: 16,
         display: 'flex',
         flexDirection: 'column',
@@ -1497,36 +1497,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
         </div>
       )}
 
-      {/* ── Welcome Header ── */}
-      <div style={{
-        background: isDark ? 'rgba(232,123,53,0.08)' : 'linear-gradient(135deg, #fff7ed 0%, rgba(255,255,255,0) 60%)',
-        border: `1px solid ${isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.12)'}`,
-        borderRadius: 20, padding: '22px 28px',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16,
-      }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 22 }}></span>
-            <h1 style={{ color: text, fontSize: 22, fontWeight: 800, margin: 0 }}>
-              Welcome Back, <span style={{ color: brand }}>{user?.name || 'Customer'}</span>
-            </h1>
-          </div>
-          <p style={{ color: subText, fontSize: 13, margin: 0 }}>
-            Here is a detailed overview of your active services, billing summaries, and recent activity.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => onNavigate('support_create')}
-            style={{ background: brand, color: '#fff', border: 'none', padding: '9px 18px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: `0 4px 14px ${brand}40`, transition: 'all 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#d4692a'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = brand; e.currentTarget.style.transform = 'translateY(0)'; }}
-          >
-            <MessageSquare style={{ width: 14, height: 14 }} />
-            Open Support Ticket
-          </button>
-        </div>
-      </div>
+
 
       {/* ── Row 1: 4 Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
