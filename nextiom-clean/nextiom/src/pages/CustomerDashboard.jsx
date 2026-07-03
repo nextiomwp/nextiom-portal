@@ -186,7 +186,6 @@ const NAV_STRUCTURE = [
     ],
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
-  { id: 'knowledgebase', label: 'Knowledgebase', icon: BookOpen, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
@@ -200,6 +199,7 @@ const NAV_STRUCTURE = [
 ];
 
 function getActiveLabel(activeTab) {
+  if (activeTab === 'knowledgebase') return 'Knowledgebase';
   for (const item of NAV_STRUCTURE) {
     if (item.id === activeTab) return item.label;
     if (item.children) {
@@ -219,6 +219,7 @@ function CustomerDashboard() {
   const portalRestriction = usePortalRestriction();
 
   const [ipayModal, setIpayModal] = useState(null);
+  const [showStatusTooltip, setShowStatusTooltip] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -246,17 +247,14 @@ function CustomerDashboard() {
   const [expandedMenus, setExpandedMenus] = useState([]);
 
   useEffect(() => {
-    // Auto-expand the parent group of the active sub-item
+    // Auto-expand the parent group of the active sub-item, and collapse all other groups
     const parentGroup = NAV_STRUCTURE.find(item =>
       item.type === 'group' && item.children.some(child => child.id === activeTab)
     );
     if (parentGroup) {
-      setExpandedMenus(prev => {
-        if (!prev.includes(parentGroup.id)) {
-          return [...prev, parentGroup.id];
-        }
-        return prev;
-      });
+      setExpandedMenus([parentGroup.id]);
+    } else {
+      setExpandedMenus([]);
     }
   }, [activeTab]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -624,7 +622,7 @@ function CustomerDashboard() {
 
   const toggleMenu = (menuId) => {
     setExpandedMenus(prev =>
-      prev.includes(menuId) ? prev.filter(id => id !== menuId) : [...prev, menuId]
+      prev.includes(menuId) ? [] : [menuId]
     );
   };
 
@@ -944,11 +942,11 @@ function CustomerDashboard() {
               </button>
             </div>
 
-            {/* Open Support Ticket button */}
+             {/* Open Support Ticket button */}
             <button
-              onClick={() => navigate('support_create')}
+              onClick={() => navigate(activeTab === 'support_create' ? 'dashboard' : 'support_create')}
               className="w-10 h-10 rounded-xl transition-all flex items-center justify-center cursor-pointer flex-shrink-0"
-              title="Open Support Ticket"
+              title={activeTab === 'support_create' ? 'Back to Dashboard' : 'Open Support Ticket'}
               style={{
                 background: `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`,
                 color: '#fff',
@@ -1006,34 +1004,76 @@ function CustomerDashboard() {
             </button>
 
             {/* Status button */}
-            <a
-              href="https://nextiom.com/hosting-status/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              style={{
-                color: 'rgb(34, 197, 94)',
-                background: 'transparent',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.08)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+            <div
+              style={{ position: 'relative', display: 'inline-block' }}
+              onMouseEnter={() => setShowStatusTooltip(true)}
+              onMouseLeave={() => setShowStatusTooltip(false)}
             >
-              <span className="flex items-center gap-1.5 animate-green-shine-blink">
-                <span style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  backgroundColor: 'rgb(34, 197, 94)',
-                  display: 'inline-block',
-                  flexShrink: 0,
-                }} />
-                Status
-              </span>
-            </a>
+              <a
+                href="https://nextiom.com/hosting-status/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                style={{
+                  color: 'rgb(34, 197, 94)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.08)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span className="flex items-center gap-1.5 animate-green-shine-blink">
+                  <span style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: 'rgb(34, 197, 94)',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                  }} />
+                  Status
+                </span>
+              </a>
+              {showStatusTooltip && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%) translateY(8px)',
+                  background: isDark ? '#1C1E24' : '#ffffff',
+                  color: c.text,
+                  border: `1px solid ${c.brand}`,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  width: 200,
+                  boxShadow: isDark ? '0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)' : '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                  zIndex: 50,
+                  textAlign: 'center',
+                  lineHeight: 1.4,
+                  pointerEvents: 'none',
+                  whiteSpace: 'normal'
+                }}>
+                  View real-time status of our hosting servers and system operations.
+                  {/* Arrow pointing up */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderBottom: `6px solid ${c.brand}`
+                  }} />
+                </div>
+              )}
+            </div>
 
             {/* Dark mode toggle */}
             <button

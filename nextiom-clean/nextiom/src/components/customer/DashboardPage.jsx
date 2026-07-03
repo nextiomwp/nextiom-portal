@@ -2038,6 +2038,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
               { label: 'My Domains', dest: 'domains_my', Icon: Globe },
               { label: 'My Emails', dest: 'emails_my', Icon: Mail },
               { label: 'My Invoices', dest: 'invoices', Icon: CreditCard },
+              { label: 'Knowledgebase', dest: 'knowledgebase', Icon: BookOpen },
             ].map((link, idx) => (
               <div
                 key={idx}

@@ -178,7 +178,6 @@ const NAV_STRUCTURE = [
     ],
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
-  { id: 'knowledgebase', label: 'Knowledgebase', icon: BookOpen, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
@@ -208,6 +207,7 @@ function ImpersonationDashboard() {
   const [expandedMenus, setExpandedMenus] = useState([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [showStatusTooltip, setShowStatusTooltip] = useState(false);
   const [isMobile, setIsMobile] = useState(() => {
     return typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
   });
@@ -568,17 +568,14 @@ function ImpersonationDashboard() {
   }, [activeTab]);
 
   useEffect(() => {
-    // Auto-expand the parent group of the active sub-item
+    // Auto-expand the parent group of the active sub-item, and collapse all other groups
     const parentGroup = NAV_STRUCTURE.find(item =>
       item.type === 'group' && item.children.some(child => child.id === activeTab)
     );
     if (parentGroup) {
-      setExpandedMenus(prev => {
-        if (!prev.includes(parentGroup.id)) {
-          return [...prev, parentGroup.id];
-        }
-        return prev;
-      });
+      setExpandedMenus([parentGroup.id]);
+    } else {
+      setExpandedMenus([]);
     }
   }, [activeTab]);
 
@@ -693,7 +690,7 @@ function ImpersonationDashboard() {
 
   const toggleMenu = (menuId) => {
     setExpandedMenus((prev) =>
-      prev.includes(menuId) ? prev.filter((id) => id !== menuId) : [...prev, menuId]
+      prev.includes(menuId) ? [] : [menuId]
     );
   };
 
@@ -1073,40 +1070,84 @@ function ImpersonationDashboard() {
           <div className="lg:pl-0 pl-10 font-semibold text-sm" style={{ color: c.text }}>
             {activeTab === 'dashboard'
               ? `Customer: ${impersonatedUser.name}`
+              : activeTab === 'knowledgebase'
+              ? 'Knowledgebase'
               : NAV_STRUCTURE.flatMap((i) => i.children || [i]).find((i) => i.id === activeTab)
                   ?.label || 'Dashboard'}
           </div>
 
           <div className="flex items-center gap-3">
             {/* Status button */}
-            <a
-              href="https://nextiom.com/hosting-status/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              style={{
-                color: 'rgb(34, 197, 94)',
-                background: 'transparent',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.08)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+            <div
+              style={{ position: 'relative', display: 'inline-block' }}
+              onMouseEnter={() => setShowStatusTooltip(true)}
+              onMouseLeave={() => setShowStatusTooltip(false)}
             >
-              <span className="flex items-center gap-1.5 animate-green-shine-blink">
-                <span style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  backgroundColor: 'rgb(34, 197, 94)',
-                  display: 'inline-block',
-                  flexShrink: 0,
-                }} />
-                Status
-              </span>
-            </a>
+              <a
+                href="https://nextiom.com/hosting-status/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                style={{
+                  color: 'rgb(34, 197, 94)',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.backgroundColor = 'rgba(34, 197, 94, 0.08)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span className="flex items-center gap-1.5 animate-green-shine-blink">
+                  <span style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: 'rgb(34, 197, 94)',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                  }} />
+                  Status
+                </span>
+              </a>
+              {showStatusTooltip && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%) translateY(8px)',
+                  background: c.sidebar,
+                  color: c.text,
+                  border: `1px solid ${c.brand}`,
+                  padding: '8px 12px',
+                  borderRadius: 8,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  width: 200,
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)',
+                  zIndex: 50,
+                  textAlign: 'center',
+                  lineHeight: 1.4,
+                  pointerEvents: 'none',
+                  whiteSpace: 'normal'
+                }}>
+                  View real-time status of our hosting servers and system operations.
+                  {/* Arrow pointing up */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderBottom: `6px solid ${c.brand}`
+                  }} />
+                </div>
+              )}
+            </div>
 
             {customerProfile?.id && (
               <NotificationBell
