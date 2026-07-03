@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard } from 'lucide-react';
-import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, getPaymentSettings, savePaymentSettings } from '@/lib/storage';
+import { getPortalSettings, savePortalSettings, addNotification, hexToRgb } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
 const COLOR_PRESETS = [
@@ -24,12 +24,10 @@ export default function SystemSettingsPage({ isDark }) {
   const [ipayEnabled, setIpayEnabled] = useState(false);
   const [ipayWebToken, setIpayWebToken] = useState('');
   const [ipaySandbox, setIpaySandbox] = useState(true);
-  const [ipaySecret, setIpaySecret] = useState('');
 
   const [originalIpayEnabled, setOriginalIpayEnabled] = useState(false);
   const [originalIpayWebToken, setOriginalIpayWebToken] = useState('');
   const [originalIpaySandbox, setOriginalIpaySandbox] = useState(true);
-  const [originalIpaySecret, setOriginalIpaySecret] = useState('');
 
   const { toast } = useToast();
 
@@ -66,7 +64,6 @@ export default function SystemSettingsPage({ isDark }) {
     (async () => {
       try {
         const portal = await getPortalSettings();
-        const pay = await getPaymentSettings();
         if (mounted) {
           setAllSettings(portal);
           setThemeColor(portal.themeColor || '#E87B35');
@@ -75,12 +72,10 @@ export default function SystemSettingsPage({ isDark }) {
           setIpayEnabled(portal.ipayEnabled || false);
           setIpayWebToken(portal.ipayWebToken || '');
           setIpaySandbox(portal.ipaySandbox !== false);
-          setIpaySecret(pay.ipaySecret || '');
           
           setOriginalIpayEnabled(portal.ipayEnabled || false);
           setOriginalIpayWebToken(portal.ipayWebToken || '');
           setOriginalIpaySandbox(portal.ipaySandbox !== false);
-          setOriginalIpaySecret(pay.ipaySecret || '');
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
@@ -103,17 +98,12 @@ export default function SystemSettingsPage({ isDark }) {
         ipayWebToken: ipayWebToken,
         ipaySandbox: ipaySandbox,
       });
-      // Save private payment settings
-      await savePaymentSettings({
-        ipaySecret: ipaySecret,
-      });
 
       setAllSettings(updated);
       setOriginalColor(themeColor);
       setOriginalIpayEnabled(ipayEnabled);
       setOriginalIpayWebToken(ipayWebToken);
       setOriginalIpaySandbox(ipaySandbox);
-      setOriginalIpaySecret(ipaySecret);
 
       // Create admin activity notification
       await addNotification({
@@ -144,7 +134,6 @@ export default function SystemSettingsPage({ isDark }) {
     setIpayEnabled(originalIpayEnabled);
     setIpayWebToken(originalIpayWebToken);
     setIpaySandbox(originalIpaySandbox);
-    setIpaySecret(originalIpaySecret);
     toast({
       title: 'Settings Reset',
       description: 'Reverted settings back to the saved system configuration.',
@@ -166,8 +155,7 @@ export default function SystemSettingsPage({ isDark }) {
   const isChanged = themeColor !== originalColor ||
     ipayEnabled !== originalIpayEnabled ||
     ipayWebToken !== originalIpayWebToken ||
-    ipaySandbox !== originalIpaySandbox ||
-    ipaySecret !== originalIpaySecret;
+    ipaySandbox !== originalIpaySandbox;
 
   return (
     <form onSubmit={handleSave} style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 32px' }} noValidate>
@@ -365,26 +353,7 @@ export default function SystemSettingsPage({ isDark }) {
                 />
               </div>
 
-              {/* Secret Key */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Secret Key (Private)</label>
-                <input
-                  type="password"
-                  value={ipaySecret}
-                  onChange={(e) => setIpaySecret(e.target.value)}
-                  placeholder={ipaySecret ? "••••••••••••••••••••••••" : "Enter Secret Key..."}
-                  disabled={!ipayEnabled}
-                  style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 10,
-                    background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                    color: c.text, fontSize: 13,
-                    outline: 'none', transition: 'border-color 0.15s',
-                    opacity: ipayEnabled ? 1 : 0.6,
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                  onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                />
-              </div>
+
 
               {/* Sandbox Mode */}
               <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', opacity: ipayEnabled ? 1 : 0.6 }}>

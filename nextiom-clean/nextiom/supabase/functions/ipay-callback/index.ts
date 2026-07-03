@@ -74,22 +74,24 @@ serve(async (req) => {
       auth: { persistSession: false },
     })
 
-    // 1. Get the secret key from payment_settings
-    const { data: paySettings, error: settingsError } = await supabase
-      .from('payment_settings')
-      .select('ipay_secret')
-      .eq('id', 1)
-      .maybeSingle()
+    // 1. Get the secret key (Check Deno environment secrets first, fallback to DB settings)
+    let secret = Deno.env.get('IPAY_SECRET')
+    if (!secret) {
+      const { data: paySettings, error: settingsError } = await supabase
+        .from('payment_settings')
+        .select('ipay_secret')
+        .eq('id', 1)
+        .maybeSingle()
 
-    if (settingsError || !paySettings?.ipay_secret) {
-      console.error('Failed to retrieve iPay secret:', settingsError)
-      return new Response(JSON.stringify({ error: 'iPay gateway not configured' }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      if (settingsError || !paySettings?.ipay_secret) {
+        console.error('Failed to retrieve iPay secret from database:', settingsError)
+        return new Response(JSON.stringify({ error: 'iPay gateway not configured' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      secret = paySettings.ipay_secret
     }
-
-    const secret = paySettings.ipay_secret
 
     // 2. Verify checksum
     // message = transactionReference + orderId + transactionTimeInMillis + transactionAmount + transactionStatus
