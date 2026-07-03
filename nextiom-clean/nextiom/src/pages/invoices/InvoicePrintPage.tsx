@@ -4,7 +4,7 @@
 
 import { useEffect, useState } from 'react'
 import { Helmet } from 'react-helmet'
-import { fmtCurrency, InvoiceCurrency, resolveLogoUrl, getInvoicePayments } from '@/lib/invoices'
+import { fmtCurrency, InvoiceCurrency, resolveLogoUrl, getInvoicePayments, resolvePaymentMethod } from '@/lib/invoices'
 
 function formatPrintDate(value?: string) {
   if (!value) return ''
@@ -77,20 +77,7 @@ export default function InvoicePrintPage() {
         }
         if (parsed?.id) {
           getInvoicePayments(parsed.id).then(payments => {
-            const approved = payments.find(p => p.status === 'approved')
-            const latest = approved || payments[0]
-            if (latest) {
-              const bank = latest.bank_account_name
-              if (bank === 'Online payment') {
-                setPaymentMethodText('Online payment')
-              } else if (bank === 'Cash') {
-                setPaymentMethodText('Cash')
-              } else if (bank === 'Cheque') {
-                setPaymentMethodText('Cheque')
-              } else if (bank) {
-                setPaymentMethodText('Bank Transfer')
-              }
-            }
+            setPaymentMethodText(resolvePaymentMethod(payments))
           }).catch(err => {
             console.error('Error fetching payments:', err)
           })
@@ -275,7 +262,7 @@ export default function InvoicePrintPage() {
                   <div><strong style={{ fontWeight: 700 }}>No:</strong> {invoice_no}</div>
                   <div><strong style={{ fontWeight: 700 }}>Date:</strong> {printInvoiceDate}</div>
                   {printDueDate && <div><strong style={{ fontWeight: 700 }}>Due:</strong> {printDueDate}</div>}
-                  {paymentMethodText && (
+                  {status === 'paid' && paymentMethodText && (
                     <div><strong style={{ fontWeight: 700 }}>Payment Method -</strong> {paymentMethodText}</div>
                   )}
                 </div>
@@ -386,11 +373,17 @@ export default function InvoicePrintPage() {
               <span>{refunded_amount && Number(refunded_amount) > 0 ? 'Net Paid' : (status === 'paid' ? 'Total Amount' : 'Due total')}</span>
               <span>{fmtCurrency(refunded_amount && Number(refunded_amount) > 0 ? Math.max(0, Number(data.paid_amount || total) - Number(refunded_amount)) : total, currency)}</span>
             </div>
+            {status === 'paid' && paymentMethodText && (
+              <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#4b5563', fontWeight: 600, marginTop: 6 }}>
+                <span>Payment Method</span>
+                <span>{paymentMethodText}</span>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 18 }}>
-            {paymentMethodText ? (
+            {status === 'paid' && paymentMethodText ? (
               <div style={{ flex: '1 1 0', minWidth: 0 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', marginBottom: 5 }}>Payment method</div>
                 <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 3 }}>Payment Method - {paymentMethodText}</div>

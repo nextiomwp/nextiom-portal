@@ -6,6 +6,7 @@ import {
   calcTotal, calcSubtotal, calcTotalDiscount, fmtCurrency, todayISO, dueDateISO,
   generateInvoiceNo, getInvoiceSettings,
   createInvoice, updateInvoice,
+  getInvoicePayments, resolvePaymentMethod,
 } from '@/lib/invoices'
 import { getCustomers, getCustomerByEmail, addNotification } from '@/lib/storage'
 
@@ -101,6 +102,19 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [templateSearch, setTemplateSearch] = useState('')
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
   const [editingTemplateName, setEditingTemplateName] = useState('')
+  const [paymentMethodText, setPaymentMethodText] = useState('')
+
+  useEffect(() => {
+    if (existing?.id && status === 'paid') {
+      getInvoicePayments(existing.id)
+        .then(payments => {
+          setPaymentMethodText(resolvePaymentMethod(payments))
+        })
+        .catch(err => console.error('Error fetching payments:', err))
+    } else {
+      setPaymentMethodText('')
+    }
+  }, [existing?.id, status])
 
   useEffect(() => {
     getCustomers().then(data => setAllCustomers(data || []))
@@ -777,7 +791,14 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
           </div>
 
           {/* Payment preview */}
-          {settings?.bank_name && (
+          {status === 'paid' && paymentMethodText ? (
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${c.border}` }}>
+              <p style={{ ...secTitle, marginBottom: 6 }}>Payment method</p>
+              <div style={{ fontSize: 13, color: c.text, fontWeight: 600 }}>
+                Payment Method - {paymentMethodText}
+              </div>
+            </div>
+          ) : (settings?.bank_name && (
             <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${c.border}` }}>
               <p style={{ ...secTitle, marginBottom: 6 }}>Payment method</p>
               <div style={{ fontSize: 12, color: c.subText, lineHeight: 1.9 }}>
@@ -787,7 +808,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                 <div>Bank: {settings.bank_name} · {settings.bank_branch}</div>
               </div>
             </div>
-          )}
+          ))}
         </div>
 
       </div>

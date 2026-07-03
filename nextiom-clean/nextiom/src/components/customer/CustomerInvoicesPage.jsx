@@ -5,7 +5,7 @@ import {
   Eye, Download, X, Globe, Server, Shield, Cpu, Calendar,
   CreditCard, Upload, Clock
 } from 'lucide-react';
-import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment, getLatestPaymentByInvoice, resubmitPaymentInfo, fmtCurrency } from '@/lib/invoices';
+import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment, getLatestPaymentByInvoice, resubmitPaymentInfo, fmtCurrency, getInvoicePayments, resolvePaymentMethod } from '@/lib/invoices';
 import { assertPortalActionsAllowed, getPortalSettings } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
 
@@ -423,11 +423,25 @@ function DarkCalendar({ invoiceDates, calFilter, onDayClick, onMonthClick, c, is
 }
 
 function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMobile = false }) {
+  const [paymentMethodText, setPaymentMethodText] = useState('');
+
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  useEffect(() => {
+    if (invoice?.id && invoice.status === 'paid') {
+      getInvoicePayments(invoice.id)
+        .then(payments => {
+          setPaymentMethodText(resolvePaymentMethod(payments));
+        })
+        .catch(err => console.error('Error fetching payments:', err));
+    } else {
+      setPaymentMethodText('');
+    }
+  }, [invoice?.id, invoice?.status]);
 
   if (!invoice) return null;
 
@@ -574,6 +588,12 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                   <span>Total</span>
                   <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--brand-color)' }}>{fmtAmt(invoice.total ?? subtotal - totalDiscount + tax, invoice.currency)}</span>
                 </div>
+                {invoice.status === 'paid' && paymentMethodText && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#1a1a1a', marginTop: 8 }}>
+                    <span>Payment Method</span>
+                    <span>{paymentMethodText}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -829,6 +849,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
             invoice_id: invoice.id,
             customer_email: invoice.client_email,
             transaction_id: tempTxnId,
+            bank_account_name: 'Online payment',
             paid_amount: Number(amount),
             payment_date: payDate,
             notes: notes.trim() || null,

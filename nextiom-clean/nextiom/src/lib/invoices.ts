@@ -724,3 +724,23 @@ export async function requestPaymentInfo(payment: InvoicePayment, invoice: Invoi
     message: `Additional information needed for your payment on ${invoice.invoice_no}: ${message}`,
   })
 }
+
+export function resolvePaymentMethod(payments: InvoicePayment[] | undefined | null): string {
+  if (!payments || payments.length === 0) return ''
+  const approved = payments.find(p => p.status === 'approved')
+  const latest = approved || payments[0]
+  if (latest) {
+    const bank = latest.bank_account_name
+    if (bank === 'Online payment') {
+      return 'Online payment'
+    } else if (bank === 'Cash') {
+      return 'Cash'
+    } else if (bank === 'Cheque') {
+      return 'Cheque'
+    } else if (bank) {
+      return 'Bank Transfer'
+    }
+  }
+  return ''
+}
+

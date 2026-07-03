@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink, Clock, RotateCcw } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
-import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, getInvoice, deleteInvoice, restoreInvoice, permanentlyDeleteInvoice, getInvoiceSettings, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments, refundInvoice } from '@/lib/invoices'
+import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, getInvoice, deleteInvoice, restoreInvoice, permanentlyDeleteInvoice, getInvoiceSettings, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments, refundInvoice, resolvePaymentMethod } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   paid:    { label: 'Paid',    color: '#22c55e', bg: 'rgba(34,197,94,0.13)' },
@@ -595,6 +595,12 @@ function TimelineDrawer({ invoice, c, isDark, onClose }: {
                 <div style={{ fontSize: 11, color: c.subText }}>Grand Total</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: c.brand }}>{fmtCurrency(invoice.total, invoice.currency === 'USD' ? 'USD' : 'LKR')}</div>
               </div>
+              {invoice.status === 'paid' && (
+                <div>
+                  <div style={{ fontSize: 11, color: c.subText }}>Payment Method</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{resolvePaymentMethod(payments) || '—'}</div>
+                </div>
+              )}
             </div>
           </div>
 
