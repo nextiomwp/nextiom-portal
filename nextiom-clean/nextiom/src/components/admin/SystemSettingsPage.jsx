@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2 } from 'lucide-react';
-import { getPortalSettings, savePortalSettings, addNotification, hexToRgb } from '@/lib/storage';
+import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard } from 'lucide-react';
+import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, getPaymentSettings, savePaymentSettings } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
 const COLOR_PRESETS = [
@@ -19,6 +19,18 @@ export default function SystemSettingsPage({ isDark }) {
   const [themeColor, setThemeColor] = useState('#E87B35');
   const [originalColor, setOriginalColor] = useState('#E87B35');
   const [allSettings, setAllSettings] = useState({});
+  
+  // iPay Settings
+  const [ipayEnabled, setIpayEnabled] = useState(false);
+  const [ipayWebToken, setIpayWebToken] = useState('');
+  const [ipaySandbox, setIpaySandbox] = useState(true);
+  const [ipaySecret, setIpaySecret] = useState('');
+
+  const [originalIpayEnabled, setOriginalIpayEnabled] = useState(false);
+  const [originalIpayWebToken, setOriginalIpayWebToken] = useState('');
+  const [originalIpaySandbox, setOriginalIpaySandbox] = useState(true);
+  const [originalIpaySecret, setOriginalIpaySecret] = useState('');
+
   const { toast } = useToast();
 
   const c = isDark
@@ -54,10 +66,21 @@ export default function SystemSettingsPage({ isDark }) {
     (async () => {
       try {
         const portal = await getPortalSettings();
+        const pay = await getPaymentSettings();
         if (mounted) {
           setAllSettings(portal);
           setThemeColor(portal.themeColor || '#E87B35');
           setOriginalColor(portal.themeColor || '#E87B35');
+          
+          setIpayEnabled(portal.ipayEnabled || false);
+          setIpayWebToken(portal.ipayWebToken || '');
+          setIpaySandbox(portal.ipaySandbox !== false);
+          setIpaySecret(pay.ipaySecret || '');
+          
+          setOriginalIpayEnabled(portal.ipayEnabled || false);
+          setOriginalIpayWebToken(portal.ipayWebToken || '');
+          setOriginalIpaySandbox(portal.ipaySandbox !== false);
+          setOriginalIpaySecret(pay.ipaySecret || '');
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
@@ -72,25 +95,37 @@ export default function SystemSettingsPage({ isDark }) {
     e.preventDefault();
     setSaving(true);
     try {
-      // Preserve other portal settings while updating the theme color
+      // Save public portal settings
       const updated = await savePortalSettings({
         ...allSettings,
         themeColor: themeColor,
+        ipayEnabled: ipayEnabled,
+        ipayWebToken: ipayWebToken,
+        ipaySandbox: ipaySandbox,
       });
+      // Save private payment settings
+      await savePaymentSettings({
+        ipaySecret: ipaySecret,
+      });
+
       setAllSettings(updated);
       setOriginalColor(themeColor);
+      setOriginalIpayEnabled(ipayEnabled);
+      setOriginalIpayWebToken(ipayWebToken);
+      setOriginalIpaySandbox(ipaySandbox);
+      setOriginalIpaySecret(ipaySecret);
 
       // Create admin activity notification
       await addNotification({
         customer_id: null,
         type: 'admin_activity',
-        title: 'Theme Color Updated',
-        message: `The administrator changed the system brand theme color to ${themeColor}.`,
+        title: 'System Settings Updated',
+        message: 'The administrator updated the system brand configuration and iPay gateway credentials.',
       }).catch(() => {});
 
       toast({
         title: 'Settings Saved',
-        description: 'System theme color has been successfully updated and applied.',
+        description: 'System settings have been successfully updated.',
         className: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       });
     } catch (err) {
@@ -106,9 +141,13 @@ export default function SystemSettingsPage({ isDark }) {
 
   const handleReset = () => {
     setThemeColor(originalColor);
+    setIpayEnabled(originalIpayEnabled);
+    setIpayWebToken(originalIpayWebToken);
+    setIpaySandbox(originalIpaySandbox);
+    setIpaySecret(originalIpaySecret);
     toast({
-      title: 'Reset Theme Picker',
-      description: 'Reverted color changes back to the saved system color.',
+      title: 'Settings Reset',
+      description: 'Reverted settings back to the saved system configuration.',
     });
   };
 
@@ -124,7 +163,11 @@ export default function SystemSettingsPage({ isDark }) {
     );
   }
 
-  const isColorChanged = themeColor !== originalColor;
+  const isChanged = themeColor !== originalColor ||
+    ipayEnabled !== originalIpayEnabled ||
+    ipayWebToken !== originalIpayWebToken ||
+    ipaySandbox !== originalIpaySandbox ||
+    ipaySecret !== originalIpaySecret;
 
   return (
     <form onSubmit={handleSave} style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 32px' }} noValidate>
@@ -165,7 +208,7 @@ export default function SystemSettingsPage({ isDark }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          {isColorChanged && (
+          {isChanged && (
             <button
               type="button"
               onClick={handleReset}
@@ -184,14 +227,14 @@ export default function SystemSettingsPage({ isDark }) {
           )}
           <button
             type="submit"
-            disabled={saving || !isColorChanged}
+            disabled={saving || !isChanged}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '9px 20px', borderRadius: 10, border: 'none',
-              background: isColorChanged ? 'var(--brand-color)' : c.borderStrong,
-              color: isColorChanged ? '#fff' : c.subText,
+              background: isChanged ? 'var(--brand-color)' : c.borderStrong,
+              color: isChanged ? '#fff' : c.subText,
               fontSize: 13, fontWeight: 700,
-              cursor: isColorChanged && !saving ? 'pointer' : 'not-allowed',
+              cursor: isChanged && !saving ? 'pointer' : 'not-allowed',
               opacity: saving ? 0.7 : 1,
               transition: 'opacity 0.2s, background-color 0.2s',
             }}
@@ -276,6 +319,84 @@ export default function SystemSettingsPage({ isDark }) {
                   />
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Card: iPay Gateway Integration */}
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CreditCard size={16} style={{ color: themeColor }} />
+              iPay Payment Gateway Integration
+            </h2>
+            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
+              Configure your iPay Global Web Payments integration credentials.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Enable Toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={ipayEnabled}
+                  onChange={(e) => setIpayEnabled(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: 'var(--brand-color)', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Enable iPay Online Payment Method</span>
+              </label>
+
+              {/* Web Token */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>IPG Integration Token (Public)</label>
+                <input
+                  type="text"
+                  value={ipayWebToken}
+                  onChange={(e) => setIpayWebToken(e.target.value)}
+                  placeholder="Enter IPG Integration Token..."
+                  disabled={!ipayEnabled}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 10,
+                    background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                    color: c.text, fontSize: 13,
+                    outline: 'none', transition: 'border-color 0.15s',
+                    opacity: ipayEnabled ? 1 : 0.6,
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                  onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                />
+              </div>
+
+              {/* Secret Key */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Secret Key (Private)</label>
+                <input
+                  type="password"
+                  value={ipaySecret}
+                  onChange={(e) => setIpaySecret(e.target.value)}
+                  placeholder={ipaySecret ? "••••••••••••••••••••••••" : "Enter Secret Key..."}
+                  disabled={!ipayEnabled}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 10,
+                    background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                    color: c.text, fontSize: 13,
+                    outline: 'none', transition: 'border-color 0.15s',
+                    opacity: ipayEnabled ? 1 : 0.6,
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                  onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                />
+              </div>
+
+              {/* Sandbox Mode */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', opacity: ipayEnabled ? 1 : 0.6 }}>
+                <input
+                  type="checkbox"
+                  checked={ipaySandbox}
+                  disabled={!ipayEnabled}
+                  onChange={(e) => setIpaySandbox(e.target.checked)}
+                  style={{ width: 16, height: 16, accentColor: 'var(--brand-color)', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sandbox Mode (Use Sandbox Endpoint)</span>
+              </label>
             </div>
           </div>
 

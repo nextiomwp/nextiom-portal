@@ -1154,6 +1154,9 @@ export const DEFAULT_PORTAL_SETTINGS = {
   maintenanceStartDate: '',
   maintenanceEndDate: '',
   themeColor: 'var(--brand-color)',
+  ipayEnabled: false,
+  ipayWebToken: '',
+  ipaySandbox: true,
 };
 
 const PORTAL_SETTINGS_STORAGE_KEY = 'portal_settings';
@@ -1186,6 +1189,9 @@ const toPortalSettingsRecord = (settings = {}) => ({
   maintenance_start_date: settings.maintenanceStartDate || null,
   maintenance_end_date: settings.maintenanceEndDate || null,
   theme_color: settings.themeColor || 'var(--brand-color)',
+  ipay_enabled: !!settings.ipayEnabled,
+  ipay_web_token: settings.ipayWebToken || '',
+  ipay_sandbox: settings.ipaySandbox !== false,
 });
 
 const fromPortalSettingsRecord = (record = {}) => ({
@@ -1200,7 +1206,40 @@ const fromPortalSettingsRecord = (record = {}) => ({
   maintenanceStartDate: record.maintenance_start_date ?? record.maintenanceStartDate ?? '',
   maintenanceEndDate: record.maintenance_end_date ?? record.maintenanceEndDate ?? '',
   themeColor: record.theme_color ?? record.themeColor ?? 'var(--brand-color)',
+  ipayEnabled: !!(record.ipay_enabled ?? record.ipayEnabled),
+  ipayWebToken: record.ipay_web_token ?? record.ipayWebToken ?? '',
+  ipaySandbox: (record.ipay_sandbox ?? record.ipaySandbox) !== false,
 });
+
+export const getPaymentSettings = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('payment_settings')
+      .select('ipay_secret')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return { ipaySecret: data?.ipay_secret || '' };
+  } catch (err) {
+    console.warn('getPaymentSettings failed:', err?.message || err);
+    return { ipaySecret: '' };
+  }
+};
+
+export const savePaymentSettings = async (settings) => {
+  try {
+    const { error } = await supabase
+      .from('payment_settings')
+      .upsert({ id: 1, ipay_secret: settings.ipaySecret || '' }, { onConflict: 'id' });
+
+    if (error) throw error;
+    return { ipaySecret: settings.ipaySecret || '' };
+  } catch (err) {
+    console.error('savePaymentSettings failed:', err?.message || err);
+    throw err;
+  }
+};
 
 export const getSettings = () => {
   const raw = localStorage.getItem('app_settings');

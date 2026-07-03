@@ -5,7 +5,8 @@ import {
   LayoutDashboard, User, LogOut, Menu, X,
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
-  CreditCard, FileText, Info, Briefcase, Megaphone, Search, BookOpen, Sparkles
+  CreditCard, FileText, Info, Briefcase, Megaphone, Search, BookOpen, Sparkles,
+  CheckCircle, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -224,6 +225,25 @@ function CustomerDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mountedTabs, setMountedTabs] = useState(() => new Set(['dashboard']));
   const portalRestriction = usePortalRestriction();
+
+  const [ipayModal, setIpayModal] = useState(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ipayStatus = params.get('ipay_status');
+    if (ipayStatus) {
+      if (ipayStatus === 'return') {
+        setIpayModal('success');
+        setActiveTab('invoices');
+      } else if (ipayStatus === 'cancel') {
+        setIpayModal('cancel');
+        setActiveTab('invoices');
+      }
+      // Clear URL params to avoid modal showing again on reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
 
   useEffect(() => {
     if (KEEP_ALIVE_TABS.includes(activeTab)) {
@@ -1199,6 +1219,52 @@ function CustomerDashboard() {
           </>
         )}
       </AnimatePresence>
+
+      {/* iPay Status Feedback Modal */}
+      {ipayModal && (
+        <>
+          <div onClick={() => setIpayModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 300 }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+            width: '90%', maxWidth: 450, background: c.card, border: `1px solid ${c.border}`,
+            borderRadius: 16, padding: 28, zIndex: 301, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', textAlign: 'center', boxShadow: '0 12px 48px rgba(0,0,0,0.4)',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 56, height: 56, borderRadius: '50%',
+              backgroundColor: ipayModal === 'success' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+              color: ipayModal === 'success' ? '#22c55e' : '#ef4444',
+              marginBottom: 16,
+            }}>
+              {ipayModal === 'success' ? <CheckCircle size={32} /> : <AlertTriangle size={32} />}
+            </div>
+            
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: c.text, margin: '0 0 8px 0' }}>
+              {ipayModal === 'success' ? 'Payment Completed' : 'Payment Canceled'}
+            </h3>
+            
+            <p style={{ fontSize: 13, color: c.subText, margin: '0 0 24px 0', lineHeight: 1.5 }}>
+              {ipayModal === 'success' 
+                ? 'Thank you! Your payment has been processed successfully. Your invoice status will update automatically in a few moments.' 
+                : 'The online payment transaction was canceled. If this was a mistake, please try again or contact support.'}
+            </p>
+            
+            <button
+              onClick={() => setIpayModal(null)}
+              style={{
+                width: '100%', padding: '11px 20px', background: ipayModal === 'success' ? '#22c55e' : c.brand,
+                color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = 0.9}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = 1}
+            >
+              Close
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Welcome & Knowledgebase Introduction Pop-up Modal */}
       <AnimatePresence>

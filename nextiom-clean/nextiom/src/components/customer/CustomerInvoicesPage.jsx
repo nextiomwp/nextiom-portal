@@ -6,7 +6,8 @@ import {
   CreditCard, Upload, Clock
 } from 'lucide-react';
 import { getCustomerInvoices, getPublicInvoiceSettings, getInvoiceSettings, submitInvoicePayment, getLatestPaymentByInvoice, resubmitPaymentInfo, fmtCurrency } from '@/lib/invoices';
-import { assertPortalActionsAllowed } from '@/lib/storage';
+import { assertPortalActionsAllowed, getPortalSettings } from '@/lib/storage';
+import { supabase } from '@/lib/customSupabaseClient';
 
 const PAGE_SIZE = 6;
 
@@ -768,8 +769,8 @@ const ChequeIcon = ({ size = 16, color = 'currentColor' }) => (
   </svg>
 );
 
-function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, isMobile = false }) {
-  const [paymentMethod, setPaymentMethod] = useState(''); // '', 'Bank Transfer', 'Cash', 'Cheque'
+function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, isMobile = false, portalSettings }) {
+  const [paymentMethod, setPaymentMethod] = useState(''); // '', 'Online payment', 'Bank Transfer', 'Cash', 'Cheque'
   const [txn, setTxn] = useState('');
   const [bankName, setBankName] = useState('');
   const [chequeNo, setChequeNo] = useState('');
@@ -819,6 +820,60 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
       setErr('');
       setSubmitting(true);
 
+      if (paymentMethod === 'Online payment') {
+        // 1. Create a payment record in invoice_payments table with status 'pending_online'
+        const tempTxnId = 'ipay_init_' + Math.random().toString(36).substring(2, 10);
+        const { data: newPayment, error: insertErr } = await supabase
+          .from('invoice_payments')
+          .insert({
+            invoice_id: invoice.id,
+            customer_email: invoice.client_email,
+            transaction_id: tempTxnId,
+            paid_amount: Number(amount),
+            payment_date: payDate,
+            notes: notes.trim() || null,
+            status: 'pending_online',
+          })
+          .select()
+          .single();
+
+        if (insertErr) throw insertErr;
+
+        // 2. Redirect the user to iPay checkout page using form submission
+        const orderDesc = `Payment for Invoice ${invoice.invoice_no}`;
+        const returnUrl = `${window.location.origin}/customer-dashboard?ipay_status=return&orderId=${newPayment.id}&invoiceId=${invoice.id}`;
+        const cancelUrl = `${window.location.origin}/customer-dashboard?ipay_status=cancel&orderId=${newPayment.id}&invoiceId=${invoice.id}`;
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = portalSettings?.ipaySandbox
+          ? 'https://sandbox.ipay.lk/ipg/checkout'
+          : 'https://ipay.lk/ipg/checkout';
+
+        const params = {
+          merchantWebToken: portalSettings?.ipayWebToken || '',
+          totalAmount: String(amount),
+          orderId: newPayment.id,
+          orderDescription: orderDesc,
+          returnUrl: returnUrl,
+          cancelUrl: cancelUrl,
+          customerName: invoice.client_name || '',
+          customerEmail: invoice.client_email || '',
+        };
+
+        for (const [key, val] of Object.entries(params)) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = val;
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+
       const dbBankName = paymentMethod === 'Bank Transfer' ? bankName.trim() : paymentMethod;
       const dbTxn = paymentMethod === 'Bank Transfer' 
         ? txn.trim() 
@@ -846,6 +901,18 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
     fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
   };
   const label = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 5, display: 'block' };
+
+  // Generate dropdown options dynamically
+  const methods = [
+    ...(portalSettings?.ipayEnabled ? [
+      { name: 'Online payment', desc: 'Pay instantly via Card/iPay/LQR', icon: <CreditCard size={16} />, color: '#10b981', bg: 'rgba(16,185,129,0.15)' }
+    ] : []),
+    { name: 'Bank Transfer', desc: 'Confirm manual payment', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
+    { name: 'Cash', desc: 'Pay in cash at our office', icon: <CashIcon size={16} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
+    { name: 'Cheque', desc: 'Pay by cheque', icon: <ChequeIcon size={16} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+  ];
+
+  const activeMethod = methods.find(m => m.name === paymentMethod);
 
   return (
     <>
@@ -876,7 +943,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
                     minHeight: 38,
                   }}
                 >
-                  {paymentMethod ? (
+                  {activeMethod ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
                         display: 'flex',
@@ -885,12 +952,12 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
                         width: 20,
                         height: 20,
                         borderRadius: 4,
-                        backgroundColor: paymentMethod === 'Cash' ? 'rgba(34,197,94,0.15)' : (paymentMethod === 'Cheque' ? 'rgba(59,130,246,0.15)' : 'rgba(232,123,53,0.15)'),
-                        color: paymentMethod === 'Cash' ? '#22c55e' : (paymentMethod === 'Cheque' ? '#3b82f6' : c.brand),
+                        backgroundColor: activeMethod.bg,
+                        color: activeMethod.color,
                       }}>
-                        {paymentMethod === 'Cash' ? <CashIcon size={12} /> : (paymentMethod === 'Cheque' ? <ChequeIcon size={12} /> : <BankIcon size={12} />)}
+                        {activeMethod.icon}
                       </div>
-                      <span style={{ fontWeight: 600 }}>{paymentMethod}</span>
+                      <span style={{ fontWeight: 600 }}>{activeMethod.name}</span>
                     </div>
                   ) : (
                     <span style={{ color: c.subText }}>Select payment method...</span>
@@ -911,12 +978,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
                   zIndex: 320,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 }}>
-                  
-                  {[
-                    { name: 'Bank Transfer', desc: 'Confirm manual payment', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
-                    { name: 'Cash', desc: 'Pay in cash at our office', icon: <CashIcon size={16} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
-                    { name: 'Cheque', desc: 'Pay by cheque', icon: <ChequeIcon size={16} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
-                  ].map(m => (
+                  {methods.map(m => (
                     <div
                       key={m.name}
                       onClick={() => {
@@ -1058,19 +1120,36 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
               <label style={label}>Notes (optional)</label>
               <textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything we should know…" />
             </div>
-            <div>
-              <label style={label}>Upload Payment Slip</label>
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: `1.5px dashed ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fafafa', color: c.subText, cursor: 'pointer', fontSize: 13 }}>
-                <Upload size={15} />
-                <span>{file ? file.name : 'Click to choose a file (image or PDF)'}</span>
-                <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} style={{ display: 'none' }} />
-              </label>
-            </div>
+            
+            {paymentMethod !== 'Online payment' && (
+              <div>
+                <label style={label}>Upload Payment Slip</label>
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: `1.5px dashed ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fafafa', color: c.subText, cursor: 'pointer', fontSize: 13 }}>
+                  <Upload size={15} />
+                  <span>{file ? file.name : 'Click to choose a file (image or PDF)'}</span>
+                  <input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} style={{ display: 'none' }} />
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Right: bank details + summary */}
           <div>
-            {paymentMethod !== 'Cash' && (
+            {paymentMethod === 'Online payment' && (
+              <div style={{ background: isDark ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>Secure Online Checkout</div>
+                <div style={{ fontSize: 13, color: c.text, lineHeight: 1.6 }}>
+                  You will be redirected to the secure iPay Payment Gateway. You can complete the payment using:
+                  <ul style={{ margin: '6px 0 0 16px', padding: 0, listStyleType: 'disc' }}>
+                    <li>Credit / Debit Cards (Visa, Mastercard)</li>
+                    <li>LankaQR Compliant Mobile Apps</li>
+                    <li>iPay Mobile Wallet</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod !== 'Cash' && paymentMethod !== 'Online payment' && (
               <div style={{ background: isDark ? '#22252C' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Our Bank Details</div>
                 {settings ? (
@@ -1111,7 +1190,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
         <div style={{ padding: '14px 22px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} disabled={submitting} style={{ padding: '8px 18px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Cancel</button>
           <button onClick={handleSubmit} disabled={submitting} style={{ padding: '8px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: submitting ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, opacity: submitting ? 0.7 : 1, fontFamily: 'inherit' }}>
-            {submitting ? 'Submitting…' : 'Submit Payment'}
+            {submitting ? 'Submitting…' : (paymentMethod === 'Online payment' ? 'Proceed to Pay' : 'Submit Payment')}
           </button>
         </div>
       </div>
@@ -1122,6 +1201,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
 export default function CustomerInvoicesPage({ user, isDark, c }) {
   const [invoices, setInvoices] = useState([]);
   const [settings, setSettings] = useState(null);
+  const [portalSettings, setPortalSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -1144,8 +1224,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   useEffect(() => {
     if (!email) return;
     setLoading(true);
-    Promise.all([getCustomerInvoices(email), getPublicInvoiceSettings()])
-      .then(([invs, sett]) => {
+    Promise.all([getCustomerInvoices(email), getPublicInvoiceSettings(), getPortalSettings()])
+      .then(([invs, sett, portal]) => {
         const getLocalDateString = () => {
           const d = new Date();
           const year = d.getFullYear();
@@ -1163,6 +1243,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
         });
         setInvoices(mapped);
         setSettings(sett);
+        setPortalSettings(portal);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -1643,6 +1724,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
         <PayInvoiceDialog
           invoice={payInvoice}
           settings={settings}
+          portalSettings={portalSettings}
           isDark={isDark}
           c={c}
           onClose={() => setPayInvoice(null)}
