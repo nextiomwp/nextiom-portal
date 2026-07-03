@@ -926,7 +926,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
   // Generate dropdown options dynamically
   const methods = [
     ...(portalSettings?.ipayEnabled ? [
-      { name: 'Online payment', desc: 'Pay instantly via Card/iPay/LQR', icon: <CreditCard size={16} />, color: '#10b981', bg: 'rgba(16,185,129,0.15)' }
+      { name: 'Online payment', desc: 'Pay instantly via Card/QR', icon: <CreditCard size={16} />, color: '#10b981', bg: 'rgba(16,185,129,0.15)' }
     ] : []),
     { name: 'Bank Transfer', desc: 'Confirm manual payment', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
     { name: 'Cash', desc: 'Pay in cash at our office', icon: <CashIcon size={16} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
