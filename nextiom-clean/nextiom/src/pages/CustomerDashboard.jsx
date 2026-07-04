@@ -306,6 +306,7 @@ function CustomerDashboard() {
   const [hasActiveQuotations, setHasActiveQuotations] = useState(false);
   const [unreadAnnouncementsCount, setUnreadAnnouncementsCount] = useState(0);
   const [emailsCount, setEmailsCount] = useState(0);
+  const [overdueInvoicesCount, setOverdueInvoicesCount] = useState(0);
 
   // States for search datasets and modal
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -404,7 +405,20 @@ function CustomerDashboard() {
 
         setTicketsList(ticketsData);
         setLicensesList(licensesData);
-        setInvoicesList(invoicesData);
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const processedInvoices = (invoicesData || []).map(inv => {
+          let status = inv.status;
+          if (status !== 'paid' && status !== 'payment_submitted' && status !== 'refunded' && status !== 'partially_refunded') {
+            const due = inv.due_date ? inv.due_date.substring(0, 10) : null;
+            if (due && due < todayStr) { status = 'overdue'; }
+          }
+          return { ...inv, status };
+        });
+        setInvoicesList(processedInvoices);
+
+        const overdueCount = processedInvoices.filter(inv => inv.status === 'overdue').length;
+        setOverdueInvoicesCount(overdueCount);
 
         // Deduplicate and combine domains for search
         const seenDomains = new Set();
@@ -468,7 +482,7 @@ function CustomerDashboard() {
         setActiveProductsCount(activeLics.length);
 
         // Check for unpaid invoices
-        const hasUnpaid = invoicesData.some(inv => 
+        const hasUnpaid = processedInvoices.some(inv => 
           inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid'
         );
         setHasUnpaidInvoices(hasUnpaid);
@@ -664,9 +678,10 @@ function CustomerDashboard() {
                 item.id === 'support' ? activeTicketsCount :
                 item.id === 'hosting' ? hostingPackagesList.length :
                 item.id === 'domains' ? domainsList.length :
-                item.id === 'emails' ? emailsCount : 0
+                item.id === 'emails' ? emailsCount :
+                item.id === 'billing' ? overdueInvoicesCount : 0
               }
-              badgeColor="#16a34a"
+              badgeColor={item.id === 'billing' ? '#ef4444' : '#16a34a'}
               showDot={item.id === 'billing' && hasUnpaidInvoices && hasActiveQuotations}
               dotColor="#22c55e"
             >
@@ -675,6 +690,7 @@ function CustomerDashboard() {
                 if (child.id === 'hosting_my') displayCount = hostingPackagesList.length;
                 if (child.id === 'domains_my') displayCount = domainsList.length;
                 if (child.id === 'emails_my') displayCount = emailsCount;
+                if (child.id === 'invoices' && overdueInvoicesCount > 0) displayCount = overdueInvoicesCount;
 
                 return (
                   <button
@@ -700,8 +716,12 @@ function CustomerDashboard() {
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-semibold font-mono"
                         style={{
-                          backgroundColor: activeTab === child.id ? c.brand : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
-                          color: activeTab === child.id ? '#ffffff' : c.subText,
+                          backgroundColor: child.id === 'invoices' && activeTab !== child.id
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : activeTab === child.id ? c.brand : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'),
+                          color: child.id === 'invoices' && activeTab !== child.id
+                            ? '#ef4444'
+                            : activeTab === child.id ? '#ffffff' : c.subText,
                         }}
                       >
                         {displayCount}

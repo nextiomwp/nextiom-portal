@@ -231,6 +231,7 @@ function ImpersonationDashboard() {
   const [emailsCount, setEmailsCount] = useState(0);
   const [domainsCount, setDomainsCount] = useState(0);
   const [hostingCount, setHostingCount] = useState(0);
+  const [overdueInvoicesCount, setOverdueInvoicesCount] = useState(0);
 
   useEffect(() => {
     if (!customerProfile?.id) return;
@@ -280,8 +281,22 @@ function ImpersonationDashboard() {
         });
         setActiveProductsCount(activeLics.length);
 
+        const todayStr = new Date().toISOString().split('T')[0];
+        const processedInvoices = (invoicesData || []).map(inv => {
+          let status = inv.status;
+          if (status !== 'paid' && status !== 'payment_submitted' && status !== 'refunded' && status !== 'partially_refunded') {
+            const due = inv.due_date ? inv.due_date.substring(0, 10) : null;
+            if (due && due < todayStr) { status = 'overdue'; }
+          }
+          return { ...inv, status };
+        });
+
+        // Count overdue invoices
+        const overdueCount = processedInvoices.filter(inv => inv.status === 'overdue').length;
+        setOverdueInvoicesCount(overdueCount);
+
         // Check for unpaid invoices
-        const hasUnpaid = invoicesData.some(inv => 
+        const hasUnpaid = processedInvoices.some(inv => 
           inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid'
         );
         setHasUnpaidInvoices(hasUnpaid);
@@ -787,9 +802,10 @@ function ImpersonationDashboard() {
                 item.id === 'support' ? activeTicketsCount :
                 item.id === 'hosting' ? hostingCount :
                 item.id === 'domains' ? domainsCount :
-                item.id === 'emails' ? emailsCount : 0
+                item.id === 'emails' ? emailsCount :
+                item.id === 'billing' ? overdueInvoicesCount : 0
               }
-              badgeColor="#16a34a"
+              badgeColor={item.id === 'billing' ? '#ef4444' : '#16a34a'}
               showDot={item.id === 'billing' && hasUnpaidInvoices && hasActiveQuotations}
               dotColor="#22c55e"
             >
@@ -798,6 +814,7 @@ function ImpersonationDashboard() {
                 if (child.id === 'hosting_my') displayCount = hostingCount;
                 if (child.id === 'domains_my') displayCount = domainsCount;
                 if (child.id === 'emails_my') displayCount = emailsCount;
+                if (child.id === 'invoices' && overdueInvoicesCount > 0) displayCount = overdueInvoicesCount;
 
                 return (
                   <button
@@ -824,8 +841,12 @@ function ImpersonationDashboard() {
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-semibold font-mono"
                         style={{
-                          backgroundColor: activeTab === child.id ? c.brand : 'rgba(255,255,255,0.1)',
-                          color: activeTab === child.id ? '#ffffff' : c.subText,
+                          backgroundColor: child.id === 'invoices' && activeTab !== child.id
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : activeTab === child.id ? c.brand : 'rgba(255,255,255,0.1)',
+                          color: child.id === 'invoices' && activeTab !== child.id
+                            ? '#ef4444'
+                            : activeTab === child.id ? '#ffffff' : c.subText,
                         }}
                       >
                         {displayCount}
