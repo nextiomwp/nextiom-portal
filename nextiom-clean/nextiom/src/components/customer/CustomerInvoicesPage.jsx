@@ -789,8 +789,15 @@ const ChequeIcon = ({ size = 16, color = 'currentColor' }) => (
   </svg>
 );
 
+const PayPalIcon = ({ size = 16, color = 'currentColor' }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill={color}>
+    <path d="M20.072 6.84c.427-2.723-1.182-4.143-3.923-4.143H8.384a.807.807 0 0 0-.796.697L4.72 21.084a.403.403 0 0 0 .398.466h4.52a.807.807 0 0 0 .796-.697l1.088-6.907a.807.807 0 0 1 .796-.697h1.492c3.553 0 5.864-1.748 6.262-6.41M16.149 10.97c-.3 1.912-1.747 3.013-3.793 3.013H10.1c-.39 0-.726.27-.788.66l-.92 5.84a.17.17 0 0 1-.168.147H6.388a.17.17 0 0 1-.168-.198l2.67-16.94a.34.34 0 0 1 .336-.292h5.185c1.884 0 3.238.487 3.041 2.915-.157 1.942-1.42 2.855-3.041 2.855" />
+  </svg>
+);
+
 function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, isMobile = false, portalSettings }) {
-  const [paymentMethod, setPaymentMethod] = useState(''); // '', 'Online payment', 'Bank Transfer', 'Cash', 'Cheque'
+  const isUsdInvoice = invoice.currency?.toUpperCase() === 'USD';
+  const [paymentMethod, setPaymentMethod] = useState(isUsdInvoice ? 'PayPal' : ''); // '', 'Online payment', 'Bank Transfer', 'Cash', 'Cheque', 'PayPal'
   const [txn, setTxn] = useState('');
   const [bankName, setBankName] = useState('');
   const [chequeNo, setChequeNo] = useState('');
@@ -839,6 +846,29 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
       if (!payDate) { setErr('Payment date is required'); return; }
       setErr('');
       setSubmitting(true);
+
+      if (paymentMethod === 'PayPal') {
+        // 1. Create a payment record in invoice_payments table with status 'pending_online'
+        const tempTxnId = 'paypal_init_' + Math.random().toString(36).substring(2, 10);
+        const { error: insertErr } = await supabase
+          .from('invoice_payments')
+          .insert({
+            invoice_id: invoice.id,
+            customer_email: invoice.client_email,
+            transaction_id: tempTxnId,
+            bank_account_name: 'PayPal',
+            paid_amount: Number(amount),
+            payment_date: payDate,
+            notes: notes.trim() || null,
+            status: 'pending_online',
+          });
+
+        if (insertErr) throw insertErr;
+
+        // 2. Redirect to PayPal native checkout page
+        window.location.href = 'https://www.paypal.com/ncp/payment/4T8JTWGYJPUVS';
+        return;
+      }
 
       if (paymentMethod === 'Online payment') {
         // 1. Create a payment record in invoice_payments table with status 'pending_online'
@@ -924,14 +954,18 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
   const label = { fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 5, display: 'block' };
 
   // Generate dropdown options dynamically
-  const methods = [
-    ...(portalSettings?.ipayEnabled ? [
-      { name: 'Online payment', desc: 'Pay instantly via Card/QR', icon: <CreditCard size={16} />, color: '#10b981', bg: 'rgba(16,185,129,0.15)' }
-    ] : []),
-    { name: 'Bank Transfer', desc: 'Confirm manual payment', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
-    { name: 'Cash', desc: 'Pay in cash at our office', icon: <CashIcon size={16} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
-    { name: 'Cheque', desc: 'Pay by cheque', icon: <ChequeIcon size={16} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
-  ];
+  const methods = isUsdInvoice
+    ? [
+        { name: 'PayPal', desc: 'Pay instantly via PayPal', icon: <PayPalIcon size={16} />, color: '#2563eb', bg: 'rgba(37,99,235,0.15)' }
+      ]
+    : [
+        ...(portalSettings?.ipayEnabled ? [
+          { name: 'Online payment', desc: 'Pay instantly via Card/QR', icon: <CreditCard size={16} />, color: '#10b981', bg: 'rgba(16,185,129,0.15)' }
+        ] : []),
+        { name: 'Bank Transfer', desc: 'Confirm manual payment', icon: <BankIcon size={16} />, color: c.brand, bg: 'rgba(232,123,53,0.15)' },
+        { name: 'Cash', desc: 'Pay in cash at our office', icon: <CashIcon size={16} />, color: '#22c55e', bg: 'rgba(34,197,94,0.15)' },
+        { name: 'Cheque', desc: 'Pay by cheque', icon: <ChequeIcon size={16} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+      ];
 
   const activeMethod = methods.find(m => m.name === paymentMethod);
 
@@ -1142,7 +1176,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
               <textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything we should know…" />
             </div>
             
-            {paymentMethod !== 'Online payment' && (
+            {paymentMethod !== 'Online payment' && paymentMethod !== 'PayPal' && (
               <div>
                 <label style={label}>Upload Payment Slip</label>
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: `1.5px dashed ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fafafa', color: c.subText, cursor: 'pointer', fontSize: 13 }}>
@@ -1170,7 +1204,21 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
               </div>
             )}
 
-            {paymentMethod !== 'Cash' && paymentMethod !== 'Online payment' && (
+            {paymentMethod === 'PayPal' && (
+              <div style={{ background: isDark ? 'rgba(37,99,235,0.08)' : 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>PayPal Secure Checkout</div>
+                <div style={{ fontSize: 13, color: c.text, lineHeight: 1.6 }}>
+                  You will be redirected to the secure PayPal Payment page. You can complete the payment using:
+                  <ul style={{ margin: '6px 0 0 16px', padding: 0, listStyleType: 'disc' }}>
+                    <li>PayPal Balance</li>
+                    <li>Linked Credit / Debit Cards</li>
+                    <li>Linked Bank Accounts</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod !== 'Cash' && paymentMethod !== 'Online payment' && paymentMethod !== 'PayPal' && (
               <div style={{ background: isDark ? '#22252C' : '#f5f5f5', border: `1px solid ${c.border}`, borderRadius: 10, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>Our Bank Details</div>
                 {settings ? (
@@ -1211,7 +1259,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
         <div style={{ padding: '14px 22px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} disabled={submitting} style={{ padding: '8px 18px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Cancel</button>
           <button onClick={handleSubmit} disabled={submitting} style={{ padding: '8px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: submitting ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, opacity: submitting ? 0.7 : 1, fontFamily: 'inherit' }}>
-            {submitting ? 'Submitting…' : (paymentMethod === 'Online payment' ? 'Proceed to Pay' : 'Submit Payment')}
+            {submitting ? 'Submitting…' : (['Online payment', 'PayPal'].includes(paymentMethod) ? 'Proceed to Pay' : 'Submit Payment')}
           </button>
         </div>
       </div>

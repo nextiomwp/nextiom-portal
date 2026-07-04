@@ -733,6 +733,8 @@ export function resolvePaymentMethod(payments: InvoicePayment[] | undefined | nu
     const bank = latest.bank_account_name
     if (bank === 'Online payment') {
       return 'Online payment'
+    } else if (bank === 'PayPal') {
+      return 'PayPal'
     } else if (bank === 'Cash') {
       return 'Cash'
     } else if (bank === 'Cheque') {
