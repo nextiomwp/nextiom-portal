@@ -267,6 +267,56 @@ To pay an invoice and submit proof:
 6. Upload the slip image/PDF and click submit.
 7. The status will immediately flip to **Payment Submitted**. Admins will verify it shortly and mark it as **Paid**.
             `
+          },
+          {
+            title: 'How to pay using Online Payment / Card / LankaQR (LKR Invoices)',
+            content: `
+For instant payment and automatic invoice clearance on LKR invoices:
+1. Navigate to **Billing Center** -> **Invoices**.
+2. Select the invoice and click **View/Pay**.
+3. In the payment dialog, choose **Online payment** from the dropdown menu (if enabled by system administrators).
+4. Enter the amount you wish to pay (usually pre-filled with the remaining balance).
+5. Click the pay button to be redirected to our secure payment gateway (iPay).
+6. Enter your credit/debit card details (Visa, Mastercard, or LANKAPAY) or scan the LankaQR code to complete the transaction.
+7. Once successfully authorized, you will be redirected back, and the invoice will immediately change to **Paid**.
+            `
+          },
+          {
+            title: 'How to pay using PayPal (USD Invoices)',
+            content: `
+For invoices billed in USD, you can pay instantly via PayPal:
+1. Navigate to **Billing Center** -> **Invoices**.
+2. Select your unpaid USD invoice and click **View/Pay**.
+3. The payment method will default to **PayPal** for USD transactions.
+4. Verify the payment amount and click the PayPal button.
+5. You will be redirected to the secure PayPal checkout page.
+6. Log in to your PayPal account or select **Pay with Debit or Credit Card** to pay as a guest.
+7. After the transaction is completed, you will be redirected back, and the payment status will update. Our administrative team will verify and activate your service shortly.
+            `
+          },
+          {
+            title: 'How to pay by Cheque (LKR & USD Invoices)',
+            content: `
+To pay an invoice using a bank cheque:
+1. Issue the cheque in favor of **Nextiom (Pvt) Ltd**.
+2. Go to **Billing Center** -> **Invoices** and click **View/Pay** on the invoice.
+3. Select **Cheque** from the payment method dropdown.
+4. Enter the **Cheque Number**, **Cheque Date**, and the **Paid Amount**.
+5. Optionally, upload a clear photo or scanned PDF of the cheque for verification.
+6. Click submit to record your payment details in the portal.
+7. Hand over or mail the physical cheque to the Nextiom office. The invoice will be marked as **Paid** once the cheque clears.
+            `
+          },
+          {
+            title: 'How to pay by Cash (LKR & USD Invoices)',
+            content: `
+To pay your invoice in cash:
+1. Go to **Billing Center** -> **Invoices** and click **View/Pay** on your invoice.
+2. Select **Cash** as the payment method.
+3. Enter the **Payment Date** and the **Paid Amount**.
+4. Click submit to register your cash payment intent.
+5. Visit the Nextiom office to pay the cash directly to our billing department. We will issue an official printed receipt and mark your invoice as **Paid** immediately.
+            `
           }
         ]
       },
