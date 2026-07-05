@@ -677,11 +677,28 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
             />
           </div>
 
-          <div style={{ padding: '12px 14px', background: isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', borderRadius: 10, border: `1px solid ${isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.12)'}` }}>
-            <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.5 }}>
-              Your ticket will be sent to our support team. You will receive notifications when we respond. Please do not share passwords in your ticket.
+          <div style={{ 
+            padding: '16px', 
+            background: isDark ? 'rgba(232,123,53,0.06)' : 'rgba(232,123,53,0.04)', 
+            borderRadius: 12, 
+            border: `1px solid ${isDark ? 'rgba(232,123,53,0.2)' : 'rgba(232,123,53,0.12)'}`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12
+          }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: c.brand, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
+                Response Time
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>
+                30 Minutes – 1 Hour
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.6 }}>
+              During busy periods, response times may extend up to 24 hours, including weekends, government holidays, and technical emergencies.
             </p>
           </div>
+
 
           <button
             type="submit"
