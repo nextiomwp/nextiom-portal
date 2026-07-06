@@ -450,6 +450,37 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
   const totalDiscount = items.reduce((s, it) => s + (it.discount || 0), 0);
   const tax = 0;
 
+  const totalUSD = invoice.total_usd ?? items.reduce((sum, item) => sum + (Number(item.amount_usd) || 0), 0);
+  const totalLKR = invoice.total_lkr ?? items.reduce((sum, item) => sum + (Number(item.amount_lkr) || 0), 0);
+
+  const formatUnitPrices = (item) => {
+    const parts = [];
+    if (item.unit_price_usd !== null && item.unit_price_usd !== undefined && item.unit_price_usd !== 0) {
+      parts.push(`USD ${Number(item.unit_price_usd).toFixed(2)}`);
+    }
+    if (item.unit_price_lkr !== null && item.unit_price_lkr !== undefined && item.unit_price_lkr !== 0) {
+      parts.push(`LKR ${Number(item.unit_price_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    }
+    if (parts.length === 0) {
+      return fmtAmt(item.unit_price || 0, invoice.currency);
+    }
+    return parts.join(' / ');
+  };
+
+  const formatAmounts = (item) => {
+    const parts = [];
+    if (item.amount_usd !== null && item.amount_usd !== undefined && item.amount_usd !== 0) {
+      parts.push(`USD ${Number(item.amount_usd).toFixed(2)}`);
+    }
+    if (item.amount_lkr !== null && item.amount_lkr !== undefined && item.amount_lkr !== 0) {
+      parts.push(`LKR ${Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+    }
+    if (parts.length === 0) {
+      return fmtAmt((item.qty || 1) * (item.unit_price || 0) - (item.discount || 0), invoice.currency);
+    }
+    return parts.join(' / ');
+  };
+
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)', zIndex: 200 }} />
@@ -552,13 +583,13 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                       </td>
                       <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'center' }}>{item.qty}</td>
                       <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
-                        {fmtAmt(item.unit_price || 0, invoice.currency)}
+                        {formatUnitPrices(item)}
                       </td>
                       <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace' }}>
                         {fmtAmt(item.discount || 0, invoice.currency)}
                       </td>
                       <td style={{ padding: '9px 10px', fontSize: 13, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 600 }}>
-                        {fmtAmt(item.qty * item.unit_price - (item.discount || 0), invoice.currency)}
+                        {formatAmounts(item)}
                       </td>
                     </tr>
                   ))}
@@ -585,9 +616,26 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
                   <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>{fmtAmt(tax, invoice.currency)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, borderTop: '2px solid #1a1a1a', paddingTop: 8 }}>
-                  <span>Total</span>
+                  <span>Total (Primary)</span>
                   <span style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--brand-color)' }}>{fmtAmt(invoice.total ?? subtotal - totalDiscount + tax, invoice.currency)}</span>
                 </div>
+                {totalUSD > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+                    <span style={{ color: '#888' }}>Total (USD)</span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>USD {totalUSD.toFixed(2)}</span>
+                  </div>
+                )}
+                {totalLKR > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 4 }}>
+                    <span style={{ color: '#888' }}>Total (LKR)</span>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace' }}>LKR {totalLKR.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {invoice.exchange_rate && (
+                  <div style={{ fontSize: 11, color: '#666', fontStyle: 'italic', marginTop: 8, borderTop: '1px dashed #e8e5e0', paddingTop: 6, textAlign: 'right' }}>
+                    Exchange Rate Used: 1 USD = LKR {Number(invoice.exchange_rate).toFixed(2)} (Locked when the invoice was created.)
+                  </div>
+                )}
                 {invoice.status === 'paid' && paymentMethodText && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 700, color: '#1a1a1a', marginTop: 8 }}>
                     <span>Payment Method</span>

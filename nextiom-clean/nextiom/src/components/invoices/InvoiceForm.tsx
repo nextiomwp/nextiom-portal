@@ -1,17 +1,46 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, Trash2, Printer, Save, ArrowLeft, BookTemplate, Download, X, FileText, Search, Pencil, Check } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { supabase } from '@/lib/customSupabaseClient'
 import {
   Invoice, InvoiceCurrency, InvoiceItem, InvoiceSettings,
   calcTotal, calcSubtotal, calcTotalDiscount, fmtCurrency, todayISO, dueDateISO,
   generateInvoiceNo, getInvoiceSettings,
   createInvoice, updateInvoice,
   getInvoicePayments, resolvePaymentMethod,
+  calcTotalUSD, calcTotalLKR,
+  calcTotalDiscountUSD, calcTotalDiscountLKR,
 } from '@/lib/invoices'
 import { getCustomers, getCustomerByEmail, addNotification } from '@/lib/storage'
 
 function newItem(): InvoiceItem {
-  return { description: '', qty: 1, unit_price: 0, discount: 0 }
+  return {
+    description: '',
+    qty: 1,
+    unit_price: 0,
+    discount: 0,
+    unit_price_usd: 0,
+    unit_price_lkr: 0,
+    amount_usd: 0,
+    amount_lkr: 0,
+  }
+}
+
+function recalcItemAmounts(item: InvoiceItem, cur: InvoiceCurrency, rate: number): InvoiceItem {
+  const q = parseFloat(item.qty as any) || 0
+  const disc = parseFloat(item.discount as any) || 0
+  const priceUsd = Number(item.unit_price_usd) || 0
+  const priceLkr = Number(item.unit_price_lkr) || 0
+
+  const discUsd = cur === 'USD' ? disc : (rate > 0 ? disc / rate : 0)
+  const discLkr = cur === 'LKR' ? disc : (rate > 0 ? disc * rate : 0)
+
+  return {
+    ...item,
+    amount_usd: Number((q * priceUsd - discUsd).toFixed(2)),
+    amount_lkr: Number((q * priceLkr - discLkr).toFixed(2)),
+    unit_price: cur === 'USD' ? (item.unit_price_usd ?? 0) : (item.unit_price_lkr ?? 0)
+  }
 }
 
 function calculateDueDate(dateStr: string): string {
@@ -81,6 +110,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [hasDueDate, setHasDueDate] = useState(true)
   const [status, setStatus] = useState<Invoice['status']>('unpaid')
   const [currency, setCurrency] = useState<InvoiceCurrency>('LKR')
+  const [exchangeRate, setExchangeRate] = useState<string>('')
   const [clientName, setClientName] = useState('')
   const [clientCompany, setClientCompany] = useState('')
   const [clientPhone, setClientPhone] = useState('')
@@ -103,6 +133,46 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
   const [editingTemplateName, setEditingTemplateName] = useState('')
   const [paymentMethodText, setPaymentMethodText] = useState('')
+
+  // Synchronize invoice templates between localStorage and Supabase user_metadata
+  const syncTemplates = async (updated: InvoiceTemplate[]) => {
+    saveTemplates(updated)
+    setTemplates(updated)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.auth.updateUser({
+          data: {
+            ...user.user_metadata,
+            nxt_invoice_templates: updated
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Failed to sync templates to Supabase user_metadata:', err)
+    }
+  }
+
+  useEffect(() => {
+    const local = loadTemplates()
+    setTemplates(local)
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user && user.user_metadata?.nxt_invoice_templates) {
+        const cloud = user.user_metadata.nxt_invoice_templates as InvoiceTemplate[]
+        const combinedMap = new Map<string, InvoiceTemplate>()
+        local.forEach(t => combinedMap.set(t.id, t))
+        cloud.forEach(t => combinedMap.set(t.id, t))
+        const merged = Array.from(combinedMap.values())
+        if (JSON.stringify(local) !== JSON.stringify(merged)) {
+          saveTemplates(merged)
+          setTemplates(merged)
+        }
+      }
+    }).catch(err => {
+      console.error('Failed to load templates from Supabase user_metadata:', err)
+    })
+  }, [])
 
   useEffect(() => {
     if (existing?.id && status === 'paid') {
@@ -177,6 +247,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         }
         setStatus(existing.status)
         setCurrency(existing.currency ?? 'LKR')
+        setExchangeRate(existing.exchange_rate ? String(existing.exchange_rate) : '')
         setClientName(existing.client_name)
         setClientCompany(existing.client_company ?? '')
         setClientPhone(existing.client_phone ?? '')
@@ -197,13 +268,66 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     init()
   }, [existing])
 
-  const subtotal = calcSubtotal(items)
+   const subtotal = calcSubtotal(items)
   const totalDiscount = calcTotalDiscount(items)
   const total = calcTotal(items)
 
-  const updateItem = useCallback((index: number, field: keyof InvoiceItem, value: string | number) => {
-    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item))
-  }, [])
+  const handleExchangeRateChange = (newRateStr: string) => {
+    setExchangeRate(newRateStr)
+    const rate = parseFloat(newRateStr) || 0
+    if (rate > 0) {
+      setItems(prev => prev.map(item => {
+        let updated = { ...item }
+        
+        // Recalculate based on primary currency
+        if (currency === 'USD') {
+          if (updated.unit_price_usd !== undefined && updated.unit_price_usd !== null) {
+            updated.unit_price_lkr = Number((updated.unit_price_usd * rate).toFixed(2))
+          }
+        } else {
+          if (updated.unit_price_lkr !== undefined && updated.unit_price_lkr !== null) {
+            updated.unit_price_usd = Number((updated.unit_price_lkr / rate).toFixed(2))
+          }
+        }
+
+        return recalcItemAmounts(updated, currency, rate)
+      }))
+    }
+  }
+
+  const updateItem = useCallback((index: number, field: string, value: any) => {
+    setItems(prev => prev.map((item, i) => {
+      if (i !== index) return item
+      let updated = { ...item, [field]: value }
+
+      const rate = parseFloat(exchangeRate) || 0
+
+      if (field === 'qty') {
+        updated.qty = parseFloat(value) || 0
+      } else if (field === 'unit_price_usd') {
+        const val = parseFloat(value) || 0
+        updated.unit_price_usd = val
+        if (rate > 0) {
+          updated.unit_price_lkr = Number((val * rate).toFixed(2))
+        }
+      } else if (field === 'unit_price_lkr') {
+        const val = parseFloat(value) || 0
+        updated.unit_price_lkr = val
+        if (rate > 0) {
+          updated.unit_price_usd = Number((val / rate).toFixed(2))
+        }
+      } else if (field === 'discount') {
+        updated.discount = parseFloat(value) || 0
+      }
+
+      return recalcItemAmounts(updated, currency, rate)
+    }))
+  }, [exchangeRate, currency])
+
+  useEffect(() => {
+    const rate = parseFloat(exchangeRate) || 0
+    setItems(prev => prev.map(item => recalcItemAmounts(item, currency, rate)))
+  }, [currency, exchangeRate])
 
   const removeItem = useCallback((index: number) => {
     setItems(prev => prev.filter((_, i) => i !== index))
@@ -232,18 +356,32 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     if (!items.some(i => i.description.trim())) { toast({ title: 'Add at least one line item', variant: 'destructive' }); return }
     setSaving(true)
     const validItems = items.filter(i => i.description.trim())
+    const isLKR = currency === 'LKR'
+    const processedItems = validItems.map(item => {
+      if (!isLKR) {
+        return {
+          ...item,
+          unit_price_lkr: null,
+          amount_lkr: null,
+        }
+      }
+      return item
+    })
     const invoiceData: Invoice = {
       invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: hasDueDate ? dueDate : null, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress, notes, total,
       service_name: serviceName,
+      exchange_rate: isLKR && exchangeRate ? parseFloat(exchangeRate) : null,
+      total_usd: calcTotalUSD(processedItems, currency, isLKR ? (parseFloat(exchangeRate) || 0) : 0),
+      total_lkr: isLKR ? calcTotalLKR(processedItems, currency, parseFloat(exchangeRate) || 0) : null,
     }
     try {
       if (existing?.id) {
-        await updateInvoice(existing.id, invoiceData, validItems)
+        await updateInvoice(existing.id, invoiceData, processedItems)
         toast({ title: `Invoice ${invoiceNo} updated` })
       } else {
-        await createInvoice(invoiceData, validItems)
+        await createInvoice(invoiceData, processedItems)
         toast({ title: `Invoice ${invoiceNo} saved` })
         // Notify the customer
         if (clientEmail) {
@@ -290,12 +428,24 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
 
   const handlePrint = () => {
     if (!clientName.trim()) { toast({ title: 'Fill in client name before printing', variant: 'destructive' }); return }
+    const validItems = items.filter(i => i.description.trim())
+    const isLKR = currency === 'LKR'
+    const processedItems = validItems.map(item => {
+      if (!isLKR) {
+        return {
+          ...item,
+          unit_price_lkr: null,
+          amount_lkr: null,
+        }
+      }
+      return item
+    })
     localStorage.setItem('nxt_invoice_print', JSON.stringify({
       id: existing?.id,
       invoice_no: invoiceNo, invoice_date: invoiceDate, due_date: hasDueDate ? dueDate : null, status, currency,
       client_name: clientName, client_company: clientCompany, client_phone: clientPhone,
       client_email: clientEmail, client_address: clientAddress,
-      items: items.filter(i => i.description.trim()).map(i => ({
+      items: processedItems.map(i => ({
         ...i,
         refunded: i.refunded ?? false
       })),
@@ -305,7 +455,10 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
       refund_date: existing?.refund_date || null,
       refund_reason: existing?.refund_reason || null,
       refund_service_charge: existing?.refund_service_charge || 0,
-      paid_amount: existing?.paid_amount || 0
+      paid_amount: existing?.paid_amount || 0,
+      exchange_rate: isLKR && exchangeRate ? parseFloat(exchangeRate) : null,
+      total_usd: calcTotalUSD(processedItems, currency, isLKR ? (parseFloat(exchangeRate) || 0) : 0),
+      total_lkr: isLKR ? calcTotalLKR(processedItems, currency, parseFloat(exchangeRate) || 0) : null,
     }))
     window.open('/invoices/print', '_blank')
   }
@@ -333,8 +486,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
       createdAt: new Date().toISOString(),
     }
     const updated = [...loadTemplates(), tpl]
-    saveTemplates(updated)
-    setTemplates(updated)
+    syncTemplates(updated)
     setShowSaveTemplate(false)
     setTemplateName('')
     toast({ title: `Template "${tpl.name}" saved` })
@@ -364,8 +516,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
 
   const deleteTemplate = (id: string) => {
     const updated = loadTemplates().filter(t => t.id !== id)
-    saveTemplates(updated)
-    setTemplates(updated)
+    syncTemplates(updated)
   }
 
   const startRenameTemplate = (tpl: InvoiceTemplate) => {
@@ -378,8 +529,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
     const updated = loadTemplates().map(t =>
       t.id === editingTemplateId ? { ...t, name: editingTemplateName.trim() } : t
     )
-    saveTemplates(updated)
-    setTemplates(updated)
+    syncTemplates(updated)
     setEditingTemplateId(null)
     setEditingTemplateName('')
     toast({ title: 'Template renamed' })
@@ -502,7 +652,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                 />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '160px 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '120px 1fr', gap: 12 }}>
               <div>
                 <label style={lbl}>Status</label>
                 <select style={{ ...inp, cursor: 'pointer' }} value={status} onChange={e => setStatus(e.target.value as Invoice['status'])}>
@@ -560,38 +710,86 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
 
         {/* Right column — line items */}
         <div style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
             <p style={{ ...secTitle, marginBottom: 0 }}>Line items</p>
-            <div style={{ display: 'flex', padding: 3, border: `1px solid ${c.border}`, borderRadius: 8, background: isDark ? '#1C1E24' : '#f8fafc' }}>
-              {(['LKR', 'USD'] as InvoiceCurrency[]).map(cur => (
-                <button
-                  key={cur}
-                  type="button"
-                  onClick={() => setCurrency(cur)}
-                  style={{
-                    minWidth: 48,
-                    padding: '6px 10px',
-                    border: 'none',
-                    borderRadius: 6,
-                    background: currency === cur ? c.brand : 'transparent',
-                    color: currency === cur ? '#fff' : c.subText,
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  {cur}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {currency === 'LKR' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: c.subText }}>
+                  <span style={{ fontWeight: 600 }}>1 USD = LKR</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    style={{
+                      ...inp,
+                      width: 80,
+                      height: 28,
+                      padding: '2px 8px',
+                      fontSize: 12,
+                      textAlign: 'center',
+                      fontWeight: 600,
+                      borderColor: c.brand,
+                    }}
+                    placeholder="Rate"
+                    value={exchangeRate}
+                    onChange={e => handleExchangeRateChange(e.target.value)}
+                  />
+                </div>
+              )}
+              <div style={{ display: 'flex', padding: 3, border: `1px solid ${c.border}`, borderRadius: 8, background: isDark ? '#1C1E24' : '#f8fafc' }}>
+                {(['LKR', 'USD'] as InvoiceCurrency[]).map(cur => (
+                  <button
+                    key={cur}
+                    type="button"
+                    onClick={() => setCurrency(cur)}
+                    style={{
+                      minWidth: 48,
+                      padding: '6px 10px',
+                      border: 'none',
+                      borderRadius: 6,
+                      background: currency === cur ? c.brand : 'transparent',
+                      color: currency === cur ? '#fff' : c.subText,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {cur}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {!isMobile && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              <span>Description</span><span>Qty</span><span>Unit price</span><span>Discount</span>
-              <span style={{ textAlign: 'right' }}>Amount</span><span></span>
-            </div>
+            currency === 'LKR' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 105px 80px 105px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <span>Description</span>
+                <span style={{ textAlign: 'center' }}>Qty</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span>Unit Price</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>LKR / USD</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span>Discount</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span>Amount</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>LKR / USD</span>
+                </div>
+                <span></span>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 105px 80px 105px 28px', gap: 6, padding: '0 2px 6px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                <span>Description</span>
+                <span style={{ textAlign: 'center' }}>Qty</span>
+                <span style={{ textAlign: 'right', paddingRight: 10 }}>Unit Price</span>
+                <span style={{ textAlign: 'right', paddingRight: 10 }}>Discount</span>
+                <span style={{ textAlign: 'right', paddingRight: 10 }}>Amount</span>
+                <span></span>
+              </div>
+            )
           )}
 
           <div style={{ marginBottom: 10 }}>
@@ -671,96 +869,305 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                     </button>
                   </div>
 
-                  {/* Middle: Qty, Unit Price, Discount fields */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '60px 1fr 1fr', gap: 8 }}>
-                    <div>
-                      <label style={lbl}>Qty</label>
-                      <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
+                  {/* Middle: Qty, Prices, Discounts, Amounts */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div>
+                        <label style={lbl}>Qty</label>
+                        <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
+                      </div>
+                      <div>
+                        <label style={lbl}>Discount</label>
+                        <input type="number" min={0} placeholder="0" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
+                      </div>
                     </div>
-                    <div>
-                      <label style={lbl}>Unit Price</label>
-                      <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div>
-                      <label style={lbl}>Discount</label>
-                      <input type="number" min={0} placeholder="0.00" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
-                    </div>
-                  </div>
-
-                  {/* Bottom: Subtotal Amount display */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px dashed ${c.border}`, paddingTop: 8 }}>
-                    <span style={{ fontSize: 12, color: c.subText }}>Amount</span>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
-                  </div>
-                </div>
-              ) : (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 100px 80px 100px 28px', gap: 6, alignItems: 'start', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
-                    <input
-                      style={inp}
-                      placeholder={item.is_package ? "Package name" : "Service or product (Shift+Enter for link)"}
-                      value={item.description}
-                      onChange={e => updateItem(i, 'description', e.target.value)}
-                      onKeyDown={e => handleDescriptionKeyDown(e, i)}
-                    />
-                    {item.link_url !== undefined && (
-                      <input
-                        style={{ ...inp, fontSize: 11, padding: '4px 8px' }}
-                        placeholder="Enter link URL (e.g. https://...)"
-                        value={item.link_url || ''}
-                        onChange={e => updateItem(i, 'link_url', e.target.value)}
-                      />
-                    )}
-                    {item.is_package && (
-                      <div style={{ paddingLeft: 12, borderLeft: `2px solid ${c.brand}`, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sub-items</span>
-                        {(item.sub_items || []).map((sub, subIdx) => (
-                          <div key={subIdx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {currency === 'LKR' ? (
+                      <>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <div>
+                            <label style={lbl}>Unit Price (LKR)</label>
                             <input
-                              style={{ ...inp, padding: '4px 8px', fontSize: 12, border: `1px solid ${c.border}` }}
-                              placeholder={`Sub-item ${subIdx + 1} description`}
-                              value={sub}
-                              onChange={e => {
-                                const newSubs = [...(item.sub_items || [])]
-                                newSubs[subIdx] = e.target.value
-                                updateItem(i, 'sub_items', newSubs)
-                              }}
+                              type="number"
+                              min={0}
+                              placeholder="0.00"
+                              style={inp}
+                              value={item.unit_price_lkr !== undefined && item.unit_price_lkr !== null ? item.unit_price_lkr : ''}
+                              onChange={e => updateItem(i, 'unit_price_lkr', e.target.value)}
                             />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newSubs = (item.sub_items || []).filter((_, sIdx) => sIdx !== subIdx)
-                                updateItem(i, 'sub_items', newSubs)
-                              }}
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
-                            >
-                              <X size={12} />
-                            </button>
                           </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newSubs = [...(item.sub_items || []), '']
-                            updateItem(i, 'sub_items', newSubs)
-                          }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: c.brand, cursor: 'pointer', fontSize: 11, padding: '2px 0', alignSelf: 'flex-start', fontWeight: 600 }}
-                        >
-                          <Plus size={10} /> Add Sub-item
-                        </button>
+                          <div>
+                            <label style={lbl}>Unit Price (USD)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              placeholder="0.00"
+                              style={inp}
+                              value={item.unit_price_usd !== undefined && item.unit_price_usd !== null ? item.unit_price_usd : ''}
+                              onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          <div>
+                            <label style={lbl}>Amount (LKR)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              placeholder="0.00"
+                              style={inp}
+                              value={item.amount_lkr !== undefined && item.amount_lkr !== null ? item.amount_lkr : ''}
+                              onChange={e => updateItem(i, 'amount_lkr', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label style={lbl}>Amount (USD)</label>
+                            <input
+                              type="number"
+                              min={0}
+                              placeholder="0.00"
+                              style={inp}
+                              value={item.amount_usd !== undefined && item.amount_usd !== null ? item.amount_usd : ''}
+                              onChange={e => updateItem(i, 'amount_usd', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div>
+                          <label style={lbl}>Unit Price (USD)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="0.00"
+                            style={inp}
+                            value={item.unit_price_usd !== undefined && item.unit_price_usd !== null ? item.unit_price_usd : ''}
+                            onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label style={lbl}>Amount (USD)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            placeholder="0.00"
+                            style={inp}
+                            value={item.amount_usd !== undefined && item.amount_usd !== null ? item.amount_usd : ''}
+                            onChange={e => updateItem(i, 'amount_usd', e.target.value)}
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
-                  <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
-                  <input type="number" min={0} placeholder="0.00" style={inp} value={item.unit_price || ''} onChange={e => updateItem(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-                  <input type="number" min={0} placeholder="0.00" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
-                  <div style={{ fontSize: 13, fontWeight: 600, textAlign: 'right', paddingRight: 4, whiteSpace: 'nowrap', color: c.text, paddingTop: 8 }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: 6 }}>
-                    <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
-                      <Trash2 size={13} />
-                    </button>
+
+                  {/* Bottom: Subtotal Amount display */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: `1px dashed ${c.border}`, paddingTop: 8 }}>
+                    {currency === 'LKR' ? (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, color: c.subText }}>Amount (LKR)</span>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>LKR {item.amount_lkr ? Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, color: c.subText }}>Amount (USD)</span>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>USD {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}</div>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, color: c.subText }}>Amount</span>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>USD {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
+              ) : (
+                currency === 'LKR' ? (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 105px 80px 105px 28px', gap: 6, alignItems: 'start', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                      <input
+                        style={inp}
+                        placeholder={item.is_package ? "Package name" : "Service or product (Shift+Enter for link)"}
+                        value={item.description}
+                        onChange={e => updateItem(i, 'description', e.target.value)}
+                        onKeyDown={e => handleDescriptionKeyDown(e, i)}
+                      />
+                      {item.link_url !== undefined && (
+                        <input
+                          style={{ ...inp, fontSize: 11, padding: '4px 8px' }}
+                          placeholder="Enter link URL (e.g. https://...)"
+                          value={item.link_url || ''}
+                          onChange={e => updateItem(i, 'link_url', e.target.value)}
+                        />
+                      )}
+                      {item.is_package && (
+                        <div style={{ paddingLeft: 12, borderLeft: `2px solid ${c.brand}`, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sub-items</span>
+                          {(item.sub_items || []).map((sub, subIdx) => (
+                            <div key={subIdx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                style={{ ...inp, padding: '4px 8px', fontSize: 12, border: `1px solid ${c.border}` }}
+                                placeholder={`Sub-item ${subIdx + 1} description`}
+                                value={sub}
+                                onChange={e => {
+                                  const newSubs = [...(item.sub_items || [])]
+                                  newSubs[subIdx] = e.target.value
+                                  updateItem(i, 'sub_items', newSubs)
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newSubs = (item.sub_items || []).filter((_, sIdx) => sIdx !== subIdx)
+                                  updateItem(i, 'sub_items', newSubs)
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSubs = [...(item.sub_items || []), '']
+                              updateItem(i, 'sub_items', newSubs)
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: c.brand, cursor: 'pointer', fontSize: 11, padding: '2px 0', alignSelf: 'flex-start', fontWeight: 600 }}
+                          >
+                            <Plus size={10} /> Add Sub-item
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
+                    
+                    {/* Unit Price LKR/USD vertical stack */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="LKR"
+                        style={inp}
+                        value={item.unit_price_lkr !== undefined && item.unit_price_lkr !== null ? item.unit_price_lkr : ''}
+                        onChange={e => updateItem(i, 'unit_price_lkr', e.target.value)}
+                      />
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="USD"
+                        style={{ ...inp, fontSize: 12, opacity: 0.8 }}
+                        value={item.unit_price_usd !== undefined && item.unit_price_usd !== null ? item.unit_price_usd : ''}
+                        onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
+                      />
+                    </div>
+
+                    {/* Discount input (4th column) */}
+                    <input type="number" min={0} placeholder="0" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
+
+                    {/* Amount LKR/USD vertical stack (5th column) - READ-ONLY TEXT */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end', justifyContent: 'center', minHeight: 32, paddingRight: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>
+                        {item.amount_lkr ? Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+                      </span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: c.subText }}>
+                        {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: 6 }}>
+                      <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 54px 105px 80px 105px 28px', gap: 6, alignItems: 'start', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                      <input
+                        style={inp}
+                        placeholder={item.is_package ? "Package name" : "Service or product (Shift+Enter for link)"}
+                        value={item.description}
+                        onChange={e => updateItem(i, 'description', e.target.value)}
+                        onKeyDown={e => handleDescriptionKeyDown(e, i)}
+                      />
+                      {item.link_url !== undefined && (
+                        <input
+                          style={{ ...inp, fontSize: 11, padding: '4px 8px' }}
+                          placeholder="Enter link URL (e.g. https://...)"
+                          value={item.link_url || ''}
+                          onChange={e => updateItem(i, 'link_url', e.target.value)}
+                        />
+                      )}
+                      {item.is_package && (
+                        <div style={{ paddingLeft: 12, borderLeft: `2px solid ${c.brand}`, display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sub-items</span>
+                          {(item.sub_items || []).map((sub, subIdx) => (
+                            <div key={subIdx} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                style={{ ...inp, padding: '4px 8px', fontSize: 12, border: `1px solid ${c.border}` }}
+                                placeholder={`Sub-item ${subIdx + 1} description`}
+                                value={sub}
+                                onChange={e => {
+                                  const newSubs = [...(item.sub_items || [])]
+                                  newSubs[subIdx] = e.target.value
+                                  updateItem(i, 'sub_items', newSubs)
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newSubs = (item.sub_items || []).filter((_, sIdx) => sIdx !== subIdx)
+                                  updateItem(i, 'sub_items', newSubs)
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 2, display: 'flex', alignItems: 'center' }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSubs = [...(item.sub_items || []), '']
+                              updateItem(i, 'sub_items', newSubs)
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: c.brand, cursor: 'pointer', fontSize: 11, padding: '2px 0', alignSelf: 'flex-start', fontWeight: 600 }}
+                          >
+                            <Plus size={10} /> Add Sub-item
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <input type="number" min={1} style={{ ...inp, textAlign: 'center' }} value={item.qty} onChange={e => updateItem(i, 'qty', parseFloat(e.target.value) || 1)} />
+                    
+                    {/* Unit Price (USD) */}
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="0.00"
+                      style={{ ...inp, textAlign: 'right' }}
+                      value={item.unit_price_usd !== undefined && item.unit_price_usd !== null ? item.unit_price_usd : ''}
+                      onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
+                    />
+
+                    {/* Discount input (4th column) */}
+                    <input type="number" min={0} placeholder="0" style={inp} value={item.discount || ''} onChange={e => updateItem(i, 'discount', parseFloat(e.target.value) || 0)} />
+
+                    {/* Amount (USD) - READ-ONLY TEXT */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', minHeight: 32, paddingRight: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>
+                        {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: 6 }}>
+                      <button onClick={() => removeItem(i)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: items.length === 1 ? 'not-allowed' : 'pointer', padding: 2, borderRadius: 4, opacity: items.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )
               )
             ))}
           </div>
@@ -775,20 +1182,57 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
           </div>
 
           {/* Totals */}
-          <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${c.border}` }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText, marginBottom: 4 }}>
-              <span>Subtotal</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(subtotal, currency)}</span>
+          {currency === 'LKR' ? (
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText }}>
+                <span>Subtotal</span>
+                <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
+                  <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText }}>
+                <span>Total Discount</span>
+                <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
+                  <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalDiscountLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalDiscountUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: `1px solid ${c.border}`, paddingTop: 8, color: c.brand }}>
+                <span>Grand Total</span>
+                <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
+                  <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500, color: c.text }}>
+                <span>Due Total</span>
+                <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
+                  <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText, marginBottom: 4 }}>
-              <span>Total Discount</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(totalDiscount, currency)}</span>
+          ) : (
+            <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${c.border}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText }}>
+                <span>Subtotal</span>
+                <span style={{ fontFamily: 'monospace' }}>USD {calcTotalUSD(items, currency, 0).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText }}>
+                <span>Total Discount</span>
+                <span style={{ fontFamily: 'monospace' }}>USD {calcTotalDiscountUSD(items, currency, 0).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: `1px solid ${c.border}`, paddingTop: 8, color: c.brand }}>
+                <span>Grand Total</span>
+                <span style={{ fontFamily: 'monospace' }}>USD {calcTotalUSD(items, currency, 0).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500, color: c.text }}>
+                <span>Due Total</span>
+                <span style={{ fontFamily: 'monospace' }}>USD {calcTotalUSD(items, currency, 0).toFixed(2)}</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: `1px solid ${c.border}`, paddingTop: 8, color: c.brand }}>
-              <span>Grand total</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500, marginTop: 4, color: c.text }}>
-              <span>{status === 'paid' ? 'Total Amount' : 'Due total'}</span><span style={{ fontFamily: 'monospace' }}>{fmtCurrency(total, currency)}</span>
-            </div>
-          </div>
+          )}
 
           {/* Payment preview */}
           {status === 'paid' && paymentMethodText ? (

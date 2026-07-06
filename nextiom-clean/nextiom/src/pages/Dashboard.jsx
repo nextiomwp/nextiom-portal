@@ -603,9 +603,11 @@ function Dashboard({ onLogout }) {
     }
     const notifReadAt = localStorage.getItem('adminNotifReadAt');
     const notifReadIds = localStorage.getItem('adminNotifReadIds');
+    const invoiceTemplates = localStorage.getItem('nxt_invoice_templates');
     sessionStorage.clear(); localStorage.clear();
     if (notifReadAt) localStorage.setItem('adminNotifReadAt', notifReadAt);
     if (notifReadIds) localStorage.setItem('adminNotifReadIds', notifReadIds);
+    if (invoiceTemplates) localStorage.setItem('nxt_invoice_templates', invoiceTemplates);
     window.location.replace('/');
   };
 

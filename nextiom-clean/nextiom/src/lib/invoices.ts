@@ -19,6 +19,10 @@ export interface InvoiceItem {
   is_package?: boolean
   sub_items?: string[]
   refunded?: boolean
+  unit_price_usd?: number | null
+  unit_price_lkr?: number | null
+  amount_usd?: number | null
+  amount_lkr?: number | null
 }
 
 export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted' | 'partially_paid' | 'refunded' | 'partially_refunded'
@@ -48,6 +52,9 @@ export interface Invoice {
   items?: InvoiceItem[]
   service_name?: string
   deleted_at?: string
+  exchange_rate?: number | null
+  total_usd?: number | null
+  total_lkr?: number | null
 }
 
 export interface InvoiceSettings {
@@ -79,6 +86,40 @@ export function calcTotalDiscount(items: InvoiceItem[]): number {
 
 export function calcTotal(items: InvoiceItem[]): number {
   return items.reduce((s, i) => s + (i.qty * i.unit_price - (i.discount || 0)), 0)
+}
+
+export function calcTotalUSD(items: InvoiceItem[], currency: InvoiceCurrency = 'LKR', rate = 0): number {
+  return items.reduce((s, i) => {
+    const qty = i.qty || 1
+    const priceUSD = Number(i.unit_price_usd) || 0
+    const disc = i.discount || 0
+    const discUSD = currency === 'USD' ? disc : (rate > 0 ? disc / rate : 0)
+    return s + (qty * priceUSD - discUSD)
+  }, 0)
+}
+
+export function calcTotalLKR(items: InvoiceItem[], currency: InvoiceCurrency = 'LKR', rate = 0): number {
+  return items.reduce((s, i) => {
+    const qty = i.qty || 1
+    const priceLKR = Number(i.unit_price_lkr) || 0
+    const disc = i.discount || 0
+    const discLKR = currency === 'LKR' ? disc : (rate > 0 ? disc * rate : 0)
+    return s + (qty * priceLKR - discLKR)
+  }, 0)
+}
+
+export function calcTotalDiscountUSD(items: InvoiceItem[], currency: InvoiceCurrency = 'LKR', rate = 0): number {
+  return items.reduce((s, i) => {
+    const disc = i.discount || 0
+    return s + (currency === 'USD' ? disc : (rate > 0 ? disc / rate : 0))
+  }, 0)
+}
+
+export function calcTotalDiscountLKR(items: InvoiceItem[], currency: InvoiceCurrency = 'LKR', rate = 0): number {
+  return items.reduce((s, i) => {
+    const disc = i.discount || 0
+    return s + (currency === 'LKR' ? disc : (rate > 0 ? disc * rate : 0))
+  }, 0)
 }
 
 export function fmtLKR(amount: number): string {
@@ -289,6 +330,10 @@ function serializeItem(item: InvoiceItem): any {
     unit_price: item.unit_price,
     discount: item.discount || 0,
     link_url: item.link_url || null,
+    unit_price_usd: item.unit_price_usd !== undefined ? item.unit_price_usd : null,
+    unit_price_lkr: item.unit_price_lkr !== undefined ? item.unit_price_lkr : null,
+    amount_usd: item.amount_usd !== undefined ? item.amount_usd : null,
+    amount_lkr: item.amount_lkr !== undefined ? item.amount_lkr : null,
   }
 }
 
@@ -328,10 +373,14 @@ export async function createInvoice(invoice: Invoice, items: InvoiceItem[]): Pro
   if (!user) throw new Error('Not authenticated')
 
   const total = calcTotal(items)
+  const rate = invoice.exchange_rate || 0
+  const cur = invoice.currency || 'LKR'
+  const total_usd = calcTotalUSD(items, cur, rate)
+  const total_lkr = calcTotalLKR(items, cur, rate)
 
   const { data, error } = await supabase
     .from('invoices')
-    .insert({ ...invoice, user_id: user.id, total })
+    .insert({ ...invoice, user_id: user.id, total, total_usd, total_lkr })
     .select('id')
     .single()
 
@@ -352,10 +401,14 @@ export async function createInvoice(invoice: Invoice, items: InvoiceItem[]): Pro
 
 export async function updateInvoice(id: string, invoice: Partial<Invoice>, items: InvoiceItem[]): Promise<void> {
   const total = calcTotal(items)
+  const rate = invoice.exchange_rate || 0
+  const cur = invoice.currency || 'LKR'
+  const total_usd = calcTotalUSD(items, cur, rate)
+  const total_lkr = calcTotalLKR(items, cur, rate)
 
   const { error } = await supabase
     .from('invoices')
-    .update({ ...invoice, total })
+    .update({ ...invoice, total, total_usd, total_lkr })
     .eq('id', id)
 
   if (error) throw error

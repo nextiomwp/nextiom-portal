@@ -94,13 +94,45 @@ export default function InvoicePrintPage() {
 
   const { invoice_no, invoice_date, due_date, client_name, client_company,
           client_phone, client_email, client_address, items = [], notes, total, status,
-          refunded_amount, refund_date, refund_reason, refund_service_charge, settings: s } = data
+          refunded_amount, refund_date, refund_reason, refund_service_charge, settings: s,
+          exchange_rate, total_usd, total_lkr } = data
   const currency: InvoiceCurrency = data.currency === 'USD' ? 'USD' : 'LKR'
   const paymentImage = currency === 'USD' ? '/NEXTIOM_USD.png' : '/NEXTIOM_LKR.png'
   const printInvoiceDate = formatPrintDate(invoice_date)
   const printDueDate = formatPrintDate(due_date)
   const subtotal = items.reduce((sum: number, item: any) => sum + (item.qty * item.unit_price), 0)
   const totalDiscount = items.reduce((sum: number, item: any) => sum + (item.discount || 0), 0)
+
+  const totalUSD = total_usd ?? items.reduce((sum: number, item: any) => sum + (Number(item.amount_usd) || 0), 0)
+  const totalLKR = total_lkr ?? items.reduce((sum: number, item: any) => sum + (Number(item.amount_lkr) || 0), 0)
+
+  const formatUnitPrices = (item: any) => {
+    const parts = []
+    if (item.unit_price_usd !== null && item.unit_price_usd !== undefined && item.unit_price_usd !== 0) {
+      parts.push(`USD ${Number(item.unit_price_usd).toFixed(2)}`)
+    }
+    if (item.unit_price_lkr !== null && item.unit_price_lkr !== undefined && item.unit_price_lkr !== 0) {
+      parts.push(`LKR ${Number(item.unit_price_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+    }
+    if (parts.length === 0) {
+      return fmtCurrency(item.unit_price || 0, currency)
+    }
+    return parts.join(' / ')
+  }
+
+  const formatAmounts = (item: any) => {
+    const parts = []
+    if (item.amount_usd !== null && item.amount_usd !== undefined && item.amount_usd !== 0) {
+      parts.push(`USD ${Number(item.amount_usd).toFixed(2)}`)
+    }
+    if (item.amount_lkr !== null && item.amount_lkr !== undefined && item.amount_lkr !== 0) {
+      parts.push(`LKR ${Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+    }
+    if (parts.length === 0) {
+      return fmtCurrency(item.qty * (item.unit_price || 0) - (item.discount || 0), currency)
+    }
+    return parts.join(' / ')
+  }
 
   // Extract first name and build dynamic title/filename for PDF print
   const clientName = client_name || ''
@@ -338,9 +370,9 @@ export default function InvoicePrintPage() {
                     )}
                   </td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{item.qty}</td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.unit_price, currency)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{formatUnitPrices(item)}</td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.discount || 0, currency)}</td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{fmtCurrency(item.qty * item.unit_price - (item.discount || 0), currency)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{formatAmounts(item)}</td>
                 </tr>
               ))}
             </tbody>
@@ -348,6 +380,11 @@ export default function InvoicePrintPage() {
 
           {/* Totals */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginBottom: 32 }}>
+            {exchange_rate && (
+              <div style={{ fontSize: 12, color: '#4b5563', fontStyle: 'italic', marginBottom: 8, textAlign: 'right' }}>
+                Exchange Rate Used: 1 USD = LKR {Number(exchange_rate).toFixed(2)} (Locked when the invoice was created.)
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
               <span>Subtotal</span><span>{fmtCurrency(subtotal, currency)}</span>
             </div>
@@ -355,8 +392,18 @@ export default function InvoicePrintPage() {
               <span>Total Discount</span><span>{fmtCurrency(totalDiscount, currency)}</span>
             </div>
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-              <span>Grand total</span><span>{fmtCurrency(total, currency)}</span>
+              <span>Grand total (Primary)</span><span>{fmtCurrency(total, currency)}</span>
             </div>
+            {totalUSD > 0 && (
+              <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
+                <span>Grand total (USD)</span><span>USD {totalUSD.toFixed(2)}</span>
+              </div>
+            )}
+            {totalLKR > 0 && (
+              <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
+                <span>Grand total (LKR)</span><span>LKR {totalLKR.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            )}
             {refunded_amount && Number(refunded_amount) > 0 ? (
               <>
                 <div style={{ display: 'flex', gap: 56, fontSize: 13, color: 'var(--brand-color)', fontWeight: 600 }}>
