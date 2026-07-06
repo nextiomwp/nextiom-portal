@@ -1129,7 +1129,7 @@ function Dashboard({ onLogout }) {
                             onClick={() => {
                               markNotifRead(item.key);
                               const isEmailRequest = n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email request') || String(n.title || '').toLowerCase().includes('email');
-                              const isTicket = n.type === 'ticket' || String(n.title || '').toLowerCase().includes('ticket');
+                              const isTicket = n.type === 'ticket' || String(n.type).startsWith('ticket:') || String(n.title || '').toLowerCase().includes('ticket');
                               const isQuotation = n.type === 'quotation' || String(n.title || '').toLowerCase().includes('quotation');
                               if (isPayment) {
                                 const invNo = getInvoiceNoFromTitle(n.title);
@@ -1143,6 +1143,12 @@ function Dashboard({ onLogout }) {
                                 const parts = String(n.type).split(':');
                                 setHighlightJobId(parts[1] || null);
                                 setHighlightReqId(parts[2] || null);
+                              }
+                              if (isTicket) {
+                                const tktId = String(n.type).startsWith('ticket:') ? String(n.type).split(':')[1] : null;
+                                if (tktId) {
+                                  sessionStorage.setItem('admin_auto_select_ticket_id', tktId);
+                                }
                               }
                               setActive(
                                 isTicket ? 'logs' : 

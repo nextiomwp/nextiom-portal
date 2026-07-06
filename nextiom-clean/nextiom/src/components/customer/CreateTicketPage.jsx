@@ -193,7 +193,7 @@ export default function CreateTicketPage({ user, isDark, c, onNavigate }) {
       await addTicketMessage(ticket.id, 'customer', message.trim());
       await addNotification({
         customer_id: null,
-        type: 'ticket',
+        type: 'ticket:' + ticket.id,
         title: 'New support ticket',
         message: `${user.name || user.email} opened a ticket: ${subject.trim()}`,
       });

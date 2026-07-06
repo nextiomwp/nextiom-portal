@@ -91,7 +91,9 @@ export function calcTotal(items: InvoiceItem[]): number {
 export function calcTotalUSD(items: InvoiceItem[], currency: InvoiceCurrency = 'LKR', rate = 0): number {
   return items.reduce((s, i) => {
     const qty = i.qty || 1
-    const priceUSD = Number(i.unit_price_usd) || 0
+    const priceUSD = i.unit_price_usd !== null && i.unit_price_usd !== undefined && i.unit_price_usd !== 0
+      ? Number(i.unit_price_usd)
+      : (currency === 'USD' ? (i.unit_price || 0) : 0)
     const disc = i.discount || 0
     const discUSD = currency === 'USD' ? disc : (rate > 0 ? disc / rate : 0)
     return s + (qty * priceUSD - discUSD)
@@ -101,7 +103,9 @@ export function calcTotalUSD(items: InvoiceItem[], currency: InvoiceCurrency = '
 export function calcTotalLKR(items: InvoiceItem[], currency: InvoiceCurrency = 'LKR', rate = 0): number {
   return items.reduce((s, i) => {
     const qty = i.qty || 1
-    const priceLKR = Number(i.unit_price_lkr) || 0
+    const priceLKR = i.unit_price_lkr !== null && i.unit_price_lkr !== undefined && i.unit_price_lkr !== 0
+      ? Number(i.unit_price_lkr)
+      : (currency === 'LKR' ? (i.unit_price || 0) : 0)
     const disc = i.discount || 0
     const discLKR = currency === 'LKR' ? disc : (rate > 0 ? disc * rate : 0)
     return s + (qty * priceLKR - discLKR)

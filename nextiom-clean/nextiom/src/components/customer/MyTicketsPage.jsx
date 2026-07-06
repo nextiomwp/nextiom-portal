@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, RefreshCw, MessageSquare, CheckCircle, X, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle } from 'lucide-react';
+import { Ticket, Send, RefreshCw, MessageSquare, CheckCircle, X, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle, Search } from 'lucide-react';
 import { getTicketsByCustomer, getTicketMessages, addTicketMessage, addNotification, editTicketMessage } from '@/lib/storage';
 import LinkPreviewCard from '@/components/shared/LinkPreviewCard';
 import { extractUrls } from '@/lib/linkPreview';
@@ -54,6 +54,7 @@ function getTicketCategory(ticket) {
 
 export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   const [tickets, setTickets] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -88,9 +89,33 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   const [screenshots, setScreenshots] = useState([]);
   const [activePreviewUrl, setActivePreviewUrl] = useState(null);
 
+  const filteredTickets = tickets.filter(t => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    
+    const subjectMatch = (t.subject || '').toLowerCase().includes(q);
+    const idMatch = String(t.id || '').toLowerCase().includes(q);
+    const msgMatch = (t.ticket_messages || []).some(m => (m.message || '').toLowerCase().includes(q));
+    
+    return subjectMatch || idMatch || msgMatch;
+  });
+
   const customerId = user?.id;
 
   useEffect(() => { if (customerId) load(); }, [customerId]);
+
+  useEffect(() => {
+    if (tickets.length > 0) {
+      const autoTicketId = sessionStorage.getItem('auto_select_ticket_id');
+      if (autoTicketId) {
+        const tkt = tickets.find(t => t.id === autoTicketId);
+        if (tkt) {
+          openTicket(tkt);
+        }
+        sessionStorage.removeItem('auto_select_ticket_id');
+      }
+    }
+  }, [tickets]);
 
   useEffect(() => {
     setReply('');
@@ -174,7 +199,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
       if (replyRef.current) { replyRef.current.innerHTML = ''; }
       await addNotification({
         customer_id: null,
-        type: 'ticket',
+        type: 'ticket:' + selected.id,
         title: 'Customer ticket reply',
         message: `${user.name || user.email} replied to ticket: ${selected.subject}`,
       });
@@ -1131,59 +1156,92 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
             <div style={{ padding: '13px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 8, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
               <Ticket size={14} style={{ color: c.brand }} />
               <span style={{ fontWeight: 700, fontSize: 13, color: c.text }}>All Tickets</span>
-              <span style={{ fontSize: 11, color: c.subText, background: c.hover, borderRadius: 10, padding: '1px 7px' }}>{tickets.length}</span>
+              <span style={{ fontSize: 11, color: c.subText, background: c.hover, borderRadius: 10, padding: '1px 7px' }}>{filteredTickets.length}</span>
             </div>
-            <div style={{ overflowY: 'auto', maxHeight: isMobile ? 'none' : (selected ? 'calc(100vh - 260px)' : 'auto') }}>
-              {tickets.map(ticket => {
-                const adminReplied = hasAdminReply(ticket);
-                const isOpen = ticket.status === 'open';
-                const isActive = selected?.id === ticket.id;
-                const pCfg = PRIORITY_CFG[ticket.priority] || PRIORITY_CFG.normal;
-                const visibleMsgs = (ticket.ticket_messages || []).filter(m => !m.is_deleted);
-                const lastMsg = visibleMsgs.slice(-1)[0];
+            
+            {/* Search Bar */}
+            <div style={{ padding: '10px 14px', borderBottom: `1px solid ${c.border}`, position: 'relative' }}>
+              <Search size={13} style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search tickets by subject, message or ID..."
+                style={{
+                  width: '100%',
+                  padding: '7px 12px 7px 30px',
+                  borderRadius: 8,
+                  border: `1px solid ${c.border}`,
+                  background: isDark ? 'rgba(255,255,255,0.02)' : '#fff',
+                  color: c.text,
+                  fontSize: 12,
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
 
-                return (
-                  <div
-                    key={ticket.id}
-                    onClick={() => openTicket(ticket)}
-                    style={{
-                      padding: '14px 16px',
-                      borderBottom: `1px solid ${c.border}`,
-                      cursor: 'pointer',
-                      background: isActive
-                        ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)')
-                        : (adminReplied && !isActive)
-                          ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)')
-                          : 'transparent',
-                      borderLeft: isActive ? `3px solid ${c.brand}` : `3px solid ${adminReplied && isOpen ? '#22c55e' : 'transparent'}`,
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.hover; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)') : adminReplied ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)') : 'transparent'; }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
-                      <span style={{ fontSize: 13, fontWeight: adminReplied ? 600 : 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{ticket.subject}</span>
-                      <span style={{ fontSize: 10, color: c.subText, flexShrink: 0, marginLeft: 8 }}>{fmtTime(ticket.updated_at)}</span>
-                    </div>
-                    {lastMsg && (
-                      <p style={{ fontSize: 11, color: c.subText, margin: '0 0 7px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {lastMsg.sender_role === 'admin' ? '↩ Admin: ' : 'You: '}{lastMsg.message}
-                      </p>
-                    )}
-                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: isOpen ? c.brand : c.subText, background: isOpen ? `rgba(232,123,53,0.12)` : c.hover, padding: '1px 7px', borderRadius: 10 }}>
-                        {isOpen ? 'Open' : 'Closed'}
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 600, color: pCfg.color, background: pCfg.bg, padding: '1px 7px', borderRadius: 10 }}>{pCfg.label}</span>
-                      {adminReplied && isOpen && (
-                        <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                          <CheckCircle size={10} /> Admin replied
-                        </span>
+            <div style={{ overflowY: 'auto', maxHeight: isMobile ? 'none' : (selected ? 'calc(100vh - 260px)' : 'auto') }}>
+              {filteredTickets.length === 0 ? (
+                <div style={{ padding: 32, textAlign: 'center', color: c.subText, fontSize: 12.5 }}>
+                  No tickets found matching your search.
+                </div>
+              ) : (
+                filteredTickets.map(ticket => {
+                  const adminReplied = hasAdminReply(ticket);
+                  const isOpen = ticket.status === 'open';
+                  const isActive = selected?.id === ticket.id;
+                  const pCfg = PRIORITY_CFG[ticket.priority] || PRIORITY_CFG.normal;
+                  const visibleMsgs = (ticket.ticket_messages || []).filter(m => !m.is_deleted);
+                  const lastMsg = visibleMsgs.slice(-1)[0];
+
+                  return (
+                    <div
+                      key={ticket.id}
+                      onClick={() => openTicket(ticket)}
+                      style={{
+                        padding: '14px 16px',
+                        borderBottom: `1px solid ${c.border}`,
+                        cursor: 'pointer',
+                        background: isActive
+                          ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)')
+                          : (adminReplied && !isActive)
+                            ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)')
+                            : 'transparent',
+                        borderLeft: isActive ? `3px solid ${c.brand}` : `3px solid ${adminReplied && isOpen ? '#22c55e' : 'transparent'}`,
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = c.hover; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = isActive ? (isDark ? 'var(--brand-color-light)' : 'rgba(232,123,53,0.07)') : adminReplied ? (isDark ? 'rgba(34,197,94,0.04)' : 'rgba(34,197,94,0.03)') : 'transparent'; }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 }}>
+                        <span style={{ fontSize: 13, fontWeight: adminReplied ? 600 : 500, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{ticket.subject}</span>
+                        <span style={{ fontSize: 10, color: c.subText, flexShrink: 0, marginLeft: 8 }}>{fmtTime(ticket.updated_at)}</span>
+                      </div>
+                      {lastMsg && (
+                        <p style={{ fontSize: 11, color: c.subText, margin: '0 0 7px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {lastMsg.sender_role === 'admin' ? '↩ Admin: ' : 'You: '}{lastMsg.message}
+                        </p>
                       )}
+                      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: isOpen ? c.brand : c.subText, background: isOpen ? `rgba(232,123,53,0.12)` : c.hover, padding: '1px 7px', borderRadius: 10 }}>
+                          {isOpen ? 'Open' : 'Closed'}
+                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: pCfg.color, background: pCfg.bg, padding: '1px 7px', borderRadius: 10 }}>{pCfg.label}</span>
+                        {adminReplied && isOpen && (
+                          <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                            <CheckCircle size={10} /> Admin replied
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10, color: c.subText, fontWeight: 600, marginLeft: 'auto', fontFamily: 'monospace' }}>
+                          ID: #{ticket.id.slice(0, 8).toUpperCase()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
@@ -1194,7 +1252,9 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
               <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', flexShrink: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selected.subject}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      #{selected.id.slice(0, 8).toUpperCase()} · {selected.subject}
+                    </span>
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,

@@ -103,35 +103,37 @@ export default function InvoicePrintPage() {
   const subtotal = items.reduce((sum: number, item: any) => sum + (item.qty * item.unit_price), 0)
   const totalDiscount = items.reduce((sum: number, item: any) => sum + (item.discount || 0), 0)
 
-  const totalUSD = total_usd ?? items.reduce((sum: number, item: any) => sum + (Number(item.amount_usd) || 0), 0)
-  const totalLKR = total_lkr ?? items.reduce((sum: number, item: any) => sum + (Number(item.amount_lkr) || 0), 0)
+  const totalUSD = total_usd !== null && total_usd !== undefined && total_usd !== 0
+    ? total_usd
+    : (currency === 'USD' ? (total || 0) : items.reduce((sum: number, item: any) => sum + (Number(item.amount_usd) || 0), 0))
+  const totalLKR = total_lkr !== null && total_lkr !== undefined && total_lkr !== 0
+    ? total_lkr
+    : (currency === 'LKR' ? (total || 0) : items.reduce((sum: number, item: any) => sum + (Number(item.amount_lkr) || 0), 0))
 
   const formatUnitPrices = (item: any) => {
-    const parts = []
-    if (item.unit_price_usd !== null && item.unit_price_usd !== undefined && item.unit_price_usd !== 0) {
-      parts.push(`USD ${Number(item.unit_price_usd).toFixed(2)}`)
-    }
-    if (item.unit_price_lkr !== null && item.unit_price_lkr !== undefined && item.unit_price_lkr !== 0) {
-      parts.push(`LKR ${Number(item.unit_price_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-    }
-    if (parts.length === 0) {
+    if (currency === 'LKR') {
+      if (item.unit_price_lkr !== null && item.unit_price_lkr !== undefined && item.unit_price_lkr !== 0) {
+        return `LKR ${Number(item.unit_price_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      }
       return fmtCurrency(item.unit_price || 0, currency)
     }
-    return parts.join(' / ')
+    if (item.unit_price_usd !== null && item.unit_price_usd !== undefined && item.unit_price_usd !== 0) {
+      return `USD ${Number(item.unit_price_usd).toFixed(2)}`
+    }
+    return fmtCurrency(item.unit_price || 0, currency)
   }
 
   const formatAmounts = (item: any) => {
-    const parts = []
-    if (item.amount_usd !== null && item.amount_usd !== undefined && item.amount_usd !== 0) {
-      parts.push(`USD ${Number(item.amount_usd).toFixed(2)}`)
-    }
-    if (item.amount_lkr !== null && item.amount_lkr !== undefined && item.amount_lkr !== 0) {
-      parts.push(`LKR ${Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
-    }
-    if (parts.length === 0) {
+    if (currency === 'LKR') {
+      if (item.amount_lkr !== null && item.amount_lkr !== undefined && item.amount_lkr !== 0) {
+        return `LKR ${Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      }
       return fmtCurrency(item.qty * (item.unit_price || 0) - (item.discount || 0), currency)
     }
-    return parts.join(' / ')
+    if (item.amount_usd !== null && item.amount_usd !== undefined && item.amount_usd !== 0) {
+      return `USD ${Number(item.amount_usd).toFixed(2)}`
+    }
+    return fmtCurrency(item.qty * (item.unit_price || 0) - (item.discount || 0), currency)
   }
 
   // Extract first name and build dynamic title/filename for PDF print
@@ -318,7 +320,19 @@ export default function InvoicePrintPage() {
             </div>
             <div style={{ background: '#fff7ed', borderRadius: 12, padding: '16px 24px', textAlign: 'right', flexShrink: 0, border: '1px solid #fed7aa' }}>
               <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>Grand total</div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em' }}>{fmtCurrency(total, currency)}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em', display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
+                <span>{fmtCurrency(total, currency)}</span>
+                {currency === 'LKR' && totalUSD > 0 && (
+                  <span style={{ fontSize: 18, color: '#E8650A', fontWeight: 600, opacity: 0.95 }}>
+                    / USD {totalUSD.toFixed(2)}
+                  </span>
+                )}
+                {currency === 'USD' && totalLKR > 0 && (
+                  <span style={{ fontSize: 18, color: '#E8650A', fontWeight: 600, opacity: 0.95 }}>
+                    / LKR {totalLKR.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -399,11 +413,11 @@ export default function InvoicePrintPage() {
                 <span>Grand total (USD)</span><span>USD {totalUSD.toFixed(2)}</span>
               </div>
             )}
-            {totalLKR > 0 && (
+            {/* {totalLKR > 0 && (
               <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
                 <span>Grand total (LKR)</span><span>LKR {totalLKR.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-            )}
+            )} */}
             {refunded_amount && Number(refunded_amount) > 0 ? (
               <>
                 <div style={{ display: 'flex', gap: 56, fontSize: 13, color: 'var(--brand-color)', fontWeight: 600 }}>

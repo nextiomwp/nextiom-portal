@@ -29,17 +29,40 @@ function newItem(): InvoiceItem {
 function recalcItemAmounts(item: InvoiceItem, cur: InvoiceCurrency, rate: number): InvoiceItem {
   const q = parseFloat(item.qty as any) || 0
   const disc = parseFloat(item.discount as any) || 0
-  const priceUsd = Number(item.unit_price_usd) || 0
-  const priceLkr = Number(item.unit_price_lkr) || 0
+  
+  let priceUsd = item.unit_price_usd
+  let priceLkr = item.unit_price_lkr
+
+  if (cur === 'USD') {
+    if (priceUsd === null || priceUsd === undefined || priceUsd === 0) {
+      priceUsd = item.unit_price ?? 0
+    }
+    if (priceLkr === null || priceLkr === undefined || priceLkr === 0) {
+      priceLkr = rate > 0 ? Number((priceUsd * rate).toFixed(2)) : 0
+    }
+  } else {
+    // cur === 'LKR'
+    if (priceLkr === null || priceLkr === undefined || priceLkr === 0) {
+      priceLkr = item.unit_price ?? 0
+    }
+    if (priceUsd === null || priceUsd === undefined || priceUsd === 0) {
+      priceUsd = rate > 0 ? Number((priceLkr / rate).toFixed(2)) : 0
+    }
+  }
 
   const discUsd = cur === 'USD' ? disc : (rate > 0 ? disc / rate : 0)
   const discLkr = cur === 'LKR' ? disc : (rate > 0 ? disc * rate : 0)
 
+  const amtUsd = Number((q * priceUsd - discUsd).toFixed(2))
+  const amtLkr = Number((q * priceLkr - discLkr).toFixed(2))
+
   return {
     ...item,
-    amount_usd: Number((q * priceUsd - discUsd).toFixed(2)),
-    amount_lkr: Number((q * priceLkr - discLkr).toFixed(2)),
-    unit_price: cur === 'USD' ? (item.unit_price_usd ?? 0) : (item.unit_price_lkr ?? 0)
+    unit_price_usd: priceUsd,
+    unit_price_lkr: priceLkr,
+    amount_usd: amtUsd,
+    amount_lkr: amtLkr,
+    unit_price: cur === 'USD' ? priceUsd : priceLkr
   }
 }
 

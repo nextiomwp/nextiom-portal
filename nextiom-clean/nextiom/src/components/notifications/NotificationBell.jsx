@@ -266,7 +266,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     if (type === 'email_request' || type.startsWith('email') || title.includes('email request') || title.includes('email')) return 'emails_my';
     if (title.includes('domain')) return 'domains_my';
     if (title.includes('hosting')) return 'hosting_my';
-    if (type === 'ticket' || title.includes('ticket')) return 'support_tickets';
+    if (type === 'ticket' || type.startsWith('ticket:') || title.includes('ticket')) return 'support_tickets';
     return null;
   };
 
@@ -293,6 +293,12 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
         sessionStorage.setItem('auto_select_job_title', jobTitle);
       }
       sessionStorage.setItem('scroll_to_checklist', 'true');
+    }
+    if (target === 'support_tickets') {
+      const ticketId = String(notification.type).startsWith('ticket:') ? String(notification.type).split(':')[1] : null;
+      if (ticketId) {
+        sessionStorage.setItem('auto_select_ticket_id', ticketId);
+      }
     }
     setIsOpen(false);
     if (target && onNavigate) onNavigate(target);

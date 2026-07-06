@@ -450,35 +450,39 @@ function InvoiceDrawer({ invoice, settings, badgeStyle, isDark, c, onClose, isMo
   const totalDiscount = items.reduce((s, it) => s + (it.discount || 0), 0);
   const tax = 0;
 
-  const totalUSD = invoice.total_usd ?? items.reduce((sum, item) => sum + (Number(item.amount_usd) || 0), 0);
-  const totalLKR = invoice.total_lkr ?? items.reduce((sum, item) => sum + (Number(item.amount_lkr) || 0), 0);
+  const totalUSD = invoice.total_usd !== null && invoice.total_usd !== undefined && invoice.total_usd !== 0
+    ? invoice.total_usd
+    : (invoice.currency === 'USD' ? (invoice.total || 0) : items.reduce((sum, item) => sum + (Number(item.amount_usd) || 0), 0));
+  const totalLKR = invoice.total_lkr !== null && invoice.total_lkr !== undefined && invoice.total_lkr !== 0
+    ? invoice.total_lkr
+    : (invoice.currency === 'LKR' ? (invoice.total || 0) : items.reduce((sum, item) => sum + (Number(item.amount_lkr) || 0), 0));
 
   const formatUnitPrices = (item) => {
-    const parts = [];
+    const cur = invoice.currency;
+    if (cur === 'LKR') {
+      if (item.unit_price_lkr !== null && item.unit_price_lkr !== undefined && item.unit_price_lkr !== 0) {
+        return `LKR ${Number(item.unit_price_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      return fmtAmt(item.unit_price || 0, cur);
+    }
     if (item.unit_price_usd !== null && item.unit_price_usd !== undefined && item.unit_price_usd !== 0) {
-      parts.push(`USD ${Number(item.unit_price_usd).toFixed(2)}`);
+      return `USD ${Number(item.unit_price_usd).toFixed(2)}`;
     }
-    if (item.unit_price_lkr !== null && item.unit_price_lkr !== undefined && item.unit_price_lkr !== 0) {
-      parts.push(`LKR ${Number(item.unit_price_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-    }
-    if (parts.length === 0) {
-      return fmtAmt(item.unit_price || 0, invoice.currency);
-    }
-    return parts.join(' / ');
+    return fmtAmt(item.unit_price || 0, cur);
   };
 
   const formatAmounts = (item) => {
-    const parts = [];
+    const cur = invoice.currency;
+    if (cur === 'LKR') {
+      if (item.amount_lkr !== null && item.amount_lkr !== undefined && item.amount_lkr !== 0) {
+        return `LKR ${Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      return fmtAmt((item.qty || 1) * (item.unit_price || 0) - (item.discount || 0), cur);
+    }
     if (item.amount_usd !== null && item.amount_usd !== undefined && item.amount_usd !== 0) {
-      parts.push(`USD ${Number(item.amount_usd).toFixed(2)}`);
+      return `USD ${Number(item.amount_usd).toFixed(2)}`;
     }
-    if (item.amount_lkr !== null && item.amount_lkr !== undefined && item.amount_lkr !== 0) {
-      parts.push(`LKR ${Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-    }
-    if (parts.length === 0) {
-      return fmtAmt((item.qty || 1) * (item.unit_price || 0) - (item.discount || 0), invoice.currency);
-    }
-    return parts.join(' / ');
+    return fmtAmt((item.qty || 1) * (item.unit_price || 0) - (item.discount || 0), cur);
   };
 
   return (

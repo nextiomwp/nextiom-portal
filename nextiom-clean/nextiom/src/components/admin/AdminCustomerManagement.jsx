@@ -445,7 +445,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
       // 3. Notify admin that a new support ticket was created
       await addNotification({
         customer_id: null,
-        type: 'ticket',
+        type: 'ticket:' + ticket.id,
         title: 'New support ticket',
         message: `${ticketCustomer.name || ticketCustomer.email} opened a ticket: ${ticketSubject.trim()}`,
       }).catch(() => {});

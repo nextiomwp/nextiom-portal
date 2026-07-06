@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { ArrowLeft, Save, Loader2, Calendar, FileText, ChevronDown, DollarSign, Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { createAgreement } from '@/lib/agreements';
+import { createAgreement, getAgreementUrl } from '@/lib/agreements';
 import { addNotification } from '@/lib/storage';
 import { resolveLogoUrl } from '@/lib/invoices';
 import { useToast } from '@/components/ui/use-toast';
