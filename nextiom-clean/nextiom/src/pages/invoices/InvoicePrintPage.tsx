@@ -318,22 +318,85 @@ export default function InvoicePrintPage() {
                 </div>
               )}
             </div>
-            <div style={{ background: '#fff7ed', borderRadius: 12, padding: '16px 24px', textAlign: 'right', flexShrink: 0, border: '1px solid #fed7aa' }}>
-              <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>Grand total</div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em', display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap' }}>
-                <span>{fmtCurrency(total, currency)}</span>
-                {currency === 'LKR' && totalUSD > 0 && (
-                  <span style={{ fontSize: 18, color: '#E8650A', fontWeight: 600, opacity: 0.95 }}>
-                    / USD {totalUSD.toFixed(2)}
-                  </span>
-                )}
-                {currency === 'USD' && totalLKR > 0 && (
-                  <span style={{ fontSize: 18, color: '#E8650A', fontWeight: 600, opacity: 0.95 }}>
-                    / LKR {totalLKR.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Grand Total Box — side-by-side LKR | USD */}
+            {(() => {
+              const showDual = (currency === 'LKR' && totalUSD > 0) || (currency === 'USD' && totalLKR > 0)
+              const lkrAmt = currency === 'LKR' ? total : totalLKR
+              const usdAmt = currency === 'USD' ? total : totalUSD
+
+              // Format "As at DD Month YYYY" from invoice_date
+              const asAtDate = (() => {
+                if (!invoice_date) return ''
+                const d = new Date(invoice_date)
+                if (isNaN(d.getTime())) return ''
+                const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+                return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
+              })()
+
+              if (showDual) {
+                return (
+                  <div style={{
+                    background: '#fff7ed',
+                    borderRadius: 12,
+                    border: '1px solid #fed7aa',
+                    flexShrink: 0,
+                    minWidth: 280,
+                    overflow: 'hidden',
+                  }}>
+                    {/* Header */}
+                    <div style={{
+                      textAlign: 'center',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: '#111',
+                      padding: '8px 24px 6px',
+                    }}>
+                      Grand Total
+                    </div>
+                    {/* Amounts row */}
+                    <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                      {/* LKR side */}
+                      <div style={{ flex: 1, padding: '12px 20px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                          LKR {lkrAmt.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                      {/* Divider */}
+                      <div style={{ width: 1, background: '#fed7aa', flexShrink: 0 }} />
+                      {/* USD side */}
+                      <div style={{ flex: 1, padding: '12px 20px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 22, fontWeight: 700, color: '#111', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                          USD {usdAmt.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                    {/* Exchange rate note */}
+                    {exchange_rate && (
+                      <div style={{
+                        textAlign: 'center',
+                        fontSize: 10,
+                        color: '#6b7280',
+                        padding: '5px 16px 8px',
+                      }}>
+                        Exchange Rate: 1 USD = LKR {Number(exchange_rate).toFixed(2)}{asAtDate ? ` (As at ${asAtDate})` : ''}
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+
+              // Single currency fallback
+              return (
+                <div style={{ background: '#fff7ed', borderRadius: 12, padding: '16px 24px', textAlign: 'right', flexShrink: 0, border: '1px solid #fed7aa' }}>
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>Grand total</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em' }}>
+                    {fmtCurrency(total, currency)}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Items table */}
@@ -394,11 +457,11 @@ export default function InvoicePrintPage() {
 
           {/* Totals */}
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginBottom: 32 }}>
-            {exchange_rate && (
+            {/* {exchange_rate && (
               <div style={{ fontSize: 12, color: '#4b5563', fontStyle: 'italic', marginBottom: 8, textAlign: 'right' }}>
                 Exchange Rate Used: 1 USD = LKR {Number(exchange_rate).toFixed(2)} (Locked when the invoice was created.)
               </div>
-            )}
+            )} */}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
               <span>Subtotal</span><span>{fmtCurrency(subtotal, currency)}</span>
             </div>
