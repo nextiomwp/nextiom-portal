@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, EyeOff, X, Key, Calendar, DollarSign, Shield, Zap, Tag, MoreVertical, Search, ChevronDown, ChevronLeft, ChevronRight, Check, Copy, FileText, Globe } from 'lucide-react';
+import { Package, Download, RefreshCw, Infinity, CheckCircle, AlertCircle, Clock, Layers, Eye, EyeOff, X, Key, Calendar, DollarSign, Shield, Zap, Tag, MoreVertical, Search, ChevronDown, ChevronLeft, ChevronRight, Check, Copy, FileText, Globe, User, Lock } from 'lucide-react';
 import { getLicenses, incrementDownloadCount } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -214,6 +214,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   const [showExpiredDownloadTip, setShowExpiredDownloadTip] = useState(false);
   const [showLicenseKey, setShowLicenseKey] = useState(false);
   const [timelineItem, setTimelineItem] = useState(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   const bg = c?.bg || (isDark ? '#15161A' : '#f8f8f7');
   const card = c?.card || (isDark ? '#1C1E24' : '#fff');
@@ -319,6 +320,7 @@ export default function MyProductsPage({ user, isDark, c }) {
   useEffect(() => {
     setActiveTab('overview');
     setShowLicenseKey(false);
+    setShowLoginPassword(false);
   }, [detailLicense?.id]);
 
   if (loading) {
@@ -587,6 +589,132 @@ export default function MyProductsPage({ user, isDark, c }) {
                         {copiedKey ? <Check size={13} style={{ color: '#22c55e' }} /> : <Copy size={13} />}
                       </button>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Login Details Section */}
+              {(lic.login_username || lic.login_password) && (
+                <div>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: sub, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Login Details</span>
+                  <div style={{
+                    borderRadius: 8,
+                    border: `1px solid ${border}`,
+                    background: 'rgba(0,0,0,0.12)',
+                    overflow: 'hidden'
+                  }}>
+                    {lic.login_username && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '7px 12px',
+                        borderBottom: lic.login_password ? `1px solid ${border}` : 'none',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <User size={12} style={{ color: sub, flexShrink: 0 }} />
+                          <span style={{ color: sub, fontSize: 11.5 }}>Email / Username</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ color: text, fontSize: 12, fontFamily: 'monospace', letterSpacing: 0.3, userSelect: 'all' }}>
+                            {lic.login_username}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(lic.login_username);
+                              toast({ title: 'Username copied to clipboard' });
+                            }}
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${border}`,
+                              color: sub,
+                              borderRadius: 5,
+                              width: 22,
+                              height: 22,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              flexShrink: 0,
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = text}
+                            onMouseLeave={e => e.currentTarget.style.color = sub}
+                          >
+                            <Copy size={11} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {lic.login_password && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '7px 12px',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <Lock size={12} style={{ color: sub, flexShrink: 0 }} />
+                          <span style={{ color: sub, fontSize: 11.5 }}>Password</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{
+                            color: text,
+                            fontSize: 12,
+                            fontFamily: showLoginPassword ? 'monospace' : 'sans-serif',
+                            letterSpacing: showLoginPassword ? 0.3 : 3,
+                            userSelect: showLoginPassword ? 'all' : 'none'
+                          }}>
+                            {showLoginPassword ? lic.login_password : '••••••••••'}
+                          </span>
+                          <button
+                            onClick={() => setShowLoginPassword(v => !v)}
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${border}`,
+                              color: sub,
+                              borderRadius: 5,
+                              width: 22,
+                              height: 22,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              flexShrink: 0,
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = text}
+                            onMouseLeave={e => e.currentTarget.style.color = sub}
+                          >
+                            {showLoginPassword ? <EyeOff size={11} /> : <Eye size={11} />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(lic.login_password);
+                              toast({ title: 'Password copied to clipboard' });
+                            }}
+                            style={{
+                              background: 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${border}`,
+                              color: sub,
+                              borderRadius: 5,
+                              width: 22,
+                              height: 22,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              flexShrink: 0,
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = text}
+                            onMouseLeave={e => e.currentTarget.style.color = sub}
+                          >
+                            <Copy size={11} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

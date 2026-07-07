@@ -78,6 +78,10 @@ const TYPE_LABELS = {
   renewal_reminder_hosting: 'Hosting Renewal',
   renewal_reminder_email: 'Email Renewal',
   renewal_reminder_product: 'Product Renewal',
+  expiry_domain: 'Domain Expired',
+  expiry_hosting: 'Hosting Expired',
+  expiry_email: 'Email Expired',
+  expiry_product: 'Product Expired',
   purchase: 'Purchase',
   otp: 'OTP',
   manual: 'Manual',
@@ -92,6 +96,10 @@ function TypeBadge({ type }) {
     renewal_reminder_hosting: { bg: 'rgba(55,138,221,0.13)', color: '#5b9aff' },
     renewal_reminder_email: { bg: 'rgba(232,123,53,0.13)', color: 'var(--brand-color)' },
     renewal_reminder_product: { bg: 'rgba(236,72,153,0.13)', color: '#ec4899' },
+    expiry_domain: { bg: 'rgba(220,38,38,0.15)', color: '#ef4444' },
+    expiry_hosting: { bg: 'rgba(220,38,38,0.15)', color: '#f87171' },
+    expiry_email: { bg: 'rgba(220,38,38,0.15)', color: '#fca5a5' },
+    expiry_product: { bg: 'rgba(180,20,20,0.18)', color: '#dc2626' },
     purchase: { bg: 'rgba(168,85,247,0.13)', color: '#a855f7' },
     otp: { bg: 'rgba(249,115,22,0.13)', color: '#f97316' },
     manual: { bg: 'rgba(100,116,139,0.13)', color: '#64748b' },
@@ -124,6 +132,7 @@ export default function SmsSettingsPage({ isDark }) {
     renewal_reminder: true,
     purchase_sms: true,
     reminder_days: 3,
+    expiry_notification: true,
     ticket_sms: false,
     ticket_sms_admin_numbers: [],
     invoice_sms: false,
@@ -419,6 +428,15 @@ export default function SmsSettingsPage({ isDark }) {
               description="Send a thank-you message when hosting/domain/email or license is activated."
               value={settings.purchase_sms}
               onChange={v => setSettings(s => ({ ...s, purchase_sms: v }))}
+              disabled={!settings.sms_enabled}
+              c={c}
+            />
+            <SettingRow
+              id="sms-expiry-notification"
+              label="Expiry Notifications"
+              description="Send an SMS on the exact day a domain, hosting, email account, or product license expires, urging the customer to renew."
+              value={settings.expiry_notification}
+              onChange={v => setSettings(s => ({ ...s, expiry_notification: v }))}
               disabled={!settings.sms_enabled}
               c={c}
             />

@@ -78,6 +78,7 @@ function processCustomProductPayload({ category, access_method, duration, start_
 function AssignProductDialog({ open, onOpenChange, customers = [], products = [], onSuccess, c }) {
   const [isCustom, setIsCustom] = useState(false);
   const [step, setStep] = useState(1);
+  const [expiryDateLocked, setExpiryDateLocked] = useState(false);
 
   // Standard assign form
   const [formData, setFormData] = useState({
@@ -100,6 +101,8 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     hasRenewal: false,
     renewalPercentage: '',
     currency: 'USD',
+    loginUsername: '',
+    loginPassword: '',
   });
 
   // Custom product details (Screen 1)
@@ -142,6 +145,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     if (open && !prevOpenRef.current) {
       setIsCustom(false);
       setStep(1);
+      setExpiryDateLocked(false);
       setFormData({
         customerId: customers && customers.length === 1 ? customers[0].id : '',
         productId: '',
@@ -162,6 +166,8 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         hasRenewal: false,
         renewalPercentage: '',
         currency: 'USD',
+        loginUsername: '',
+        loginPassword: '',
       });
       setCustomForm({
         name: '',
@@ -215,6 +221,9 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
       return;
     }
 
+    // Skip auto-calc if admin has manually locked expiry date
+    if (expiryDateLocked) return;
+
     const start = new Date(formData.startDate);
     if (isNaN(start.getTime())) return;
 
@@ -234,7 +243,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
       expiryDate: calculatedExpiry,
       renewalDate: calculatedExpiry
     }));
-  }, [formData.startDate, formData.accessMethod, formData.duration]);
+  }, [formData.startDate, formData.accessMethod, formData.duration, expiryDateLocked]);
 
   // Prefill Standard Form when Product is selected
   useEffect(() => {
@@ -407,6 +416,8 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
               ? 'Yearly Subscription'
               : 'Monthly Subscription',
         currency: formData.currency || 'USD',
+        loginUsername: formData.loginUsername?.trim() || null,
+        loginPassword: formData.loginPassword?.trim() || null,
       };
 
       await assignProductToCustomer(payload);
@@ -885,7 +896,33 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                 </div>
 
                 <div>
-                  <label style={labelS}>Expiry Date</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <label style={{ ...labelS, marginBottom: 0 }}>Expiry Date</label>
+                    {formData.accessMethod !== 'one_time' && formData.duration !== 'lifetime' && (
+                      <label
+                        htmlFor="expiry-date-lock-checkbox"
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 'auto' }}
+                        title={expiryDateLocked ? 'Uncheck to auto-calculate' : 'Check to set manually'}
+                      >
+                        <input
+                          type="checkbox"
+                          id="expiry-date-lock-checkbox"
+                          checked={expiryDateLocked}
+                          onChange={(e) => {
+                            setExpiryDateLocked(e.target.checked);
+                            if (!e.target.checked) {
+                              // Re-trigger auto-calc by resetting expiryDate
+                              setFormData(prev => ({ ...prev, expiryDate: '' }));
+                            }
+                          }}
+                          style={{ width: 13, height: 13, accentColor: brand, cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: 10.5, color: subText, fontWeight: 500, letterSpacing: 0.3 }}>
+                          {expiryDateLocked ? 'Manual (editing)' : 'Auto-calculated'}
+                        </span>
+                      </label>
+                    )}
+                  </div>
                   {formData.accessMethod === 'one_time' || formData.duration === 'lifetime' ? (
                     <input
                       type="text"
@@ -896,9 +933,16 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                   ) : (
                     <input
                       type="date"
-                      disabled
+                      disabled={!expiryDateLocked}
                       value={formData.expiryDate}
-                      style={{ ...inpS, background: panel, color: subText, cursor: 'not-allowed' }}
+                      onChange={(e) => expiryDateLocked && setFormData(p => ({ ...p, expiryDate: e.target.value, renewalDate: e.target.value }))}
+                      style={{
+                        ...inpS,
+                        background: expiryDateLocked ? input : panel,
+                        color: expiryDateLocked ? text : subText,
+                        cursor: expiryDateLocked ? 'text' : 'not-allowed',
+                        borderColor: expiryDateLocked ? brand : border,
+                      }}
                     />
                   )}
                 </div>
@@ -956,6 +1000,51 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                     style={inpS}
                     placeholder="https://example.com/download"
                   />
+                </div>
+
+                {/* Login Details Section */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{
+                    border: `1.5px solid ${border}`,
+                    borderRadius: 10,
+                    padding: 14,
+                    background: panel,
+                  }}>
+                    <p style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: subText,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.8,
+                      margin: '0 0 10px 0',
+                    }}>
+                      Login Details <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10, opacity: 0.7 }}>(Optional — shown to customer)</span>
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div>
+                        <label style={labelS}>Email / Username</label>
+                        <input
+                          type="text"
+                          value={formData.loginUsername}
+                          onChange={(e) => setFormData((p) => ({ ...p, loginUsername: e.target.value }))}
+                          style={inpS}
+                          placeholder="e.g. user@example.com or username"
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div>
+                        <label style={labelS}>Password</label>
+                        <input
+                          type="text"
+                          value={formData.loginPassword}
+                          onChange={(e) => setFormData((p) => ({ ...p, loginPassword: e.target.value }))}
+                          style={inpS}
+                          placeholder="e.g. SecurePass123"
+                          autoComplete="new-password"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

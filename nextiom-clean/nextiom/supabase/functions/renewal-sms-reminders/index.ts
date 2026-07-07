@@ -117,7 +117,7 @@ serve(async (req) => {
     // ── Load SMS settings (master switch + reminder days) ─────────────────────
     let { data: settings, error: settingsError } = await supabase
       .from('sms_settings')
-      .select('sms_enabled, renewal_reminder, reminder_days')
+      .select('sms_enabled, renewal_reminder, reminder_days, expiry_notification, invoice_sms')
       .limit(1)
       .single()
 
@@ -150,6 +150,7 @@ serve(async (req) => {
     // Use a clean UTC "today" baseline for consistent comparison
     const nowUtc = new Date()
     const todayMs = Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate())
+    const todayStr = `${nowUtc.getUTCFullYear()}-${String(nowUtc.getUTCMonth() + 1).padStart(2, '0')}-${String(nowUtc.getUTCDate()).padStart(2, '0')}`
 
     const sent: string[] = []
     const failed: string[] = []
@@ -293,6 +294,129 @@ serve(async (req) => {
         const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
 
         const status = ok ? 'sent' : 'failed'
+        await supabase.from('sms_logs').insert({
+          customer_id: item.customer_id,
+          phone,
+          message,
+          type: item.logType,
+          status,
+          provider_ref: providerRes?.data?.uid || null,
+          error_msg: ok ? null : (providerRes?.message || providerRes?.error || 'Provider error'),
+        })
+
+        if (ok) sent.push(item.id)
+        else failed.push(item.id)
+      }
+    }
+
+    // ── Run expiry notifications if enabled ───────────────────────────────────
+    if (settings.expiry_notification) {
+      console.log(`[renewal-sms-reminders] Running expiry notifications for today=${todayStr}, forceRun=${forceRun}`);
+
+      // Fetch domains that expired today
+      const { data: expiredDomains } = await supabase
+        .from('domain_requests')
+        .select('id, customer_id, domain_name, expiry_date, customers(name, phone)')
+        .in('status', ['approved', 'active', 'completed'])
+        .eq('expiry_date', todayStr)
+
+      // Fetch hosting packages that expired today
+      const { data: expiredHostings } = await supabase
+        .from('hosting_requests')
+        .select('id, customer_id, plan_name, expiry_date, customers(name, phone)')
+        .in('status', ['approved', 'active', 'completed'])
+        .eq('expiry_date', todayStr)
+
+      // Fetch email accounts that expired today
+      const { data: expiredEmails } = await supabase
+        .from('email_requests')
+        .select('id, customer_id, email, expiry_date, customers(name, phone)')
+        .in('status', ['approved', 'active', 'completed'])
+        .eq('expiry_date', todayStr)
+
+      // Fetch product licenses that expired today
+      const { data: expiredLicenses } = await supabase
+        .from('licenses')
+        .select('id, customer_id, expiry_date, license_type, products(name), customers(name, phone)')
+        .in('license_type', ['yearly', 'monthly'])
+        .eq('expiry_date', todayStr)
+        .neq('status', 'Disabled')
+        .neq('status', 'Suspended')
+
+      console.log(`[renewal-sms-reminders] Expired today: ${expiredDomains?.length ?? 0} domains, ${expiredHostings?.length ?? 0} hostings, ${expiredEmails?.length ?? 0} emails, ${expiredLicenses?.length ?? 0} licenses`);
+
+      type ExpiryItem = {
+        id: string
+        customer_id: string
+        serviceName: string
+        customers: { name: string; phone: string } | null
+        logType: string
+      }
+
+      const expiryItems: ExpiryItem[] = [
+        ...(expiredDomains || []).map((d: any) => ({
+          id: d.id,
+          customer_id: d.customer_id,
+          serviceName: `domain "${d.domain_name}"`,
+          customers: d.customers,
+          logType: 'expiry_domain',
+        })),
+        ...(expiredHostings || []).map((h: any) => ({
+          id: h.id,
+          customer_id: h.customer_id,
+          serviceName: `hosting plan "${h.plan_name || 'your plan'}"`,
+          customers: h.customers,
+          logType: 'expiry_hosting',
+        })),
+        ...(expiredEmails || []).map((e: any) => ({
+          id: e.id,
+          customer_id: e.customer_id,
+          serviceName: `email account "${e.email || 'your email'}"`,
+          customers: e.customers,
+          logType: 'expiry_email',
+        })),
+        ...(expiredLicenses || []).map((l: any) => ({
+          id: l.id,
+          customer_id: l.customer_id,
+          serviceName: `product license "${l.products?.name || 'your product'}"`,
+          customers: l.customers,
+          logType: 'expiry_product',
+        })),
+      ]
+
+      // Dedup — avoid re-sending expiry SMS within 24h for the same customer+type
+      let alreadySentExpiry = new Set<string>()
+      if (!forceRun) {
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        const { data: recentExpiryLogs } = await supabase
+          .from('sms_logs')
+          .select('customer_id, type')
+          .in('type', ['expiry_domain', 'expiry_hosting', 'expiry_email', 'expiry_product'])
+          .gte('sent_at', twentyFourHoursAgo)
+        alreadySentExpiry = new Set((recentExpiryLogs || []).map((r: any) => `${r.customer_id}:${r.type}`))
+        console.log(`[renewal-sms-reminders] Expiry dedup: ${alreadySentExpiry.size} recent sends found`);
+      }
+
+      for (const item of expiryItems) {
+        const phone = item.customers?.phone
+        if (!phone) {
+          console.log(`[renewal-sms-reminders] Expiry: skipping ${item.serviceName} — no phone`);
+          continue
+        }
+        if (alreadySentExpiry.has(`${item.customer_id}:${item.logType}`)) {
+          console.log(`[renewal-sms-reminders] Expiry: skipping ${item.serviceName} — already sent within 24h`);
+          continue
+        }
+
+        const customerName = item.customers?.name || 'Valued Customer'
+        const message =
+          `Dear ${customerName}, your ${item.serviceName} with Nextiom has expired today. ` +
+          `Please log in to your portal and renew it to avoid service disruption. ` +
+          `Visit: portal.nextiom.com – Team Nextiom`
+
+        const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
+        const status = ok ? 'sent' : 'failed'
+
         await supabase.from('sms_logs').insert({
           customer_id: item.customer_id,
           phone,

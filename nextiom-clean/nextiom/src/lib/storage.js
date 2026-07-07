@@ -993,7 +993,9 @@ export const assignProductToCustomer = async (data) => {
     renewalDate,
     licenseType,
     membershipType,
-    currency
+    currency,
+    loginUsername,
+    loginPassword,
   } = data;
   
   if (!customerId) {
@@ -1026,6 +1028,8 @@ export const assignProductToCustomer = async (data) => {
       license_type: licenseType || product?.license_type || 'one_time',
       membership_type: membershipType || null,
       currency: currency || 'USD',
+      login_username: loginUsername || null,
+      login_password: loginPassword || null,
     }])
     .select()
     .single();

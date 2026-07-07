@@ -16,7 +16,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 export async function getSmsSettings() {
   const { data, error } = await supabase
     .from('sms_settings')
-    .select('id, sender_id, sms_enabled, login_otp, always_otp, renewal_reminder, purchase_sms, reminder_days, ticket_sms, ticket_sms_admin_numbers, invoice_sms, invoice_reminder_days, created_at, updated_at')
+    .select('id, sender_id, sms_enabled, login_otp, always_otp, renewal_reminder, purchase_sms, reminder_days, expiry_notification, ticket_sms, ticket_sms_admin_numbers, invoice_sms, invoice_reminder_days, created_at, updated_at')
     .limit(1)
     .single();
 
@@ -32,6 +32,7 @@ export async function getSmsSettings() {
     renewal_reminder: true,
     purchase_sms: true,
     reminder_days: 3,
+    expiry_notification: true,
     ticket_sms: false,
     ticket_sms_admin_numbers: [],
     invoice_sms: false,
@@ -64,13 +65,13 @@ export async function saveSmsSettings(settings) {
       .from('sms_settings')
       .update(payload)
       .eq('id', existing.id)
-      .select('id, sender_id, sms_enabled, login_otp, always_otp, renewal_reminder, purchase_sms, reminder_days, ticket_sms, ticket_sms_admin_numbers, invoice_sms, invoice_reminder_days, created_at, updated_at')
+      .select('id, sender_id, sms_enabled, login_otp, always_otp, renewal_reminder, purchase_sms, reminder_days, expiry_notification, ticket_sms, ticket_sms_admin_numbers, invoice_sms, invoice_reminder_days, created_at, updated_at')
       .single();
   } else {
     result = await supabase
       .from('sms_settings')
       .insert(payload)
-      .select('id, sender_id, sms_enabled, login_otp, always_otp, renewal_reminder, purchase_sms, reminder_days, ticket_sms, ticket_sms_admin_numbers, invoice_sms, invoice_reminder_days, created_at, updated_at')
+      .select('id, sender_id, sms_enabled, login_otp, always_otp, renewal_reminder, purchase_sms, reminder_days, expiry_notification, ticket_sms, ticket_sms_admin_numbers, invoice_sms, invoice_reminder_days, created_at, updated_at')
       .single();
   }
 
