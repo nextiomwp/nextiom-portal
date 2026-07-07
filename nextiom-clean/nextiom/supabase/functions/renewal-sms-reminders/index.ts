@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.192.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import nodemailer from "npm:nodemailer"
 
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -52,6 +53,70 @@ async function sendSmsToProvider(phone: string, message: string) {
   } catch (err) {
     console.error('[sendSmsToProvider] fetch error:', err);
     return { ok: false, json: { message: `Connection to Text.lk failed: ${err.message}` } }
+  }
+}
+
+async function sendEmailDirect(to: string, subject: string, body: string) {
+  try {
+    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+    const SMTP_HOST = Deno.env.get('SMTP_HOST')
+
+    if (RESEND_API_KEY) {
+      console.log(`[sendEmailDirect] Sending email via Resend API to ${to}`)
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: Deno.env.get('EMAIL_FROM') || 'Nextiom Portal <noreply@nextiom.com>',
+          to,
+          subject,
+          html: body.replace(/\n/g, '<br />'),
+        }),
+      })
+
+      const resJson = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        console.error('[sendEmailDirect] Resend API error:', resJson)
+        return { ok: false, error: 'Failed to send via Resend' }
+      }
+      return { ok: true }
+    } else if (SMTP_HOST) {
+      console.log(`[sendEmailDirect] Sending email via SMTP (${SMTP_HOST}) to ${to}`)
+      
+      const port = parseInt(Deno.env.get('SMTP_PORT') || '465')
+      const username = Deno.env.get('SMTP_USER') || ''
+      const password = Deno.env.get('SMTP_PASS') || ''
+      const sender = Deno.env.get('SMTP_SENDER') || username || 'noreply@nextiom.com'
+
+      const transporter = nodemailer.createTransport({
+        host: SMTP_HOST,
+        port,
+        secure: port === 465,
+        auth: {
+          user: username,
+          pass: password,
+        },
+      })
+
+      await transporter.sendMail({
+        from: sender,
+        to,
+        subject,
+        text: body,
+        html: body.replace(/\n/g, '<br />'),
+      })
+
+      return { ok: true }
+    } else {
+      console.warn('[sendEmailDirect] No email service provider secrets configured.')
+      return { ok: false, error: 'No email service provider configured.' }
+    }
+  } catch (err) {
+    console.error('[sendEmailDirect] error:', err)
+    return { ok: false, error: err.message || 'Internal error' }
   }
 }
 
@@ -312,28 +377,28 @@ serve(async (req) => {
     // Fetch domains that have expired
     const { data: expiredDomains } = await supabase
       .from('domain_requests')
-      .select('id, customer_id, domain_name, expiry_date, customers(name, phone)')
+      .select('id, customer_id, domain_name, expiry_date, customers(name, email, phone)')
       .in('status', ['approved', 'active', 'completed'])
       .lte('expiry_date', nowUtc.toISOString())
 
     // Fetch hosting packages that have expired
     const { data: expiredHostings } = await supabase
       .from('hosting_requests')
-      .select('id, customer_id, plan_name, expiry_date, customers(name, phone)')
+      .select('id, customer_id, plan_name, expiry_date, customers(name, email, phone)')
       .in('status', ['approved', 'active', 'completed'])
       .lte('expiry_date', nowUtc.toISOString())
 
     // Fetch email accounts that have expired
     const { data: expiredEmails } = await supabase
       .from('email_requests')
-      .select('id, customer_id, email, expiry_date, customers(name, phone)')
+      .select('id, customer_id, email, expiry_date, customers(name, email, phone)')
       .in('status', ['approved', 'active', 'completed'])
       .lte('expiry_date', nowUtc.toISOString())
 
     // Fetch product licenses that have expired
     const { data: expiredLicenses } = await supabase
       .from('licenses')
-      .select('id, customer_id, expiry_date, license_type, products(name), customers(name, phone)')
+      .select('id, customer_id, expiry_date, license_type, products(name), customers(name, email, phone)')
       .in('license_type', ['yearly', 'monthly'])
       .not('expiry_date', 'is', null)
       .neq('status', 'Disabled')
@@ -347,7 +412,7 @@ serve(async (req) => {
       id: string
       customer_id: string
       serviceName: string
-      customers: { name: string; phone: string } | null
+      customers: { name: string; email: string; phone: string } | null
       logType: string
       table: string
     }
@@ -401,11 +466,12 @@ serve(async (req) => {
     }
 
     for (const item of expiryItems) {
+      const customerName = item.customers?.name || 'Valued Customer'
+
       // 1. Send SMS if enabled
       if (settings?.sms_enabled && settings.expiry_notification) {
         const phone = item.customers?.phone
         if (phone && !alreadySentExpiry.has(`${item.customer_id}:${item.logType}`)) {
-          const customerName = item.customers?.name || 'Valued Customer'
           const message =
             `Dear ${customerName}, your ${item.serviceName} has expired. plz renew. ` +
             `Please log in to your portal to renew and avoid service interruption. ` +
@@ -433,7 +499,38 @@ serve(async (req) => {
         }
       }
 
-      // 2. Transition status to 'Expired' in DB
+      // 2. Send email notification
+      const email = item.customers?.email
+      if (email) {
+        const subject = `Your ${item.serviceName} has expired`
+        const body =
+          `Dear ${customerName},\n\n` +
+          `We are writing to inform you that your ${item.serviceName} with Nextiom has expired.\n\n` +
+          `Please log in to your portal dashboard at portal.nextiom.com to renew this service and prevent any disruption.\n\n` +
+          `If you have already renewed or settled the invoices, please ignore this email.\n\n` +
+          `Best regards,\n` +
+          `Team Nextiom`
+
+        const emailRes = await sendEmailDirect(email, subject, body)
+        if (emailRes.ok) {
+          console.log(`[renewal-sms-reminders] Successfully sent expiry email to ${email} for ${item.serviceName}`)
+          try {
+            await supabase.from('email_logs').insert([{
+              customer_id: item.customer_id,
+              sent_at: new Date().toISOString(),
+              subject,
+              body,
+              recipient: email
+            }])
+          } catch (dbErr) {
+            console.warn('[renewal-sms-reminders] Failed to save email log to DB:', dbErr)
+          }
+        } else {
+          console.error(`[renewal-sms-reminders] Failed to send expiry email to ${email} for ${item.serviceName}:`, emailRes.error)
+        }
+      }
+
+      // 3. Transition status to 'Expired' in DB
       const { error: updateErr } = await supabase
         .from(item.table)
         .update({ status: 'Expired' })

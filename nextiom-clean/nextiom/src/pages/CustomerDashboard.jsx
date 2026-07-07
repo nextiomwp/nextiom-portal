@@ -937,9 +937,9 @@ function CustomerDashboard() {
         >
           <div className="pl-8 lg:pl-0 font-semibold truncate flex-1 min-w-0" style={{ color: c.text }}>
             {activeTab === 'dashboard' ? (
-              <>
+              <span className="hidden lg:inline">
                 Welcome Back, <span style={{ color: c.brand }}>{customerProfile?.name || 'Customer'}</span>
-              </>
+              </span>
             ) : (
               getActiveLabel(activeTab)
             )}
