@@ -23,7 +23,7 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
     hasRenewal: false,
     renewalPercentage: '',
     licenseKey: '',
-    version: '1.0.0',
+    version: '',
     note: '',
     documentation: ''
   });
@@ -55,7 +55,7 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
         hasRenewal: false,
         renewalPercentage: '',
         licenseKey: generateCustomKey(),
-        version: '1.0.0',
+        version: '',
         note: '',
         documentation: ''
       });
@@ -476,7 +476,7 @@ export default function AddProductDialog({ open, onOpenChange, onSuccess, isDark
               </div>
 
               <div>
-                <label style={labelS}>Version</label>
+                <label style={labelS}>Version <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11, color: subText }}>(Optional)</span></label>
                 <input
                   type="text"
                   placeholder="e.g., 1.0.0"

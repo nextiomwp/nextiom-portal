@@ -731,10 +731,12 @@ export default function MyProductsPage({ user, isDark, c }) {
                     <span style={{ color: sub, fontSize: 12.5 }}>Service plan</span>
                     <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{lic.membership_type || licenseTypeLabel}</span>
                   </div>
+                  {(dp.version || lic.version) && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
                     <span style={{ color: sub, fontSize: 12.5 }}>Version</span>
-                    <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{dp.version || lic.version || '1.0.0'}</span>
+                    <span style={{ color: text, fontSize: 12.5, fontWeight: 600 }}>{dp.version || lic.version}</span>
                   </div>
+                  )}
                   {lic.domain && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${border}` }}>
                       <span style={{ color: sub, fontSize: 12.5 }}>Domain</span>
@@ -885,7 +887,7 @@ export default function MyProductsPage({ user, isDark, c }) {
                     }}>
                       <div>
                         <p style={{ color: text, fontSize: 13, fontWeight: 600, margin: 0 }}>Main product file</p>
-                        <p style={{ color: sub, fontSize: 10.5, margin: '3px 0 0' }}>Version {dp.version || lic.version || '1.0.0'}</p>
+                        <p style={{ color: sub, fontSize: 10.5, margin: '3px 0 0' }}>{dp.version || lic.version ? `Version ${dp.version || lic.version}` : 'Latest version'}</p>
                       </div>
                       <div 
                         style={{ position: 'relative' }}

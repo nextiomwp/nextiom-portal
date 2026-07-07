@@ -178,10 +178,12 @@ export default function ViewAssignedProductDialog({ open, onOpenChange, license,
                 <span style={{ fontSize: 12, fontWeight: 600, color: text }}>{license.membership_type || licenseLabel}</span>
               </div>
 
+              {(license.version) && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: subText, display: 'flex', alignItems: 'center', gap: 6 }}><RefreshCw size={14} /> Version</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: text }}>{license.version || '1.0.0'}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: text }}>{license.version}</span>
               </div>
+              )}
 
               {/* Domain (If exists) */}
               {license.domain && (

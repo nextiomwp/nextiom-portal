@@ -1740,7 +1740,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                                 <span style={{ fontWeight: 600 }}>{lic.name}</span>
                               </div>
                             </td>
-                            <td style={row}>{lic.version || lic.product?.version || '1.0.0'}</td>
+                            <td style={row}>{lic.version || lic.product?.version || '—'}</td>
                             <td style={row}><span style={{ textTransform: 'capitalize' }}>{type.replace('_', ' ')}</span></td>
                             <td style={row}>Rs. {lic.price?.toLocaleString() || lic.product?.price?.toLocaleString() || '0'}</td>
                             <td style={row}>Rs. {lic.renewal_price?.toLocaleString() || lic.product?.renewal_price?.toLocaleString() || '0'}</td>
@@ -1784,7 +1784,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                             )}
                             <div>
                               <span style={{ fontWeight: 600, color: c.text, fontSize: 14 }}>{lic.name}</span>
-                              <div style={{ fontSize: 11, color: c.subText }}>Version: {lic.version || lic.product?.version || '1.0.0'}</div>
+                              {(lic.version || lic.product?.version) && (
+                              <div style={{ fontSize: 11, color: c.subText }}>Version: {lic.version || lic.product?.version}</div>
+                              )}
                             </div>
                           </div>
                           <StatusBadge status={lic.calculatedStatus} />

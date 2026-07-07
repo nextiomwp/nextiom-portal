@@ -386,14 +386,16 @@ export default function ProductList({ products, licenses = [], customers = [], o
                   </div>
 
                   {/* Version */}
+                  {product.version && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 12, color: sub, display: 'flex', alignItems: 'center', gap: 4 }}>
                       <RefreshCw size={12} /> Version
                     </span>
                     <span style={{ color: text, fontSize: 12, fontWeight: 600 }}>
-                      {product.version || '1.0.0'}
+                      {product.version}
                     </span>
                   </div>
+                  )}
 
                   {/* Updates */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>

@@ -22,7 +22,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
     hasRenewal: false,
     renewalPercentage: '',
     licenseKey: '',
-    version: '1.0.0',
+    version: '',
     note: '',
     documentation: '',
   });
@@ -69,7 +69,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
         hasRenewal,
         renewalPercentage,
         licenseKey: product.license_key || '',
-        version: product.version || '1.0.0',
+        version: product.version || '',
         note: product.note || '',
         documentation: product.documentation || '',
       });
@@ -489,7 +489,7 @@ export default function EditProductDialog({ open, onOpenChange, product, onSucce
               </div>
 
               <div>
-                <label style={labelS}>Version</label>
+                <label style={labelS}>Version <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11, color: subText }}>(Optional)</span></label>
                 <input
                   type="text"
                   placeholder="e.g., 1.0.0"
