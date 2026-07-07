@@ -144,9 +144,6 @@ serve(async (req) => {
         console.error('[renewal-sms-reminders] Failed to auto-insert default sms_settings:', insertErr);
       }
     }
-
-    if (!settings?.sms_enabled) return jsonRes({ skipped: true, reason: 'SMS disabled in settings' })
-
     // Use a clean UTC "today" baseline for consistent comparison
     const nowUtc = new Date()
     const todayMs = Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate())
@@ -156,7 +153,7 @@ serve(async (req) => {
     const failed: string[] = []
 
     // ── Run renewal reminders if enabled ─────────────────────────────────────
-    if (settings.renewal_reminder) {
+    if (settings?.sms_enabled && settings.renewal_reminder) {
       const reminderDays = settings.reminder_days ?? 3
       console.log(`[renewal-sms-reminders] reminderDays=${reminderDays}, forceRun=${forceRun}`);
 
@@ -309,134 +306,152 @@ serve(async (req) => {
       }
     }
 
-    // ── Run expiry notifications if enabled ───────────────────────────────────
-    if (settings.expiry_notification) {
-      console.log(`[renewal-sms-reminders] Running expiry notifications for today=${todayStr}, forceRun=${forceRun}`);
+    // ── Run expiry notifications and status updates ──────────────────────────
+    console.log(`[renewal-sms-reminders] Checking for expired services <= ${nowUtc.toISOString()}, forceRun=${forceRun}`);
 
-      // Fetch domains that expired today
-      const { data: expiredDomains } = await supabase
-        .from('domain_requests')
-        .select('id, customer_id, domain_name, expiry_date, customers(name, phone)')
-        .in('status', ['approved', 'active', 'completed'])
-        .eq('expiry_date', todayStr)
+    // Fetch domains that have expired
+    const { data: expiredDomains } = await supabase
+      .from('domain_requests')
+      .select('id, customer_id, domain_name, expiry_date, customers(name, phone)')
+      .in('status', ['approved', 'active', 'completed'])
+      .lte('expiry_date', nowUtc.toISOString())
 
-      // Fetch hosting packages that expired today
-      const { data: expiredHostings } = await supabase
-        .from('hosting_requests')
-        .select('id, customer_id, plan_name, expiry_date, customers(name, phone)')
-        .in('status', ['approved', 'active', 'completed'])
-        .eq('expiry_date', todayStr)
+    // Fetch hosting packages that have expired
+    const { data: expiredHostings } = await supabase
+      .from('hosting_requests')
+      .select('id, customer_id, plan_name, expiry_date, customers(name, phone)')
+      .in('status', ['approved', 'active', 'completed'])
+      .lte('expiry_date', nowUtc.toISOString())
 
-      // Fetch email accounts that expired today
-      const { data: expiredEmails } = await supabase
-        .from('email_requests')
-        .select('id, customer_id, email, expiry_date, customers(name, phone)')
-        .in('status', ['approved', 'active', 'completed'])
-        .eq('expiry_date', todayStr)
+    // Fetch email accounts that have expired
+    const { data: expiredEmails } = await supabase
+      .from('email_requests')
+      .select('id, customer_id, email, expiry_date, customers(name, phone)')
+      .in('status', ['approved', 'active', 'completed'])
+      .lte('expiry_date', nowUtc.toISOString())
 
-      // Fetch product licenses that expired today
-      const { data: expiredLicenses } = await supabase
-        .from('licenses')
-        .select('id, customer_id, expiry_date, license_type, products(name), customers(name, phone)')
-        .in('license_type', ['yearly', 'monthly'])
-        .eq('expiry_date', todayStr)
-        .neq('status', 'Disabled')
-        .neq('status', 'Suspended')
+    // Fetch product licenses that have expired
+    const { data: expiredLicenses } = await supabase
+      .from('licenses')
+      .select('id, customer_id, expiry_date, license_type, products(name), customers(name, phone)')
+      .in('license_type', ['yearly', 'monthly'])
+      .not('expiry_date', 'is', null)
+      .neq('status', 'Disabled')
+      .neq('status', 'Suspended')
+      .neq('status', 'Expired')
+      .lte('expiry_date', nowUtc.toISOString())
 
-      console.log(`[renewal-sms-reminders] Expired today: ${expiredDomains?.length ?? 0} domains, ${expiredHostings?.length ?? 0} hostings, ${expiredEmails?.length ?? 0} emails, ${expiredLicenses?.length ?? 0} licenses`);
+    console.log(`[renewal-sms-reminders] Expired found: ${expiredDomains?.length ?? 0} domains, ${expiredHostings?.length ?? 0} hostings, ${expiredEmails?.length ?? 0} emails, ${expiredLicenses?.length ?? 0} licenses`);
 
-      type ExpiryItem = {
-        id: string
-        customer_id: string
-        serviceName: string
-        customers: { name: string; phone: string } | null
-        logType: string
-      }
+    type ExpiryItem = {
+      id: string
+      customer_id: string
+      serviceName: string
+      customers: { name: string; phone: string } | null
+      logType: string
+      table: string
+    }
 
-      const expiryItems: ExpiryItem[] = [
-        ...(expiredDomains || []).map((d: any) => ({
-          id: d.id,
-          customer_id: d.customer_id,
-          serviceName: `domain "${d.domain_name}"`,
-          customers: d.customers,
-          logType: 'expiry_domain',
-        })),
-        ...(expiredHostings || []).map((h: any) => ({
-          id: h.id,
-          customer_id: h.customer_id,
-          serviceName: `hosting plan "${h.plan_name || 'your plan'}"`,
-          customers: h.customers,
-          logType: 'expiry_hosting',
-        })),
-        ...(expiredEmails || []).map((e: any) => ({
-          id: e.id,
-          customer_id: e.customer_id,
-          serviceName: `email account "${e.email || 'your email'}"`,
-          customers: e.customers,
-          logType: 'expiry_email',
-        })),
-        ...(expiredLicenses || []).map((l: any) => ({
-          id: l.id,
-          customer_id: l.customer_id,
-          serviceName: `product license "${l.products?.name || 'your product'}"`,
-          customers: l.customers,
-          logType: 'expiry_product',
-        })),
-      ]
+    const expiryItems: ExpiryItem[] = [
+      ...(expiredDomains || []).map((d: any) => ({
+        id: d.id,
+        customer_id: d.customer_id,
+        serviceName: `domain "${d.domain_name}"`,
+        customers: d.customers,
+        logType: 'expiry_domain',
+        table: 'domain_requests'
+      })),
+      ...(expiredHostings || []).map((h: any) => ({
+        id: h.id,
+        customer_id: h.customer_id,
+        serviceName: `hosting plan "${h.plan_name || 'your plan'}"`,
+        customers: h.customers,
+        logType: 'expiry_hosting',
+        table: 'hosting_requests'
+      })),
+      ...(expiredEmails || []).map((e: any) => ({
+        id: e.id,
+        customer_id: e.customer_id,
+        serviceName: `email account "${e.email || 'your email'}"`,
+        customers: e.customers,
+        logType: 'expiry_email',
+        table: 'email_requests'
+      })),
+      ...(expiredLicenses || []).map((l: any) => ({
+        id: l.id,
+        customer_id: l.customer_id,
+        serviceName: `product license "${l.products?.name || 'your product'}"`,
+        customers: l.customers,
+        logType: 'expiry_product',
+        table: 'licenses'
+      })),
+    ]
 
-      // Dedup — avoid re-sending expiry SMS within 24h for the same customer+type
-      let alreadySentExpiry = new Set<string>()
-      if (!forceRun) {
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        const { data: recentExpiryLogs } = await supabase
-          .from('sms_logs')
-          .select('customer_id, type')
-          .in('type', ['expiry_domain', 'expiry_hosting', 'expiry_email', 'expiry_product'])
-          .gte('sent_at', twentyFourHoursAgo)
-        alreadySentExpiry = new Set((recentExpiryLogs || []).map((r: any) => `${r.customer_id}:${r.type}`))
-        console.log(`[renewal-sms-reminders] Expiry dedup: ${alreadySentExpiry.size} recent sends found`);
-      }
+    // Dedup — avoid re-sending expiry SMS within 24h for the same customer+type
+    let alreadySentExpiry = new Set<string>()
+    if (settings?.sms_enabled && settings.expiry_notification && !forceRun) {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const { data: recentExpiryLogs } = await supabase
+        .from('sms_logs')
+        .select('customer_id, type')
+        .in('type', ['expiry_domain', 'expiry_hosting', 'expiry_email', 'expiry_product'])
+        .gte('sent_at', twentyFourHoursAgo)
+      alreadySentExpiry = new Set((recentExpiryLogs || []).map((r: any) => `${r.customer_id}:${r.type}`))
+      console.log(`[renewal-sms-reminders] Expiry dedup: ${alreadySentExpiry.size} recent sends found`);
+    }
 
-      for (const item of expiryItems) {
+    for (const item of expiryItems) {
+      // 1. Send SMS if enabled
+      if (settings?.sms_enabled && settings.expiry_notification) {
         const phone = item.customers?.phone
-        if (!phone) {
+        if (phone && !alreadySentExpiry.has(`${item.customer_id}:${item.logType}`)) {
+          const customerName = item.customers?.name || 'Valued Customer'
+          const message =
+            `Dear ${customerName}, your ${item.serviceName} has expired. plz renew. ` +
+            `Please log in to your portal to renew and avoid service interruption. ` +
+            `Visit: portal.nextiom.com`
+
+          const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
+          const status = ok ? 'sent' : 'failed'
+
+          await supabase.from('sms_logs').insert({
+            customer_id: item.customer_id,
+            phone,
+            message,
+            type: item.logType,
+            status,
+            provider_ref: providerRes?.data?.uid || null,
+            error_msg: ok ? null : (providerRes?.message || providerRes?.error || 'Provider error'),
+          })
+
+          if (ok) sent.push(item.id)
+          else failed.push(item.id)
+        } else if (!phone) {
           console.log(`[renewal-sms-reminders] Expiry: skipping ${item.serviceName} — no phone`);
-          continue
-        }
-        if (alreadySentExpiry.has(`${item.customer_id}:${item.logType}`)) {
+        } else {
           console.log(`[renewal-sms-reminders] Expiry: skipping ${item.serviceName} — already sent within 24h`);
-          continue
         }
+      }
 
-        const customerName = item.customers?.name || 'Valued Customer'
-        const message =
-          `Dear ${customerName}, your ${item.serviceName} with Nextiom has expired today. ` +
-          `Please log in to your portal and renew it to avoid service disruption. ` +
-          `Visit: portal.nextiom.com – Team Nextiom`
+      // 2. Transition status to 'Expired' in DB
+      const { error: updateErr } = await supabase
+        .from(item.table)
+        .update({ status: 'Expired' })
+        .eq('id', item.id)
 
-        const { ok, json: providerRes } = await sendSmsToProvider(phone, message)
-        const status = ok ? 'sent' : 'failed'
-
-        await supabase.from('sms_logs').insert({
-          customer_id: item.customer_id,
-          phone,
-          message,
-          type: item.logType,
-          status,
-          provider_ref: providerRes?.data?.uid || null,
-          error_msg: ok ? null : (providerRes?.message || providerRes?.error || 'Provider error'),
-        })
-
-        if (ok) sent.push(item.id)
-        else failed.push(item.id)
+      if (updateErr) {
+        console.error(`[renewal-sms-reminders] Failed to update status to Expired for ${item.table} ${item.id}:`, updateErr)
+      } else {
+        console.log(`[renewal-sms-reminders] Successfully updated status to Expired for ${item.table} ${item.id}`);
       }
     }
+
 
     // ── Run invoice reminders if enabled ─────────────────────────────────────
     let invoiceSentCount = 0
     let invoiceFailedCount = 0
 
-    if (settings.invoice_sms) {
+    if (settings?.sms_enabled && settings.invoice_sms) {
       const invoiceReminderDays = 3
       console.log(`[renewal-sms-reminders] Running invoice reminders check: invoiceReminderDays=${invoiceReminderDays}, forceRun=${forceRun}`);
       

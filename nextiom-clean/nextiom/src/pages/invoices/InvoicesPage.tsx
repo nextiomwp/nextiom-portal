@@ -53,7 +53,8 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
   invoice: Invoice; c: any; isDark: boolean; onClose: () => void; onChanged: () => void
 }) {
   const { toast } = useToast()
-  const [payment, setPayment] = useState<InvoicePayment | null>(null)
+  const [payments, setPayments] = useState<InvoicePayment[]>([])
+  const [selectedPaymentIndex, setSelectedPaymentIndex] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState<'view' | 'reject' | 'info'>('view')
   const [reason, setReason] = useState('')
@@ -61,8 +62,16 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
   const [slipLoading, setSlipLoading] = useState(false)
 
   useEffect(() => {
-    getLatestPaymentByInvoice(invoice.id!).then(p => { setPayment(p); setLoading(false) }).catch(() => setLoading(false))
+    getInvoicePayments(invoice.id!)
+      .then(list => {
+        setPayments(list)
+        setSelectedPaymentIndex(0)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [invoice.id])
+
+  const payment = payments[selectedPaymentIndex] || null
 
   async function doApprove() {
     if (!payment) return
@@ -112,10 +121,47 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
         <div style={{ padding: '16px 22px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <CreditCard size={18} style={{ color: c.brand }} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>Review Payment — {invoice.invoice_no}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: c.text }}>
+              {invoice.status === 'payment_submitted' ? 'Review Payment' : 'Payment Details'} — {invoice.invoice_no}
+            </span>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
         </div>
+
+        {payments.length > 1 && (
+          <div style={{ display: 'flex', gap: 8, padding: '12px 22px', borderBottom: `1px solid ${c.border}`, background: isDark ? 'rgba(0,0,0,0.15)' : '#f8fafc', overflowX: 'auto' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, display: 'flex', alignItems: 'center', marginRight: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Payments ({payments.length}):
+            </span>
+            {payments.map((p, idx) => {
+              const isActive = idx === selectedPaymentIndex
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setSelectedPaymentIndex(idx)
+                    setMode('view')
+                    setReason('')
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: isActive ? `1.5px solid ${c.brand}` : `1px solid ${c.border}`,
+                    background: isActive ? c.brandLight : 'transparent',
+                    color: isActive ? c.brand : c.text,
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {p.payment_date || 'No Date'} ({fmtCurrency(p.paid_amount, invoiceCurrency(invoice))}) - {p.status || 'submitted'}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         <div style={{ padding: 22, overflowY: 'auto' }}>
           {loading ? (
@@ -1446,9 +1492,9 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
 
                             {/* Actions */}
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
-                              {inv.status === 'payment_submitted' && (
-                                <button onClick={() => setReviewInvoice(inv)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#3b82f6', border: 'none', color: '#fff', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }} title="Review payment">
-                                  <CreditCard size={14} /> Review Payment
+                              {(inv.status === 'payment_submitted' || inv.invoice_payments?.some(p => p.slip_url)) && (
+                                <button onClick={() => setReviewInvoice(inv)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: inv.status === 'payment_submitted' ? '#3b82f6' : 'rgba(59, 130, 246, 0.1)', border: inv.status === 'payment_submitted' ? 'none' : `1px solid rgba(59, 130, 246, 0.3)`, color: inv.status === 'payment_submitted' ? '#fff' : '#3b82f6', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }} title={inv.status === 'payment_submitted' ? "Review payment" : "View payment slip"}>
+                                  <CreditCard size={14} /> {inv.status === 'payment_submitted' ? 'Review Payment' : 'View Slip'}
                                 </button>
                               )}
                               {(inv.status === 'paid' || inv.status === 'partially_paid' || inv.status === 'partially_refunded') && (
@@ -1472,7 +1518,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                     </div>
                   ) : (
                     <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 95px 95px 80px 80px 105px 130px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                         <span></span><span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
                         <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
                       </div>
@@ -1485,7 +1531,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                             id={`invoice-row-${inv.invoice_no}`}
                             style={{ 
                               display: 'grid', 
-                              gridTemplateColumns: '35px 85px 1.2fr 1.5fr 100px 100px 85px 85px 115px 95px', 
+                              gridTemplateColumns: '35px 85px 1.2fr 1.5fr 95px 95px 80px 80px 105px 130px', 
                               gap: 12, 
                               alignItems: 'center', 
                               padding: '12px 14px', 
@@ -1554,8 +1600,8 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                             <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.due_date ? inv.due_date.substring(0, 10) : '—'}</span>
                             <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
                             <div style={{ display: 'flex', gap: 2 }}>
-                              {inv.status === 'payment_submitted' && (
-                                <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title="Review payment">
+                              {(inv.status === 'payment_submitted' || inv.invoice_payments?.some(p => p.slip_url)) && (
+                                <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title={inv.status === 'payment_submitted' ? "Review payment" : "View payment slip"}>
                                   <CreditCard size={14} />
                                 </button>
                               )}

@@ -55,6 +55,7 @@ export interface Invoice {
   exchange_rate?: number | null
   total_usd?: number | null
   total_lkr?: number | null
+  invoice_payments?: InvoicePayment[]
 }
 
 export interface InvoiceSettings {
@@ -284,7 +285,7 @@ export async function resolveLogoUrl(value: string | null | undefined, expiresIn
 export async function getInvoices(includeDeleted = false): Promise<Invoice[]> {
   let query = supabase
     .from('invoices')
-    .select('*')
+    .select('*, invoice_payments(id, slip_url, status)')
 
   if (!includeDeleted) {
     query = query.is('deleted_at', null)
@@ -293,7 +294,7 @@ export async function getInvoices(includeDeleted = false): Promise<Invoice[]> {
   const { data, error } = await query.order('created_at', { ascending: false })
 
   if (error) throw error
-  return data ?? []
+  return (data as unknown as Invoice[]) ?? []
 }
 
 function deserializeItem(item: any): InvoiceItem {
