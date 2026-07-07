@@ -100,9 +100,12 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
     accessMethod: 'license_auto',
     duration: 'yearly',
     currency: 'USD',
+    loginUsername: '',
+    loginPassword: '',
   });
 
   const [saving, setSaving] = useState(false);
+  const [expiryDateLocked, setExpiryDateLocked] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -134,6 +137,9 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         type: product.type || 'Plugin',
       });
 
+      // If the license already has a stored expiry date, lock it so the
+      // auto-calc effect does not immediately overwrite it on open.
+      setExpiryDateLocked(!!license.expiry_date);
       setAssignForm({
         purchaseDate: license.purchase_date ? license.purchase_date.split('T')[0] : '',
         startDate: license.start_date ? license.start_date.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -152,6 +158,8 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         accessMethod,
         duration: initialAccessMethod === 'one_time' ? 'yearly' : initialAccessMethod,
         currency,
+        loginUsername: license.login_username || '',
+        loginPassword: license.login_password || '',
       });
     }
   }, [product, license, open]);
@@ -162,6 +170,9 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
       setAssignForm(prev => ({ ...prev, expiryDate: '' }));
       return;
     }
+    // Skip auto-calc if admin has manually locked expiry date
+    if (expiryDateLocked) return;
+
     const start = new Date(assignForm.startDate);
     if (isNaN(start.getTime())) return;
     
@@ -174,7 +185,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
       d.setFullYear(d.getFullYear() + 1);
       setAssignForm(prev => ({ ...prev, expiryDate: d.toISOString().split('T')[0] }));
     }
-  }, [assignForm.startDate, assignForm.duration, assignForm.accessMethod]);
+  }, [assignForm.startDate, assignForm.duration, assignForm.accessMethod, expiryDateLocked]);
 
   // Disable renewal if access method is one_time
   useEffect(() => {
@@ -262,7 +273,9 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
       const licenseUpdates = {
         purchase_date: assignForm.purchaseDate ? new Date(assignForm.purchaseDate).toISOString() : null,
         start_date: processed.start_date,
-        expiry_date: processed.expiry_date,
+        expiry_date: expiryDateLocked
+          ? (assignForm.expiryDate ? new Date(assignForm.expiryDate).toISOString() : null)
+          : processed.expiry_date,
         download_url: assignForm.downloadUrl || null,
         license_key: processed.license_key,
         domain: assignForm.domain?.trim() || null,
@@ -275,6 +288,8 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         license_type: processed.license_type,
         membership_type: processed.membership_type,
         currency: assignForm.currency || 'USD',
+        login_username: assignForm.loginUsername?.trim() || null,
+        login_password: assignForm.loginPassword?.trim() || null,
       };
 
       await updateLicense(license.id, licenseUpdates);
@@ -546,7 +561,32 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={labelS}>Expiry Date</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <label style={{ ...labelS, marginBottom: 0 }}>Expiry Date</label>
+                      {assignForm.accessMethod !== 'one_time' && assignForm.duration !== 'lifetime' && (
+                        <label
+                          htmlFor="edit-expiry-lock-checkbox"
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginLeft: 'auto' }}
+                          title={expiryDateLocked ? 'Uncheck to auto-calculate' : 'Check to set manually'}
+                        >
+                          <input
+                            type="checkbox"
+                            id="edit-expiry-lock-checkbox"
+                            checked={expiryDateLocked}
+                            onChange={(e) => {
+                              setExpiryDateLocked(e.target.checked);
+                              if (!e.target.checked) {
+                                setAssignForm(prev => ({ ...prev, expiryDate: '' }));
+                              }
+                            }}
+                            style={{ width: 13, height: 13, accentColor: brand, cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: 10.5, color: subText, fontWeight: 500, letterSpacing: 0.3 }}>
+                            {expiryDateLocked ? 'Manual (editing)' : 'Auto-calculated'}
+                          </span>
+                        </label>
+                      )}
+                    </div>
                     {assignForm.accessMethod === 'one_time' || assignForm.duration === 'lifetime' ? (
                       <input
                         type="text"
@@ -557,9 +597,17 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                     ) : (
                       <input
                         type="date"
+                        disabled={!expiryDateLocked}
                         value={assignForm.expiryDate}
-                        onChange={(e) => setAssignForm(p => ({ ...p, expiryDate: e.target.value }))}
-                        style={inpS}
+                        onChange={(e) => expiryDateLocked && setAssignForm(p => ({ ...p, expiryDate: e.target.value, renewalDate: e.target.value }))}
+                        style={{
+                          ...inpS,
+                          background: expiryDateLocked ? inputBg : panel,
+                          color: expiryDateLocked ? text : subText,
+                          cursor: expiryDateLocked ? 'text' : 'not-allowed',
+                          borderColor: expiryDateLocked ? brand : border,
+                          opacity: expiryDateLocked ? 1 : 0.7,
+                        }}
                       />
                     )}
                   </div>
@@ -676,6 +724,49 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
                   />
                 </div>
               )}
+
+              {/* Login Details Section */}
+              <div style={{
+                border: `1.5px solid ${border}`,
+                borderRadius: 10,
+                padding: 14,
+                background: panel,
+              }}>
+                <p style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: subText,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.8,
+                  margin: '0 0 10px 0',
+                }}>
+                  Login Details <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 10, opacity: 0.7 }}>(Optional — shown to customer)</span>
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <label style={labelS}>Email / Username</label>
+                    <input
+                      type="text"
+                      value={assignForm.loginUsername}
+                      onChange={(e) => setAssignForm(p => ({ ...p, loginUsername: e.target.value }))}
+                      style={inpS}
+                      placeholder="e.g. user@example.com or username"
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelS}>Password</label>
+                    <input
+                      type="text"
+                      value={assignForm.loginPassword}
+                      onChange={(e) => setAssignForm(p => ({ ...p, loginPassword: e.target.value }))}
+                      style={inpS}
+                      placeholder="e.g. SecurePass123"
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </div>
+              </div>
 
               <div>
                 <label style={labelS}>Service Plan *</label>
