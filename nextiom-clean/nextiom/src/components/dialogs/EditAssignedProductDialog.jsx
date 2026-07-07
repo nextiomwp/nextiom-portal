@@ -89,7 +89,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
     downloadUrl: '',
     licenseKey: '',
     domain: '',
-    version: '1.0.0',
+    version: '',
     status: 'Active',
     price: '0.00',
     hasRenewal: false,
@@ -147,7 +147,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
         downloadUrl: license.download_url !== undefined && license.download_url !== null ? license.download_url : (product.download_url || ''),
         licenseKey: license.license_key || '',
         domain: license.domain || '',
-        version: license.version || '1.0.0',
+        version: license.version || '',
         status: license.status || 'Active',
         price: basePrice,
         hasRenewal,
@@ -637,7 +637,7 @@ export default function EditAssignedProductDialog({ open, onOpenChange, license,
               </div>
 
               <div>
-                <label style={labelS}>Version</label>
+                <label style={labelS}>Version <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11, color: subText }}>(Optional)</span></label>
                 <input
                   type="text"
                   placeholder="e.g., 1.0.0"

@@ -90,7 +90,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
     downloadUrl: '',
     licenseKey: '',
     domain: '',
-    version: '1.0.0',
+    version: '',
     status: 'Active',
     notes: '',
     price: '0.00',
@@ -155,7 +155,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         downloadUrl: '',
         licenseKey: '',
         domain: '',
-        version: '1.0.0',
+        version: '',
         status: 'Active',
         notes: '',
         price: '0.00',
@@ -292,6 +292,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         hasRenewal: prod.renewal_enabled || false,
         renewalPercentage: pct,
         currency: prod.currency || 'USD',
+        version: prod.version || '',
       }));
     }
   }, [formData.productId, products]);
@@ -533,7 +534,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
         download_count: 0,
         purchase_date: assignForm.startDate ? new Date(assignForm.startDate).toISOString() : new Date().toISOString(),
         download_url: customForm.downloadUrl || null,
-        version: '1.0.0',
+        version: null,
         notes: assignForm.notes || null,
         domain: assignForm.domain?.trim() || null,
         price: parseFloat(customForm.price) || 0,
@@ -1048,7 +1049,7 @@ function AssignProductDialog({ open, onOpenChange, customers = [], products = []
                 </div>
 
                 <div>
-                  <label style={labelS}>Version</label>
+                  <label style={labelS}>Version <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, fontSize: 11, color: subText }}>(Optional)</span></label>
                   <input
                     type="text"
                     value={formData.version}
