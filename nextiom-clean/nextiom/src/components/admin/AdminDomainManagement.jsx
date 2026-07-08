@@ -33,10 +33,12 @@ function AdminDomainManagement({ isDark = true }) {
     const col = isDark
       ? s === 'active' || s === 'approved' ? { bg: '#1a3020', color: '#4ade80', dot: '#4ade80' }
         : s === 'pending' ? { bg: '#3b2508', color: '#fb923c', dot: '#fb923c' }
-        : { bg: '#3a1515', color: '#f87171', dot: '#f87171' }
+        : s === 'expired' ? { bg: '#3a1515', color: '#f87171', dot: '#f87171' }
+        : { bg: '#1e2d40', color: '#60a5fa', dot: '#60a5fa' }
       : s === 'active' || s === 'approved' ? { bg: '#dcfce7', color: '#15803d', dot: '#22c55e' }
         : s === 'pending' ? { bg: '#fff7ed', color: '#c2410c', dot: '#f97316' }
-        : { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' };
+        : s === 'expired' ? { bg: '#fee2e2', color: '#b91c1c', dot: '#ef4444' }
+        : { bg: '#dbeafe', color: '#1d4ed8', dot: '#3b82f6' };
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: col.bg, color: col.color, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: col.dot, flexShrink: 0 }} />
@@ -73,7 +75,10 @@ function AdminDomainManagement({ isDark = true }) {
     try {
       setIsLoading(true);
       const data = await getDomainRequests();
-      setDomains((data || []).filter(d => String(d.status || '').toLowerCase() === 'approved'));
+      setDomains((data || []).filter(d => {
+        const status = String(d.status || '').toLowerCase();
+        return status === 'approved' || status === 'expired';
+      }));
     } catch (e) {
       toast({ title: 'Error', description: 'Failed to load domains', variant: 'destructive' });
     } finally {
@@ -204,7 +209,7 @@ function AdminDomainManagement({ isDark = true }) {
       <div style={cardS}>
         <div style={{ padding: '15px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ width: 3, height: 18, borderRadius: 2, background: '#378ADD', flexShrink: 0 }} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Domains</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Domains (Active & Expired)</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredDomains.length} domain{filteredDomains.length !== 1 ? 's' : ''}</span>
         </div>
         <div className="domains-table-wrapper" style={{ overflowX: 'auto' }}>
@@ -257,7 +262,7 @@ function AdminDomainManagement({ isDark = true }) {
                 </tr>
               );
             })}
-            {filteredDomains.length === 0 && <tr><td colSpan={6} style={emptyS}>No approved domains found</td></tr>}
+            {filteredDomains.length === 0 && <tr><td colSpan={6} style={emptyS}>No domains found</td></tr>}
           </tbody>
         </table>
         </div>
@@ -305,7 +310,7 @@ function AdminDomainManagement({ isDark = true }) {
               </div>
             );
           })}
-          {filteredDomains.length === 0 && <div style={emptyS}>No approved domains found</div>}
+          {filteredDomains.length === 0 && <div style={emptyS}>No domains found</div>}
         </div>
       </div>
 

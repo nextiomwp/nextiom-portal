@@ -71,7 +71,10 @@ function AdminApprovedHostings({ isDark = true }) {
     try {
       setIsLoading(true);
       const data = await getHostingRequests();
-      setHostings((data || []).filter(h => String(h.status || '').toLowerCase() === 'approved'));
+      setHostings((data || []).filter(h => {
+        const status = String(h.status || '').toLowerCase();
+        return status === 'approved' || status === 'expired';
+      }));
     } catch (e) {
       toast({ title: 'Error', description: 'Failed to load hosting data', variant: 'destructive' });
     } finally {
@@ -129,7 +132,7 @@ function AdminApprovedHostings({ isDark = true }) {
 
   const handleDelete = async (h) => {
     const parsed = parsePackageType(h.package_type);
-    if (!window.confirm(`Delete approved hosting "${parsed.hostingType} - ${parsed.planName}" for ${h.customers?.name || 'this customer'}? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete hosting "${parsed.hostingType} - ${parsed.planName}" for ${h.customers?.name || 'this customer'}? This cannot be undone.`)) return;
     try {
       await deleteHostingRequest(h.id);
       const label = `${parsed.hostingType} — ${parsed.planName}`;
@@ -226,7 +229,7 @@ function AdminApprovedHostings({ isDark = true }) {
         <div style={{ padding: '15px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ width: 3, height: 18, borderRadius: 2, background: '#639922', flexShrink: 0 }} />
           <Server size={15} style={{ color: '#639922' }} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Hostings</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Hostings (Active & Expired)</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredHostings.length} record{filteredHostings.length !== 1 ? 's' : ''}</span>
         </div>
         <div className="hosting-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -281,7 +284,7 @@ function AdminApprovedHostings({ isDark = true }) {
                   </tr>
                 );
               })}
-              {filteredHostings.length === 0 && <tr><td colSpan={7} style={emptyS}>No approved hostings found</td></tr>}
+              {filteredHostings.length === 0 && <tr><td colSpan={7} style={emptyS}>No hostings found</td></tr>}
             </tbody>
           </table>
         </div>
@@ -335,7 +338,7 @@ function AdminApprovedHostings({ isDark = true }) {
               </div>
             );
           })}
-          {filteredHostings.length === 0 && <div style={emptyS}>No approved hostings found</div>}
+          {filteredHostings.length === 0 && <div style={emptyS}>No hostings found</div>}
         </div>
       </div>
 

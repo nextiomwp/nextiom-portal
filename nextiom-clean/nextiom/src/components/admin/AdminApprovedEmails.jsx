@@ -71,7 +71,7 @@ function AdminApprovedEmails({ isDark = true }) {
     try {
       setIsLoading(true);
       const data = await getEmailRequests();
-      setEmails((data || []).filter(h => ['approved', 'active', 'completed'].includes(String(h.status || '').toLowerCase())));
+      setEmails((data || []).filter(h => ['approved', 'active', 'completed', 'expired'].includes(String(h.status || '').toLowerCase())));
     } catch (e) {
       toast({ title: 'Error', description: 'Failed to load email data', variant: 'destructive' });
     } finally {
@@ -129,7 +129,7 @@ function AdminApprovedEmails({ isDark = true }) {
 
   const handleDelete = async (h) => {
     const parsed = parseEmailNameType(h.package_type);
-    if (!window.confirm(`Delete approved email "${parsed.emailType} - ${parsed.planName}" for ${h.customers?.name || 'this customer'}? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete email "${parsed.emailType} - ${parsed.planName}" for ${h.customers?.name || 'this customer'}? This cannot be undone.`)) return;
     try {
       await deleteEmailRequest(h.id);
       const label = `${parsed.emailType} — ${parsed.planName}`;
@@ -226,7 +226,7 @@ function AdminApprovedEmails({ isDark = true }) {
         <div style={{ padding: '15px 20px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 10, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
           <div style={{ width: 3, height: 18, borderRadius: 2, background: '#639922', flexShrink: 0 }} />
           <Server size={15} style={{ color: '#639922' }} />
-          <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Approved Emails</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: c.text, letterSpacing: 0.3 }}>Emails (Active & Expired)</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: c.subText }}>{filteredEmails.length} record{filteredEmails.length !== 1 ? 's' : ''}</span>
         </div>
         <div className="email-table-wrapper" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -283,7 +283,7 @@ function AdminApprovedEmails({ isDark = true }) {
                   </tr>
                 );
               })}
-              {filteredEmails.length === 0 && <tr><td colSpan={7} style={emptyS}>No approved emails found</td></tr>}
+              {filteredEmails.length === 0 && <tr><td colSpan={7} style={emptyS}>No emails found</td></tr>}
             </tbody>
           </table>
         </div>
@@ -341,7 +341,7 @@ function AdminApprovedEmails({ isDark = true }) {
               </div>
             );
           })}
-          {filteredEmails.length === 0 && <div style={emptyS}>No approved emails found</div>}
+          {filteredEmails.length === 0 && <div style={emptyS}>No emails found</div>}
         </div>
       </div>
 

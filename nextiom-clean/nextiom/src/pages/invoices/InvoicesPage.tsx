@@ -1477,7 +1477,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                             </div>
 
                             {/* Financial figures */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '10px 0' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, borderTop: `1px solid ${c.border}`, borderBottom: `1px solid ${c.border}`, padding: '10px 0' }}>
                               <div>
                                 <div style={{ fontSize: 11, color: c.subText }}>Total Amount</div>
                                 <div style={{ fontWeight: 700, fontSize: 15, color: c.text }}>{fmtCurrency(inv.total, invoiceCurrency(inv))}</div>
@@ -1486,6 +1486,12 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                                 <div style={{ fontSize: 11, color: c.subText }}>Paid Amount</div>
                                 <div style={{ fontWeight: 700, fontSize: 15, color: netPaid > 0 ? '#22c55e' : c.subText }}>
                                   {fmtCurrency(netPaid, invoiceCurrency(inv))}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 11, color: c.subText }}>Balance</div>
+                                <div style={{ fontWeight: 700, fontSize: 15, color: Math.max(0, Number(inv.total || 0) - netPaid) > 0 ? '#ef4444' : c.subText }}>
+                                  {fmtCurrency(Math.max(0, Number(inv.total || 0) - netPaid), invoiceCurrency(inv))}
                                 </div>
                               </div>
                             </div>
@@ -1518,8 +1524,8 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                     </div>
                   ) : (
                     <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 95px 95px 80px 80px 105px 130px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                        <span></span><span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: '35px 85px 1.2fr 1.5fr 95px 95px 95px 80px 80px 105px 130px', gap: 12, padding: '0 14px 8px', fontSize: 11, fontWeight: 600, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <span></span><span>Invoice</span><span>Service</span><span>Client</span><span>Total</span><span>Paid</span><span>Balance</span>
                         <span style={{ textAlign: 'right' }}>Date</span><span style={{ textAlign: 'right' }}>Due Date</span><span>Status</span><span></span>
                       </div>
                       {filtered.map(inv => {
@@ -1531,7 +1537,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                             id={`invoice-row-${inv.invoice_no}`}
                             style={{ 
                               display: 'grid', 
-                              gridTemplateColumns: '35px 85px 1.2fr 1.5fr 95px 95px 80px 80px 105px 130px', 
+                              gridTemplateColumns: '35px 85px 1.2fr 1.5fr 95px 95px 95px 80px 80px 105px 130px', 
                               gap: 12, 
                               alignItems: 'center', 
                               padding: '12px 14px', 
@@ -1590,10 +1596,16 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                               const paid = Number(inv.paid_amount || 0)
                               const refunded = Number(inv.refunded_amount || 0)
                               const netPaid = Math.max(0, paid - refunded)
+                              const balance = Math.max(0, Number(inv.total || 0) - netPaid)
                               return (
-                                <span style={{ fontWeight: 600, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>
-                                  {fmtCurrency(netPaid, invoiceCurrency(inv))}
-                                </span>
+                                <>
+                                  <span style={{ fontWeight: 600, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>
+                                    {fmtCurrency(netPaid, invoiceCurrency(inv))}
+                                  </span>
+                                  <span style={{ fontWeight: 600, fontSize: 13, color: balance > 0 ? '#ef4444' : c.subText }}>
+                                    {fmtCurrency(balance, invoiceCurrency(inv))}
+                                  </span>
+                                </>
                               )
                             })()}
                             <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>

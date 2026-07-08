@@ -485,7 +485,7 @@ function Dashboard({ onLogout }) {
       setPendingRequests(pendingReqRows);
       setPendingRequestsCount(pendingReqRows.length);
       setHostingPlans(hostPlans || []);
-      const approvedEmailStatuses = new Set(['approved', 'active', 'completed']);
+      const approvedEmailStatuses = new Set(['approved', 'active', 'completed', 'expired']);
       const activeEmails = (emailReqs || []).filter(r => approvedEmailStatuses.has(String(r.status || '').toLowerCase()));
       setActiveEmailsCount(activeEmails.length);
       // Bump refreshKey so child components that accept it re-render
@@ -791,8 +791,8 @@ function Dashboard({ onLogout }) {
               }
               if (isItem.badgeType === 'green') {
                 badgeColor = '#16a34a';
-                if (isItem.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && String(r.status).toLowerCase() === 'approved').length; }
-                else if (isItem.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && String(r.status || '').toLowerCase() === 'approved').length; }
+                if (isItem.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && (String(r.status).toLowerCase() === 'approved' || String(r.status).toLowerCase() === 'expired')).length; }
+                else if (isItem.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && (String(r.status || '').toLowerCase() === 'approved' || String(r.status || '').toLowerCase() === 'expired')).length; }
                 else if (isItem.id === 'approvedEmailsActive') { badge = activeEmailsCount; }
               }
               if (isItem.id === 'invoices') {
@@ -859,8 +859,8 @@ function Dashboard({ onLogout }) {
                 }
                 if (item.badgeType === 'green') {
                   badgeColor = '#16a34a';
-                  if (item.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && String(r.status).toLowerCase() === 'approved').length; }
-                  else if (item.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && String(r.status || '').toLowerCase() === 'approved').length; }
+                  if (item.id === 'approvedHostings') { badge = requests.filter(r => r.source === 'domain' && (String(r.status).toLowerCase() === 'approved' || String(r.status).toLowerCase() === 'expired')).length; }
+                  else if (item.id === 'activeHosting') { badge = requests.filter(r => r.source === 'hosting' && (String(r.status || '').toLowerCase() === 'approved' || String(r.status || '').toLowerCase() === 'expired')).length; }
                   else if (item.id === 'approvedEmailsActive') { badge = activeEmailsCount; }
                 }
                 if (item.id === 'invoices') {
@@ -1304,13 +1304,13 @@ function MiniSparkline({ value, color }) {
 }
 
 function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequestsCount, onNavigate, onViewCustomer, onConfirmCustomer, onRejectCustomer, c, isDark, isMobile = false }) {
-  const approvedDomains = requests.filter(r => r.source === 'domain' && String(r.status || '').toLowerCase() === 'approved').length;
+  const approvedDomains = requests.filter(r => r.source === 'domain' && (String(r.status || '').toLowerCase() === 'approved' || String(r.status || '').toLowerCase() === 'expired')).length;
   const pendingCustomers = customers.filter(cu => String(cu.status || '').toLowerCase() === 'pending');
   const initials = name => (name || '?').split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase();
 
   const statCards = [
     { label: 'Total customers', value: customers.length || 0, icon: <Users size={18} color={c.brand} />, sub: '↑ +12 this month', subColor: '#639922', bg: isDark ? '#3d2518' : '#fff5ee', sparkColor: c.brand },
-    { label: 'Active domains', value: approvedDomains, icon: <CheckCircle size={18} color="#378ADD" />, sub: `${stats.expiringSoon || 0} expiring soon`, subColor: '#378ADD', bg: isDark ? '#1a2736' : '#e6f1fb', sparkColor: '#378ADD' },
+    { label: 'Domains', value: approvedDomains, icon: <CheckCircle size={18} color="#378ADD" />, sub: `${stats.expiringSoon || 0} expiring soon`, subColor: '#378ADD', bg: isDark ? '#1a2736' : '#e6f1fb', sparkColor: '#378ADD' },
     { label: 'Hosting packages', value: hostingPlans.length || 0, icon: <Server size={18} color="#639922" />, sub: 'All active', subColor: '#639922', bg: isDark ? '#1e2e1e' : '#eaf3de', sparkColor: '#639922' },
     { label: 'Pending requests', value: pendingRequestsCount || 0, icon: <Star size={18} color="#BA7517" />, sub: 'Needs review', subColor: '#BA7517', bg: isDark ? '#382512' : '#faeeda', sparkColor: '#BA7517' },
   ];
