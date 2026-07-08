@@ -1398,9 +1398,11 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                       {filtered.map(inv => {
                         const st = STATUS[inv.status] ?? STATUS.unpaid
                         const isHighlighted = !!(highlightInvoiceNo && inv.invoice_no.toLowerCase() === highlightInvoiceNo.toLowerCase())
-                        const paid = Number(inv.paid_amount || 0)
+                        const isSettled = inv.status === 'paid' || inv.status === 'refunded' || inv.status === 'partially_refunded'
+                        const paid = Number(inv.paid_amount || (isSettled ? inv.total : 0))
                         const refunded = Number(inv.refunded_amount || 0)
                         const netPaid = Math.max(0, paid - refunded)
+                        const balance = isSettled ? 0 : Math.max(0, Number(inv.total || 0) - paid)
                         
                         return (
                           <div
@@ -1490,8 +1492,8 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                               </div>
                               <div>
                                 <div style={{ fontSize: 11, color: c.subText }}>Balance</div>
-                                <div style={{ fontWeight: 700, fontSize: 15, color: Math.max(0, Number(inv.total || 0) - netPaid) > 0 ? '#ef4444' : c.subText }}>
-                                  {fmtCurrency(Math.max(0, Number(inv.total || 0) - netPaid), invoiceCurrency(inv))}
+                                <div style={{ fontWeight: 700, fontSize: 15, color: balance > 0 ? '#ef4444' : c.subText }}>
+                                  {fmtCurrency(balance, invoiceCurrency(inv))}
                                 </div>
                               </div>
                             </div>
@@ -1593,10 +1595,11 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                             </div>
                             <span style={{ fontWeight: 600, fontSize: 13 }}>{fmtCurrency(inv.total, invoiceCurrency(inv))}</span>
                             {(() => {
-                              const paid = Number(inv.paid_amount || 0)
+                              const isSettled = inv.status === 'paid' || inv.status === 'refunded' || inv.status === 'partially_refunded'
+                              const paid = Number(inv.paid_amount || (isSettled ? inv.total : 0))
                               const refunded = Number(inv.refunded_amount || 0)
                               const netPaid = Math.max(0, paid - refunded)
-                              const balance = Math.max(0, Number(inv.total || 0) - netPaid)
+                              const balance = isSettled ? 0 : Math.max(0, Number(inv.total || 0) - paid)
                               return (
                                 <>
                                   <span style={{ fontWeight: 600, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>
