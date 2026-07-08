@@ -140,6 +140,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   const [renewingType, setRenewingType] = useState(null);
   const [renewStartDate, setRenewStartDate] = useState('');
   const [renewalPeriod, setRenewalPeriod] = useState('yearly');
+  const [isCustomExpiry, setIsCustomExpiry] = useState(false);
+  const [customExpiryDate, setCustomExpiryDate] = useState('');
 
   // Fields for creation modals
   const [jobTitle, setJobTitle] = useState('');
@@ -233,6 +235,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
         period = renewingItem.registration_period || 'yearly';
       }
       setRenewalPeriod(String(period).toLowerCase());
+      setIsCustomExpiry(false);
+      setCustomExpiryDate('');
     }
   }, [renewingItem, renewingType]);
 
@@ -1085,7 +1089,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   })();
 
   const handleSaveRenewal = async () => {
-    if (!renewingItem || !renewingType || !renewStartDate || !calculatedExpiry) return;
+    const finalExpiry = isCustomExpiry ? customExpiryDate : calculatedExpiry;
+    if (!renewingItem || !renewingType || !renewStartDate || !finalExpiry) return;
     try {
       setLoading(true);
       
@@ -1118,7 +1123,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
       const newEntry = {
         renew_start_date: new Date(renewStartDate).toISOString(),
         renewal_time: renewalPeriod,
-        expiry_date: new Date(calculatedExpiry).toISOString(),
+        expiry_date: new Date(finalExpiry).toISOString(),
         created_at: new Date().toISOString()
       };
       
@@ -1126,7 +1131,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
       
       let table = '';
       let updatePayload = {
-        expiry_date: new Date(calculatedExpiry).toISOString(),
+        expiry_date: new Date(finalExpiry).toISOString(),
         renewal_history: updatedHistory
       };
 
@@ -1163,7 +1168,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
 
       toast({ 
         title: `${typeLabels[renewingType]} Renewed Successfully`, 
-        description: `Expiry extended to ${safeFormatDate(calculatedExpiry)}.` 
+        description: `Expiry extended to ${safeFormatDate(finalExpiry)}.` 
       });
       
       setRenewingItem(null);
@@ -3937,23 +3942,41 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, marginBottom: 6 }}>
-                    Auto Calculated Expiry Date
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText }}>
+                      Expiry Date
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: c.subText, cursor: 'pointer', userSelect: 'none' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isCustomExpiry}
+                        onChange={(e) => {
+                          setIsCustomExpiry(e.target.checked);
+                          if (e.target.checked) {
+                            setCustomExpiryDate(calculatedExpiry);
+                          }
+                        }}
+                        style={{ cursor: 'pointer', width: 13, height: 13, accentColor: c.brand }}
+                      />
+                      Custom Date
+                    </label>
+                  </div>
                   <input 
                     type="date" 
-                    value={calculatedExpiry} 
-                    disabled 
+                    value={isCustomExpiry ? customExpiryDate : calculatedExpiry} 
+                    onChange={(e) => setCustomExpiryDate(e.target.value)}
+                    disabled={!isCustomExpiry} 
                     style={{ 
                       width: '100%', 
                       padding: '9px 12px', 
                       borderRadius: 8, 
                       border: `1.5px solid ${c.border}`, 
-                      background: isDark ? 'rgba(255,255,255,0.04)' : '#ebebeb', 
+                      background: !isCustomExpiry ? (isDark ? 'rgba(255,255,255,0.04)' : '#ebebeb') : (isDark ? '#22252C' : '#fff'), 
                       color: c.text, 
                       fontSize: 13, 
-                      cursor: 'not-allowed',
-                      boxSizing: 'border-box'
+                      cursor: !isCustomExpiry ? 'not-allowed' : 'auto',
+                      boxSizing: 'border-box',
+                      outline: 'none'
                     }} 
                   />
                 </div>
@@ -4076,9 +4099,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                   fontSize: 13, 
                   fontWeight: 700, 
                   cursor: 'pointer',
-                  opacity: !calculatedExpiry ? 0.6 : 1
+                  opacity: !(isCustomExpiry ? customExpiryDate : calculatedExpiry) ? 0.6 : 1
                 }}
-                disabled={!calculatedExpiry}
+                disabled={!(isCustomExpiry ? customExpiryDate : calculatedExpiry)}
               >
                 Save Renewal
               </button>
