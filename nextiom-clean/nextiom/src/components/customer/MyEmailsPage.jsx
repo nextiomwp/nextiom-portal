@@ -30,6 +30,14 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
   const panel2 = c.panel2 || '#f5f5f5';
   const hover = c.hover || '#f5f5f5';
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => { loadEmails(); }, [user?.id, user?.email]);
 
   const loadEmails = async () => {
@@ -119,97 +127,196 @@ function MyEmailsPage({ user, isDark = false, c = {} }) {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: panel2 }}>
-                {['Email', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (
-                  <th key={h} style={{
-                    padding: '10px 16px',
-                    textAlign: h === 'Actions' ? 'right' : 'left',
-                    fontSize: 10, fontWeight: 700, color: subText,
-                    letterSpacing: '0.06em', textTransform: 'uppercase',
-                    borderBottom: `1px solid ${border}`,
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length > 0 ? filtered.map(email => {
+        {isMobile ? (
+          filtered.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' }}>
+              {filtered.map(email => {
                 const isExpired = email.expiry_date && new Date(email.expiry_date).getTime() < new Date().getTime();
                 const displayStatus = isExpired ? 'EXPIRED' : (email.status || 'Unknown');
                 const { bg, color } = statusStyle(displayStatus, isDark);
                 return (
-                  <tr
+                  <div
                     key={email.id}
-                    style={{ borderBottom: `1px solid ${border}`, transition: 'background 0.12s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = hover}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                      border: `1px solid ${border}`,
+                      borderRadius: 12,
+                      padding: 16,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
                   >
-                    <td style={{ padding: '12px 16px', color: text, fontWeight: 600, fontSize: 13 }}>{email.email}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: text, wordBreak: 'break-all', marginRight: 8 }}>
+                        {email.email}
+                      </div>
+                      <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99, flexShrink: 0 }}>
                         {displayStatus}
                       </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
-                      {email.start_date ? new Date(email.start_date).toLocaleDateString() : email.created_at ? new Date(email.created_at).toLocaleDateString() : '—'}
-                    </td>
-                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
-                      {email.expiry_date ? (
-                        <div>
-                          <div style={{ fontSize: 12, color: isExpired ? '#ef4444' : text, fontWeight: isExpired ? 600 : 400 }}>
-                            {new Date(email.expiry_date).toLocaleDateString()}
-                          </div>
-                          {isExpired && (
-                            <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2 }}>
-                              {getExpiredText(email.expiry_date)}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ color: subText, fontSize: 13 }}>N/A</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <button
-                          onClick={() => setTimelineItem(email)}
-                          style={{
-                            padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
-                            color: text, border: `1px solid ${border}`,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'background 0.15s',
-                          }}
-                          title="History / Timeline"
-                        >
-                          <Clock style={{ width: 13, height: 13 }} />
-                        </button>
-                        <button
-                          onClick={() => setShowCredentials(email)}
-                          style={{ padding: '6px 10px', background: email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3') : (isDark ? 'rgba(148,163,184,0.1)' : '#f1f5f9'), color: email.email_username && email.email_password ? '#ca8a04' : subText, border: `1px solid ${email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.25)' : '#fde68a') : border}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                          title="View login credentials"
-                        >
-                          <Lock size={12} />
-                        </button>
-                        <button onClick={() => setViewEmail(email)} style={{ padding: '6px 12px', background: brandLight, color: brand, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Eye size={12} /> View
-                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: subText }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Start Date:</span>
+                        <span style={{ color: text }}>
+                          {email.start_date ? new Date(email.start_date).toLocaleDateString() : email.created_at ? new Date(email.created_at).toLocaleDateString() : '—'}
+                        </span>
                       </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Expiry:</span>
+                        {email.expiry_date ? (
+                          <span style={{ color: isExpired ? '#ef4444' : text, fontWeight: isExpired ? 600 : 400 }}>
+                            {new Date(email.expiry_date).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span style={{ color: text }}>N/A</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: `1px solid ${border}`, paddingTop: 10, marginTop: 4 }}>
+                      <button
+                        onClick={() => setTimelineItem(email)}
+                        style={{
+                          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                          color: text, border: `1px solid ${border}`,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        title="History / Timeline"
+                      >
+                        <Clock style={{ width: 13, height: 13, marginRight: 6 }} />
+                        History
+                      </button>
+                      <button
+                        onClick={() => setShowCredentials(email)}
+                        style={{
+                          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3') : (isDark ? 'rgba(148,163,184,0.1)' : '#f1f5f9'),
+                          color: email.email_username && email.email_password ? '#ca8a04' : subText,
+                          border: `1px solid ${email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.25)' : '#fde68a') : border}`,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        title="View login credentials"
+                      >
+                        <Lock size={13} style={{ marginRight: 6 }} />
+                        Credentials
+                      </button>
+                      <button
+                        onClick={() => setViewEmail(email)}
+                        style={{
+                          padding: '6px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: brandLight, color: brand, border: `1px solid ${brand}`,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <Eye size={13} style={{ marginRight: 6 }} />
+                        View
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
+              No emails found
+            </div>
+          )
+        ) : (
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: panel2 }}>
+                  {['Email', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (
+                    <th key={h} style={{
+                      padding: '10px 16px',
+                      textAlign: h === 'Actions' ? 'right' : 'left',
+                      fontSize: 10, fontWeight: 700, color: subText,
+                      letterSpacing: '0.06em', textTransform: 'uppercase',
+                      borderBottom: `1px solid ${border}`,
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length > 0 ? filtered.map(email => {
+                  const isExpired = email.expiry_date && new Date(email.expiry_date).getTime() < new Date().getTime();
+                  const displayStatus = isExpired ? 'EXPIRED' : (email.status || 'Unknown');
+                  const { bg, color } = statusStyle(displayStatus, isDark);
+                  return (
+                    <tr
+                      key={email.id}
+                      style={{ borderBottom: `1px solid ${border}`, transition: 'background 0.12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = hover}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 16px', color: text, fontWeight: 600, fontSize: 13 }}>{email.email}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
+                          {displayStatus}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
+                        {email.start_date ? new Date(email.start_date).toLocaleDateString() : email.created_at ? new Date(email.created_at).toLocaleDateString() : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
+                        {email.expiry_date ? (
+                          <div>
+                            <div style={{ fontSize: 12, color: isExpired ? '#ef4444' : text, fontWeight: isExpired ? 600 : 400 }}>
+                              {new Date(email.expiry_date).toLocaleDateString()}
+                            </div>
+                            {isExpired && (
+                              <div style={{ fontSize: 11, color: '#ef4444', marginTop: 2 }}>
+                                {getExpiredText(email.expiry_date)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ color: subText, fontSize: 13 }}>N/A</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            onClick={() => setTimelineItem(email)}
+                            style={{
+                              padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                              background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                              color: text, border: `1px solid ${border}`,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'background 0.15s',
+                            }}
+                            title="History / Timeline"
+                          >
+                            <Clock style={{ width: 13, height: 13 }} />
+                          </button>
+                          <button
+                            onClick={() => setShowCredentials(email)}
+                            style={{ padding: '6px 10px', background: email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.12)' : '#fef9c3') : (isDark ? 'rgba(148,163,184,0.1)' : '#f1f5f9'), color: email.email_username && email.email_password ? '#ca8a04' : subText, border: `1px solid ${email.email_username && email.email_password ? (isDark ? 'rgba(234,179,8,0.25)' : '#fde68a') : border}`, borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                            title="View login credentials"
+                          >
+                            <Lock size={12} />
+                          </button>
+                          <button onClick={() => setViewEmail(email)} style={{ padding: '6px 12px', background: brandLight, color: brand, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Eye size={12} /> View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }) : (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                      No emails found
                     </td>
                   </tr>
-                );
-              }) : (
-                <tr>
-                  <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
-                    No emails found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Detail modal */}

@@ -37,6 +37,14 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
 
   const normalizeHostingKey = (value) => String(value || '').split('|')[0].trim().toLowerCase();
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => { loadPackages(); }, [user?.id, user?.email]);
 
   const billingMonths = (billing) => {
@@ -271,101 +279,190 @@ function MyHostingPackagesPage({ user, isDark = false, c = {} }) {
         </div>
 
         {/* Table */}
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: panel2 }}>
-                {['Package', 'Domain', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (
-                  <th key={h} style={{
-                    padding: '10px 16px',
-                    textAlign: h === 'Actions' ? 'right' : 'left',
-                    fontSize: 10, fontWeight: 700, color: subText,
-                    letterSpacing: '0.06em', textTransform: 'uppercase',
-                    borderBottom: `1px solid ${border}`,
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPackages.length > 0 ? filteredPackages.map(pkg => {
+        {isMobile ? (
+          filteredPackages.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' }}>
+              {filteredPackages.map(pkg => {
                 const { bg, color } = statusStyle(pkg.status, isDark);
                 const displayName = pkg.package_name || pkg.package_type || pkg.packageName || 'N/A';
                 const expiryDate = calcExpiry(pkg);
                 const daysLeft = expiryDate ? Math.ceil((expiryDate - new Date()) / 86400000) : null;
                 const expiryColor = daysLeft !== null && daysLeft <= 7 ? '#ef4444' : daysLeft !== null && daysLeft <= 30 ? '#f97316' : subText;
                 return (
-                  <tr
+                  <div
                     key={pkg.id}
-                    style={{ borderBottom: `1px solid ${border}`, transition: 'background 0.12s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = hover}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                      border: `1px solid ${border}`,
+                      borderRadius: 12,
+                      padding: 16,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
                   >
-                    <td style={{ padding: '12px 16px', color: text, fontWeight: 600, fontSize: 13 }}>{displayName}</td>
-                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>{pkg.domain || 'N/A'}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: text, wordBreak: 'break-all', marginRight: 8 }}>
+                        {displayName}
+                      </div>
+                      <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99, flexShrink: 0 }}>
                         {pkg.status}
                       </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
-                      {pkg.start_date ? new Date(pkg.start_date).toLocaleDateString() : pkg.created_at ? new Date(pkg.created_at).toLocaleDateString() : '—'}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {expiryDate ? (
-                        <div>
-                          <div style={{ fontSize: 12, color: expiryColor, fontWeight: 600 }}>
-                            {expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                          </div>
-                          <div style={{ fontSize: 11, color: expiryColor, marginTop: 2 }}>
-                            {daysLeft <= 0 ? getExpiredText(expiryDate) : `${daysLeft}d remaining`}
-                          </div>
-                        </div>
-                      ) : (
-                        <span style={{ color: subText, fontSize: 12 }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <button
-                          onClick={() => setTimelineItem(pkg)}
-                          style={{
-                            padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
-                            color: text, border: `1px solid ${border}`,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'background 0.15s',
-                          }}
-                          title="History / Timeline"
-                        >
-                          <Clock style={{ width: 13, height: 13 }} />
-                        </button>
-                        <button
-                          onClick={() => { setSelectedPackage(pkg); setIsDetailsOpen(true); }}
-                          style={{
-                            padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            background: brandLight, color: brand, border: `1px solid ${brand}`,
-                            transition: 'background 0.15s',
-                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = `rgba(232,123,53,0.25)`}
-                          onMouseLeave={e => e.currentTarget.style.background = brandLight}
-                        >
-                          <Eye style={{ width: 13, height: 13 }} /> View
-                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: subText }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Domain:</span>
+                        <span style={{ color: text, wordBreak: 'break-all' }}>{pkg.domain || 'N/A'}</span>
                       </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Start Date:</span>
+                        <span style={{ color: text }}>
+                          {pkg.start_date ? new Date(pkg.start_date).toLocaleDateString() : pkg.created_at ? new Date(pkg.created_at).toLocaleDateString() : '—'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Expiry:</span>
+                        {expiryDate ? (
+                          <span style={{ color: expiryColor, fontWeight: 600 }}>
+                            {expiryDate.toLocaleDateString()} ({daysLeft <= 0 ? 'Expired' : `${daysLeft}d left`})
+                          </span>
+                        ) : (
+                          <span style={{ color: text }}>—</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: `1px solid ${border}`, paddingTop: 10, marginTop: 4 }}>
+                      <button
+                        onClick={() => setTimelineItem(pkg)}
+                        style={{
+                          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                          color: text, border: `1px solid ${border}`,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <Clock style={{ width: 13, height: 13, marginRight: 6 }} />
+                        History
+                      </button>
+                      <button
+                        onClick={() => { setSelectedPackage(pkg); setIsDetailsOpen(true); }}
+                        style={{
+                          padding: '6px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: brandLight, color: brand, border: `1px solid ${brand}`,
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                        }}
+                      >
+                        <Eye style={{ width: 13, height: 13 }} /> View
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
+              No hosting packages found
+            </div>
+          )
+        ) : (
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: panel2 }}>
+                  {['Package', 'Domain', 'Status', 'Start Date', 'Expiry', 'Actions'].map((h, i) => (
+                    <th key={h} style={{
+                      padding: '10px 16px',
+                      textAlign: h === 'Actions' ? 'right' : 'left',
+                      fontSize: 10, fontWeight: 700, color: subText,
+                      letterSpacing: '0.06em', textTransform: 'uppercase',
+                      borderBottom: `1px solid ${border}`,
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPackages.length > 0 ? filteredPackages.map(pkg => {
+                  const { bg, color } = statusStyle(pkg.status, isDark);
+                  const displayName = pkg.package_name || pkg.package_type || pkg.packageName || 'N/A';
+                  const expiryDate = calcExpiry(pkg);
+                  const daysLeft = expiryDate ? Math.ceil((expiryDate - new Date()) / 86400000) : null;
+                  const expiryColor = daysLeft !== null && daysLeft <= 7 ? '#ef4444' : daysLeft !== null && daysLeft <= 30 ? '#f97316' : subText;
+                  return (
+                    <tr
+                      key={pkg.id}
+                      style={{ borderBottom: `1px solid ${border}`, transition: 'background 0.12s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = hover}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '12px 16px', color: text, fontWeight: 600, fontSize: 13 }}>{displayName}</td>
+                      <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>{pkg.domain || 'N/A'}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99 }}>
+                          {pkg.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: subText, fontSize: 13 }}>
+                        {pkg.start_date ? new Date(pkg.start_date).toLocaleDateString() : pkg.created_at ? new Date(pkg.created_at).toLocaleDateString() : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {expiryDate ? (
+                          <div>
+                            <div style={{ fontSize: 12, color: expiryColor, fontWeight: 600 }}>
+                              {expiryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </div>
+                            <div style={{ fontSize: 11, color: expiryColor, marginTop: 2 }}>
+                              {daysLeft <= 0 ? getExpiredText(expiryDate) : `${daysLeft}d remaining`}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: subText, fontSize: 12 }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button
+                            onClick={() => setTimelineItem(pkg)}
+                            style={{
+                              padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                              background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                              color: text, border: `1px solid ${border}`,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'background 0.15s',
+                            }}
+                            title="History / Timeline"
+                          >
+                            <Clock style={{ width: 13, height: 13 }} />
+                          </button>
+                          <button
+                            onClick={() => { setSelectedPackage(pkg); setIsDetailsOpen(true); }}
+                            style={{
+                              padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                              background: brandLight, color: brand, border: `1px solid ${brand}`,
+                              transition: 'background 0.15s',
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = `rgba(232,123,53,0.25)`}
+                            onMouseLeave={e => e.currentTarget.style.background = brandLight}
+                          >
+                            <Eye style={{ width: 13, height: 13 }} /> View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }) : (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                      No hosting packages found
                     </td>
                   </tr>
-                );
-              }) : (
-                <tr>
-                  <td colSpan={6} style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
-                    No hosting packages found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <HostingPackageDetailsModal

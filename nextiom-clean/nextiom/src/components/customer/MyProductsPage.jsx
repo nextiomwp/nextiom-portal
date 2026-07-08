@@ -1175,7 +1175,8 @@ export default function MyProductsPage({ user, isDark, c }) {
                             borderRadius: 12,
                             padding: 16,
                             display: 'flex',
-                            alignItems: 'center',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: isMobile ? 'stretch' : 'center',
                             justifyContent: 'space-between',
                             gap: 16,
                             cursor: 'pointer',
@@ -1192,13 +1193,13 @@ export default function MyProductsPage({ user, isDark, c }) {
                           {/* Col 1: Icon + Name & Subtitle */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
                             <div style={{
-                              width: 40, height: 40, borderRadius: 8,
-                              backgroundColor: theme.color, display: 'flex',
-                              alignItems: 'center', justifyContent: 'center',
-                              color: '#fff', fontWeight: 700,
-                              fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
-                              flexShrink: 0
-                            }}>
+                                width: 40, height: 40, borderRadius: 8,
+                                backgroundColor: theme.color, display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                color: '#fff', fontWeight: 700,
+                                fontSize: textLabel ? (textLabel.length > 1 ? 12 : 18) : 16,
+                                flexShrink: 0
+                              }}>
                               {textLabel ? textLabel : <theme.icon size={20} />}
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -1212,9 +1213,19 @@ export default function MyProductsPage({ user, isDark, c }) {
                           </div>
 
                           {/* Col 2: Price and Status */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: isMobile ? 'space-between' : 'flex-end',
+                            gap: isMobile ? 12 : 24,
+                            flexShrink: 0,
+                            width: isMobile ? '100%' : 'auto',
+                            borderTop: isMobile ? `1px solid ${border}` : 'none',
+                            paddingTop: isMobile ? 12 : 0,
+                            marginTop: isMobile ? 4 : 0
+                          }}>
                             {/* Price */}
-                            <div style={{ textAlign: 'right' }}>
+                            <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
                               <p style={{ color: text, fontSize: 15, fontWeight: 700, margin: 0 }}>
                                 {formatPrice(license.price !== undefined && license.price !== null ? license.price : dp.price, license.currency || dp.currency)}
                               </p>

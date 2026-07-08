@@ -941,7 +941,9 @@ function CustomerDashboard() {
                 Welcome Back, <span style={{ color: c.brand }}>{customerProfile?.name || 'Customer'}</span>
               </span>
             ) : (
-              getActiveLabel(activeTab)
+              <span className="hidden lg:inline">
+                {getActiveLabel(activeTab)}
+              </span>
             )}
           </div>
 

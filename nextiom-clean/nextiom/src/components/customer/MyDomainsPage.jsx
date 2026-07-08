@@ -33,6 +33,14 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
   const panel2 = c.panel2 || '#f5f5f5';
   const hover = c.hover || '#f5f5f5';
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => { loadDomains(); }, [user?.id, user?.email]);
 
   const loadDomains = async () => {
@@ -132,7 +140,88 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
           </div>
         </div>
 
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        {isMobile ? (
+          filteredDomains.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' }}>
+              {filteredDomains.map(domain => {
+                const isExpired = domain.expiry_date && new Date(domain.expiry_date).getTime() < new Date().getTime();
+                const displayStatus = isExpired ? 'EXPIRED' : (domain.status || 'Unknown');
+                const { bg, color } = statusStyle(displayStatus, isDark);
+                return (
+                  <div
+                    key={domain.id}
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                      border: `1px solid ${border}`,
+                      borderRadius: 12,
+                      padding: 16,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: text, wordBreak: 'break-all', marginRight: 8 }}>
+                        {domain.name}
+                      </div>
+                      <span style={{ background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 99, flexShrink: 0 }}>
+                        {displayStatus}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: subText }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Start Date:</span>
+                        <span style={{ color: text }}>
+                          {domain.start_date ? new Date(domain.start_date).toLocaleDateString() : domain.created_at ? new Date(domain.created_at).toLocaleDateString() : '—'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Expiry:</span>
+                        {domain.expiry_date ? (
+                          <span style={{ color: isExpired ? '#ef4444' : text, fontWeight: isExpired ? 600 : 400 }}>
+                            {new Date(domain.expiry_date).toLocaleDateString()}
+                          </span>
+                        ) : (
+                          <span style={{ color: text }}>N/A</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', borderTop: `1px solid ${border}`, paddingTop: 10, marginTop: 4 }}>
+                      <button
+                        onClick={() => setTimelineItem(domain)}
+                        style={{
+                          padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                          color: text, border: `1px solid ${border}`,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <Clock style={{ width: 13, height: 13, marginRight: 6 }} />
+                        History
+                      </button>
+                      <button
+                        onClick={() => { setSelectedDomain(domain); setIsDetailsOpen(true); }}
+                        style={{
+                          padding: '6px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          background: brandLight, color: brand, border: `1px solid ${brand}`,
+                        }}
+                      >
+                        View
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
+              No domains found
+            </div>
+          )
+        ) : (
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
@@ -225,6 +314,7 @@ function MyDomainsPage({ user, isDark = false, c = {} }) {
             </tbody>
           </table>
         </div>
+      )}
       </div>
 
       <DomainDetailsModal

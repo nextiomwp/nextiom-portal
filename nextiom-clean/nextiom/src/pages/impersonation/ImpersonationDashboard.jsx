@@ -1089,12 +1089,14 @@ function ImpersonationDashboard() {
           style={{ background: c.sidebar, borderBottom: `1px solid ${c.border}`, position: 'relative', zIndex: 30 }}
         >
           <div className="lg:pl-0 pl-10 font-semibold text-sm" style={{ color: c.text }}>
-            {activeTab === 'dashboard'
-              ? `Customer: ${impersonatedUser.name}`
-              : activeTab === 'knowledgebase'
-              ? 'Knowledgebase'
-              : NAV_STRUCTURE.flatMap((i) => i.children || [i]).find((i) => i.id === activeTab)
-                  ?.label || 'Dashboard'}
+            <span className="hidden lg:inline">
+              {activeTab === 'dashboard'
+                ? `Customer: ${impersonatedUser.name}`
+                : activeTab === 'knowledgebase'
+                ? 'Knowledgebase'
+                : NAV_STRUCTURE.flatMap((i) => i.children || [i]).find((i) => i.id === activeTab)
+                    ?.label || 'Dashboard'}
+            </span>
           </div>
 
           <div className="flex items-center gap-3">

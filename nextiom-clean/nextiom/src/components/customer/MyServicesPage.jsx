@@ -98,7 +98,7 @@ function MyServicesPage({ user, isDark = false, c = {} }) {
         </div>
 
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', minWidth: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: panel2 }}>
                 {['Service', 'Type', 'Status'].map(h => (

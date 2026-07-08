@@ -31,6 +31,14 @@ function OrderHistoryPage({ user, isDark = false, c = {} }) {
   const panel2 = c.panel2 || '#f5f5f5';
   const hover = c.hover || '#f5f5f5';
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     loadOrderHistory();
   }, [user?.id, user?.email]);
@@ -278,148 +286,289 @@ function OrderHistoryPage({ user, isDark = false, c = {} }) {
         </div>
 
         {/* Orders Table */}
-        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-          <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: panel2 }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Order ID</th>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Order Details</th>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Date Placed</th>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Status</th>
-                <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map((o) => {
-                  const { bg, color, icon: StatusIcon } = statusStyle(o.status, isDark);
-                  const isExpanded = expandedOrderId === o.id;
-                  const TypeIcon = o.icon;
-
-                  return (
-                    <React.Fragment key={o.id}>
-                      <tr
-                        style={{ borderBottom: `1px solid ${border}`, transition: 'background 0.12s', cursor: 'pointer' }}
+        {isMobile ? (
+          filteredOrders.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 20px' }}>
+              {filteredOrders.map(o => {
+                const { bg, color, icon: StatusIcon } = statusStyle(o.status, isDark);
+                const isExpanded = expandedOrderId === o.id;
+                const TypeIcon = o.icon;
+                return (
+                  <div
+                    key={o.id}
+                    style={{
+                      background: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+                      border: `1px solid ${border}`,
+                      borderRadius: 12,
+                      padding: 16,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12,
+                    }}
+                  >
+                    {/* Header: ID, Type/Name, Expand/Collapse */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 30, height: 30, borderRadius: 8, background: o.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <TypeIcon style={{ width: 14, height: 14, color: o.iconColor }} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: text }}>
+                            {o.displayId}
+                          </div>
+                          <div style={{ fontSize: 11, color: subText }}>
+                            {o.type}
+                          </div>
+                        </div>
+                      </div>
+                      <button
                         onClick={() => toggleExpand(o.id)}
-                        onMouseEnter={e => e.currentTarget.style.background = hover}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        style={{ background: 'none', border: 'none', color: subText, cursor: 'pointer', padding: 4 }}
                       >
-                        <td style={{ padding: '14px 20px', color: text, fontWeight: 700, fontSize: 12 }}>
-                          {o.displayId}
-                        </td>
-                        <td style={{ padding: '14px 20px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ width: 30, height: 30, borderRadius: 8, background: o.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <TypeIcon style={{ width: 14, height: 14, color: o.iconColor }} />
-                            </div>
-                            <div>
-                              <p style={{ color: text, fontSize: 13, fontWeight: 600, margin: 0 }}>{o.name}</p>
-                              <p style={{ color: subText, fontSize: 11, margin: 0 }}>{o.type}</p>
-                            </div>
+                        {isExpanded ? <ChevronUp style={{ width: 16, height: 16 }} /> : <ChevronDown style={{ width: 16, height: 16 }} />}
+                      </button>
+                    </div>
+
+                    {/* Order Target Name & Status & Date */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, borderTop: `1px solid ${border}`, paddingTop: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Details:</span>
+                        <span style={{ color: text, fontWeight: 600 }}>{o.name}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Status:</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99 }}>
+                          <StatusIcon style={{ width: 11, height: 11 }} />
+                          {o.status.charAt(0).toUpperCase() + o.status.slice(1)}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Date Placed:</span>
+                        <span style={{ color: text }}>
+                          {new Date(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Expanded details */}
+                    {isExpanded && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, borderTop: `1px solid ${border}`, paddingTop: 12, marginTop: 4 }}>
+                        {/* Specs */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11 }}>
+                          <h4 style={{ color: text, fontSize: 11, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Configuration</h4>
+                          
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: subText }}>Order Type:</span>
+                            <span style={{ color: text, fontWeight: 500 }}>{o.type}</span>
                           </div>
-                        </td>
-                        <td style={{ padding: '14px 20px', color: text, fontSize: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Calendar style={{ width: 13, height: 13, color: subText }} />
-                            <span>
-                              {new Date(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              {', '}
-                              {new Date(o.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
+
+                          {o.rawType === 'hosting' && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: subText }}>Target Domain:</span>
+                              <span style={{ color: text, fontWeight: 500 }}>{o.domainName}</span>
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: subText }}>Billing / Term:</span>
+                            <span style={{ color: text, fontWeight: 500 }}>{o.period}</span>
                           </div>
-                        </td>
-                        <td style={{ padding: '14px 20px' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99 }}>
-                            <StatusIcon style={{ width: 12, height: 12 }} />
-                            {o.status.charAt(0).toUpperCase() + o.status.slice(1)}
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: subText }}>Auto Renew:</span>
+                            <span style={{ color: text, fontWeight: 500 }}>{o.renew}</span>
+                          </div>
+
+                          {o.document_url && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                              <span style={{ color: subText }}>Attachment:</span>
+                              <button 
+                                onClick={() => handleDownloadDoc(o.document_url)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: brand, padding: 0, cursor: 'pointer', fontSize: 11, fontWeight: 600, textDecoration: 'underline' }}
+                              >
+                                <Download style={{ width: 12, height: 12 }} /> Download Document
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Notes */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <h4 style={{ color: text, fontSize: 11, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>User Notes & Requirements</h4>
+                          <div style={{ background: isDark ? 'rgba(255,255,255,0.02)' : '#f9fafb', border: `1px solid ${border}`, borderRadius: 8, padding: 10, fontSize: 11, color: text, minHeight: 40, lineHeight: 1.4, wordBreak: 'break-word' }}>
+                            {o.notes}
+                          </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 6px', fontSize: 10, background: isDark ? 'rgba(255,255,255,0.01)' : '#f9fafb', padding: 8, borderRadius: 8 }}>
+                          <span style={{ color: subText }}>Timeline:</span>
+                          <span style={{ color: '#16a34a', fontWeight: 600 }}>Placed</span>
+                          <ArrowRight style={{ width: 8, height: 8, color: subText }} />
+                          <span style={{ color: String(o.status).toLowerCase() === 'pending' ? brand : subText, fontWeight: 600 }}>In Review</span>
+                          <ArrowRight style={{ width: 8, height: 8, color: subText }} />
+                          <span style={{
+                            color: ['approved', 'completed', 'active'].includes(String(o.status).toLowerCase()) ? '#16a34a' : (['rejected', 'cancelled'].includes(String(o.status).toLowerCase()) ? '#dc2626' : subText),
+                            fontWeight: 600
+                          }}>
+                            Finished
                           </span>
-                        </td>
-                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleExpand(o.id); }}
-                            style={{ background: 'none', border: 'none', color: subText, cursor: 'pointer', padding: 4 }}
-                          >
-                            {isExpanded ? <ChevronUp style={{ width: 16, height: 16 }} /> : <ChevronDown style={{ width: 16, height: 16 }} />}
-                          </button>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr>
-                          <td colSpan={5} style={{ padding: '16px 20px', background: panel2, borderBottom: `1px solid ${border}` }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', md: 'repeat(2, 1fr)', gap: 20 }}>
-                              {/* Left Panel: Specifications */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <h3 style={{ color: text, fontSize: 12, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Configuration</h3>
-                                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 12 }}>
-                                  <span style={{ color: subText }}>Order Type:</span>
-                                  <span style={{ color: text, fontWeight: 500 }}>{o.type}</span>
-                                  
-                                  {o.rawType === 'hosting' && (
-                                    <>
-                                      <span style={{ color: subText }}>Target Domain:</span>
-                                      <span style={{ color: text, fontWeight: 500 }}>{o.domainName}</span>
-                                    </>
-                                  )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '40px 16px', textAlign: 'center', color: subText, fontSize: 13 }}>
+              No orders match the search and filter settings.
+            </div>
+          )
+        ) : (
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 800, borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: panel2 }}>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Order ID</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Order Details</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Date Placed</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Status</th>
+                  <th style={{ padding: '12px 20px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: `1px solid ${border}` }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map((o) => {
+                    const { bg, color, icon: StatusIcon } = statusStyle(o.status, isDark);
+                    const isExpanded = expandedOrderId === o.id;
+                    const TypeIcon = o.icon;
 
-                                  <span style={{ color: subText }}>Billing / Term:</span>
-                                  <span style={{ color: text, fontWeight: 500 }}>{o.period}</span>
-
-                                  <span style={{ color: subText }}>Auto Renew:</span>
-                                  <span style={{ color: text, fontWeight: 500 }}>{o.renew}</span>
-
-                                  {o.document_url && (
-                                    <>
-                                      <span style={{ color: subText }}>Attachment:</span>
-                                      <button 
-                                        onClick={() => handleDownloadDoc(o.document_url)}
-                                        style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: brand, padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, textDecoration: 'underline', width: 'fit-content' }}
-                                      >
-                                        <Download style={{ width: 13, height: 13 }} /> Download Document
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
+                    return (
+                      <React.Fragment key={o.id}>
+                        <tr
+                          style={{ borderBottom: `1px solid ${border}`, transition: 'background 0.12s', cursor: 'pointer' }}
+                          onClick={() => toggleExpand(o.id)}
+                          onMouseEnter={e => e.currentTarget.style.background = hover}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <td style={{ padding: '14px 20px', color: text, fontWeight: 700, fontSize: 12 }}>
+                            {o.displayId}
+                          </td>
+                          <td style={{ padding: '14px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ width: 30, height: 30, borderRadius: 8, background: o.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <TypeIcon style={{ width: 14, height: 14, color: o.iconColor }} />
                               </div>
-
-                              {/* Right Panel: Notes & Description */}
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <h3 style={{ color: text, fontSize: 12, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>User Notes & Requirements</h3>
-                                <div style={{ background: isDark ? 'rgba(255,255,255,0.02)' : '#fff', border: `1px solid ${border}`, borderRadius: 10, padding: 12, fontSize: 12, color: text, minHeight: 60, lineHeight: 1.5 }}>
-                                  {o.notes}
-                                </div>
-
-                                {/* Mini tracker timeline */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 11 }}>
-                                  <span style={{ color: subText }}>Order Timeline:</span>
-                                  <span style={{ color: '#16a34a', fontWeight: 600 }}>Placed</span>
-                                  <ArrowRight style={{ width: 10, height: 10, color: subText }} />
-                                  <span style={{ color: String(o.status).toLowerCase() === 'pending' ? brand : subText, fontWeight: 600 }}>In Review</span>
-                                  <ArrowRight style={{ width: 10, height: 10, color: subText }} />
-                                  <span style={{
-                                    color: ['approved', 'completed', 'active'].includes(String(o.status).toLowerCase()) ? '#16a34a' : (['rejected', 'cancelled'].includes(String(o.status).toLowerCase()) ? '#dc2626' : subText),
-                                    fontWeight: 600
-                                  }}>
-                                    Finished
-                                  </span>
-                                </div>
+                              <div>
+                                <p style={{ color: text, fontSize: 13, fontWeight: 600, margin: 0 }}>{o.name}</p>
+                                <p style={{ color: subText, fontSize: 11, margin: 0 }}>{o.type}</p>
                               </div>
                             </div>
                           </td>
+                          <td style={{ padding: '14px 20px', color: text, fontSize: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Calendar style={{ width: 13, height: 13, color: subText }} />
+                              <span>
+                                {new Date(o.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {', '}
+                                {new Date(o.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px 20px' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: bg, color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 99 }}>
+                              <StatusIcon style={{ width: 12, height: 12 }} />
+                              {o.status.charAt(0).toUpperCase() + o.status.slice(1)}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleExpand(o.id); }}
+                              style={{ background: 'none', border: 'none', color: subText, cursor: 'pointer', padding: 4 }}
+                            >
+                              {isExpanded ? <ChevronUp style={{ width: 16, height: 16 }} /> : <ChevronDown style={{ width: 16, height: 16 }} />}
+                            </button>
+                          </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
-                    No orders match the search and filter settings.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '16px 20px', background: panel2, borderBottom: `1px solid ${border}` }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr', md: 'repeat(2, 1fr)', gap: 20 }}>
+                                {/* Left Panel: Specifications */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  <h3 style={{ color: text, fontSize: 12, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>Order Configuration</h3>
+                                  <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '8px 16px', fontSize: 12 }}>
+                                    <span style={{ color: subText }}>Order Type:</span>
+                                    <span style={{ color: text, fontWeight: 500 }}>{o.type}</span>
+                                    
+                                    {o.rawType === 'hosting' && (
+                                      <>
+                                        <span style={{ color: subText }}>Target Domain:</span>
+                                        <span style={{ color: text, fontWeight: 500 }}>{o.domainName}</span>
+                                      </>
+                                    )}
+
+                                    <span style={{ color: subText }}>Billing / Term:</span>
+                                    <span style={{ color: text, fontWeight: 500 }}>{o.period}</span>
+
+                                    <span style={{ color: subText }}>Auto Renew:</span>
+                                    <span style={{ color: text, fontWeight: 500 }}>{o.renew}</span>
+
+                                    {o.document_url && (
+                                      <>
+                                        <span style={{ color: subText }}>Attachment:</span>
+                                        <button 
+                                          onClick={() => handleDownloadDoc(o.document_url)}
+                                          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: brand, padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, textDecoration: 'underline', width: 'fit-content' }}
+                                        >
+                                          <Download style={{ width: 13, height: 13 }} /> Download Document
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Right Panel: Notes & Description */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                  <h3 style={{ color: text, fontSize: 12, fontWeight: 700, margin: 0, textTransform: 'uppercase', letterSpacing: 0.5 }}>User Notes & Requirements</h3>
+                                  <div style={{ background: isDark ? 'rgba(255,255,255,0.02)' : '#fff', border: `1px solid ${border}`, borderRadius: 10, padding: 12, fontSize: 12, color: text, minHeight: 60, lineHeight: 1.5 }}>
+                                    {o.notes}
+                                  </div>
+
+                                  {/* Mini tracker timeline */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 11 }}>
+                                    <span style={{ color: subText }}>Order Timeline:</span>
+                                    <span style={{ color: '#16a34a', fontWeight: 600 }}>Placed</span>
+                                    <ArrowRight style={{ width: 10, height: 10, color: subText }} />
+                                    <span style={{ color: String(o.status).toLowerCase() === 'pending' ? brand : subText, fontWeight: 600 }}>In Review</span>
+                                    <ArrowRight style={{ width: 10, height: 10, color: subText }} />
+                                    <span style={{
+                                      color: ['approved', 'completed', 'active'].includes(String(o.status).toLowerCase()) ? '#16a34a' : (['rejected', 'cancelled'].includes(String(o.status).toLowerCase()) ? '#dc2626' : subText),
+                                      fontWeight: 600
+                                    }}>
+                                      Finished
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '40px 20px', textAlign: 'center', color: subText, fontSize: 13 }}>
+                      No orders match the search and filter settings.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
