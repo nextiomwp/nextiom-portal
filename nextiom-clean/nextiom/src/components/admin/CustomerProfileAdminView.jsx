@@ -240,6 +240,32 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
     }
   }, [renewingItem, renewingType]);
 
+  useEffect(() => {
+    if (renewingItem && renewingType) {
+      let updated = null;
+      if (renewingType === 'hosting') {
+        updated = hostingRequests.find(h => h.id === renewingItem.id);
+      } else if (renewingType === 'license') {
+        updated = licenses.find(l => l.id === renewingItem.id);
+      } else if (renewingType === 'domain') {
+        updated = domainRequests.find(d => d.id === renewingItem.id);
+      } else if (renewingType === 'email') {
+        updated = emailRequests.find(e => e.id === renewingItem.id);
+      }
+      if (updated) {
+        const hasHistoryChanged = JSON.stringify(updated.renewal_history) !== JSON.stringify(renewingItem.renewal_history);
+        const hasExpiryChanged = updated.expiry_date !== renewingItem.expiry_date;
+        if (hasHistoryChanged || hasExpiryChanged) {
+          if (renewingType === 'license') {
+            setRenewingItem({ ...updated, product: renewingItem.product, name: renewingItem.name });
+          } else {
+            setRenewingItem(updated);
+          }
+        }
+      }
+    }
+  }, [domainRequests, hostingRequests, emailRequests, licenses, renewingItem, renewingType]);
+
   const handleCopyText = (text, type = 'Copied') => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -1176,6 +1202,75 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
       loadAll();
     } catch (err) {
       toast({ title: 'Error Renewing Item', description: err.message, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteRenewal = async (idx) => {
+    if (!window.confirm("Are you sure you want to delete this renewal record? This will update the expiry date if you delete the latest renewal.")) return;
+    
+    try {
+      setLoading(true);
+      
+      let timelineItems = [];
+      if (renewingItem.renewal_history && Array.isArray(renewingItem.renewal_history)) {
+        timelineItems = [...renewingItem.renewal_history];
+      }
+      
+      if (idx === 0) {
+        toast({ title: 'Error', description: 'Cannot delete the initial purchase record.', variant: 'destructive' });
+        return;
+      }
+      
+      const isDeletingLatest = idx === timelineItems.length - 1;
+      
+      timelineItems.splice(idx, 1);
+      
+      let newExpiryDate = renewingItem.expiry_date;
+      if (isDeletingLatest && timelineItems.length > 0) {
+        newExpiryDate = timelineItems[timelineItems.length - 1].expiry_date;
+      }
+      
+      let table = '';
+      let updatePayload = {
+        renewal_history: timelineItems
+      };
+      
+      if (isDeletingLatest) {
+        updatePayload.expiry_date = newExpiryDate ? new Date(newExpiryDate).toISOString() : null;
+      }
+
+      if (renewingType === 'hosting') {
+        table = 'hosting_requests';
+        if (isDeletingLatest && timelineItems.length > 0) {
+          updatePayload.billing_period = timelineItems[timelineItems.length - 1].renewal_time || 'yearly';
+        }
+      } else if (renewingType === 'license') {
+        table = 'licenses';
+      } else if (renewingType === 'domain') {
+        table = 'domain_requests';
+        if (isDeletingLatest && timelineItems.length > 0) {
+          updatePayload.registration_period = parseInt(timelineItems[timelineItems.length - 1].renewal_time, 10) || 1;
+        }
+      } else if (renewingType === 'email') {
+        table = 'email_requests';
+        if (isDeletingLatest && timelineItems.length > 0) {
+          updatePayload.registration_period = parseInt(timelineItems[timelineItems.length - 1].renewal_time, 10) || 1;
+        }
+      }
+      
+      const { error } = await supabase
+        .from(table)
+        .update(updatePayload)
+        .eq('id', renewingItem.id);
+
+      if (error) throw error;
+      
+      toast({ title: 'Renewal Deleted', description: 'The renewal record has been deleted.' });
+      await loadAll();
+    } catch (err) {
+      toast({ title: 'Error deleting renewal', description: err.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -4053,9 +4148,33 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
                               <span style={{ fontSize: 12.5, fontWeight: 700, color: isLatest ? c.brand : c.text }}>
                                 {idx === 0 ? 'Initial Purchase' : `Renewal #${idx}`}
                               </span>
-                              <span style={{ fontSize: 11, background: isDark ? 'rgba(255,255,255,0.05)' : '#eaeaea', padding: '2px 6px', borderRadius: 4, color: c.subText, textTransform: 'capitalize' }}>
-                                {item.renewal_time || 'yearly'}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 11, background: isDark ? 'rgba(255,255,255,0.05)' : '#eaeaea', padding: '2px 6px', borderRadius: 4, color: c.subText, textTransform: 'capitalize' }}>
+                                  {item.renewal_time || 'yearly'}
+                                </span>
+                                {idx > 0 && (
+                                  <button 
+                                    onClick={() => handleDeleteRenewal(idx)}
+                                    style={{ 
+                                      background: 'none', 
+                                      border: 'none', 
+                                      color: '#f87171', 
+                                      cursor: 'pointer', 
+                                      padding: '2px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      borderRadius: 4,
+                                      transition: 'background-color 0.2s',
+                                    }}
+                                    title="Delete Renewal Record"
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(248, 113, 113, 0.15)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div style={{ fontSize: 11.5, color: c.subText, marginTop: 4 }}>
                               Duration: <strong>{safeFormatDate(item.renew_start_date)}</strong> to <strong>{safeFormatDate(item.expiry_date)}</strong>
