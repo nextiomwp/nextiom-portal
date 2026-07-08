@@ -1614,7 +1614,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                             <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.invoice_date}</span>
                             <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.due_date ? inv.due_date.substring(0, 10) : '—'}</span>
                             <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
-                            <div style={{ display: 'flex', gap: 2 }}>
+                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
                               {(inv.status === 'payment_submitted' || inv.invoice_payments?.some(p => p.slip_url)) && (
                                 <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title={inv.status === 'payment_submitted' ? "Review payment" : "View payment slip"}>
                                   <CreditCard size={14} />
