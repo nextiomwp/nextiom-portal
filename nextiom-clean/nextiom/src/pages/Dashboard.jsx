@@ -36,6 +36,7 @@ import SystemSettingsPage from '@/components/admin/SystemSettingsPage';
 import SmsSettingsPage from '@/components/admin/SmsSettingsPage';
 import AdminAppointmentsPage from '@/components/admin/AdminAppointmentsPage';
 import { TodayAppointmentBanner, AppointmentReminderPopup } from '@/components/admin/AppointmentDashboardWidgets';
+import { getAllAppointments } from '@/lib/appointments';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -279,6 +280,7 @@ function Dashboard({ onLogout }) {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [adminNotifs, setAdminNotifs] = useState([]);
   const [unreadTicketCount, setUnreadTicketCount] = useState(0);
+  const [pendingAppointmentsCount, setPendingAppointmentsCount] = useState(0);
 
   useEffect(() => {
     if (active !== 'invoices') { setInvoiceView('list'); setEditInvoiceId(null); }
@@ -365,6 +367,13 @@ function Dashboard({ onLogout }) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'email_requests' },
+        () => {
+          loadData(false, true);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments' },
         () => {
           loadData(false, true);
         }
@@ -480,6 +489,10 @@ function Dashboard({ onLogout }) {
       setAdminNotifs(adminN || []);
       const utc = await getUnreadTicketCount().catch(() => 0);
       setUnreadTicketCount(utc);
+
+      const allApts = await getAllAppointments().catch(() => []);
+      const pendingApts = allApts.filter(a => a.status === 'pending' && !a.is_fake).length;
+      setPendingAppointmentsCount(pendingApts);
       setCustomers(cus || []); setProducts(prd || []); setLicenses(lic || []);
       setStats(sts || {}); setEmailLogs(lgs || []);
       setEmailRequests(emailReqs || []);
@@ -1056,12 +1069,10 @@ function Dashboard({ onLogout }) {
                 </div>
               )}
             </div>
-            {/* ── /Refresh ── */}
-
-            {/* Desktop Appointment Button */}
+            {/*             {/* Desktop Appointment Button */}
             <button
               onClick={() => navigateTo(active === 'appointments' ? 'overview' : 'appointments')}
-              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0"
+              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0 relative"
               title={active === 'appointments' ? 'Back to Dashboard' : 'Appointments'}
               style={{
                 background: active === 'appointments'
@@ -1099,8 +1110,13 @@ function Dashboard({ onLogout }) {
               }}
             >
               <Calendar className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+              {pendingAppointmentsCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white border border-white dark:border-gray-900">
+                  {pendingAppointmentsCount}
+                </span>
+              )}
             </button>
-
+ 
             {/* Mobile Appointments Button */}
             <button
               onClick={() => navigateTo(active === 'appointments' ? 'overview' : 'appointments')}
@@ -1114,6 +1130,11 @@ function Dashboard({ onLogout }) {
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <Calendar className="w-4.5 h-4.5" />
+              {pendingAppointmentsCount > 0 && (
+                <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[8px] font-bold text-white border border-white dark:border-gray-900">
+                  {pendingAppointmentsCount}
+                </span>
+              )}
             </button>
 
             <button onClick={() => setIsDark(!isDark)} style={{ background: c.card, border: `1px solid ${c.border}`, color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer' }}>
