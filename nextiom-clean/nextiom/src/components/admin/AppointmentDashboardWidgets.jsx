@@ -18,11 +18,31 @@ export function TodayAppointmentBanner({ c, isDark, onViewAppointments, onDismis
     return localStorage.getItem(key) === 'true';
   });
 
+  const [currentTime, setCurrentTime] = useState(() => {
+    const now = new Date();
+    const hrs = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const secs = String(now.getSeconds()).padStart(2, '0');
+    return `${hrs}:${mins}:${secs}`;
+  });
+
   useEffect(() => {
     getTodayAppointments()
       .then(apts => setTodayApts(apts))
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hrs = String(now.getHours()).padStart(2, '0');
+      const mins = String(now.getMinutes()).padStart(2, '0');
+      const secs = String(now.getSeconds()).padStart(2, '0');
+      setCurrentTime(`${hrs}:${mins}:${secs}`);
+    };
+    const interval = setInterval(updateTime, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleDismiss = () => {
@@ -32,9 +52,15 @@ export function TodayAppointmentBanner({ c, isDark, onViewAppointments, onDismis
     onDismiss?.();
   };
 
-  if (loading || dismissed || todayApts.length === 0) return null;
+  const upcomingApts = todayApts.filter(apt => {
+    const { time } = getEffectiveDateTime(apt);
+    if (!time) return false;
+    return time >= currentTime;
+  });
 
-  const nextApt = todayApts[0];
+  if (loading || dismissed || upcomingApts.length === 0) return null;
+
+  const nextApt = upcomingApts[0];
   const TypeIcon = TYPE_ICONS[nextApt.appointment_type] || Calendar;
   const { time } = getEffectiveDateTime(nextApt);
   const formattedTime = time
@@ -98,7 +124,7 @@ export function TodayAppointmentBanner({ c, isDark, onViewAppointments, onDismis
 
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: isDark ? '#fff' : '#1a1a1a', marginBottom: 4 }}>
-              📅 You have {todayApts.length} appointment{todayApts.length > 1 ? 's' : ''} today
+              📅 You have {upcomingApts.length} appointment{upcomingApts.length > 1 ? 's' : ''} left today
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--brand-color)', fontWeight: 600 }}>
@@ -107,9 +133,9 @@ export function TodayAppointmentBanner({ c, isDark, onViewAppointments, onDismis
                 {formattedTime && <><Clock size={12} /> {formattedTime}</>}
                 {nextApt.customers?.name && <span style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#888' }}>· {nextApt.customers.name}</span>}
               </div>
-              {todayApts.length > 1 && (
+              {upcomingApts.length > 1 && (
                 <span style={{ fontSize: 12, color: isDark ? 'rgba(255,255,255,0.5)' : '#999' }}>
-                  +{todayApts.length - 1} more
+                  +{upcomingApts.length - 1} more
                 </span>
               )}
             </div>
@@ -154,15 +180,34 @@ export function TodayAppointmentBanner({ c, isDark, onViewAppointments, onDismis
 // ── Appointment Reminder Popup ─────────────────────────────────────────────────
 export function AppointmentReminderPopup({ c, isDark }) {
   const [popup, setPopup] = useState(null);
-  const shownRef = useRef(new Set());
 
   useEffect(() => {
+    const getShownPopups = () => {
+      try {
+        return JSON.parse(localStorage.getItem('shown_appt_popups') || '[]');
+      } catch (e) {
+        return [];
+      }
+    };
+
+    const markPopupShown = (id) => {
+      try {
+        const shown = getShownPopups();
+        if (!shown.includes(id)) {
+          shown.push(id);
+          localStorage.setItem('shown_appt_popups', JSON.stringify(shown));
+        }
+      } catch (e) {}
+    };
+
     const checkUpcoming = async () => {
       try {
         const apts = await getTodayAppointments();
         if (!apts.length) return;
 
         const now = new Date();
+        const shownList = getShownPopups();
+
         for (const apt of apts) {
           const { time } = getEffectiveDateTime(apt);
           if (!time) continue;
@@ -170,16 +215,28 @@ export function AppointmentReminderPopup({ c, isDark }) {
           const diffMs = aptTime - now;
           const diffMins = Math.round(diffMs / 60000);
 
-          // Show popup 30 minutes before
-          if (diffMins > 0 && diffMins <= 30 && !shownRef.current.has(apt.id + '_30')) {
-            shownRef.current.add(apt.id + '_30');
-            setPopup({ apt, minsLeft: diffMins });
+          // Show popup at appointment time (starting now, within 0 to -5 minutes)
+          const isStartingNow = diffMins <= 0 && diffMins >= -5;
+          const keyNow = apt.id + '_now';
+          if (isStartingNow && !shownList.includes(keyNow)) {
+            markPopupShown(keyNow);
+            setPopup({ apt, status: 'now', minsLeft: diffMins });
             return;
           }
+
           // Show popup 5 minutes before
-          if (diffMins > 0 && diffMins <= 5 && !shownRef.current.has(apt.id + '_5')) {
-            shownRef.current.add(apt.id + '_5');
-            setPopup({ apt, minsLeft: diffMins });
+          const key5 = apt.id + '_5';
+          if (diffMins > 0 && diffMins <= 5 && !shownList.includes(key5)) {
+            markPopupShown(key5);
+            setPopup({ apt, status: '5', minsLeft: diffMins });
+            return;
+          }
+
+          // Show popup 30 minutes before
+          const key30 = apt.id + '_30';
+          if (diffMins > 0 && diffMins <= 30 && !shownList.includes(key30)) {
+            markPopupShown(key30);
+            setPopup({ apt, status: '30', minsLeft: diffMins });
             return;
           }
         }
@@ -189,16 +246,25 @@ export function AppointmentReminderPopup({ c, isDark }) {
     };
 
     checkUpcoming();
-    const interval = setInterval(checkUpcoming, 60000); // check every minute
+    const interval = setInterval(checkUpcoming, 30000); // Check every 30 seconds
     return () => clearInterval(interval);
   }, []);
 
   if (!popup) return null;
 
-  const { apt, minsLeft } = popup;
+  const { apt, status, minsLeft } = popup;
   const TypeIcon = TYPE_ICONS[apt.appointment_type] || Calendar;
   const { time } = getEffectiveDateTime(apt);
   const formattedTime = time ? new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
+
+  let reminderLabel = '';
+  if (status === 'now') {
+    reminderLabel = '🚨 Starting now!';
+  } else if (status === '5') {
+    reminderLabel = `⚠️ Starting in ${minsLeft} minutes!`;
+  } else {
+    reminderLabel = `In ${minsLeft} minutes`;
+  }
 
   return (
     <AnimatePresence>
@@ -238,7 +304,7 @@ export function AppointmentReminderPopup({ c, isDark }) {
               <div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>Appointment Reminder</div>
                 <div style={{ fontSize: 11, color: 'var(--brand-color)', fontWeight: 600 }}>
-                  {minsLeft <= 5 ? '⚠️ Starting very soon!' : `In ${minsLeft} minutes`}
+                  {reminderLabel}
                 </div>
               </div>
             </div>
