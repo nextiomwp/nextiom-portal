@@ -1342,6 +1342,23 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
 
   const email = user?.email || '';
 
+  const [highlightedInvoiceNumber, setHighlightedInvoiceNumber] = useState(null);
+
+  useEffect(() => {
+    const highlightNo = sessionStorage.getItem('highlight_invoice_number');
+    if (highlightNo && invoices.length > 0) {
+      setHighlightedInvoiceNumber(highlightNo);
+      setQuery(highlightNo);
+    }
+  }, [invoices]);
+
+  const handleClearHighlight = (inv) => {
+    if (!inv || (highlightedInvoiceNumber && inv.invoice_no === highlightedInvoiceNumber)) {
+      setHighlightedInvoiceNumber(null);
+      sessionStorage.removeItem('highlight_invoice_number');
+    }
+  };
+
   useEffect(() => {
     if (!email) return;
     setLoading(true);
@@ -1444,6 +1461,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   };
 
   const handleDownload = (inv) => {
+    handleClearHighlight(inv);
     const items = inv.items || inv.invoice_items || [];
     localStorage.setItem('nxt_invoice_print', JSON.stringify({ ...inv, items, settings }));
     window.open('/invoices/print', '_blank');
@@ -1465,6 +1483,32 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
 
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <style>{`
+        @keyframes invoice-pulse {
+          0% {
+            box-shadow: 0 0 0 0px rgba(232, 123, 53, 0.4);
+            background-color: rgba(232, 123, 53, 0.12) !important;
+          }
+          50% {
+            box-shadow: 0 0 0 8px rgba(232, 123, 53, 0);
+            background-color: rgba(232, 123, 53, 0.04) !important;
+          }
+          100% {
+            box-shadow: 0 0 0 0px rgba(232, 123, 53, 0.4);
+            background-color: rgba(232, 123, 53, 0.12) !important;
+          }
+        }
+        .highlighted-invoice-card {
+          animation: invoice-pulse 1.8s infinite ease-in-out;
+          border-color: var(--brand-color) !important;
+        }
+        .highlighted-invoice-row {
+          animation: invoice-pulse 1.8s infinite ease-in-out;
+        }
+        .highlighted-invoice-row td {
+          background-color: transparent !important;
+        }
+      `}</style>
       {/* Page header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <div>
@@ -1582,7 +1626,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
               <span style={{ color: c.subText }}>{sortDir === 'desc' ? 'Newest first' : 'Oldest first'}</span>
             </button>
             {anyFilter && (
-              <button onClick={() => { setQuery(''); setStatusFilter('all'); setCalFilter({ mode: 'none' }); }}
+              <button onClick={() => { setQuery(''); setStatusFilter('all'); setCalFilter({ mode: 'none' }); handleClearHighlight(); }}
                 style={{ padding: '6px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, fontSize: 12, cursor: 'pointer', flex: isMobile ? 1 : 'none' }}>
                 Clear
               </button>
@@ -1598,13 +1642,18 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 const firstItem = (inv.items || [])[0];
                 const service = inv.service_name || firstItem?.description || inv.invoice_no;
                 const balance = (inv.total || 0) - (inv.paid_amount || 0);
+                const isHighlighted = highlightedInvoiceNumber && inv.invoice_no === highlightedInvoiceNumber;
                 return (
                   <div
                     key={inv.id}
-                    onClick={() => handleDownload(inv)}
+                    onClick={() => {
+                      handleDownload(inv);
+                      if (isHighlighted) handleClearHighlight(inv);
+                    }}
+                    className={isHighlighted ? 'highlighted-invoice-card' : ''}
                     style={{
                       background: c.card,
-                      border: `1px solid ${c.border}`,
+                      border: isHighlighted ? `2px solid var(--brand-color)` : `1px solid ${c.border}`,
                       borderRadius: 12,
                       padding: 16,
                       display: 'flex',
@@ -1613,8 +1662,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       cursor: 'pointer',
                       transition: 'border-color 0.15s'
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = c.brand; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = c.border; }}
+                    onMouseEnter={e => { if (!isHighlighted) e.currentTarget.style.borderColor = c.brand; }}
+                    onMouseLeave={e => { if (!isHighlighted) e.currentTarget.style.borderColor = c.border; }}
                   >
                     {/* Top Row: Inv No, Status */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1655,12 +1704,12 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
                       {(inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid') && (
-                        <button onClick={() => setPayInvoice(inv)} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
+                        <button onClick={() => { setPayInvoice(inv); handleClearHighlight(inv); }} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
                           <CreditCard size={13} /> Pay Invoice
                         </button>
                       )}
                       {inv.status === 'payment_submitted' && (
-                        <button onClick={() => setStatusInvoice(inv)} title="View payment status" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+                        <button onClick={() => { setStatusInvoice(inv); handleClearHighlight(inv); }} title="View payment status" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
                           <Clock size={13} /> Pending Review
                         </button>
                       )}
@@ -1701,12 +1750,22 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                   const firstItem = (inv.items || [])[0];
                   const service = inv.service_name || firstItem?.description || inv.invoice_no;
                   const balance = (inv.total || 0) - (inv.paid_amount || 0);
+                  const isHighlighted = highlightedInvoiceNumber && inv.invoice_no === highlightedInvoiceNumber;
                   return (
                     <tr key={inv.id}
-                      onClick={() => handleDownload(inv)}
-                      style={{ cursor: 'pointer', background: 'transparent', transition: 'background 0.1s' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : '#f9f9f9'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      onClick={() => {
+                        handleDownload(inv);
+                        if (isHighlighted) handleClearHighlight(inv);
+                      }}
+                      className={isHighlighted ? 'highlighted-invoice-row' : ''}
+                      style={{
+                        cursor: 'pointer',
+                        background: isHighlighted ? 'rgba(232, 123, 53, 0.08)' : 'transparent',
+                        border: isHighlighted ? `2px solid var(--brand-color)` : 'none',
+                        transition: 'background 0.1s'
+                      }}
+                      onMouseEnter={e => { if (!isHighlighted) e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : '#f9f9f9'; }}
+                      onMouseLeave={e => { if (!isHighlighted) e.currentTarget.style.background = 'transparent'; }}
                     >
                       <td style={tdS}>
                         <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: isDark ? '#93c5fd' : '#2563eb' }}>{inv.invoice_no}</span>
@@ -1760,12 +1819,12 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       <td style={{ ...tdS, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                           {(inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid') && (
-                            <button onClick={() => setPayInvoice(inv)} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
+                            <button onClick={() => { setPayInvoice(inv); handleClearHighlight(inv); }} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
                               <CreditCard size={13} /> Pay Invoice
                             </button>
                           )}
                           {inv.status === 'payment_submitted' && (
-                            <button onClick={() => setStatusInvoice(inv)} title="View payment status" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+                            <button onClick={() => { setStatusInvoice(inv); handleClearHighlight(inv); }} title="View payment status" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 6, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
                               <Clock size={13} /> Pending Review
                             </button>
                           )}

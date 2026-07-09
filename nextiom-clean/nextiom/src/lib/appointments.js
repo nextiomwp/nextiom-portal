@@ -24,6 +24,8 @@ export async function getAppointmentSettings() {
     customer_sms_reminders: [60, 30],
     admin_sms_reminder_minutes: 60,
     admin_sms_numbers: [],
+    show_fake_to_customers: true,
+    show_real_to_customers: true,
     appointment_sms_enabled: false,
     appointment_email_enabled: true,
   };
@@ -58,6 +60,19 @@ export async function saveAppointmentSettings(settings) {
 
   if (result.error) throw new Error(result.error.message);
   return result.data;
+}
+
+// ── Busy Slots RPC ─────────────────────────────────────────────────────────────
+
+/**
+ * Get all busy slots for customers (RPC)
+ */
+export async function getBusySlots() {
+  const { data, error } = await supabase
+    .rpc('get_busy_slots');
+
+  if (error) throw new Error(error.message);
+  return data || [];
 }
 
 // ── Appointments CRUD ─────────────────────────────────────────────────────────
@@ -262,11 +277,11 @@ export function getEffectiveDateTime(apt) {
 /**
  * Create a new appointment directly by admin
  */
-export async function createAppointmentAdmin({ customerId, appointmentType, notes, requestedDate, requestedTime, status = 'accepted' }) {
+export async function createAppointmentAdmin({ customerId, appointmentType, notes, requestedDate, requestedTime, status = 'accepted', isFake = false }) {
   const { data, error } = await supabase
     .from('appointments')
     .insert([{
-      customer_id: customerId,
+      customer_id: isFake ? null : customerId,
       appointment_type: appointmentType,
       notes,
       requested_date: requestedDate,
@@ -275,6 +290,7 @@ export async function createAppointmentAdmin({ customerId, appointmentType, note
       confirmed_time: requestedTime,
       status,
       updated_by: 'admin',
+      is_fake: isFake,
     }])
     .select()
     .single();

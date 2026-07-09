@@ -3,7 +3,7 @@ import {
   Calendar, Clock, Save, Loader2, Plus, Trash2, Info, Bell, Phone,
   CheckCircle2, AlertCircle, Settings,
 } from 'lucide-react';
-import { getAppointmentSettings, saveAppointmentSettings } from '@/lib/appointments';
+import { getAppointmentSettings, saveAppointmentSettings, createAppointmentAdmin } from '@/lib/appointments';
 import { useToast } from '@/components/ui/use-toast';
 
 const DAY_OPTIONS = [
@@ -36,11 +36,19 @@ function Toggle({ value, onChange, id, c }) {
   );
 }
 
-export default function AppointmentSettingsSection({ c, isDark }) {
+export default function AppointmentSettingsSection({ c, isDark, onSaved }) {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newAdminPhone, setNewAdminPhone] = useState('');
+  
+  // Fake appointment states
+  const [fakeDate, setFakeDate] = useState('');
+  const [fakeTime, setFakeTime] = useState('');
+  const [fakeType, setFakeType] = useState('office_visit');
+  const [fakeNotes, setFakeNotes] = useState('');
+  const [addingFake, setAddingFake] = useState(false);
+
   const { toast } = useToast();
 
   const loadSettings = useCallback(async () => {
@@ -117,6 +125,51 @@ export default function AppointmentSettingsSection({ c, isDark }) {
   }
 
   if (!settings) return null;
+
+  const handleAddFake = async () => {
+    if (!fakeDate || !fakeTime) return;
+    setAddingFake(true);
+    try {
+      await createAppointmentAdmin({
+        customerId: null,
+        appointmentType: fakeType,
+        notes: fakeNotes || 'Fake Blocked Slot',
+        requestedDate: fakeDate,
+        requestedTime: fakeTime,
+        status: 'accepted',
+        isFake: true,
+      });
+      toast({ title: '✓ Fake Appointment Added', description: 'Blocked slot created successfully.' });
+      setFakeDate('');
+      setFakeTime('');
+      setFakeNotes('');
+      if (onSaved) {
+        onSaved();
+      }
+    } catch (e) {
+      toast({ title: 'Error', description: e.message || 'Failed to add fake appointment', variant: 'destructive' });
+    } finally {
+      setAddingFake(false);
+    }
+  };
+
+  // Generate slots for fake appointment
+  const startTime = settings?.booking_start_time || '09:00:00';
+  const endTime = settings?.booking_end_time || '15:00:00';
+  const duration = settings?.slot_duration_minutes || 60;
+
+  const slots = [];
+  const [startH] = startTime.split(':').map(Number);
+  const [endH] = endTime.split(':').map(Number);
+  const startMins = startH * 60;
+  const endMins = endH * 60;
+  for (let m = startMins; m < endMins; m += duration) {
+    const h = Math.floor(m / 60);
+    const min = m % 60;
+    const label = `${h % 12 === 0 ? 12 : h % 12}:${String(min).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+    const value = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
+    slots.push({ value, label });
+  }
 
   const sectionStyle = {
     background: c.card, border: `1px solid ${c.border}`, borderRadius: 14,
@@ -230,6 +283,27 @@ export default function AppointmentSettingsSection({ c, isDark }) {
           <div style={{ marginTop: 8, fontSize: 12, color: c.subText, display: 'flex', alignItems: 'center', gap: 5 }}>
             <Info size={11} /> Customers can only book on selected days
           </div>
+        </div>
+      </div>
+
+      {/* Customer Calendar Visibility */}
+      <div style={sectionStyle}>
+        {sectionTitle(<Settings size={16} color="var(--brand-color)" />, 'Calendar Visibility for Customers', 'Choose whether customers can see fake or real appointments on their calendar')}
+        
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${c.border}` }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>Show Fake Appointments</div>
+            <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Allow customers to see fake/placeholder appointments as busy slots</div>
+          </div>
+          <Toggle value={settings.show_fake_to_customers ?? true} onChange={v => update('show_fake_to_customers', v)} c={c} />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>Show Real Appointments</div>
+            <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Allow customers to see other customers' appointments as busy slots</div>
+          </div>
+          <Toggle value={settings.show_real_to_customers ?? true} onChange={v => update('show_real_to_customers', v)} c={c} />
         </div>
       </div>
 
@@ -361,6 +435,86 @@ export default function AppointmentSettingsSection({ c, isDark }) {
             <Plus size={14} /> Add
           </button>
         </div>
+      </div>
+
+      {/* Add Fake Appointment / Block Slot */}
+      <div style={sectionStyle}>
+        {sectionTitle(<Calendar size={16} color="var(--brand-color)" />, 'Add Fake Appointment / Block Slot', 'Manually add a fake/blocked slot on the calendar')}
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 6 }}>Date</label>
+            <input
+              type="date"
+              value={fakeDate}
+              min={new Date().toISOString().split('T')[0]}
+              onChange={e => setFakeDate(e.target.value)}
+              style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 6 }}>Time Slot</label>
+            <select
+              value={fakeTime}
+              onChange={e => setFakeTime(e.target.value)}
+              style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', height: 38 }}
+            >
+              <option value="">Select slot</option>
+              {slots.map(slot => (
+                <option key={slot.value} value={slot.value}>{slot.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 6 }}>Appointment Type</label>
+            <select
+              value={fakeType}
+              onChange={e => setFakeType(e.target.value)}
+              style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', height: 38 }}
+            >
+              <option value="office_visit">Office Visit</option>
+              <option value="zoom_meeting">Zoom Meeting</option>
+              <option value="phone_call">Phone Call</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 6 }}>Notes (optional)</label>
+            <input
+              type="text"
+              value={fakeNotes}
+              onChange={e => setFakeNotes(e.target.value)}
+              placeholder="Blocked for lunch / Private meeting"
+              style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }}
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleAddFake}
+          disabled={!fakeDate || !fakeTime || addingFake || settings.appointment_sms_enabled}
+          style={{
+            width: '100%', padding: '10px', borderRadius: 10,
+            background: (!fakeDate || !fakeTime || settings.appointment_sms_enabled) ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'var(--brand-color)',
+            border: 'none',
+            color: (!fakeDate || !fakeTime || settings.appointment_sms_enabled) ? c.subText : '#fff',
+            fontWeight: 600, fontSize: 13,
+            cursor: (!fakeDate || !fakeTime || addingFake || settings.appointment_sms_enabled) ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            transition: 'all 0.15s',
+          }}
+        >
+          {addingFake ? <Loader2 size={14} className="animate-spin" /> : null}
+          Add Fake Appointment
+        </button>
+        {settings.appointment_sms_enabled && (
+          <div style={{ marginTop: 8, fontSize: 11, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>
+            <AlertCircle size={12} /> Please disable "Enable Appointment SMS" above before blocking slots.
+          </div>
+        )}
       </div>
 
       {/* Save button */}

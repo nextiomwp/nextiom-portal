@@ -54,6 +54,14 @@ const playNotificationSound = () => {
   }
 };
 
+const getInvoiceNoFromTitle = (title) => {
+  if (!title) return null;
+  const match = title.match(/(?:Payment Submitted|Payment Info Updated|Invoice Refunded|Invoice Partially Refunded|Payment Approved|Payment Approved \(Installment\)|Payment Rejected|Info Requested):\s*([A-Za-z0-9-]+)/i);
+  if (match) return match[1];
+  const genMatch = title.match(/(INV-[A-Za-z0-9-]+)/i);
+  return genMatch ? genMatch[1] : null;
+};
+
 function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {} }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -267,6 +275,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     if (title.includes('domain')) return 'domains_my';
     if (title.includes('hosting')) return 'hosting_my';
     if (type === 'ticket' || type.startsWith('ticket:') || title.includes('ticket')) return 'support_tickets';
+    if (type === 'appointment' || type.startsWith('appointment:') || title.includes('appointment')) return 'appointments';
     return null;
   };
 
@@ -298,6 +307,19 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
       const ticketId = String(notification.type).startsWith('ticket:') ? String(notification.type).split(':')[1] : null;
       if (ticketId) {
         sessionStorage.setItem('auto_select_ticket_id', ticketId);
+      }
+    }
+    if (target === 'appointments') {
+      const parts = String(notification.type || '').split(':');
+      const appointmentId = parts[1] || null;
+      if (appointmentId) {
+        sessionStorage.setItem('highlight_appointment_id', appointmentId);
+      }
+    }
+    if (target === 'invoices') {
+      const invNo = getInvoiceNoFromTitle(notification.title);
+      if (invNo) {
+        sessionStorage.setItem('highlight_invoice_number', invNo);
       }
     }
     setIsOpen(false);

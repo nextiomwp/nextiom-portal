@@ -3,6 +3,14 @@ import { Loader2, Bell, AlertCircle, Info, ShoppingBag, Mail, CheckCircle, Chevr
 import { supabase } from '@/lib/customSupabaseClient';
 import { markAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
 
+const getInvoiceNoFromTitle = (title) => {
+  if (!title) return null;
+  const match = title.match(/(?:Payment Submitted|Payment Info Updated|Invoice Refunded|Invoice Partially Refunded|Payment Approved|Payment Approved \(Installment\)|Payment Rejected|Info Requested):\s*([A-Za-z0-9-]+)/i);
+  if (match) return match[1];
+  const genMatch = title.match(/(INV-[A-Za-z0-9-]+)/i);
+  return genMatch ? genMatch[1] : null;
+};
+
 function getIconData(type, isDark) {
   switch (String(type || '').toLowerCase()) {
     case 'job':
@@ -361,6 +369,104 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                               >
                                 View Appointment
+                              </button>
+                            )}
+                            {(n.type === 'invoice' || String(n.type || '').startsWith('payment_') || String(n.title || '').toLowerCase().includes('invoice') || String(n.title || '').toLowerCase().includes('payment')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { await handleRead(e, n); }
+                                  const invNo = getInvoiceNoFromTitle(n.title);
+                                  if (invNo) {
+                                    sessionStorage.setItem('highlight_invoice_number', invNo);
+                                  }
+                                  onNavigate('invoices');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Invoice
+                              </button>
+                            )}
+                            {(n.type === 'domain_request' || String(n.title || '').toLowerCase().includes('domain')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { await handleRead(e, n); }
+                                  onNavigate('domains_my');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Domains
+                              </button>
+                            )}
+                            {(n.type === 'hosting_request' || String(n.title || '').toLowerCase().includes('hosting')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { await handleRead(e, n); }
+                                  onNavigate('hosting_my');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Hosting
+                              </button>
+                            )}
+                            {(n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { await handleRead(e, n); }
+                                  onNavigate('emails_my');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Emails
+                              </button>
+                            )}
+                            {(n.type === 'ticket' || String(n.type || '').startsWith('ticket:') || String(n.title || '').toLowerCase().includes('ticket')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { await handleRead(e, n); }
+                                  const ticketId = String(n.type).startsWith('ticket:') ? String(n.type).split(':')[1] : null;
+                                  if (ticketId) {
+                                    sessionStorage.setItem('auto_select_ticket_id', ticketId);
+                                  }
+                                  onNavigate('support_tickets');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Ticket
+                              </button>
+                            )}
+                            {(n.type === 'product_assigned' || String(n.title || '').toLowerCase().includes('product')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { await handleRead(e, n); }
+                                  onNavigate('products');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Products
                               </button>
                             )}
                           </div>

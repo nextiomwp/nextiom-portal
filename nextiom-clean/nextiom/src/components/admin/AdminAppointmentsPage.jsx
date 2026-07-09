@@ -722,7 +722,7 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
     ? new Date(`2000-01-01T${effTime}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     : '';
 
-  const customerName = apt.customers?.name || 'Customer';
+  const customerName = apt.customers?.name || (apt.is_fake ? 'Blocked/Placeholder' : 'Customer');
   const customerEmail = apt.customers?.email || '';
   const customerCompany = apt.customers?.company || '';
 
@@ -765,6 +765,15 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
               }}>
                 {getStatusLabel(apt.status)}
               </span>
+              {apt.is_fake && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                  background: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)',
+                  textTransform: 'uppercase', letterSpacing: 0.5,
+                }}>
+                  Fake
+                </span>
+              )}
             </div>
 
             {/* Customer info */}
@@ -909,12 +918,14 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
 // ── Stats cards ───────────────────────────────────────────────────────────────
 function StatsRow({ appointments, c, isDark }) {
   const today = new Date().toISOString().split('T')[0];
-  const pending = appointments.filter(a => a.status === 'pending').length;
-  const todayApts = appointments.filter(a => {
+  const realAppointments = appointments.filter(a => !a.is_fake);
+
+  const pending = realAppointments.filter(a => a.status === 'pending').length;
+  const todayApts = realAppointments.filter(a => {
     const { date } = getEffectiveDateTime(a);
     return date === today && a.status === 'accepted';
   }).length;
-  const thisWeek = appointments.filter(a => {
+  const thisWeek = realAppointments.filter(a => {
     const { date } = getEffectiveDateTime(a);
     if (!date) return false;
     const d = new Date(date);
@@ -923,13 +934,15 @@ function StatsRow({ appointments, c, isDark }) {
     const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6);
     return d >= startOfWeek && d <= endOfWeek;
   }).length;
-  const completed = appointments.filter(a => a.status === 'completed').length;
+  const completed = realAppointments.filter(a => a.status === 'completed').length;
+  const fakes = appointments.filter(a => a.is_fake).length;
 
   const cards = [
     { label: 'Pending Review', value: pending, color: '#f59e0b', bg: isDark ? 'rgba(245,158,11,0.1)' : '#fef3c7', icon: AlertCircle },
     { label: "Today's Confirmed", value: todayApts, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff5ee', icon: Clock },
     { label: 'This Week', value: thisWeek, color: '#6366f1', bg: isDark ? 'rgba(99,102,241,0.1)' : '#e0e7ff', icon: Calendar },
     { label: 'Completed', value: completed, color: '#22c55e', bg: isDark ? 'rgba(34,197,94,0.1)' : '#dcfce7', icon: CheckCircle },
+    { label: 'Fakes', value: fakes, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2', icon: CalendarDays },
   ];
 
   return (
@@ -1103,7 +1116,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
     }
   };
 
-  const handleCreateAppointment = async ({ customerId, customerName, appointmentType, requestedDate, requestedTime, notes }) => {
+  const handleCreateAppointment = async ({ customerId, customerName, appointmentType, requestedDate, requestedTime, notes, isFake = false }) => {
     try {
       const apt = await createAppointmentAdmin({
         customerId,
@@ -1111,16 +1124,22 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
         notes,
         requestedDate,
         requestedTime,
+        isFake,
       });
 
-      await sendAppointmentNotification({
-        customerId,
-        type: `appointment_created:${apt.id}`,
-        title: 'Appointment Booked By Admin',
-        message: `We have booked a ${getAppointmentTypeLabel(appointmentType)} appointment for you on ${new Date(requestedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${new Date(`2000-01-01T${requestedTime}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`,
-      });
+      if (!isFake) {
+        await sendAppointmentNotification({
+          customerId,
+          type: `appointment_created:${apt.id}`,
+          title: 'Appointment Booked By Admin',
+          message: `We have booked a ${getAppointmentTypeLabel(appointmentType)} appointment for you on ${new Date(requestedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${new Date(`2000-01-01T${requestedTime}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`,
+        });
+      }
 
-      toast({ title: '✓ Appointment Booked', description: `Successfully booked for ${customerName}` });
+      toast({ 
+        title: isFake ? '✓ Slot Blocked' : '✓ Appointment Booked', 
+        description: isFake ? 'Successfully created fake placeholder slot.' : `Successfully booked for ${customerName}` 
+      });
       setShowCreate(false);
       await loadData();
     } catch (e) {
@@ -1130,6 +1149,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
 
   // Filtering
   const filtered = appointments.filter(apt => {
+    if (apt.is_fake) return false;
     if (filter !== 'all' && apt.status !== filter) return false;
     if (selectedDate) {
       const { date } = getEffectiveDateTime(apt);
@@ -1137,9 +1157,11 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
     }
     if (searchQ.trim()) {
       const q = searchQ.toLowerCase();
+      const matchName = apt.customers?.name || '';
+      const matchEmail = apt.customers?.email || '';
       return (
-        (apt.customers?.name || '').toLowerCase().includes(q) ||
-        (apt.customers?.email || '').toLowerCase().includes(q) ||
+        matchName.toLowerCase().includes(q) ||
+        matchEmail.toLowerCase().includes(q) ||
         getAppointmentTypeLabel(apt.appointment_type).toLowerCase().includes(q)
       );
     }

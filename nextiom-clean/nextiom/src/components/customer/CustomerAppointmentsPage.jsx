@@ -16,6 +16,7 @@ import {
   formatAppointmentDate,
   getEffectiveDateTime,
   sendAdminAppointmentNotification,
+  getBusySlots,
 } from '@/lib/appointments';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -37,7 +38,7 @@ const TYPE_OPTIONS = [
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAY_NAMES_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
-function MiniCalendar({ selectedDate, onSelectDate, appointments, settings, c, isDark }) {
+function MiniCalendar({ selectedDate, onSelectDate, appointments, ownAppointments, settings, c, isDark }) {
   const [viewYear, setViewYear] = useState(() => {
     const d = selectedDate ? new Date(selectedDate) : new Date();
     return d.getFullYear();
@@ -116,8 +117,8 @@ function MiniCalendar({ selectedDate, onSelectDate, appointments, settings, c, i
 
           // Status-based dot colors for appointments
           const aptColors = apts.map(a => {
-            const sc = getStatusColor(a.status);
-            return sc.text;
+            const isOwn = (ownAppointments || []).some(own => own.id === a.id);
+            return isOwn ? getStatusColor(a.status).text : (isDark ? '#6b7280' : '#9ca3af');
           });
 
           return (
@@ -636,6 +637,7 @@ function BookingModal({ onClose, onSubmit, settings, c, isDark }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function CustomerAppointmentsPage({ user, isDark, c }) {
   const [appointments, setAppointments] = useState([]);
+  const [busySlots, setBusySlots] = useState([]);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showBooking, setShowBooking] = useState(false);
@@ -649,12 +651,14 @@ export default function CustomerAppointmentsPage({ user, isDark, c }) {
   const loadData = useCallback(async () => {
     if (!customerId) return;
     try {
-      const [apts, cfg] = await Promise.all([
+      const [apts, cfg, slots] = await Promise.all([
         getCustomerAppointments(customerId),
         getAppointmentSettings(),
+        getBusySlots(),
       ]);
       setAppointments(apts);
       setSettings(cfg);
+      setBusySlots(slots);
     } catch (e) {
       console.error('Failed to load appointments:', e);
     } finally {
@@ -757,8 +761,23 @@ export default function CustomerAppointmentsPage({ user, isDark, c }) {
     return new Date(date) >= new Date(now.toISOString().split('T')[0]) && !['cancelled', 'rejected', 'completed'].includes(a.status);
   });
 
+  const filteredBusySlots = busySlots.filter(slot => {
+    // If it is the customer's own appointment, always show it.
+    const isOwn = appointments.some(own => own.id === slot.id);
+    if (isOwn) return true;
+
+    // Filter out based on status (only show pending/accepted/counter_proposed)
+    if (['cancelled', 'rejected', 'completed'].includes(slot.status)) return false;
+
+    if (slot.is_fake) {
+      return settings?.show_fake_to_customers ?? true;
+    } else {
+      return settings?.show_real_to_customers ?? true;
+    }
+  });
+
   const calendarApts = selectedCalDate
-    ? appointments.filter(a => {
+    ? filteredBusySlots.filter(a => {
         const { date } = getEffectiveDateTime(a);
         return date === selectedCalDate;
       })
@@ -916,7 +935,8 @@ export default function CustomerAppointmentsPage({ user, isDark, c }) {
           <MiniCalendar
             selectedDate={selectedCalDate}
             onSelectDate={d => setSelectedCalDate(prev => prev === d ? null : d)}
-            appointments={appointments}
+            appointments={filteredBusySlots}
+            ownAppointments={appointments}
             settings={settings}
             c={c}
             isDark={isDark}
@@ -942,26 +962,54 @@ export default function CustomerAppointmentsPage({ user, isDark, c }) {
                   </div>
                 ) : (
                   calendarApts.map(apt => {
-                    const sc = getStatusColor(apt.status);
+                    const isOwn = appointments.some(own => own.id === apt.id);
                     const { time } = getEffectiveDateTime(apt);
-                    const TypeIcon = TYPE_ICONS[apt.appointment_type] || Calendar;
-                    return (
-                      <div key={apt.id} style={{
-                        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-                        borderBottom: `1px solid ${c.border}`,
-                      }}>
-                        <TypeIcon size={14} color={sc.text} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{getAppointmentTypeLabel(apt.appointment_type)}</div>
-                          <div style={{ fontSize: 11, color: c.subText }}>
-                            {time ? new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    const formattedTime = time ? new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '';
+                    
+                    if (isOwn) {
+                      const sc = getStatusColor(apt.status);
+                      const TypeIcon = TYPE_ICONS[apt.appointment_type] || Calendar;
+                      return (
+                        <div key={apt.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                          borderBottom: `1px solid ${c.border}`,
+                        }}>
+                          <TypeIcon size={14} color={sc.text} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>
+                              Your Appointment ({getAppointmentTypeLabel(apt.appointment_type)})
+                            </div>
+                            <div style={{ fontSize: 11, color: c.subText }}>
+                              {formattedTime}
+                            </div>
                           </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sc.bg, color: sc.text }}>
+                            {getStatusLabel(apt.status)}
+                          </span>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: sc.bg, color: sc.text }}>
-                          {getStatusLabel(apt.status)}
-                        </span>
-                      </div>
-                    );
+                      );
+                    } else {
+                      return (
+                        <div key={apt.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                          borderBottom: `1px solid ${c.border}`,
+                          opacity: 0.8,
+                        }}>
+                          <Clock size={14} color={c.subText} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: c.text }}>
+                              Busy Slot
+                            </div>
+                            <div style={{ fontSize: 11, color: c.subText }}>
+                              {formattedTime}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', color: c.subText }}>
+                            Unavailable
+                          </span>
+                        </div>
+                      );
+                    }
                   })
                 )}
               </div>
