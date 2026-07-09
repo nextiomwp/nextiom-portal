@@ -343,6 +343,26 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                                 View Project Checklist
                               </button>
                             )}
+                            {(String(n.type || '').startsWith('appointment') || String(n.title || '').toLowerCase().includes('appointment')) && onNavigate && (
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { await handleRead(e, n); }
+                                  const parts = String(n.type || '').split(':');
+                                  const appointmentId = parts[1] || null;
+                                  if (appointmentId) {
+                                    sessionStorage.setItem('highlight_appointment_id', appointmentId);
+                                  }
+                                  onNavigate('appointments');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Appointment
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

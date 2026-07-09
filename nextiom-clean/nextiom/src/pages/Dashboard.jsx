@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown, Calendar } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -34,6 +34,8 @@ import AdminJobsPage from '@/components/admin/AdminJobsPage';
 import AdminAgreementManagement from '@/components/admin/AdminAgreementManagement';
 import SystemSettingsPage from '@/components/admin/SystemSettingsPage';
 import SmsSettingsPage from '@/components/admin/SmsSettingsPage';
+import AdminAppointmentsPage from '@/components/admin/AdminAppointmentsPage';
+import { TodayAppointmentBanner, AppointmentReminderPopup } from '@/components/admin/AppointmentDashboardWidgets';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -89,6 +91,7 @@ const NAV = [
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'logs', label: 'Support Tickets', icon: MessageSquare, badgeType: 'orange' },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon },
+  { id: 'appointments', label: 'Appointments', icon: Calendar },
   { id: 'notifications', label: 'Announcements', icon: Megaphone },
   { section: 'header', label: 'SERVICES' },
   // { id: 'domains', label: 'Domains', icon: Globe },
@@ -669,6 +672,7 @@ function Dashboard({ onLogout }) {
       case 'products': return <ProductList key={refreshKey} products={products} licenses={licenses} customers={customers} onUpdate={loadData} isDark={isDark} c={c} />;
       case 'notifications': return <AdminNotificationManagement key={refreshKey} isDark={isDark} isMobile={isMobile} />;
       case 'logs': return <AdminTicketsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
+      case 'appointments': return <AdminAppointmentsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'jobs': return (
         <AdminJobsPage 
           key={refreshKey} 
@@ -1131,6 +1135,7 @@ function Dashboard({ onLogout }) {
                               const isEmailRequest = n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email request') || String(n.title || '').toLowerCase().includes('email');
                               const isTicket = n.type === 'ticket' || String(n.type).startsWith('ticket:') || String(n.title || '').toLowerCase().includes('ticket');
                               const isQuotation = n.type === 'quotation' || String(n.title || '').toLowerCase().includes('quotation');
+                              const isAppointment = n.type === 'appointment_request' || String(n.type || '').startsWith('appointment');
                               if (isPayment) {
                                 const invNo = getInvoiceNoFromTitle(n.title);
                                 if (invNo) {
@@ -1150,12 +1155,20 @@ function Dashboard({ onLogout }) {
                                   sessionStorage.setItem('admin_auto_select_ticket_id', tktId);
                                 }
                               }
+                              if (isAppointment) {
+                                const parts = String(n.type).split(':');
+                                const aptId = parts[1] || null;
+                                if (aptId) {
+                                  sessionStorage.setItem('admin_highlight_appointment_id', aptId);
+                                }
+                              }
                               setActive(
                                 isTicket ? 'logs' : 
                                 isEmailRequest ? 'emailRequests' : 
                                 isPayment ? 'invoices' : 
                                 isQuotation ? 'quotations' : 
                                 isJobSubmission ? 'jobs' :
+                                isAppointment ? 'appointments' :
                                 'adminNotifications'
                               );
                               setIsNotificationsOpen(false);
@@ -1193,11 +1206,18 @@ function Dashboard({ onLogout }) {
         <div style={{
           flex: 1,
           overflowY: active === 'logs' ? 'hidden' : 'auto',
-          padding: active === 'logs' ? (isMobile ? '0 16px 16px' : '0 32px 32px') : (isMobile ? '0 16px 20px' : '0 32px 32px'),
+          padding: active === 'logs' ? (isMobile ? '0 16px 16px' : '0 32px 32px') : (isMobile ? '0 16px 20px' : '16px 32px 32px'),
           display: active === 'logs' ? 'flex' : 'block',
           flexDirection: 'column',
           minHeight: 0
         }}>
+          {active === 'overview' && (
+            <TodayAppointmentBanner
+              c={c}
+              isDark={isDark}
+              onViewAppointments={() => navigateTo('appointments')}
+            />
+          )}
           {renderContent()}
         </div>
       </div>
@@ -1205,6 +1225,7 @@ function Dashboard({ onLogout }) {
       <AddProductDialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen} onSuccess={loadData} isDark={isDark} c={c} />
       <AssignProductDialog open={isAssignProductOpen} onOpenChange={setIsAssignProductOpen} customers={customers} products={products} onSuccess={loadData} c={c} />
       <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} onUpdate={loadData} isDark={isDark} />
+      <AppointmentReminderPopup c={c} isDark={isDark} />
     </div>
   );
 }
