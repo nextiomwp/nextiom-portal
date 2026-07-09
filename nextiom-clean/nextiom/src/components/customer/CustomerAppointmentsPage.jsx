@@ -21,6 +21,10 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 
+const getLocalDateString = (d = new Date()) => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 // ── Type icons ────────────────────────────────────────────────────────────────
 const TYPE_ICONS = {
   office_visit: Building2,
@@ -402,7 +406,7 @@ function BookingModal({ onClose, onSubmit, settings, c, isDark }) {
   const [submitting, setSubmitting] = useState(false);
 
   const allowedDays = settings?.allowed_days || [1, 2, 3, 4, 5];
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   const canProceed = () => {
     if (step === 1) return !!selectedType;
@@ -758,7 +762,7 @@ export default function CustomerAppointmentsPage({ user, isDark, c }) {
   const upcoming = appointments.filter(a => {
     const { date } = getEffectiveDateTime(a);
     if (!date) return a.status === 'pending' || a.status === 'counter_proposed';
-    return new Date(date) >= new Date(now.toISOString().split('T')[0]) && !['cancelled', 'rejected', 'completed'].includes(a.status);
+    return new Date(date) >= new Date(getLocalDateString(now)) && !['cancelled', 'rejected', 'completed'].includes(a.status);
   });
 
   const filteredBusySlots = busySlots.filter(slot => {

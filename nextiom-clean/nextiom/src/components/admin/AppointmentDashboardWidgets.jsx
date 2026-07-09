@@ -9,12 +9,16 @@ const TYPE_ICONS = {
   phone_call: Phone,
 };
 
+const getLocalDateString = (d = new Date()) => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 // ── Today's Appointment Banner ─────────────────────────────────────────────────
 export function TodayAppointmentBanner({ c, isDark, onViewAppointments, onDismiss }) {
   const [todayApts, setTodayApts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dismissed, setDismissed] = useState(() => {
-    const key = `appt_banner_dismissed_${new Date().toISOString().split('T')[0]}`;
+    const key = `appt_banner_dismissed_${getLocalDateString()}`;
     return localStorage.getItem(key) === 'true';
   });
 
@@ -46,7 +50,7 @@ export function TodayAppointmentBanner({ c, isDark, onViewAppointments, onDismis
   }, []);
 
   const handleDismiss = () => {
-    const key = `appt_banner_dismissed_${new Date().toISOString().split('T')[0]}`;
+    const key = `appt_banner_dismissed_${getLocalDateString()}`;
     localStorage.setItem(key, 'true');
     setDismissed(true);
     onDismiss?.();
@@ -211,7 +215,7 @@ export function AppointmentReminderPopup({ c, isDark }) {
         for (const apt of apts) {
           const { time } = getEffectiveDateTime(apt);
           if (!time) continue;
-          const aptTime = new Date(`${new Date().toISOString().split('T')[0]}T${time}`);
+          const aptTime = new Date(`${getLocalDateString()}T${time}`);
           const diffMs = aptTime - now;
           const diffMins = Math.round(diffMs / 60000);
 

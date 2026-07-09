@@ -24,6 +24,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import AppointmentSettingsSection from '@/components/admin/AppointmentSettingsSection';
 
+const getLocalDateString = (d = new Date()) => {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 const TYPE_ICONS = {
   office_visit: Building2,
   zoom_meeting: Video,
@@ -224,7 +228,7 @@ function CounterProposeModal({ appointment, onClose, onSubmit, settings, c, isDa
             <input
               type="date"
               value={date}
-              min={new Date().toISOString().split('T')[0]}
+              min={getLocalDateString()}
               onChange={e => setDate(e.target.value)}
               style={{
                 width: '100%', padding: '10px 12px', borderRadius: 10,
@@ -631,7 +635,7 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
               <input
                 type="date"
                 value={date}
-                min={new Date().toISOString().split('T')[0]}
+                min={getLocalDateString()}
                 onChange={e => setDate(e.target.value)}
                 style={{
                   width: '100%', padding: '9px 12px', borderRadius: 9,
@@ -917,7 +921,7 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
 
 // ── Stats cards ───────────────────────────────────────────────────────────────
 function StatsRow({ appointments, c, isDark }) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const realAppointments = appointments.filter(a => !a.is_fake);
 
   const pending = realAppointments.filter(a => a.status === 'pending').length;
