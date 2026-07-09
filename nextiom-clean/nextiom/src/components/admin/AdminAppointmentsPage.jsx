@@ -71,7 +71,17 @@ function CalendarView({ appointments, onSelectDate, selectedDate, c, isDark }) {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   return (
-    <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+    <div style={{
+      background: c.card,
+      border: `1px solid ${c.border}`,
+      borderRadius: 16,
+      overflow: 'hidden',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+      width: '100%',
+      maxWidth: 380,
+      alignSelf: 'start',
+      margin: '0 auto',
+    }}>
       {/* Month nav */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', borderBottom: `1px solid ${c.border}` }}>
         <button type="button" onClick={prevMonth} style={{ background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)', border: 'none', color: c.text, cursor: 'pointer', padding: 8, borderRadius: 8, display: 'flex' }}>
