@@ -950,7 +950,7 @@ function CustomerDashboard() {
             )}
           </div>
 
-          {/* Desktop Search & Support Ticket Container */}
+          {/* Desktop Search & Knowledgebase Container */}
           <div className="hidden md:flex items-center gap-3 mx-4 flex-shrink-0">
             <div className="w-full max-w-xs xl:max-w-sm">
               <button
@@ -967,29 +967,47 @@ function CustomerDashboard() {
               </button>
             </div>
 
-             {/* Open Support Ticket button */}
+            {/* Knowledgebase Button */}
             <button
-              onClick={() => navigate(activeTab === 'support_create' ? 'dashboard' : 'support_create')}
+              onClick={() => navigate(activeTab === 'knowledgebase' ? 'dashboard' : 'knowledgebase')}
               className="w-10 h-10 rounded-xl transition-all flex items-center justify-center cursor-pointer flex-shrink-0"
-              title={activeTab === 'support_create' ? 'Back to Dashboard' : 'Open Support Ticket'}
+              title={activeTab === 'knowledgebase' ? 'Back to Dashboard' : 'Knowledgebase'}
               style={{
-                background: `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`,
-                color: '#fff',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                boxShadow: `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`,
+                background: activeTab === 'knowledgebase'
+                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
+                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                color: activeTab === 'knowledgebase' ? '#fff' : c.subText,
+                border: activeTab === 'knowledgebase'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : `1px solid ${c.border}`,
+                boxShadow: activeTab === 'knowledgebase'
+                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
+                  : 'none',
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
-                e.currentTarget.style.filter = 'brightness(1.05)';
+                if (activeTab === 'knowledgebase') {
+                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                  e.currentTarget.style.filter = 'brightness(1.05)';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.color = c.brand;
+                  e.currentTarget.style.borderColor = c.brand;
+                }
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
-                e.currentTarget.style.filter = 'none';
+                if (activeTab === 'knowledgebase') {
+                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = c.subText;
+                  e.currentTarget.style.borderColor = c.border;
+                }
               }}
             >
-              <MessageSquare className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+              <BookOpen className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
             </button>
           </div>
 
@@ -1006,6 +1024,21 @@ function CustomerDashboard() {
               <Search className="w-4 h-4" />
             </button>
 
+            {/* Mobile Support Ticket Button */}
+            <button
+              onClick={() => navigate(activeTab === 'support_create' ? 'dashboard' : 'support_create')}
+              className="md:hidden p-2 rounded-full transition-colors relative"
+              style={{ 
+                color: activeTab === 'support_create' ? c.brand : c.subText, 
+                background: 'transparent' 
+              }}
+              title="Open Support Ticket"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <MessageSquare className="w-4.5 h-4.5" />
+            </button>
+
             {/* Mobile Appointments Button */}
             <button
               onClick={() => navigate(activeTab === 'appointments' ? 'dashboard' : 'appointments')}
@@ -1019,6 +1052,64 @@ function CustomerDashboard() {
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <Calendar className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Mobile Knowledgebase Button */}
+            <button
+              onClick={() => navigate(activeTab === 'knowledgebase' ? 'dashboard' : 'knowledgebase')}
+              className="md:hidden p-2 rounded-full transition-colors relative"
+              style={{ 
+                color: activeTab === 'knowledgebase' ? c.brand : c.subText, 
+                background: 'transparent' 
+              }}
+              title="Knowledgebase"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <BookOpen className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Desktop Open Support Ticket button */}
+            <button
+              onClick={() => navigate(activeTab === 'support_create' ? 'dashboard' : 'support_create')}
+              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0"
+              title={activeTab === 'support_create' ? 'Back to Dashboard' : 'Open Support Ticket'}
+              style={{
+                background: activeTab === 'support_create'
+                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
+                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                color: activeTab === 'support_create' ? '#fff' : c.subText,
+                border: activeTab === 'support_create'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : `1px solid ${c.border}`,
+                boxShadow: activeTab === 'support_create'
+                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
+                  : 'none',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                if (activeTab === 'support_create') {
+                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                  e.currentTarget.style.filter = 'brightness(1.05)';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.color = c.brand;
+                  e.currentTarget.style.borderColor = c.brand;
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                if (activeTab === 'support_create') {
+                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = c.subText;
+                  e.currentTarget.style.borderColor = c.border;
+                }
+              }}
+            >
+              <MessageSquare className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
             </button>
 
             {/* Desktop Appointment Button */}
@@ -1062,28 +1153,6 @@ function CustomerDashboard() {
               }}
             >
               <Calendar className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
-            </button>
-
-            {/* Knowledgebase button */}
-            <button
-              onClick={() => navigate('knowledgebase')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              title="Knowledgebase"
-              style={{
-                color: c.text,
-                background: 'transparent',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.backgroundColor = c.hover;
-                e.currentTarget.style.color = c.brand;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = c.text;
-              }}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Knowledgebase</span>
             </button>
 
             {/* Status button */}
