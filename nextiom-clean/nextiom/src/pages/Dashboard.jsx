@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown, Calendar } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown, Calendar, Database } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -26,7 +26,6 @@ import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
 import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification, deleteCustomer } from '@/lib/storage';
-
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
@@ -35,6 +34,7 @@ import AdminAgreementManagement from '@/components/admin/AdminAgreementManagemen
 import SystemSettingsPage from '@/components/admin/SystemSettingsPage';
 import SmsSettingsPage from '@/components/admin/SmsSettingsPage';
 import AdminAppointmentsPage from '@/components/admin/AdminAppointmentsPage';
+import AdminBackupPage from '@/components/admin/AdminBackupPage';
 import { TodayAppointmentBanner, AppointmentReminderPopup } from '@/components/admin/AppointmentDashboardWidgets';
 import { getAllAppointments } from '@/lib/appointments';
 
@@ -112,6 +112,7 @@ const NAV = [
   { section: 'header', label: 'SYSTEM' },
   { id: 'maintenance', label: 'Maintenance', icon: Shield },
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
+  { id: 'backup', label: 'Backup & Restore', icon: Database },
   // { id: 'adminManagement', label: 'Admin Management', icon: Shield },
   { id: 'systemSettings', label: 'System Settings', icon: Settings },
   { id: 'smsSettings', label: 'SMS Settings', icon: MessageSquare },
@@ -726,6 +727,7 @@ function Dashboard({ onLogout }) {
       }
       case 'maintenance': return <MaintenanceModePage key={refreshKey} isDark={isDark} />;
       case 'activityLog': return <AdminActivityLogPage key={refreshKey} isDark={isDark} />;
+      case 'backup': return <AdminBackupPage key={refreshKey} isDark={isDark} />;
       case 'agreements': return <AdminAgreementManagement key={refreshKey} isDark={isDark} />;
       case 'emailRequests': return <AdminEmailRequestManagement key={refreshKey} isDark={isDark} />;
       case 'approvedEmailsActive': return <AdminApprovedEmails key={refreshKey} isDark={isDark} />;
