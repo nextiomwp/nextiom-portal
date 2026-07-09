@@ -187,7 +187,6 @@ const NAV_STRUCTURE = [
     ],
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
-  { id: 'appointments', label: 'Appointments', icon: Calendar, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
@@ -202,6 +201,7 @@ const NAV_STRUCTURE = [
 
 function getActiveLabel(activeTab) {
   if (activeTab === 'knowledgebase') return 'Knowledgebase';
+  if (activeTab === 'appointments') return 'Appointments';
   for (const item of NAV_STRUCTURE) {
     if (item.id === activeTab) return item.label;
     if (item.children) {
@@ -1004,6 +1004,64 @@ function CustomerDashboard() {
               onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <Search className="w-4 h-4" />
+            </button>
+
+            {/* Mobile Appointments Button */}
+            <button
+              onClick={() => navigate(activeTab === 'appointments' ? 'dashboard' : 'appointments')}
+              className="md:hidden p-2 rounded-full transition-colors relative"
+              style={{ 
+                color: activeTab === 'appointments' ? c.brand : c.subText, 
+                background: 'transparent' 
+              }}
+              title="Appointments"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Calendar className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Desktop Appointment Button */}
+            <button
+              onClick={() => navigate(activeTab === 'appointments' ? 'dashboard' : 'appointments')}
+              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0"
+              title={activeTab === 'appointments' ? 'Back to Dashboard' : 'Appointments'}
+              style={{
+                background: activeTab === 'appointments'
+                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
+                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                color: activeTab === 'appointments' ? '#fff' : c.subText,
+                border: activeTab === 'appointments'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : `1px solid ${c.border}`,
+                boxShadow: activeTab === 'appointments'
+                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
+                  : 'none',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                if (activeTab === 'appointments') {
+                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                  e.currentTarget.style.filter = 'brightness(1.05)';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.color = c.brand;
+                  e.currentTarget.style.borderColor = c.brand;
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                if (activeTab === 'appointments') {
+                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = c.subText;
+                  e.currentTarget.style.borderColor = c.border;
+                }
+              }}
+            >
+              <Calendar className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
             </button>
 
             {/* Knowledgebase button */}
