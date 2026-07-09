@@ -91,7 +91,6 @@ const NAV = [
   { id: 'customers', label: 'Customers', icon: Users },
   { id: 'logs', label: 'Support Tickets', icon: MessageSquare, badgeType: 'orange' },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon },
-  { id: 'appointments', label: 'Appointments', icon: Calendar },
   { id: 'notifications', label: 'Announcements', icon: Megaphone },
   { section: 'header', label: 'SERVICES' },
   // { id: 'domains', label: 'Domains', icon: Globe },
@@ -203,7 +202,7 @@ function Dashboard({ onLogout }) {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab && NAV.some(n => n.id === tab)) {
+      if (tab && (tab === 'appointments' || NAV.some(n => n.id === tab))) {
         return tab;
       }
     }
@@ -913,7 +912,9 @@ function Dashboard({ onLogout }) {
             <button onClick={() => (isMobile ? setIsMobileSidebarOpen(true) : setSidebarOpen(!sidebarOpen))} style={{ background: 'none', border: 'none', color: c.text, cursor: 'pointer', padding: 0, display: 'flex' }}>
               <Menu size={20} />
             </button>
-            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{NAV.find(n => n.id === active)?.label || 'Dashboard'}</div>
+            <div style={{ fontSize: isMobile ? 18 : 20, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {active === 'appointments' ? 'Appointments' : (NAV.find(n => n.id === active)?.label || 'Dashboard')}
+            </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
 
@@ -1056,6 +1057,64 @@ function Dashboard({ onLogout }) {
               )}
             </div>
             {/* ── /Refresh ── */}
+
+            {/* Desktop Appointment Button */}
+            <button
+              onClick={() => navigateTo(active === 'appointments' ? 'overview' : 'appointments')}
+              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0"
+              title={active === 'appointments' ? 'Back to Dashboard' : 'Appointments'}
+              style={{
+                background: active === 'appointments'
+                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
+                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                color: active === 'appointments' ? '#fff' : c.subText,
+                border: active === 'appointments'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : `1px solid ${c.border}`,
+                boxShadow: active === 'appointments'
+                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
+                  : 'none',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                if (active === 'appointments') {
+                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                  e.currentTarget.style.filter = 'brightness(1.05)';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.color = c.brand;
+                  e.currentTarget.style.borderColor = c.brand;
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                if (active === 'appointments') {
+                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = c.subText;
+                  e.currentTarget.style.borderColor = c.border;
+                }
+              }}
+            >
+              <Calendar className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+            </button>
+
+            {/* Mobile Appointments Button */}
+            <button
+              onClick={() => navigateTo(active === 'appointments' ? 'overview' : 'appointments')}
+              className="md:hidden p-2 rounded-full transition-colors relative"
+              style={{ 
+                color: active === 'appointments' ? c.brand : c.subText, 
+                background: 'transparent' 
+              }}
+              title="Appointments"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Calendar className="w-4.5 h-4.5" />
+            </button>
 
             <button onClick={() => setIsDark(!isDark)} style={{ background: c.card, border: `1px solid ${c.border}`, color: c.text, padding: 8, borderRadius: 8, cursor: 'pointer' }}>
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
