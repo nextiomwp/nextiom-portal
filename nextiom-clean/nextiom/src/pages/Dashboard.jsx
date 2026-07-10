@@ -936,7 +936,7 @@ function Dashboard({ onLogout }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
 
             {/* ── Refresh Button + Auto-refresh ── */}
-            <div ref={autoRefreshMenuRef} style={{ display: 'flex', alignItems: 'center', gap: 0, position: 'relative' }}>
+            <div ref={autoRefreshMenuRef} style={{ display: 'flex', alignItems: 'center', gap: 0, position: isMobile ? 'static' : 'relative' }}>
               {/* Main pill wrapper — glowing neon border */}
               <div style={{
                 display: 'flex', alignItems: 'stretch',
@@ -1024,13 +1024,15 @@ function Dashboard({ onLogout }) {
               {/* Auto-refresh dropdown */}
               {showAutoRefreshMenu && (
                 <div style={{
-                  position: 'absolute', top: 42, right: 0,
+                  position: 'absolute', top: 42,
+                  right: isMobile ? 16 : 0,
+                  width: isMobile ? 'calc(100vw - 32px)' : 210,
+                  maxWidth: 210,
                   background: c.card,
                   border: `1px solid ${c.borderStrong || c.border}`,
                   borderRadius: 10,
                   boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.45)' : '0 8px 32px rgba(0,0,0,0.12)',
                   zIndex: 60,
-                  minWidth: 210,
                   overflow: 'hidden',
                 }}>
                   <div style={{ padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>Auto-Refresh</div>
@@ -1145,14 +1147,17 @@ function Dashboard({ onLogout }) {
               {isDark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
 
-            <div ref={notifRef} style={{ position: 'relative' }}>
+            <div ref={notifRef} style={{ position: isMobile ? 'static' : 'relative' }}>
               <div onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} style={{ border: `1px solid ${c.border}`, background: c.card, width: 36, height: 36, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                 <Bell size={16} style={{ color: unreadCount > 0 ? c.brand : c.subText }} />
                 {unreadCount > 0 && <div style={{ position: 'absolute', top: -2, right: -2, width: 16, height: 16, background: c.brand, borderRadius: 8, fontSize: 10, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount}</div>}
               </div>
               {isNotificationsOpen && (
                 <div style={{
-                  position: 'absolute', top: 44, right: 0, width: 320,
+                  position: 'absolute', top: 44,
+                  right: isMobile ? 16 : 0,
+                  width: isMobile ? 'calc(100vw - 32px)' : 320,
+                  maxWidth: 320,
                   background: c.card,
                   border: `1px solid ${c.borderStrong}`,
                   borderRadius: 12,
