@@ -1895,6 +1895,32 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                   </button>
                 </>
               )}
+              
+              <div style={{ width: 1, height: 16, background: c.border, margin: '0 4px' }} />
+              
+              <button 
+                onClick={() => {
+                  setSelected(null);
+                  if (isMobileView) {
+                    setMobileView('customers');
+                  }
+                }}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  color: c.subText, 
+                  display: 'flex', 
+                  padding: '4px',
+                  borderRadius: 4,
+                  transition: 'background 0.1s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = c.hover}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                title="Close Conversation View"
+              >
+                <X size={16} />
+              </button>
             </div>
           </div>
 
