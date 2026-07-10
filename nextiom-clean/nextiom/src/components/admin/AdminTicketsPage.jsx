@@ -1616,6 +1616,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
       width: '100%',
       height: '100%',
       flex: 1,
+      minWidth: 0,
       minHeight: isMobileView ? 'auto' : 550,
       border: `1px solid ${c.border}`,
       borderRadius: 14,
@@ -1845,6 +1846,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
           flexDirection: 'column', 
           background: isDark ? '#15161A' : '#f8f8f7', 
           minHeight: 0,
+          minWidth: 0,
           gridColumn: isMobileView ? '1' : 'auto'
         }}>
           {/* Header */}
@@ -1875,21 +1877,21 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {selected.status === 'open' && selected.assignee && (
-                <button onClick={() => setShowTransferModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 6, cursor: 'pointer', fontSize: 11 }}>
-                  <ArrowLeftRight size={12} /> Transfer
+                <button onClick={() => setShowTransferModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 6, cursor: 'pointer', fontSize: 11 }} title="Transfer Ticket">
+                  <ArrowLeftRight size={12} /> {!isMobileView && 'Transfer'}
                 </button>
               )}
               {selected.status === 'open' ? (
-                <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 6, cursor: 'pointer', fontSize: 11 }}>
-                  <CheckCircle size={12} /> Close
+                <button onClick={handleClose} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 6, cursor: 'pointer', fontSize: 11 }} title="Close Ticket">
+                  <CheckCircle size={12} /> {!isMobileView && 'Close'}
                 </button>
               ) : (
                 <>
-                  <button onClick={handleDeleteTicket} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid #ef4444`, background: 'transparent', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 11 }}>
-                    <Trash2 size={12} /> Delete
+                  <button onClick={handleDeleteTicket} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid #ef4444`, background: 'transparent', color: '#ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 11 }} title="Delete Ticket">
+                    <Trash2 size={12} /> {!isMobileView && 'Delete'}
                   </button>
-                  <button onClick={handleReopen} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid ${c.brand}`, background: 'transparent', color: c.brand, borderRadius: 6, cursor: 'pointer', fontSize: 11 }}>
-                    <RefreshCw size={12} /> Reopen
+                  <button onClick={handleReopen} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid ${c.brand}`, background: 'transparent', color: c.brand, borderRadius: 6, cursor: 'pointer', fontSize: 11 }} title="Reopen Ticket">
+                    <RefreshCw size={12} /> {!isMobileView && 'Reopen'}
                   </button>
                 </>
               )}
@@ -1897,7 +1899,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
           </div>
 
           {/* Messages conversation list */}
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, minWidth: 0, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {msgLoading ? (
               <div style={{ textAlign: 'center', color: c.subText, fontSize: 12, paddingTop: 40 }}>Loading messages…</div>
             ) : messages.length === 0 ? (
@@ -2083,7 +2085,12 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  gap: 10, 
+                  alignItems: 'stretch',
+                  flexDirection: isMobileView ? 'column' : 'row'
+                }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                     {/* Formatting Toolbar */}
                     <div style={{
@@ -2166,7 +2173,8 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
                     onClick={handleSend}
                     disabled={sending || (!reply.trim() && screenshots.length === 0)}
                     style={{
-                      alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px',
+                      alignSelf: isMobileView ? 'stretch' : 'flex-end', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px 16px',
                       background: editorTab === 'note' ? '#f59e0b' : c.brand, color: '#fff', border: 'none', borderRadius: 8,
                       cursor: 'pointer', fontSize: 12, fontWeight: 700, height: 38,
                       opacity: sending || (!reply.trim() && screenshots.length === 0) ? 0.6 : 1
@@ -2180,10 +2188,60 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
           </div>
         </div>
       ) : (
-        !isMobileView && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: c.subText, background: isDark ? '#15161A' : '#f8f8f7' }}>
+        (!isMobileView || mobileView === 'chat') && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            flexDirection: 'column', 
+            gap: 12, 
+            color: c.subText, 
+            background: isDark ? '#15161A' : '#f8f8f7',
+            padding: 24,
+            textAlign: 'center',
+            flex: 1,
+            position: 'relative',
+            minWidth: 0,
+            gridColumn: isMobileView ? '1' : 'auto'
+          }}>
+            {isMobileView && (
+              <button
+                onClick={() => setMobileView('customers')}
+                style={{ 
+                  position: 'absolute', 
+                  top: 14, 
+                  left: 14, 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  color: c.brand, 
+                  display: 'flex', 
+                  alignItems: 'center' 
+                }}
+              >
+                <ChevronLeft size={22} /> Back
+              </button>
+            )}
             <Ticket size={40} style={{ opacity: 0.2 }} />
             <p style={{ fontSize: 13 }}>Select a customer/ticket to view conversation</p>
+            {selectedCustomer && (
+              <button 
+                onClick={() => setShowCreateTicketModal(true)} 
+                style={{ 
+                  marginTop: 8, 
+                  padding: '8px 16px', 
+                  background: c.brand, 
+                  color: '#fff', 
+                  border: 'none', 
+                  borderRadius: 8, 
+                  fontSize: 12, 
+                  fontWeight: 700, 
+                  cursor: 'pointer' 
+                }}
+              >
+                Create New Ticket
+              </button>
+            )}
           </div>
         )
       )}
