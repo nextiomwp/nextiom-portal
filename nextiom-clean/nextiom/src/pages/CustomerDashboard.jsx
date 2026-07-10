@@ -276,27 +276,33 @@ function CustomerDashboard() {
       const timer = setTimeout(() => {
         setShowWelcomeModal(true);
       }, 800);
+
+      // Auto-update welcome_modal_shown to true in the database and local state
+      // immediately upon loading the dashboard for the first time, ensuring
+      // it won't show again on subsequent logins/refreshes.
+      const markWelcomeAsShown = async () => {
+        try {
+          if (customerProfile?.id) {
+            customerProfile.welcome_modal_shown = true;
+            await supabase
+              .from('customers')
+              .update({ welcome_modal_shown: true })
+              .eq('id', customerProfile.id);
+          }
+        } catch (err) {
+          console.error("Failed to auto-save welcome modal status:", err);
+        }
+      };
+      markWelcomeAsShown();
+
       return () => clearTimeout(timer);
     }
   }, [customerProfile]);
 
-  const handleCloseWelcomeModal = async (goToKb = false) => {
+  const handleCloseWelcomeModal = (goToKb = false) => {
     setShowWelcomeModal(false);
-    if (customerProfile) {
-      customerProfile.welcome_modal_shown = true;
-    }
     if (goToKb) {
       setActiveTab('knowledgebase');
-    }
-    try {
-      if (customerProfile?.id) {
-        await supabase
-          .from('customers')
-          .update({ welcome_modal_shown: true })
-          .eq('id', customerProfile.id);
-      }
-    } catch (err) {
-      console.error("Failed to save welcome modal status:", err);
     }
   };
 

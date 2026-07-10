@@ -180,7 +180,7 @@ export async function getTodayAppointments() {
     console.error('Error fetching today appointments:', error);
     return [];
   }
-  return data || [];
+  return (data || []).filter(apt => !apt.is_fake);
 }
 
 // ── Notifications helper ──────────────────────────────────────────────────────
