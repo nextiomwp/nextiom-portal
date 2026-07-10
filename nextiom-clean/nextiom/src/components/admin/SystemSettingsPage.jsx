@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard } from 'lucide-react';
-import { getPortalSettings, savePortalSettings, addNotification, hexToRgb } from '@/lib/storage';
+import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard, Shield, Key } from 'lucide-react';
+import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, checkPasscodeSet, verifyPasscode, savePasscodeHash } from '@/lib/storage';
+import { sendSms } from '@/lib/sms';
 import { useToast } from '@/components/ui/use-toast';
 
 const COLOR_PRESETS = [
@@ -30,6 +31,228 @@ export default function SystemSettingsPage({ isDark }) {
   const [originalIpaySandbox, setOriginalIpaySandbox] = useState(true);
 
   const { toast } = useToast();
+
+  // Passcode Settings
+  const [isPasscodeSet, setIsPasscodeSet] = useState(false);
+  const [passcode, setPasscode] = useState('');
+  const [currentPasscode, setCurrentPasscode] = useState('');
+  const [newPasscode, setNewPasscode] = useState('');
+  const [confirmNewPasscode, setConfirmNewPasscode] = useState('');
+
+  // OTP Reset State
+  const [showOtpSection, setShowOtpSection] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [generatedOtp, setGeneratedOtp] = useState('');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  const hashPasscode = async (text) => {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
+      try {
+        const msgBuffer = new TextEncoder().encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        console.warn('Native crypto digest failed, falling back to JS implementation:', e);
+      }
+    }
+
+    function rightRotate(value, amount) {
+      return (value >>> amount) | (value << (32 - amount));
+    }
+    
+    var mathPow = Math.pow;
+    var maxWord = mathPow(2, 32);
+    var lengthProperty = 'length';
+    var i, j;
+    var result = '';
+    var words = [];
+    var asciiLength = text[lengthProperty] * 8;
+    
+    var hash = [];
+    var k = [];
+    var primeCounter = 0;
+
+    var isPrime = {};
+    for (var candidate = 2; primeCounter < 64; candidate++) {
+      if (!isPrime[candidate]) {
+        for (i = 0; i < 311; i += candidate) {
+          isPrime[i] = 1;
+        }
+        hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
+        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      }
+    }
+    
+    var ascii = text + '\x80';
+    while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
+    for (i = 0; i < ascii[lengthProperty]; i++) {
+      var charCode = ascii.charCodeAt(i);
+      words[i >> 2] |= charCode << ((3 - i % 4) * 8);
+    }
+    words[words[lengthProperty]] = ((asciiLength / maxWord) | 0);
+    words[words[lengthProperty]] = (asciiLength | 0);
+    
+    for (j = 0; j < words[lengthProperty]; ) {
+      var w = words.slice(j, j += 16);
+      var oldHash = hash.slice(0);
+      
+      hash = [0, 1, 2, 3, 4, 5, 6, 7].map(function(index) { return hash[index]; });
+      
+      for (i = 0; i < 64; i++) {
+        var wItem = w[i];
+        if (i >= 16) {
+          var wa = w[i - 15], wb = w[i - 2];
+          var s0 = rightRotate(wa, 7) ^ rightRotate(wa, 18) ^ (wa >>> 3);
+          var s1 = rightRotate(wb, 17) ^ rightRotate(wb, 19) ^ (wb >>> 10);
+          wItem = w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+        }
+        
+        var ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
+        var maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
+        var s0_h = rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22);
+        var s1_h = rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25);
+        
+        var temp1 = hash[7] + s1_h + ch + k[i] + wItem;
+        var temp2 = s0_h + maj;
+        
+        hash = [(temp1 + temp2) | 0].concat(hash);
+        hash[4] = (hash[4] + temp1) | 0;
+      }
+      
+      for (i = 0; i < 8; i++) {
+        hash[i] = (hash[i] + oldHash[i]) | 0;
+      }
+    }
+    
+    for (i = 0; i < 8; i++) {
+      var val = hash[i];
+      if (val < 0) val += maxWord;
+      var str = val.toString(16);
+      while (str[lengthProperty] < 8) str = '0' + str;
+      result += str;
+    }
+    return result;
+  };
+
+  const handleSetPasscode = async (e) => {
+    e.preventDefault();
+    if (!passcode) {
+      toast({ title: 'Validation Error', description: 'Passcode cannot be empty.', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const hash = await hashPasscode(passcode);
+      await savePasscodeHash(hash);
+      setIsPasscodeSet(true);
+      setPasscode('');
+      toast({ title: 'Passcode Set', description: 'Security passcode for deleting customers has been set successfully.' });
+
+      await addNotification({
+        customer_id: null,
+        type: 'admin_activity',
+        title: 'Delete Passcode Configured',
+        message: 'Admin configured a security passcode for customer accounts deletion.',
+      }).catch(() => {});
+    } catch (err) {
+      toast({ title: 'Error Saving Passcode', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdatePasscode = async (e) => {
+    e.preventDefault();
+    if (!currentPasscode || !newPasscode || !confirmNewPasscode) {
+      toast({ title: 'Validation Error', description: 'All fields are required.', variant: 'destructive' });
+      return;
+    }
+    if (newPasscode !== confirmNewPasscode) {
+      toast({ title: 'Validation Error', description: 'New passcodes do not match.', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const currentHash = await hashPasscode(currentPasscode);
+      const isCorrect = await verifyPasscode(currentHash);
+      if (!isCorrect) {
+        toast({ title: 'Incorrect Passcode', description: 'The current passcode is incorrect.', variant: 'destructive' });
+        setSaving(false);
+        return;
+      }
+      const newHash = await hashPasscode(newPasscode);
+      await savePasscodeHash(newHash);
+      setCurrentPasscode('');
+      setNewPasscode('');
+      setConfirmNewPasscode('');
+      toast({ title: 'Passcode Updated', description: 'Security passcode has been updated successfully.' });
+
+      await addNotification({
+        customer_id: null,
+        type: 'admin_activity',
+        title: 'Delete Passcode Updated',
+        message: 'Admin updated the customer deletion security passcode.',
+      }).catch(() => {});
+    } catch (err) {
+      toast({ title: 'Error Updating Passcode', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    setSendingOtp(true);
+    try {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      await sendSms({
+        phone: '0701766634',
+        message: `Your Nextiom portal passcode reset OTP is ${otp}. Use this code to reset the customer deletion passcode.`,
+        type: 'otp'
+      });
+      setGeneratedOtp(otp);
+      setOtpSent(true);
+      toast({ title: 'OTP Sent', description: 'A verification code has been sent to 0701766634.' });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'SMS Send Failed', description: 'Failed to send OTP via SMS. Ensure SMS gateway is enabled.', variant: 'destructive' });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode) {
+      toast({ title: 'Validation Error', description: 'Please enter the verification code.', variant: 'destructive' });
+      return;
+    }
+    setVerifyingOtp(true);
+    if (otpCode.trim() === generatedOtp) {
+      try {
+        await savePasscodeHash(null); // Reset
+        setIsPasscodeSet(false);
+        setOtpSent(false);
+        setOtpCode('');
+        setGeneratedOtp('');
+        setShowOtpSection(false);
+        toast({ title: 'Passcode Reset Successful', description: 'The passcode has been cleared. You can now set a new one.' });
+
+        await addNotification({
+          customer_id: null,
+          type: 'admin_activity',
+          title: 'Delete Passcode Reset',
+          message: 'Admin reset the customer deletion passcode via OTP verification.',
+        }).catch(() => {});
+      } catch (err) {
+        toast({ title: 'Error resetting passcode', description: err.message, variant: 'destructive' });
+      }
+    } else {
+      toast({ title: 'Invalid OTP', description: 'The verification code is incorrect.', variant: 'destructive' });
+    }
+    setVerifyingOtp(false);
+  };
 
   const c = isDark
     ? { 
@@ -64,6 +287,7 @@ export default function SystemSettingsPage({ isDark }) {
     (async () => {
       try {
         const portal = await getPortalSettings();
+        const passcodeSetStatus = await checkPasscodeSet();
         if (mounted) {
           setAllSettings(portal);
           setThemeColor(portal.themeColor || '#E87B35');
@@ -76,6 +300,8 @@ export default function SystemSettingsPage({ isDark }) {
           setOriginalIpayEnabled(portal.ipayEnabled || false);
           setOriginalIpayWebToken(portal.ipayWebToken || '');
           setOriginalIpaySandbox(portal.ipaySandbox !== false);
+
+          setIsPasscodeSet(passcodeSetStatus);
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
@@ -364,9 +590,219 @@ export default function SystemSettingsPage({ isDark }) {
                   onChange={(e) => setIpaySandbox(e.target.checked)}
                   style={{ width: 16, height: 16, accentColor: 'var(--brand-color)', cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sandbox Mode (Use Sandbox Endpoint)</span>
+                 <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sandbox Mode (Use Sandbox Endpoint)</span>
               </label>
             </div>
+          </div>
+
+          {/* Card: Customer Deletion Security Passcode */}
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Shield size={16} style={{ color: themeColor }} />
+              Customer Deletion Security Passcode
+            </h2>
+            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
+              Require a passcode before permanently deleting any customer from the portal.
+            </p>
+
+            {!isPasscodeSet ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Set Security Passcode</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="password"
+                      value={passcode}
+                      onChange={(e) => setPasscode(e.target.value)}
+                      placeholder="Enter a secure passcode..."
+                      style={{
+                        flex: 1, padding: '10px 14px', borderRadius: 10,
+                        background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                        color: c.text, fontSize: 13,
+                        outline: 'none', transition: 'border-color 0.15s',
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                      onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSetPasscode}
+                      disabled={saving || !passcode}
+                      style={{
+                        padding: '0 16px', borderRadius: 10, border: 'none',
+                        background: passcode ? 'var(--brand-color)' : c.borderStrong,
+                        color: passcode ? '#fff' : c.subText,
+                        fontSize: 13, fontWeight: 700,
+                        cursor: passcode && !saving ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      Set Passcode
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CheckCircle2 size={16} style={{ color: '#22c55e' }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Passcode protection is currently active.</span>
+                </div>
+
+                {!showOtpSection ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Change Passcode</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Passcode</label>
+                        <input
+                          type="password"
+                          value={currentPasscode}
+                          onChange={(e) => setCurrentPasscode(e.target.value)}
+                          placeholder="Enter current passcode..."
+                          style={{
+                            width: '100%', padding: '10px 14px', borderRadius: 10,
+                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                            color: c.text, fontSize: 13,
+                            outline: 'none', transition: 'border-color 0.15s',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Passcode</label>
+                          <input
+                            type="password"
+                            value={newPasscode}
+                            onChange={(e) => setNewPasscode(e.target.value)}
+                            placeholder="Enter new passcode..."
+                            style={{
+                              width: '100%', padding: '10px 14px', borderRadius: 10,
+                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                              color: c.text, fontSize: 13,
+                              outline: 'none', transition: 'border-color 0.15s',
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirm New Passcode</label>
+                          <input
+                            type="password"
+                            value={confirmNewPasscode}
+                            onChange={(e) => setConfirmNewPasscode(e.target.value)}
+                            placeholder="Confirm new passcode..."
+                            style={{
+                              width: '100%', padding: '10px 14px', borderRadius: 10,
+                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                              color: c.text, fontSize: 13,
+                              outline: 'none', transition: 'border-color 0.15s',
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => { setShowOtpSection(true); handleSendOtp(); }}
+                          style={{
+                            background: 'none', border: 'none', color: 'var(--brand-color)',
+                            fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                          }}
+                        >
+                          Forgot Passcode? Reset via OTP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleUpdatePasscode}
+                          disabled={saving || !currentPasscode || !newPasscode || !confirmNewPasscode}
+                          style={{
+                            padding: '10px 20px', borderRadius: 10, border: 'none',
+                            background: (currentPasscode && newPasscode && confirmNewPasscode) ? 'var(--brand-color)' : c.borderStrong,
+                            color: (currentPasscode && newPasscode && confirmNewPasscode) ? '#fff' : c.subText,
+                            fontSize: 13, fontWeight: 700,
+                            cursor: (currentPasscode && newPasscode && confirmNewPasscode) && !saving ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          Update Passcode
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Reset Passcode via OTP</h3>
+                    <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.4 }}>
+                      An OTP (One-Time Password) code has been generated and sent to the administrator's verification mobile number: <strong>0701766634</strong>.
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter 6-Digit OTP</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="e.g. 123456"
+                          style={{
+                            flex: 1, padding: '10px 14px', borderRadius: 10,
+                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                            color: c.text, fontSize: 14, fontWeight: 'bold', letterSpacing: 2,
+                            outline: 'none', transition: 'border-color 0.15s',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerifyOtp}
+                          disabled={verifyingOtp || otpCode.length !== 6}
+                          style={{
+                            padding: '0 20px', borderRadius: 10, border: 'none',
+                            background: otpCode.length === 6 ? 'var(--brand-color)' : c.borderStrong,
+                            color: otpCode.length === 6 ? '#fff' : c.subText,
+                            fontSize: 13, fontWeight: 700,
+                            cursor: otpCode.length === 6 && !verifyingOtp ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          {verifyingOtp ? 'Verifying...' : 'Verify & Reset'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={sendingOtp}
+                        style={{
+                          background: 'none', border: 'none', color: c.subText,
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                        }}
+                      >
+                        {sendingOtp ? 'Sending...' : 'Resend OTP'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowOtpSection(false); setOtpSent(false); setOtpCode(''); }}
+                        style={{
+                          background: 'none', border: 'none', color: '#ef4444',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Info block */}

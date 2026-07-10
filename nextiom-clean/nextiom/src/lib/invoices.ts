@@ -25,7 +25,7 @@ export interface InvoiceItem {
   amount_lkr?: number | null
 }
 
-export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted' | 'partially_paid' | 'refunded' | 'partially_refunded'
+export type InvoiceStatus = 'unpaid' | 'paid' | 'overdue' | 'payment_submitted' | 'partially_paid' | 'refunded' | 'partially_refunded' | 'ongoing'
 export type InvoiceCurrency = 'LKR' | 'USD'
 
 export interface Invoice {

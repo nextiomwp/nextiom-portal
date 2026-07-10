@@ -1245,6 +1245,53 @@ export const savePaymentSettings = async (settings) => {
   }
 };
 
+export const checkPasscodeSet = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('payment_settings')
+      .select('id')
+      .eq('id', 1)
+      .not('delete_passcode_hash', 'is', null);
+
+    if (error) throw error;
+    return !!(data && data.length > 0);
+  } catch (err) {
+    console.warn('checkPasscodeSet failed:', err?.message || err);
+    return false;
+  }
+};
+
+export const verifyPasscode = async (hash) => {
+  try {
+    const { data, error } = await supabase
+      .from('payment_settings')
+      .select('id')
+      .eq('id', 1)
+      .eq('delete_passcode_hash', hash)
+      .maybeSingle();
+
+    if (error) throw error;
+    return !!data;
+  } catch (err) {
+    console.warn('verifyPasscode failed:', err?.message || err);
+    return false;
+  }
+};
+
+export const savePasscodeHash = async (hash) => {
+  try {
+    const { error } = await supabase
+      .from('payment_settings')
+      .upsert({ id: 1, delete_passcode_hash: hash }, { onConflict: 'id' });
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('savePasscodeHash failed:', err?.message || err);
+    throw err;
+  }
+};
+
 export const getSettings = () => {
   const raw = localStorage.getItem('app_settings');
   if (!raw) return { ...DEFAULT_APP_SETTINGS };

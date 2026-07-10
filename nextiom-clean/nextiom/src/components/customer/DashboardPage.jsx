@@ -976,7 +976,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
 
         const processedInvoices = invoices.map(inv => {
           let status = inv.status;
-          if (status !== 'paid' && status !== 'payment_submitted' && status !== 'refunded' && status !== 'partially_refunded') {
+          if (status !== 'paid' && status !== 'payment_submitted' && status !== 'refunded' && status !== 'partially_refunded' && status !== 'ongoing') {
             const due = inv.due_date ? inv.due_date.split('T')[0] : null;
             if (due && due < todayStr) { status = 'overdue'; }
           }

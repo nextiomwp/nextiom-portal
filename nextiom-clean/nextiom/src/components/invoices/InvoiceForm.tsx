@@ -682,6 +682,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                   <option value="unpaid">Unpaid</option>
                   <option value="paid">Paid</option>
                   <option value="overdue">Overdue</option>
+                  <option value="ongoing">On Going</option>
                 </select>
               </div>
               <div>

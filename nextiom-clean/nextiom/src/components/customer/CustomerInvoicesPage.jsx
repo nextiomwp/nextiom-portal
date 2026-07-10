@@ -112,6 +112,7 @@ function BadgeComponent({ status, style: badgeStyle = 'filled' }) {
     partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.15)', border: '#a855f7' },
     refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.15)', border: '#64748b' },
     partially_refunded: { label: 'Partially Refunded', color: 'var(--brand-color)', bg: 'var(--brand-color-light)', border: 'var(--brand-color)' },
+    ongoing: { label: 'On Going', color: '#06b6d4', bg: 'rgba(6,182,212,0.15)', border: '#06b6d4' },
   }[status] || { label: status, color: '#888', bg: 'rgba(136,136,136,0.1)', border: '#888' };
 
   if (badgeStyle === 'dot') {
@@ -199,7 +200,7 @@ function InvoiceOverviewCard({ invoices, c, isDark }) {
   const total = invoices.length;
   const paid = invoices.filter(inv => inv.status === 'paid').length;
   const overdue = invoices.filter(inv => inv.status === 'overdue').length;
-  const unpaid = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'partially_paid' || inv.status === 'payment_submitted').length;
+  const unpaid = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'partially_paid' || inv.status === 'payment_submitted' || inv.status === 'ongoing').length;
 
   const paidPct = total > 0 ? (paid / total) * 100 : 0;
   const unpaidPct = total > 0 ? (unpaid / total) * 100 : 0;
@@ -1374,7 +1375,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
         const todayStr = getLocalDateString();
         const mapped = (invs || []).map(inv => {
           const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : '';
-          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
+          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && inv.status !== 'ongoing' && cleanDueDate && cleanDueDate < todayStr) {
             return { ...inv, status: 'overdue' };
           }
           return inv;
@@ -1386,6 +1387,22 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [email, refreshKey]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('customer-invoices-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'invoices' },
+        () => {
+          setRefreshKey(k => k + 1);
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 900px)');
@@ -1434,8 +1451,8 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
   useEffect(() => { setPage(1); }, [query, statusFilter, calFilter, sortDir]);
 
   const totalBilled = formatCurrencyBreakdown(invoices);
-  const outstanding = formatOutstandingBreakdown(invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid'));
-  const unpaidCount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid').length;
+  const outstanding = formatOutstandingBreakdown(invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid' || inv.status === 'ongoing'));
+  const unpaidCount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid' || inv.status === 'ongoing').length;
   const thisYear = new Date().getFullYear();
   const paidThisYear = formatNetPaidCurrencyBreakdown(invoices.filter(inv => (inv.status === 'paid' || inv.status === 'partially_refunded' || inv.status === 'refunded') && new Date(inv.invoice_date || 0).getFullYear() === thisYear));
   const overdueCount = invoices.filter(inv => inv.status === 'overdue').length;
@@ -1607,13 +1624,14 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 <option value="overdue">Overdue</option>
                 <option value="payment_submitted">Pending Review</option>
                 <option value="partially_paid">Partially Paid</option>
+                <option value="ongoing">On Going</option>
               </select>
             ) : (
               <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: 8, overflow: 'hidden' }}>
-                {['all', 'paid', 'unpaid', 'overdue', 'payment_submitted', 'partially_paid'].map(s => (
+                {['all', 'paid', 'unpaid', 'overdue', 'payment_submitted', 'partially_paid', 'ongoing'].map(s => (
                   <button key={s} onClick={() => setStatusFilter(s)}
                     style={{ padding: '6px 12px', border: 'none', borderRight: `1px solid ${c.border}`, background: statusFilter === s ? c.brand : 'transparent', color: statusFilter === s ? '#fff' : c.subText, fontSize: 12, fontWeight: statusFilter === s ? 700 : 400, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {s === 'all' ? 'All' : s === 'payment_submitted' ? 'Pending Review' : s === 'partially_paid' ? 'Partially Paid' : s.charAt(0).toUpperCase() + s.slice(1)}
+                    {s === 'all' ? 'All' : s === 'payment_submitted' ? 'Pending Review' : s === 'partially_paid' ? 'Partially Paid' : s === 'ongoing' ? 'On Going' : s.charAt(0).toUpperCase() + s.slice(1)}
                   </button>
                 ))}
               </div>
@@ -1703,7 +1721,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
 
                     {/* Actions */}
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }} onClick={e => e.stopPropagation()}>
-                      {(inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid') && (
+                      {(inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid' || inv.status === 'ongoing') && (
                         <button onClick={() => { setPayInvoice(inv); handleClearHighlight(inv); }} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
                           <CreditCard size={13} /> Pay Invoice
                         </button>
@@ -1818,7 +1836,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
-                          {(inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid') && (
+                          {(inv.status === 'unpaid' || inv.status === 'overdue' || inv.status === 'partially_paid' || inv.status === 'ongoing') && (
                             <button onClick={() => { setPayInvoice(inv); handleClearHighlight(inv); }} title="Pay this invoice" style={{ background: c.brand, border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600 }}>
                               <CreditCard size={13} /> Pay Invoice
                             </button>

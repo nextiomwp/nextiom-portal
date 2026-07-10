@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink, Clock, RotateCcw } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { supabase } from '@/lib/customSupabaseClient'
 import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, getInvoice, deleteInvoice, restoreInvoice, permanentlyDeleteInvoice, getInvoiceSettings, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments, refundInvoice, resolvePaymentMethod } from '@/lib/invoices'
 
 const STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -11,6 +12,7 @@ const STATUS: Record<string, { label: string; color: string; bg: string }> = {
   partially_paid: { label: 'Partially Paid', color: '#a855f7', bg: 'rgba(168,85,247,0.13)' },
   refunded: { label: 'Refunded', color: '#64748b', bg: 'rgba(100,116,139,0.13)' },
   partially_refunded: { label: 'Partially Refunded', color: 'var(--brand-color)', bg: 'var(--brand-color-light)' },
+  ongoing: { label: 'On Going', color: '#06b6d4', bg: 'rgba(6,182,212,0.13)' },
 }
 
 function getLocalDateString() {
@@ -127,41 +129,6 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={18} /></button>
         </div>
-
-        {payments.length > 1 && (
-          <div style={{ display: 'flex', gap: 8, padding: '12px 22px', borderBottom: `1px solid ${c.border}`, background: isDark ? 'rgba(0,0,0,0.15)' : '#f8fafc', overflowX: 'auto' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, display: 'flex', alignItems: 'center', marginRight: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Payments ({payments.length}):
-            </span>
-            {payments.map((p, idx) => {
-              const isActive = idx === selectedPaymentIndex
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    setSelectedPaymentIndex(idx)
-                    setMode('view')
-                    setReason('')
-                  }}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: isActive ? `1.5px solid ${c.brand}` : `1px solid ${c.border}`,
-                    background: isActive ? c.brandLight : 'transparent',
-                    color: isActive ? c.brand : c.text,
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {p.payment_date || 'No Date'} ({fmtCurrency(p.paid_amount, invoiceCurrency(invoice))}) - {p.status || 'submitted'}
-                </button>
-              )
-            })}
-          </div>
-        )}
 
         <div style={{ padding: 22, overflowY: 'auto' }}>
           {loading ? (
@@ -886,7 +853,22 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
     })
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    const channel = supabase
+      .channel('admin-invoices-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'invoices' },
+        () => {
+          load()
+        }
+      )
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   useEffect(() => {
     if (highlightInvoiceNo && invoices.length > 0) {
@@ -930,7 +912,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
         .filter(inv => !inv.deleted_at)
         .map(inv => {
           const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : ''
-          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
+          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && inv.status !== 'ongoing' && cleanDueDate && cleanDueDate < todayStr) {
             return { ...inv, status: 'overdue' as const }
           }
           return inv
@@ -940,7 +922,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
         .filter(inv => !!inv.deleted_at)
         .map(inv => {
           const cleanDueDate = inv.due_date ? inv.due_date.substring(0, 10) : ''
-          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && cleanDueDate && cleanDueDate < todayStr) {
+          if (inv.status !== 'paid' && inv.status !== 'payment_submitted' && inv.status !== 'ongoing' && cleanDueDate && cleanDueDate < todayStr) {
             return { ...inv, status: 'overdue' as const }
           }
           return inv
@@ -1313,6 +1295,7 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                     <option value="partially_paid">Partially Paid</option>
                     <option value="refunded">Refunded</option>
                     <option value="partially_refunded">Partially Refunded</option>
+                    <option value="ongoing">On Going</option>
                   </select>
                   <select
                     value={customerFilter}

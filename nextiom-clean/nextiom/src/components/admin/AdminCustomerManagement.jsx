@@ -44,6 +44,12 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
   const [ticketMessage, setTicketMessage] = useState('');
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
 
+  // Deletion Passcode Check Dialog States
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [deletePasscode, setDeletePasscode] = useState('');
+  const [isCheckingPasscode, setIsCheckingPasscode] = useState(false);
+
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -302,17 +308,170 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
     }
   };
 
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this customer?')) {
-      const customer = customers.find(cu => cu.id === id);
+  const hashPasscode = async (text) => {
+    if (typeof crypto !== 'undefined' && crypto.subtle) {
       try {
-        await deleteCustomer(id);
-        addNotification({ customer_id: null, type: 'delete', title: `Customer Deleted — ${customer?.name || 'Unknown'}`, message: `Admin permanently deleted customer account: ${customer?.name || 'Unknown'} (${customer?.email || ''}).` }).catch(() => {});
-        toast({ title: 'Customer Deleted' });
-        loadCustomers();
-      } catch (err) {
-        toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        const msgBuffer = new TextEncoder().encode(text);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        console.warn('Native crypto digest failed, falling back to JS implementation:', e);
       }
+    }
+
+    function rightRotate(value, amount) {
+      return (value >>> amount) | (value << (32 - amount));
+    }
+    
+    var mathPow = Math.pow;
+    var maxWord = mathPow(2, 32);
+    var lengthProperty = 'length';
+    var i, j;
+    var result = '';
+    var words = [];
+    var asciiLength = text[lengthProperty] * 8;
+    
+    var hash = [];
+    var k = [];
+    var primeCounter = 0;
+
+    var isPrime = {};
+    for (var candidate = 2; primeCounter < 64; candidate++) {
+      if (!isPrime[candidate]) {
+        for (i = 0; i < 311; i += candidate) {
+          isPrime[i] = 1;
+        }
+        hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
+        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      }
+    }
+    
+    var ascii = text + '\x80';
+    while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
+    for (i = 0; i < ascii[lengthProperty]; i++) {
+      var charCode = ascii.charCodeAt(i);
+      words[i >> 2] |= charCode << ((3 - i % 4) * 8);
+    }
+    words[words[lengthProperty]] = ((asciiLength / maxWord) | 0);
+    words[words[lengthProperty]] = (asciiLength | 0);
+    
+    for (j = 0; j < words[lengthProperty]; ) {
+      var w = words.slice(j, j += 16);
+      var oldHash = hash.slice(0);
+      
+      hash = [0, 1, 2, 3, 4, 5, 6, 7].map(function(index) { return hash[index]; });
+      
+      for (i = 0; i < 64; i++) {
+        var wItem = w[i];
+        if (i >= 16) {
+          var wa = w[i - 15], wb = w[i - 2];
+          var s0 = rightRotate(wa, 7) ^ rightRotate(wa, 18) ^ (wa >>> 3);
+          var s1 = rightRotate(wb, 17) ^ rightRotate(wb, 19) ^ (wb >>> 10);
+          wItem = w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+        }
+        
+        var ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
+        var maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
+        var s0_h = rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22);
+        var s1_h = rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25);
+        
+        var temp1 = hash[7] + s1_h + ch + k[i] + wItem;
+        var temp2 = s0_h + maj;
+        
+        hash = [(temp1 + temp2) | 0].concat(hash);
+        hash[4] = (hash[4] + temp1) | 0;
+      }
+      
+      for (i = 0; i < 8; i++) {
+        hash[i] = (hash[i] + oldHash[i]) | 0;
+      }
+    }
+    
+    for (i = 0; i < 8; i++) {
+      var val = hash[i];
+      if (val < 0) val += maxWord;
+      var str = val.toString(16);
+      while (str[lengthProperty] < 8) str = '0' + str;
+      result += str;
+    }
+    return result;
+  };
+
+  const executeDelete = async (id) => {
+    const customer = customers.find(cu => cu.id === id);
+    try {
+      await deleteCustomer(id);
+      addNotification({ customer_id: null, type: 'delete', title: `Customer Deleted — ${customer?.name || 'Unknown'}`, message: `Admin permanently deleted customer account: ${customer?.name || 'Unknown'} (${customer?.email || ''}).` }).catch(() => {});
+      toast({ title: 'Customer Deleted' });
+      loadCustomers();
+    } catch (err) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const customer = customers.find(cu => cu.id === id);
+    if (!customer) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('payment_settings')
+        .select('id')
+        .eq('id', 1)
+        .not('delete_passcode_hash', 'is', null);
+
+      if (error) throw error;
+      const isPasscodeSet = !!(data && data.length > 0);
+
+      if (!isPasscodeSet) {
+        toast({
+          title: 'Action Blocked',
+          description: 'No delete passcode is configured. Please set a passcode in System Settings first.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      setCustomerToDelete(customer);
+      setDeletePasscode('');
+      setDeleteConfirmOpen(true);
+    } catch (err) {
+      toast({ title: 'Error checking security settings', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleVerifyDeletePasscode = async () => {
+    if (!customerToDelete) return;
+    if (!deletePasscode) {
+      toast({ title: 'Validation Error', description: 'Please enter the passcode.', variant: 'destructive' });
+      return;
+    }
+
+    setIsCheckingPasscode(true);
+    try {
+      const hash = await hashPasscode(deletePasscode);
+      const { data, error } = await supabase
+        .from('payment_settings')
+        .select('id')
+        .eq('id', 1)
+        .eq('delete_passcode_hash', hash)
+        .maybeSingle();
+
+      if (error) throw error;
+      const isValid = !!data;
+
+      if (isValid) {
+        setDeleteConfirmOpen(false);
+        await executeDelete(customerToDelete.id);
+        setCustomerToDelete(null);
+      } else {
+        toast({ title: 'Incorrect Passcode', description: 'The passcode entered is incorrect. Deletion aborted.', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Verification Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsCheckingPasscode(false);
     }
   };
 
@@ -1558,6 +1717,88 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Customer Passcode Dialog */}
+      {deleteConfirmOpen && customerToDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: c.card, border: `1px solid ${c.borderStrong}`, borderRadius: 16, maxWidth: 450, width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.5)', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: c.text }}>Security Verification Required</span>
+              <button onClick={() => { setDeleteConfirmOpen(false); setCustomerToDelete(null); }} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer' }}><X size={18} /></button>
+            </div>
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontSize: 13, color: c.subText }}>You are about to permanently delete the customer account:</span>
+                <strong style={{ fontSize: 15, color: '#ef4444' }}>{customerToDelete.name} ({customerToDelete.email})</strong>
+                <span style={{ fontSize: 12, color: c.subText, fontStyle: 'italic', marginTop: 4 }}>This action is irreversible and will delete all licenses, hosting packages, and tickets associated with this customer.</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                <label style={{ fontSize: 11, color: c.subText, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter Deletion Passcode</label>
+                <input
+                  type="password"
+                  required
+                  value={deletePasscode}
+                  onChange={e => setDeletePasscode(e.target.value)}
+                  placeholder="Enter passcode to authorize deletion..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: `1.5px solid ${c.border}`,
+                    borderRadius: 10,
+                    background: c.bg,
+                    color: c.text,
+                    fontSize: 14,
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={e => e.target.style.borderColor = '#ef4444'}
+                  onBlur={e => e.target.style.borderColor = c.border}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleVerifyDeletePasscode();
+                    }
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => { setDeleteConfirmOpen(false); setCustomerToDelete(null); }}
+                  style={{ flex: 1, padding: '10px', borderRadius: 10, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyDeletePasscode}
+                  disabled={isCheckingPasscode || !deletePasscode}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: '#ef4444',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: deletePasscode && !isCheckingPasscode ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    opacity: isCheckingPasscode ? 0.7 : 1
+                  }}
+                >
+                  {isCheckingPasscode ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Delete'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
