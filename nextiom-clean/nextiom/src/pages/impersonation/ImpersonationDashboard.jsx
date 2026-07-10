@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   LogOut, Clock, AlertTriangle, LayoutDashboard, Globe, Server, Mail,
   ShoppingCart, MessageSquare, Package, User, Loader2, Menu, X,
-  CreditCard, FileText, Info, BellOff, Briefcase, Megaphone, BookOpen, Calendar
+  CreditCard, FileText, Info, BellOff, Briefcase, Megaphone, BookOpen
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -38,7 +38,6 @@ import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/About
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
 import CustomerAgreementManagement from '@/components/customer/CustomerAgreementManagement';
 import KnowledgebasePage from '@/components/customer/KnowledgebasePage';
-import CustomerAppointmentsPage from '@/components/customer/CustomerAppointmentsPage';
 import useDisableRightClick from '@/hooks/useDisableRightClick';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
@@ -179,7 +178,7 @@ const NAV_STRUCTURE = [
     ],
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
-  { id: 'appointments', label: 'Appointments', icon: Calendar, type: 'item' },
+  { id: 'knowledgebase', label: 'Knowledgebase', icon: BookOpen, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
@@ -192,7 +191,7 @@ const NAV_STRUCTURE = [
   },
 ];
 
-const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'appointments', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
+const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
 
 function ImpersonationDashboard() {
   useDisableRightClick();
@@ -765,7 +764,6 @@ function ImpersonationDashboard() {
         {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark c={c} onNavigate={setActiveTab} />)}
         {mountedTabs.has('jobs') && wrap('jobs', <CustomerJobsPage user={userProp} isDark c={c} />)}
-        {mountedTabs.has('appointments') && wrap('appointments', <CustomerAppointmentsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => {}} {...theme} />)}
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} {...theme} />)}

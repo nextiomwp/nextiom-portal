@@ -250,6 +250,7 @@ function Dashboard({ onLogout }) {
   const readNotifIdsRef = useRef(readNotifIds);
   readNotifIdsRef.current = readNotifIds;
   const knownIdsRef = useRef(new Set());
+  const loadDataRef = useRef();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -340,7 +341,7 @@ function Dashboard({ onLogout }) {
         (payload) => {
           // If it's a notification for admins (customer_id is null)
           if (!payload.new || payload.new.customer_id === null) {
-            loadData(false, true);
+            loadDataRef.current?.(false, true);
           }
         }
       )
@@ -348,35 +349,35 @@ function Dashboard({ onLogout }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'customers' },
         () => {
-          loadData(false, true);
+          loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domain_requests' },
         () => {
-          loadData(false, true);
+          loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hosting_requests' },
         () => {
-          loadData(false, true);
+          loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'email_requests' },
         () => {
-          loadData(false, true);
+          loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
         () => {
-          loadData(false, true);
+          loadDataRef.current?.(false, true);
         }
       )
       .subscribe();
@@ -521,6 +522,7 @@ function Dashboard({ onLogout }) {
       setIsRefreshing(false);
     }
   };
+  loadDataRef.current = loadData;
 
   const pendingCustomers = customers.filter(c => c.status === 'pending');
 

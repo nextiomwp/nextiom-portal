@@ -6,7 +6,7 @@ import {
   Globe, ShoppingCart, MessageSquare, Server, Loader2,
   Sun, Moon, ChevronLeft, ChevronRight, Package, Mail,
   CreditCard, FileText, Info, Briefcase, Megaphone, Search, BookOpen, Sparkles,
-  CheckCircle, AlertTriangle, Headphones, Calendar
+  CheckCircle, AlertTriangle, Headphones
 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -37,7 +37,6 @@ import { cn } from '@/lib/utils';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
 import CustomerAgreementManagement from '@/components/customer/CustomerAgreementManagement';
-import CustomerAppointmentsPage from '@/components/customer/CustomerAppointmentsPage';
 import { getCustomerJobs } from '@/lib/jobs';
 import { getTicketsByCustomer, getLicenses } from '@/lib/storage';
 import { getCustomerInvoices } from '@/lib/invoices';
@@ -187,6 +186,7 @@ const NAV_STRUCTURE = [
     ],
   },
   { id: 'jobs', label: 'Jobs', icon: OnProgressIcon, type: 'item' },
+  { id: 'knowledgebase', label: 'Knowledgebase', icon: BookOpen, type: 'item' },
   { id: 'profile', label: 'Account Details', icon: User, type: 'item' },
   { id: 'announcements', label: 'Announcements', icon: Megaphone, type: 'item' },
   {
@@ -201,7 +201,6 @@ const NAV_STRUCTURE = [
 
 function getActiveLabel(activeTab) {
   if (activeTab === 'knowledgebase') return 'Knowledgebase';
-  if (activeTab === 'appointments') return 'Appointments';
   for (const item of NAV_STRUCTURE) {
     if (item.id === activeTab) return item.label;
     if (item.children) {
@@ -212,7 +211,7 @@ function getActiveLabel(activeTab) {
   return 'Dashboard';
 }
 
-const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'appointments', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
+const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
 
 function CustomerDashboard() {
   useDisableRightClick();
@@ -284,10 +283,13 @@ function CustomerDashboard() {
         try {
           if (customerProfile?.id) {
             customerProfile.welcome_modal_shown = true;
-            await supabase
+            const { error } = await supabase
               .from('customers')
               .update({ welcome_modal_shown: true })
               .eq('id', customerProfile.id);
+            if (error) {
+              console.error("Failed to auto-save welcome modal status in DB:", error);
+            }
           }
         } catch (err) {
           console.error("Failed to auto-save welcome modal status:", err);
@@ -846,7 +848,6 @@ function CustomerDashboard() {
         {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />)}
         {mountedTabs.has('jobs') && wrap('jobs', <CustomerJobsPage user={userProp} isDark={isDark} c={c} />)}
-        {mountedTabs.has('appointments') && wrap('appointments', <CustomerAppointmentsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => { }} {...theme} />)}
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} onNavigate={setActiveTab} {...theme} />)}
@@ -1045,20 +1046,6 @@ function CustomerDashboard() {
               <MessageSquare className="w-4.5 h-4.5" />
             </button>
 
-            {/* Mobile Appointments Button */}
-            <button
-              onClick={() => navigate(activeTab === 'appointments' ? 'dashboard' : 'appointments')}
-              className="md:hidden p-2 rounded-full transition-colors relative"
-              style={{ 
-                color: activeTab === 'appointments' ? c.brand : c.subText, 
-                background: 'transparent' 
-              }}
-              title="Appointments"
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-            >
-              <Calendar className="w-4.5 h-4.5" />
-            </button>
 
             {/* Mobile Knowledgebase Button */}
             <button
@@ -1118,48 +1105,6 @@ function CustomerDashboard() {
               <MessageSquare className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
             </button>
 
-            {/* Desktop Appointment Button */}
-            <button
-              onClick={() => navigate(activeTab === 'appointments' ? 'dashboard' : 'appointments')}
-              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0"
-              title={activeTab === 'appointments' ? 'Back to Dashboard' : 'Appointments'}
-              style={{
-                background: activeTab === 'appointments'
-                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
-                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
-                color: activeTab === 'appointments' ? '#fff' : c.subText,
-                border: activeTab === 'appointments'
-                  ? '1px solid rgba(255, 255, 255, 0.1)'
-                  : `1px solid ${c.border}`,
-                boxShadow: activeTab === 'appointments'
-                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
-                  : 'none',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
-                if (activeTab === 'appointments') {
-                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
-                  e.currentTarget.style.filter = 'brightness(1.05)';
-                } else {
-                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
-                  e.currentTarget.style.color = c.brand;
-                  e.currentTarget.style.borderColor = c.brand;
-                }
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                if (activeTab === 'appointments') {
-                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
-                  e.currentTarget.style.filter = 'none';
-                } else {
-                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
-                  e.currentTarget.style.color = c.subText;
-                  e.currentTarget.style.borderColor = c.border;
-                }
-              }}
-            >
-              <Calendar className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
-            </button>
 
             {/* Status button */}
             <div
