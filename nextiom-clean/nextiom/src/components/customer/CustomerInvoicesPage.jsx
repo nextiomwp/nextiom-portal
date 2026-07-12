@@ -66,9 +66,9 @@ function formatCurrencyBreakdown(invoicesList) {
 function formatNetPaidCurrencyBreakdown(invoicesList) {
   const totals = (invoicesList || []).reduce((acc, inv) => {
     const cur = inv.currency === 'USD' ? 'USD' : 'LKR';
-    const total = inv.total || 0;
-    const paid = inv.status === 'paid' ? total : (inv.paid_amount || 0);
-    const refunded = inv.refunded_amount || 0;
+    const isSettled = inv.status === 'paid' || inv.status === 'refunded' || inv.status === 'partially_refunded';
+    const paid = Number(inv.paid_amount || (isSettled ? inv.total : 0));
+    const refunded = Number(inv.refunded_amount || 0);
     const net = Math.max(0, paid - refunded);
     acc[cur] += net;
     return acc;
@@ -82,8 +82,10 @@ function formatNetPaidCurrencyBreakdown(invoicesList) {
 function formatOutstandingBreakdown(invoicesList) {
   const totals = (invoicesList || []).reduce((acc, inv) => {
     const cur = inv.currency === 'USD' ? 'USD' : 'LKR';
-    const due = (inv.status !== 'paid') ? (inv.total - (inv.paid_amount || 0)) : 0;
-    acc[cur] += due;
+    const isSettled = inv.status === 'paid' || inv.status === 'refunded' || inv.status === 'partially_refunded';
+    const paid = Number(inv.paid_amount || (isSettled ? inv.total : 0));
+    const balance = isSettled ? 0 : Math.max(0, Number(inv.total || 0) - paid);
+    acc[cur] += balance;
     return acc;
   }, { LKR: 0, USD: 0 });
 
@@ -872,7 +874,8 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const remainingAmount = (invoice.total || 0) - (invoice.paid_amount || 0);
+  const isSettled = invoice.status === 'paid' || invoice.status === 'refunded' || invoice.status === 'partially_refunded';
+  const remainingAmount = isSettled ? 0 : Math.max(0, (invoice.total || 0) - (invoice.paid_amount || 0));
   const [amount, setAmount] = useState(String(remainingAmount > 0 ? remainingAmount : invoice.total ?? ''));
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -1659,7 +1662,11 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
               {pageItems.map((inv) => {
                 const firstItem = (inv.items || [])[0];
                 const service = inv.service_name || firstItem?.description || inv.invoice_no;
-                const balance = (inv.total || 0) - (inv.paid_amount || 0);
+                const isSettled = inv.status === 'paid' || inv.status === 'refunded' || inv.status === 'partially_refunded';
+                const paid = Number(inv.paid_amount || (isSettled ? inv.total : 0));
+                const refunded = Number(inv.refunded_amount || 0);
+                const netPaid = Math.max(0, paid - refunded);
+                const balance = isSettled ? 0 : Math.max(0, Number(inv.total || 0) - paid);
                 const isHighlighted = highlightedInvoiceNumber && inv.invoice_no === highlightedInvoiceNumber;
                 return (
                   <div
@@ -1711,7 +1718,7 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: c.subText }}>Paid</div>
-                        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: inv.paid_amount > 0 ? '#22c55e' : c.subText }}>{fmtAmt(inv.paid_amount || 0, inv.currency)}</div>
+                        <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>{fmtAmt(netPaid, inv.currency)}</div>
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: c.subText }}>Balance</div>
@@ -1767,7 +1774,11 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                 {pageItems.map((inv, i) => {
                   const firstItem = (inv.items || [])[0];
                   const service = inv.service_name || firstItem?.description || inv.invoice_no;
-                  const balance = (inv.total || 0) - (inv.paid_amount || 0);
+                  const isSettled = inv.status === 'paid' || inv.status === 'refunded' || inv.status === 'partially_refunded';
+                  const paid = Number(inv.paid_amount || (isSettled ? inv.total : 0));
+                  const refunded = Number(inv.refunded_amount || 0);
+                  const netPaid = Math.max(0, paid - refunded);
+                  const balance = isSettled ? 0 : Math.max(0, Number(inv.total || 0) - paid);
                   const isHighlighted = highlightedInvoiceNumber && inv.invoice_no === highlightedInvoiceNumber;
                   return (
                     <tr key={inv.id}
@@ -1825,12 +1836,12 @@ export default function CustomerInvoicesPage({ user, isDark, c }) {
                         </span>
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }}>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: inv.paid_amount > 0 ? '#22c55e' : c.subText }}>
-                          {fmtAmt(inv.paid_amount || 0, inv.currency)}
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: netPaid > 0 ? '#22c55e' : c.subText }}>
+                          {fmtAmt(netPaid, inv.currency)}
                         </span>
                       </td>
                       <td style={{ ...tdS, textAlign: 'right' }}>
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: balance > 0 ? c.text : c.subText }}>
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 13, color: balance > 0 ? '#ef4444' : c.subText }}>
                           {fmtAmt(balance, inv.currency)}
                         </span>
                       </td>

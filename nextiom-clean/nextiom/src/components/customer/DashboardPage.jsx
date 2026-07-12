@@ -948,7 +948,7 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           supabase.from('hosting_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }),
           supabase.from('email_requests').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }),
           supabase.from('notifications').select('id, title, message, type, created_at, read_status').eq('customer_id', customerId).order('created_at', { ascending: false }).limit(15),
-          supabase.from('invoices').select('total, currency, status, invoice_date, due_date').eq('client_email', user.email),
+          supabase.from('invoices').select('total, currency, status, invoice_date, due_date, paid_amount, refunded_amount').eq('client_email', user.email),
           supabase.from('customers').select('notifications_cleared_at').eq('id', customerId).maybeSingle(),
           supabase.from('licenses').select('*, products(id, name, type, license_type, category)').eq('customer_id', customerId),
           supabase.from('hosting_packages').select('*').eq('customer_id', customerId),
@@ -987,17 +987,20 @@ function DashboardPage({ user, isDark = false, c = {}, onNavigate }) {
           const status = inv.status;
           const currency = inv.currency === 'USD' ? 'USD' : 'LKR';
           const total = parseFloat(inv.total) || 0;
-          const refunded = parseFloat(inv.refunded_amount) || 0;
+          const isSettled = status === 'paid' || status === 'refunded' || status === 'partially_refunded';
+          const paid = parseFloat(inv.paid_amount || (isSettled ? total : 0));
+          const refunded = parseFloat(inv.refunded_amount || 0);
+          const netPaid = Math.max(0, paid - refunded);
+          const balance = isSettled ? 0 : Math.max(0, total - paid);
+
           let cat = 'pending';
-          if (status === 'paid' || status === 'partially_refunded' || status === 'refunded') cat = 'paid';
+          if (isSettled) cat = 'paid';
           else if (status === 'overdue') cat = 'overdue';
           acc[cat].count += 1;
-          if (cat === 'paid') {
-            const paidAmt = status === 'paid' ? total : (parseFloat(inv.paid_amount) || total);
-            const netPaid = Math.max(0, paidAmt - refunded);
-            acc[cat][currency] += netPaid;
-          } else {
-            acc[cat][currency] += total;
+
+          acc.paid[currency] += netPaid;
+          if (cat !== 'paid') {
+            acc[cat][currency] += balance;
           }
           return acc;
         }, { paid: { count: 0, LKR: 0, USD: 0 }, pending: { count: 0, LKR: 0, USD: 0 }, overdue: { count: 0, LKR: 0, USD: 0 } });

@@ -421,7 +421,7 @@ function CustomerDashboard() {
         const todayStr = new Date().toISOString().split('T')[0];
         const processedInvoices = (invoicesData || []).map(inv => {
           let status = inv.status;
-          if (status !== 'paid' && status !== 'payment_submitted' && status !== 'refunded' && status !== 'partially_refunded') {
+          if (status !== 'paid' && status !== 'payment_submitted' && status !== 'refunded' && status !== 'partially_refunded' && status !== 'ongoing') {
             const due = inv.due_date ? inv.due_date.substring(0, 10) : null;
             if (due && due < todayStr) { status = 'overdue'; }
           }
