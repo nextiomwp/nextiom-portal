@@ -403,7 +403,10 @@ export default function InvoicePrintPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                {['Description', 'Qty', 'Unit price', 'Discount', 'Amount'].map((h, i) => (
+                {(totalDiscount > 0
+                  ? ['Description', 'Qty', 'Unit price', 'Discount', 'Amount']
+                  : ['Description', 'Qty', 'Unit price', 'Amount']
+                ).map((h, i) => (
                   <th key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', padding: '8px 10px' }}>{h}</th>
                 ))}
               </tr>
@@ -448,7 +451,9 @@ export default function InvoicePrintPage() {
                   </td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{item.qty}</td>
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{formatUnitPrices(item)}</td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.discount || 0, currency)}</td>
+                  {totalDiscount > 0 && (
+                    <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.discount || 0, currency)}</td>
+                  )}
                   <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{formatAmounts(item)}</td>
                 </tr>
               ))}
@@ -465,9 +470,11 @@ export default function InvoicePrintPage() {
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
               <span>Subtotal</span><span>{fmtCurrency(subtotal, currency)}</span>
             </div>
-            <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-              <span>Total Discount</span><span>{fmtCurrency(totalDiscount, currency)}</span>
-            </div>
+            {totalDiscount > 0 && (
+              <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
+                <span>Total Discount</span><span>{fmtCurrency(totalDiscount, currency)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
               <span>Grand total (Primary)</span><span>{fmtCurrency(total, currency)}</span>
             </div>
