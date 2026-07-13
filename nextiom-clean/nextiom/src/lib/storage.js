@@ -656,6 +656,17 @@ export const getAdminNotifications = async () => {
 };
 
 export const addNotification = async (notificationData) => {
+  // If customer_id is null, it's an admin notification.
+  // Customers cannot SELECT null customer_id notifications due to SELECT RLS.
+  // To prevent transaction rollback on SELECT, we do a minimal insert without .select() if customer_id is null.
+  if (notificationData.customer_id === null) {
+    const { error } = await supabase
+      .from('notifications')
+      .insert([notificationData]);
+    if (error) handleSupabaseError(error, 'addNotification');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('notifications')
     .insert([notificationData])

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Ticket, Send, RefreshCw, MessageSquare, CheckCircle, X, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle, Search } from 'lucide-react';
+import { Ticket, Send, RefreshCw, MessageSquare, CheckCircle, X, Edit3, Link2, Clipboard, Bold, Italic, Underline, TextQuote, Code2, Image, ExternalLink, HelpCircle, Search, Shield } from 'lucide-react';
 import { getTicketsByCustomer, getTicketMessages, addTicketMessage, addNotification, editTicketMessage } from '@/lib/storage';
 import LinkPreviewCard from '@/components/shared/LinkPreviewCard';
 import { extractUrls } from '@/lib/linkPreview';
@@ -1254,7 +1254,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
           {selected && (
             <div style={{ ...cardS, display: 'flex', flexDirection: 'column', height: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 240px)', minHeight: 400 }}>
               {/* Header */}
-              <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', flexShrink: 0 }}>
+              <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'flex-start', gap: 12, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', flexShrink: 0 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1275,13 +1275,47 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                       {getTicketCategory(selected)}
                     </span>
                   </div>
+                  {selected.created_by_admin && (
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 10, 
+                      margin: '8px 0 8px',
+                      padding: '8px 12px',
+                      background: isDark ? 'rgba(232, 123, 53, 0.08)' : 'rgba(232, 123, 53, 0.05)',
+                      border: `1px dashed ${isDark ? 'rgba(232, 123, 53, 0.25)' : 'rgba(232, 123, 53, 0.15)'}`,
+                      borderRadius: 8,
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 5, 
+                        background: 'rgba(232, 123, 53, 0.15)', 
+                        color: c.brand, 
+                        padding: '3px 8px', 
+                        borderRadius: 6, 
+                        fontSize: 10, 
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.3,
+                        flexShrink: 0
+                      }}>
+                        <Shield size={12} style={{ flexShrink: 0 }} />
+                        <span>Opened by Support Team</span>
+                      </div>
+                      <span style={{ fontSize: 11.5, color: isDark ? '#e2e8f0' : '#374151', fontWeight: 500, lineHeight: 1.3 }}>
+                        This ticket was created by our support team on your behalf.
+                      </span>
+                    </div>
+                  )}
                   <div style={{ fontSize: 11, color: c.subText }}>
                     <span style={{ fontWeight: 600, color: selected.status === 'open' ? c.brand : c.subText }}>{selected.status === 'open' ? 'Open' : 'Closed'}</span>
                     {' · '}
                     {(PRIORITY_CFG[selected.priority] || PRIORITY_CFG.normal).label} priority
                   </div>
                 </div>
-                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}>
+                <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: '4px 0', alignSelf: 'flex-start' }}>
                   <X size={16} />
                 </button>
               </div>
@@ -1320,11 +1354,6 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                       <div style={{ maxWidth: isMobile ? '90%' : '72%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                         <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isMe ? 'right' : 'left' }}>
                           {isMe ? 'You' : (msg.sender_name || 'Support Team')} · {fmtTime(msg.created_at)}
-                          {selected.created_by_admin && index === 0 && (
-                            <span style={{ color: '#3b82f6', fontWeight: 600, marginLeft: 6 }}>
-                              (Opened by Admin)
-                            </span>
-                          )}
                         </div>
                         <div style={{
                           padding: '10px 14px',
@@ -1403,14 +1432,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                               </div>
                             </div>
                           ) : (
-                            <div style={{ minWidth: 0 }}>
-                              <div>{renderMessageText(msg.message, isMe)}</div>
-                              {selected.created_by_admin && index === 0 && (
-                                <div style={{ fontSize: 9, opacity: 0.6, marginTop: 6, borderTop: `1px solid ${isMe ? 'rgba(255,255,255,0.1)' : c.border}`, paddingTop: 4, fontStyle: 'italic', textAlign: isMe ? 'right' : 'left' }}>
-                                  Ticket opened by Admin
-                                </div>
-                              )}
-                            </div>
+                            <div style={{ minWidth: 0 }}>{renderMessageText(msg.message, isMe)}</div>
                           )}
                         </div>
                         {!isEditing && extractUrls(msg.message).length > 0 && (

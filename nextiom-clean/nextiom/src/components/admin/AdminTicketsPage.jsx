@@ -1852,7 +1852,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
           gridColumn: isMobileView ? '1' : 'auto'
         }}>
           {/* Header */}
-          <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12, background: c.card }}>
+          <div style={{ padding: '12px 18px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'flex-start', gap: 12, background: c.card }}>
             {isMobileView && (
               <button
                 onClick={() => setMobileView('customers')}
@@ -1873,11 +1873,45 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                   {getTicketCategory(selected)}
                 </span>
               </div>
+              {selected.created_by_admin && (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 10, 
+                  margin: '8px 0 8px',
+                  padding: '8px 12px',
+                  background: isDark ? 'rgba(232, 123, 53, 0.08)' : 'rgba(232, 123, 53, 0.05)',
+                  border: `1px dashed ${isDark ? 'rgba(232, 123, 53, 0.25)' : 'rgba(232, 123, 53, 0.15)'}`,
+                  borderRadius: 8,
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 5, 
+                    background: 'rgba(232, 123, 53, 0.15)', 
+                    color: c.brand, 
+                    padding: '3px 8px', 
+                    borderRadius: 6, 
+                    fontSize: 10, 
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.3,
+                    flexShrink: 0
+                  }}>
+                    <Shield size={12} style={{ flexShrink: 0 }} />
+                    <span>Opened by Support Team</span>
+                  </div>
+                  <span style={{ fontSize: 11.5, color: isDark ? '#e2e8f0' : '#374151', fontWeight: 500, lineHeight: 1.3 }}>
+                    This ticket was created by our support team on your behalf.
+                  </span>
+                </div>
+              )}
               <div style={{ fontSize: 11, color: c.subText }}>
                 {selected.assignee ? <>Assigned to: <strong style={{ color: c.brand }}>{selected.assignee}</strong></> : 'Unassigned'}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', alignSelf: 'flex-start', marginTop: 2 }}>
               {selected.status === 'open' && selected.assignee && (
                 <button onClick={() => setShowTransferModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', border: `1px solid ${c.border}`, background: 'transparent', color: c.subText, borderRadius: 6, cursor: 'pointer', fontSize: 11 }} title="Transfer Ticket">
                   <ArrowLeftRight size={12} /> {!isMobileView && 'Transfer'}
@@ -2001,11 +2035,6 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                   <div style={{ maxWidth: '85%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                     <div style={{ fontSize: 9, color: c.subText, marginBottom: 3, textAlign: isSenderAdmin ? 'right' : 'left' }}>
                       {isSenderAdmin ? `You (${msg.sender_name || 'Admin'})` : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
-                      {selected.created_by_admin && index === 0 && (
-                        <span style={{ color: '#3b82f6', fontWeight: 600, marginLeft: 6 }}>
-                          (Opened by Admin)
-                        </span>
-                      )}
                     </div>
                     <div style={{
                       padding: '10px 12px',
@@ -2037,14 +2066,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                           </div>
                         </div>
                       ) : (
-                        <div>
-                          <div>{renderMessageText(msg.message, isSenderAdmin)}</div>
-                          {selected.created_by_admin && index === 0 && (
-                            <div style={{ fontSize: 9, opacity: 0.6, marginTop: 6, borderTop: `1px solid ${isSenderAdmin ? 'rgba(255,255,255,0.1)' : c.border}`, paddingTop: 4, fontStyle: 'italic', textAlign: isSenderAdmin ? 'right' : 'left' }}>
-                              Ticket opened by Admin
-                            </div>
-                          )}
-                        </div>
+                        <div>{renderMessageText(msg.message, isSenderAdmin)}</div>
                       )}
                     </div>
                     {!isEditing && extractUrls(msg.message).length > 0 && (
