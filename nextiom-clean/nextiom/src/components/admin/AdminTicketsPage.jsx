@@ -646,7 +646,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
     setIsCreatingTicket(true);
     try {
       // 1. Create ticket
-      const ticket = await createTicket(selectedCustomer.id, newTicketSubject.trim(), newTicketPriority);
+      const ticket = await createTicket(selectedCustomer.id, newTicketSubject.trim(), newTicketPriority, 'Technical Support', null, true);
 
       // 2. Add message under customer identity (sender_role: 'customer')
       await addTicketMessage(ticket.id, 'customer', newTicketMessage.trim());
@@ -1932,7 +1932,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
               <div style={{ textAlign: 'center', color: c.subText, fontSize: 12, paddingTop: 40 }}>Loading messages…</div>
             ) : messages.length === 0 ? (
               <div style={{ textAlign: 'center', color: c.subText, fontSize: 12, paddingTop: 40 }}>No messages yet.</div>
-            ) : messages.map(msg => {
+            ) : messages.map((msg, index) => {
               const isSystem = msg.sender_role === 'system';
               const isNote = msg.sender_role === 'note' || msg.sender_role === 'internal';
               
@@ -2001,6 +2001,11 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                   <div style={{ maxWidth: '85%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                     <div style={{ fontSize: 9, color: c.subText, marginBottom: 3, textAlign: isSenderAdmin ? 'right' : 'left' }}>
                       {isSenderAdmin ? `You (${msg.sender_name || 'Admin'})` : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
+                      {selected.created_by_admin && index === 0 && (
+                        <span style={{ color: '#3b82f6', fontWeight: 600, marginLeft: 6 }}>
+                          (Opened by Admin)
+                        </span>
+                      )}
                     </div>
                     <div style={{
                       padding: '10px 12px',
@@ -2032,7 +2037,14 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                           </div>
                         </div>
                       ) : (
-                        <div>{renderMessageText(msg.message, isSenderAdmin)}</div>
+                        <div>
+                          <div>{renderMessageText(msg.message, isSenderAdmin)}</div>
+                          {selected.created_by_admin && index === 0 && (
+                            <div style={{ fontSize: 9, opacity: 0.6, marginTop: 6, borderTop: `1px solid ${isSenderAdmin ? 'rgba(255,255,255,0.1)' : c.border}`, paddingTop: 4, fontStyle: 'italic', textAlign: isSenderAdmin ? 'right' : 'left' }}>
+                              Ticket opened by Admin
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                     {!isEditing && extractUrls(msg.message).length > 0 && (
@@ -2454,7 +2466,14 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                             >
                               <td style={{ padding: '10px 8px', color: c.subText }}>#{t.id.slice(0, 8).toUpperCase()}</td>
                               <td style={{ padding: '10px 8px', color: c.text, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.subject}>
-                                {t.subject}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{t.subject}</span>
+                                  {t.created_by_admin && (
+                                    <span style={{ flexShrink: 0, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>
+                                      Admin
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                               <td style={{ padding: '10px 8px' }}>
                                 <span style={{ padding: '2px 6px', borderRadius: 4, background: statusBg, color: statusColor, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3 }}>

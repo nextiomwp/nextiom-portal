@@ -596,7 +596,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
     setIsCreatingTicket(true);
     try {
       // 1. Create ticket
-      const ticket = await createTicket(ticketCustomer.id, ticketSubject.trim(), ticketPriority);
+      const ticket = await createTicket(ticketCustomer.id, ticketSubject.trim(), ticketPriority, 'Technical Support', null, true);
 
       // 2. Add message under customer identity (sender_role: 'customer')
       await addTicketMessage(ticket.id, 'customer', ticketMessage.trim());

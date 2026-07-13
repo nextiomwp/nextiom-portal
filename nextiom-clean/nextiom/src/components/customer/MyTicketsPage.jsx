@@ -1224,11 +1224,16 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                           {lastMsg.sender_role === 'admin' ? '↩ Admin: ' : 'You: '}{lastMsg.message}
                         </p>
                       )}
-                      <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 10, fontWeight: 700, color: isOpen ? c.brand : c.subText, background: isOpen ? `rgba(232,123,53,0.12)` : c.hover, padding: '1px 7px', borderRadius: 10 }}>
                           {isOpen ? 'Open' : 'Closed'}
                         </span>
                         <span style={{ fontSize: 10, fontWeight: 600, color: pCfg.color, background: pCfg.bg, padding: '1px 7px', borderRadius: 10 }}>{pCfg.label}</span>
+                        {ticket.created_by_admin && (
+                          <span style={{ fontSize: 10, color: '#3b82f6', background: 'rgba(59,130,246,0.12)', fontWeight: 600, padding: '1px 7px', borderRadius: 10 }}>
+                            Opened by Admin
+                          </span>
+                        )}
                         {adminReplied && isOpen && (
                           <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                             <CheckCircle size={10} /> Admin replied
@@ -1287,7 +1292,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                   <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>Loading messages…</div>
                 ) : messages.length === 0 ? (
                   <div style={{ textAlign: 'center', color: c.subText, fontSize: 13, paddingTop: 40 }}>No messages yet.</div>
-                ) : messages.map(msg => {
+                ) : messages.map((msg, index) => {
                   const isSystem = msg.sender_role === 'system';
                   if (isSystem) {
                     return (
@@ -1315,6 +1320,11 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                       <div style={{ maxWidth: isMobile ? '90%' : '72%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                         <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isMe ? 'right' : 'left' }}>
                           {isMe ? 'You' : (msg.sender_name || 'Support Team')} · {fmtTime(msg.created_at)}
+                          {selected.created_by_admin && index === 0 && (
+                            <span style={{ color: '#3b82f6', fontWeight: 600, marginLeft: 6 }}>
+                              (Opened by Admin)
+                            </span>
+                          )}
                         </div>
                         <div style={{
                           padding: '10px 14px',
@@ -1393,7 +1403,14 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                               </div>
                             </div>
                           ) : (
-                            <div style={{ minWidth: 0 }}>{renderMessageText(msg.message, isMe)}</div>
+                            <div style={{ minWidth: 0 }}>
+                              <div>{renderMessageText(msg.message, isMe)}</div>
+                              {selected.created_by_admin && index === 0 && (
+                                <div style={{ fontSize: 9, opacity: 0.6, marginTop: 6, borderTop: `1px solid ${isMe ? 'rgba(255,255,255,0.1)' : c.border}`, paddingTop: 4, fontStyle: 'italic', textAlign: isMe ? 'right' : 'left' }}>
+                                  Ticket opened by Admin
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                         {!isEditing && extractUrls(msg.message).length > 0 && (

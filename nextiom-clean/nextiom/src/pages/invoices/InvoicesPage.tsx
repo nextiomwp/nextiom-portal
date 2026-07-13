@@ -134,7 +134,26 @@ function PaymentReviewDialog({ invoice, c, isDark, onClose, onChanged }: {
           {loading ? (
             <div style={{ color: c.subText, fontSize: 13 }}>Loading payment…</div>
           ) : !payment ? (
-            <div style={{ color: c.subText, fontSize: 13 }}>No payment submission found.</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: isDark ? '#22252C' : '#fafafa', border: `1px solid ${c.border}`, borderRadius: 8, padding: 16 }}>
+                <p style={{ fontSize: 13, color: c.text, fontWeight: 500, marginBottom: 8 }}>
+                  No customer-submitted payment slip or transaction record was found for this invoice.
+                </p>
+                <p style={{ fontSize: 12, color: c.subText }}>
+                  This invoice might have been created or marked as paid manually by an administrator.
+                </p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: (typeof window !== 'undefined' && window.innerWidth < 640) ? '1fr' : '1fr 1fr', gap: 18, marginTop: 10 }}>
+                <div>
+                  <div style={lbl}>Customer</div>
+                  <div style={val}>{invoice.client_name} ({invoice.client_email})</div>
+                  <div style={lbl}>Invoice Total</div>
+                  <div style={val}>{fmtCurrency(invoice.total, invoiceCurrency(invoice))}</div>
+                  <div style={lbl}>Paid Amount</div>
+                  <div style={{ ...val, fontWeight: 700, color: '#22c55e' }}>{fmtCurrency(invoice.paid_amount || invoice.total, invoiceCurrency(invoice))}</div>
+                </div>
+              </div>
+            </div>
           ) : (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: (typeof window !== 'undefined' && window.innerWidth < 640) ? '1fr' : '1fr 1fr', gap: 18 }}>
@@ -1483,9 +1502,9 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
 
                             {/* Actions */}
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
-                              {(inv.status === 'payment_submitted' || inv.invoice_payments?.some(p => p.slip_url)) && (
-                                <button onClick={() => setReviewInvoice(inv)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: inv.status === 'payment_submitted' ? '#3b82f6' : 'rgba(59, 130, 246, 0.1)', border: inv.status === 'payment_submitted' ? 'none' : `1px solid rgba(59, 130, 246, 0.3)`, color: inv.status === 'payment_submitted' ? '#fff' : '#3b82f6', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }} title={inv.status === 'payment_submitted' ? "Review payment" : "View payment slip"}>
-                                  <CreditCard size={14} /> {inv.status === 'payment_submitted' ? 'Review Payment' : 'View Slip'}
+                              {(inv.status === 'payment_submitted' || inv.status === 'paid' || inv.status === 'partially_paid' || inv.invoice_payments?.some(p => p.slip_url)) && (
+                                <button onClick={() => setReviewInvoice(inv)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: inv.status === 'payment_submitted' ? '#3b82f6' : 'rgba(59, 130, 246, 0.1)', border: inv.status === 'payment_submitted' ? 'none' : `1px solid rgba(59, 130, 246, 0.3)`, color: inv.status === 'payment_submitted' ? '#fff' : '#3b82f6', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500 }} title={inv.status === 'payment_submitted' ? "Review payment" : (inv.status === 'paid' || inv.status === 'partially_paid' ? "Payment details" : "View payment slip")}>
+                                  <CreditCard size={14} /> {inv.status === 'payment_submitted' ? 'Review Payment' : (inv.status === 'paid' || inv.status === 'partially_paid' ? 'Payment Details' : 'View Slip')}
                                 </button>
                               )}
                               {(inv.status === 'paid' || inv.status === 'partially_paid' || inv.status === 'partially_refunded') && (
@@ -1598,8 +1617,8 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
                             <span style={{ fontSize: 12, color: c.subText, textAlign: 'right' }}>{inv.due_date ? inv.due_date.substring(0, 10) : '—'}</span>
                             <span style={{ fontSize: 11, fontWeight: 600, color: st.color, background: st.bg, padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap' as const }}>{st.label}</span>
                             <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center' }}>
-                              {(inv.status === 'payment_submitted' || inv.invoice_payments?.some(p => p.slip_url)) && (
-                                <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title={inv.status === 'payment_submitted' ? "Review payment" : "View payment slip"}>
+                              {(inv.status === 'payment_submitted' || inv.status === 'paid' || inv.status === 'partially_paid' || inv.invoice_payments?.some(p => p.slip_url)) && (
+                                <button onClick={() => setReviewInvoice(inv)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: '4px 5px', borderRadius: 6, display: 'flex' }} title={inv.status === 'payment_submitted' ? "Review payment" : (inv.status === 'paid' || inv.status === 'partially_paid' ? "Payment details" : "View payment slip")}>
                                   <CreditCard size={14} />
                                 </button>
                               )}

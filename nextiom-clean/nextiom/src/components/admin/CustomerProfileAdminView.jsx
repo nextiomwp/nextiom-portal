@@ -892,7 +892,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
           department: ticketDepartment,
           assigned_staff: ticketAssignedStaff || null,
           response_sla: ticketSla,
-          last_reply_time: new Date().toISOString()
+          last_reply_time: new Date().toISOString(),
+          created_by_admin: true
         }])
         .select()
         .single();
@@ -2456,7 +2457,16 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                         return (
                           <tr key={t.id} style={isOverdue ? { background: isDark ? 'rgba(239, 68, 68, 0.05)' : '#fee2e2' } : {}}>
                             <td style={{ ...row, ...rowColor }}><span style={{ fontFamily: 'monospace' }}>TKT-{t.id.slice(0, 4).toUpperCase()}</span></td>
-                            <td style={{ ...row, ...rowColor, whiteSpace: 'normal', minWidth: 200 }}>{t.subject}</td>
+                            <td style={{ ...row, ...rowColor, whiteSpace: 'normal', minWidth: 200 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span>{t.subject}</span>
+                                {t.created_by_admin && (
+                                  <span style={{ flexShrink: 0, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>
+                                    Admin
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                             <td style={{ ...row, ...rowColor }}>
                               <span style={{ color: ['critical', 'high'].includes(String(t.priority).toLowerCase()) ? '#ef4444' : c.text, fontWeight: 700 }}>
                                 {t.priority}
@@ -2514,7 +2524,14 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                           <div>
                             <span style={{ fontFamily: 'monospace', fontWeight: 600, color: c.brand, fontSize: 13 }}>TKT-{t.id.slice(0, 4).toUpperCase()}</span>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: isOverdue ? '#ef4444' : c.text, marginTop: 2 }}>{t.subject}</div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: isOverdue ? '#ef4444' : c.text, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span>{t.subject}</span>
+                              {t.created_by_admin && (
+                                <span style={{ flexShrink: 0, padding: '1px 5px', borderRadius: 4, background: 'rgba(59,130,246,0.12)', color: '#3b82f6', fontSize: 8, fontWeight: 700, textTransform: 'uppercase' }}>
+                                  Admin
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <StatusBadge status={t.status} />
                         </div>

@@ -1446,11 +1446,11 @@ export const signOutAllUsers = async () => {
 
 // ── Ticket Functions ──────────────────────────────────────────
 
-export const createTicket = async (customerId, subject, priority = 'normal', department = 'Technical Support', selectedQuickAction = null) => {
+export const createTicket = async (customerId, subject, priority = 'normal', department = 'Technical Support', selectedQuickAction = null, createdByAdmin = false) => {
   await assertPortalActionsAllowed();
   const { data, error } = await supabase
     .from('tickets')
-    .insert([{ customer_id: customerId, subject, priority, status: 'open', department, selected_quick_action: selectedQuickAction }])
+    .insert([{ customer_id: customerId, subject, priority, status: 'open', department, selected_quick_action: selectedQuickAction, created_by_admin: createdByAdmin }])
     .select()
     .single();
   if (error) handleSupabaseError(error, 'createTicket');
