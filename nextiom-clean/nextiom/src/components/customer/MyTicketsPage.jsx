@@ -1320,6 +1320,11 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                       <div style={{ maxWidth: isMobile ? '90%' : '72%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                         <div style={{ fontSize: 10, color: c.subText, marginBottom: 3, textAlign: isMe ? 'right' : 'left' }}>
                           {isMe ? 'You' : (msg.sender_name || 'Support Team')} · {fmtTime(msg.created_at)}
+                          {selected.created_by_admin && index === 0 && (
+                            <span style={{ color: '#3b82f6', fontWeight: 600, marginLeft: 6 }}>
+                              (Opened by Admin)
+                            </span>
+                          )}
                         </div>
                         <div style={{
                           padding: '10px 14px',

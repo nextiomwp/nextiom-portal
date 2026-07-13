@@ -2001,6 +2001,11 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                   <div style={{ maxWidth: '85%', minWidth: 0, ...(isEditing ? { width: '100%' } : {}) }}>
                     <div style={{ fontSize: 9, color: c.subText, marginBottom: 3, textAlign: isSenderAdmin ? 'right' : 'left' }}>
                       {isSenderAdmin ? `You (${msg.sender_name || 'Admin'})` : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
+                      {selected.created_by_admin && index === 0 && (
+                        <span style={{ color: '#3b82f6', fontWeight: 600, marginLeft: 6 }}>
+                          (Opened by Admin)
+                        </span>
+                      )}
                     </div>
                     <div style={{
                       padding: '10px 12px',
