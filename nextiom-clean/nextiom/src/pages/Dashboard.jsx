@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown, Calendar, Database } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown, Calendar, Database, Search, X } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -25,7 +25,7 @@ import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification, deleteCustomer } from '@/lib/storage';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification, deleteCustomer, getDomains, getAllTickets } from '@/lib/storage';
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
@@ -37,6 +37,7 @@ import AdminAppointmentsPage from '@/components/admin/AdminAppointmentsPage';
 import AdminBackupPage from '@/components/admin/AdminBackupPage';
 import { TodayAppointmentBanner, AppointmentReminderPopup } from '@/components/admin/AppointmentDashboardWidgets';
 import { getAllAppointments } from '@/lib/appointments';
+import { getInvoices } from '@/lib/invoices';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -284,12 +285,290 @@ function Dashboard({ onLogout }) {
   const [unreadTicketCount, setUnreadTicketCount] = useState(0);
   const [pendingAppointmentsCount, setPendingAppointmentsCount] = useState(0);
 
+  // Search and deep-link states
+  const [domains, setDomains] = useState([]);
+  const [hostingPackages, setHostingPackages] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [customerProfileTab, setCustomerProfileTab] = useState('products');
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
+  const searchBarRef = useRef(null);
+
   useEffect(() => {
     if (active !== 'invoices') { setInvoiceView('list'); setEditInvoiceId(null); }
     if (active !== 'quotations') { setQuotationView('list'); setEditQuotationId(null); }
     if (active !== 'customerProfile') setSelectedCustomer(null);
     if (active === 'invoices') markInvoicesRead();
+    if (active !== 'logs') setSelectedTicketId(null);
   }, [active]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchBarRef.current && !searchBarRef.current.contains(event.target)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getBadgeColor = (type) => {
+    switch (type) {
+      case 'Customer': return '#60a5fa';
+      case 'Product': return '#a78bfa';
+      case 'License': return '#c084fc';
+      case 'Domain': return '#34d399';
+      case 'Domain Request': return '#fbbf24';
+      case 'Hosting': return '#10b981';
+      case 'Hosting Request': return '#f59e0b';
+      case 'Email': return '#f472b6';
+      case 'Ticket': return '#f87171';
+      case 'Invoice': return '#2dd4bf';
+      default: return '#9ca3af';
+    }
+  };
+
+  const getSearchResults = (query) => {
+    if (!query || query.trim().length < 2) return [];
+    const q = query.toLowerCase().trim();
+    const results = [];
+
+    // 1. Customers
+    customers.forEach(cust => {
+      const name = cust.name || '';
+      const email = cust.email || '';
+      const company = cust.company || '';
+      const phone = cust.phone || '';
+      if (
+        name.toLowerCase().includes(q) ||
+        email.toLowerCase().includes(q) ||
+        company.toLowerCase().includes(q) ||
+        phone.includes(q)
+      ) {
+        results.push({
+          type: 'Customer',
+          title: name,
+          subtitle: `${email} ${company ? `· ${company}` : ''}`,
+          onClick: () => {
+            setSelectedCustomer(cust);
+            setCustomerProfileTab('products');
+            navigateTo('customerProfile');
+          }
+        });
+      }
+    });
+
+    // 2. Products
+    products.forEach(prod => {
+      const name = prod.name || '';
+      const desc = prod.description || '';
+      const category = prod.category || '';
+      if (
+        name.toLowerCase().includes(q) ||
+        desc.toLowerCase().includes(q) ||
+        category.toLowerCase().includes(q)
+      ) {
+        results.push({
+          type: 'Product',
+          title: name,
+          subtitle: `${category ? `${category} · ` : ''}Rs. ${prod.price || 0}`,
+          onClick: () => {
+            navigateTo('products');
+          }
+        });
+      }
+    });
+
+    // 3. Assigned Products (Licenses)
+    licenses.forEach(lic => {
+      const key = lic.license_key || '';
+      const prodName = lic.name || lic.products?.name || '';
+      if (key.toLowerCase().includes(q) || prodName.toLowerCase().includes(q)) {
+        const cust = customers.find(c => c.id === lic.customer_id);
+        const custName = cust ? cust.name : 'Unknown Customer';
+        results.push({
+          type: 'License',
+          title: prodName,
+          subtitle: `Key: ${key.slice(0, 12)}... · Customer: ${custName}`,
+          onClick: () => {
+            if (cust) {
+              setSelectedCustomer(cust);
+              setCustomerProfileTab('products');
+              navigateTo('customerProfile');
+            } else {
+              navigateTo('products');
+            }
+          }
+        });
+      }
+    });
+
+    // 4. Domains (Active Domains)
+    domains.forEach(dom => {
+      const name = dom.domain_name || '';
+      const registrar = dom.registrar || '';
+      if (name.toLowerCase().includes(q) || registrar.toLowerCase().includes(q)) {
+        const cust = customers.find(c => c.id === dom.customer_id);
+        const custName = cust ? cust.name : 'Unknown Customer';
+        results.push({
+          type: 'Domain',
+          title: name,
+          subtitle: `Active Domain · Customer: ${custName}`,
+          onClick: () => {
+            if (cust) {
+              setSelectedCustomer(cust);
+              setCustomerProfileTab('domains');
+              navigateTo('customerProfile');
+            } else {
+              navigateTo('approvedHostings');
+            }
+          }
+        });
+      }
+    });
+
+    // 5. Domain Requests
+    requests.forEach(req => {
+      if (req.source === 'domain') {
+        const name = req.domain_name || '';
+        if (name.toLowerCase().includes(q)) {
+          const cust = customers.find(c => c.id === req.customer_id);
+          const custName = cust ? cust.name : req.n || 'Unknown Customer';
+          results.push({
+            type: 'Domain Request',
+            title: name,
+            subtitle: `Status: ${req.status || 'Pending'} · Customer: ${custName}`,
+            onClick: () => {
+              if (cust) {
+                setSelectedCustomer(cust);
+                setCustomerProfileTab('domains');
+                navigateTo('customerProfile');
+              } else {
+                navigateTo('domainsRequests');
+              }
+            }
+          });
+        }
+      }
+    });
+
+    // 6. Hosting Packages (Active hosting)
+    hostingPackages.forEach(pkg => {
+      const dom = pkg.domain || '';
+      const plan = pkg.plan_name || '';
+      const type = pkg.hosting_type || '';
+      if (dom.toLowerCase().includes(q) || plan.toLowerCase().includes(q) || type.toLowerCase().includes(q)) {
+        const cust = customers.find(c => c.id === pkg.customer_id);
+        const custName = cust ? cust.name : 'Unknown Customer';
+        results.push({
+          type: 'Hosting',
+          title: dom,
+          subtitle: `${plan} (${type}) · Customer: ${custName}`,
+          onClick: () => {
+            if (cust) {
+              setSelectedCustomer(cust);
+              setCustomerProfileTab('hosting');
+              navigateTo('customerProfile');
+            } else {
+              navigateTo('activeHosting');
+            }
+          }
+        });
+      }
+    });
+
+    // 7. Hosting Requests
+    requests.forEach(req => {
+      if (req.source === 'hosting') {
+        const dom = req.domain_name || '';
+        const plan = req.plan_name || '';
+        if (dom.toLowerCase().includes(q) || plan.toLowerCase().includes(q)) {
+          const cust = customers.find(c => c.id === req.customer_id);
+          const custName = cust ? cust.name : req.n || 'Unknown Customer';
+          results.push({
+            type: 'Hosting Request',
+            title: dom || plan,
+            subtitle: `Status: ${req.status || 'Pending'} · Customer: ${custName}`,
+            onClick: () => {
+              if (cust) {
+                setSelectedCustomer(cust);
+                setCustomerProfileTab('hosting');
+                navigateTo('customerProfile');
+              } else {
+                navigateTo('hostingRequests');
+              }
+            }
+          });
+        }
+      }
+    });
+
+    // 8. Email Requests
+    emailRequests.forEach(req => {
+      const email = req.email_address || req.email || '';
+      if (email.toLowerCase().includes(q)) {
+        const cust = customers.find(c => c.id === req.customer_id);
+        const custName = cust ? cust.name : 'Unknown Customer';
+        results.push({
+          type: 'Email',
+          title: email,
+          subtitle: `Status: ${req.status || 'Active'} · Customer: ${custName}`,
+          onClick: () => {
+            if (cust) {
+              setSelectedCustomer(cust);
+              setCustomerProfileTab('emails');
+              navigateTo('customerProfile');
+            } else {
+              navigateTo('emailRequests');
+            }
+          }
+        });
+      }
+    });
+
+    // 9. Tickets
+    tickets.forEach(ticket => {
+      const subject = ticket.subject || '';
+      const desc = ticket.description || '';
+      const tId = String(ticket.id || '');
+      if (subject.toLowerCase().includes(q) || desc.toLowerCase().includes(q) || tId.toLowerCase().includes(q)) {
+        const cust = customers.find(c => c.id === ticket.customer_id);
+        const custName = cust ? cust.name : 'Unknown Customer';
+        results.push({
+          type: 'Ticket',
+          title: subject,
+          subtitle: `Ticket #${tId.slice(0, 8)}... · Customer: ${custName}`,
+          onClick: () => {
+            setSelectedTicketId(ticket.id);
+            navigateTo('logs');
+          }
+        });
+      }
+    });
+
+    // 10. Invoices
+    invoices.forEach(inv => {
+      const invNo = inv.invoice_no || '';
+      const client = inv.client_name || '';
+      const email = inv.client_email || '';
+      if (invNo.toLowerCase().includes(q) || client.toLowerCase().includes(q) || email.toLowerCase().includes(q)) {
+        results.push({
+          type: 'Invoice',
+          title: `Invoice ${invNo}`,
+          subtitle: `Client: ${client} · Total: ${inv.currency} ${inv.total} (${inv.status})`,
+          onClick: () => {
+            setEditInvoiceId(inv.id);
+            setInvoiceView('edit');
+            navigateTo('invoices');
+          }
+        });
+      }
+    });
+
+    return results.slice(0, 15);
+  };
   const { toast } = useToast();
   const { signOut } = useAuth();
 
@@ -410,8 +689,9 @@ function Dashboard({ onLogout }) {
       setIsLoading(true);
     }
     try {
-      const [cus, prd, lic, sts, lgs, emailReqs, domReq, hostReq, hostPkg, adminN, hostPlans] = await Promise.all([
-        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getEmailRequests(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications(), getHostingPlans()
+      const [cus, prd, lic, sts, lgs, emailReqs, domReq, hostReq, hostPkg, adminN, hostPlans, doms, tkts, invs] = await Promise.all([
+        getCustomers(), getProducts(), getLicenses(), getStorageStats(), getEmailLogs(), getEmailRequests(), getDomainRequests(), getHostingRequests(), getHostingPackages(), getAdminNotifications(), getHostingPlans(),
+        getDomains().catch(() => []), getAllTickets().catch(() => []), getInvoices().catch(() => [])
       ]);
       
       const domainReqRows = (domReq || []).map(r => ({
@@ -502,6 +782,10 @@ function Dashboard({ onLogout }) {
       setPendingRequests(pendingReqRows);
       setPendingRequestsCount(pendingReqRows.length);
       setHostingPlans(hostPlans || []);
+      setDomains(doms || []);
+      setHostingPackages(hostPkg || []);
+      setTickets(tkts || []);
+      setInvoices(invs || []);
       const approvedEmailStatuses = new Set(['approved', 'active', 'completed', 'expired']);
       const activeEmails = (emailReqs || []).filter(r => approvedEmailStatuses.has(String(r.status || '').toLowerCase()));
       setActiveEmailsCount(activeEmails.length);
@@ -660,7 +944,7 @@ function Dashboard({ onLogout }) {
     switch (active) {
       case 'overview': return <OverviewContent stats={stats} customers={customers} requests={requests} hostingPlans={hostingPlans} pendingRequestsCount={pendingRequestsCount} onNavigate={navigateTo} onViewCustomer={cu => { setSelectedCustomer(cu); navigateTo('customerProfile'); }} onConfirmCustomer={handleConfirmCustomer} onRejectCustomer={handleRejectCustomer} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'adminProfile': return <AdminProfileContent c={c} isDark={isDark} />;
-      case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} onNavigate={navigateTo} /> : null;
+      case 'customerProfile': return selectedCustomer ? <CustomerProfileAdminView customer={selectedCustomer} onBack={() => navigateTo('overview')} isDark={isDark} onNavigate={navigateTo} initialTab={customerProfileTab} /> : null;
       case 'adminNotifications': return (
         <AllAdminNotificationsPage 
           notifications={adminNotifs} 
@@ -686,7 +970,7 @@ function Dashboard({ onLogout }) {
       case 'domainsRequests': return <AdminRequestManagement key={refreshKey} isDark={isDark} />;
       case 'products': return <ProductList key={refreshKey} products={products} licenses={licenses} customers={customers} onUpdate={loadData} isDark={isDark} c={c} />;
       case 'notifications': return <AdminNotificationManagement key={refreshKey} isDark={isDark} isMobile={isMobile} />;
-      case 'logs': return <AdminTicketsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
+      case 'logs': return <AdminTicketsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} initialTicketId={selectedTicketId} />;
       case 'appointments': return <AdminAppointmentsPage key={refreshKey} c={c} isDark={isDark} isMobile={isMobile} />;
       case 'jobs': return (
         <AdminJobsPage 
@@ -933,7 +1217,137 @@ function Dashboard({ onLogout }) {
               {active === 'appointments' ? 'Appointments' : (NAV.find(n => n.id === active)?.label || 'Dashboard')}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: 'auto' }}>
+
+          {/* Middle Search Bar */}
+          {!isMobile && (
+            <div ref={searchBarRef} style={{
+              flex: 1,
+              maxWidth: 400,
+              position: 'relative',
+              zIndex: 50
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                border: `1.5px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
+                borderRadius: '50px',
+                padding: '4px 16px',
+                transition: 'all 0.25s ease',
+              }}
+              onFocusCapture={(e) => {
+                e.currentTarget.style.borderColor = c.brand;
+                e.currentTarget.style.boxShadow = `0 0 10px rgba(232, 123, 53, 0.2)`;
+                setIsSearchFocused(true);
+              }}
+              >
+                <Search size={16} style={{ color: c.subText, marginRight: 8, flexShrink: 0 }} />
+                <input
+                  type="text"
+                  className="admin-search-input"
+                  placeholder="Search anywhere..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: c.text,
+                    fontSize: 13,
+                    width: '100%',
+                    outline: 'none',
+                    padding: '4px 0',
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: c.subText,
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Suggestions Dropdown */}
+              {searchQuery.trim().length >= 2 && isSearchFocused && (
+                <div style={{
+                  position: 'absolute',
+                  top: '105%',
+                  left: 0,
+                  right: 0,
+                  background: c.card,
+                  border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                  borderRadius: 12,
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                  maxHeight: 350,
+                  overflowY: 'auto',
+                  zIndex: 100,
+                  marginTop: 4,
+                  padding: '6px 0'
+                }}>
+                  {getSearchResults(searchQuery).length === 0 ? (
+                    <div style={{ padding: '12px 16px', color: c.subText, fontSize: 13, textAlign: 'center' }}>
+                      No matches found for "{searchQuery}"
+                    </div>
+                  ) : (
+                    getSearchResults(searchQuery).map((result, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          result.onClick();
+                          setSearchQuery('');
+                          setIsSearchFocused(false);
+                        }}
+                        style={{
+                          padding: '10px 16px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 2,
+                          transition: 'background 0.15s ease',
+                          borderBottom: idx < getSearchResults(searchQuery).length - 1 ? `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'}` : 'none'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{result.title}</span>
+                          <span style={{
+                            fontSize: 9,
+                            fontWeight: 700,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: getBadgeColor(result.type) + '22',
+                            color: getBadgeColor(result.type),
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5
+                          }}>
+                            {result.type}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 11, color: c.subText }}>{result.subtitle}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', marginLeft: isMobile ? 'auto' : '0' }}>
 
             {/* ── Refresh Button + Auto-refresh ── */}
             <div ref={autoRefreshMenuRef} style={{ display: 'flex', alignItems: 'center', gap: 0, position: isMobile ? 'static' : 'relative' }}>

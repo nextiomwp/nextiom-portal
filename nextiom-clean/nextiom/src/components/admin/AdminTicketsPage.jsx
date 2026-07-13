@@ -105,7 +105,7 @@ const getProductIcon = (type) => {
   }
 };
 
-export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
+export default function AdminTicketsPage({ c, isDark, isMobile = false, initialTicketId = null }) {
   // Data States
   const [tickets, setTickets] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -239,17 +239,19 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false }) {
 
   useEffect(() => {
     if (tickets.length > 0) {
-      const autoTicketId = sessionStorage.getItem('admin_auto_select_ticket_id');
-      if (autoTicketId) {
-        const tkt = tickets.find(t => t.id === autoTicketId);
+      const targetId = initialTicketId || sessionStorage.getItem('admin_auto_select_ticket_id');
+      if (targetId) {
+        const tkt = tickets.find(t => t.id === targetId);
         if (tkt) {
           setSelectedCustomerId(tkt.customer_id);
           openTicket(tkt);
         }
-        sessionStorage.removeItem('admin_auto_select_ticket_id');
+        if (!initialTicketId) {
+          sessionStorage.removeItem('admin_auto_select_ticket_id');
+        }
       }
     }
-  }, [tickets]);
+  }, [tickets, initialTicketId]);
 
   // Sync draft states when selecting tickets
   useEffect(() => {

@@ -29,6 +29,7 @@
 .dashboard-dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(255,255,255,0.06) !important; }
 .dashboard-dark .hover\:bg-slate-50:hover, .dashboard-dark .hover\:bg-slate-100:hover, .dashboard-dark .hover\:bg-slate-200:hover { background-color: rgba(255,255,255,0.04) !important; }
 .dashboard-dark input, .dashboard-dark select, .dashboard-dark textarea { background-color: #22252C !important; color: #fff !important; border-color: rgba(255,255,255,0.06) !important; }
+.dashboard-dark input.admin-search-input, input.admin-search-input { background-color: transparent !important; border: none !important; border-color: transparent !important; box-shadow: none !important; outline: none !important; }
 .dashboard-dark .shadow-sm { box-shadow: none !important; }
 .dashboard-dark .bg-green-100 { background-color: #1a2f1c !important; color: #639922 !important; }
 .dashboard-dark .text-green-800 { color: #639922 !important; }

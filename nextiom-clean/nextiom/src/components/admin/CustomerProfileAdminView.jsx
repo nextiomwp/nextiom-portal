@@ -46,7 +46,7 @@ import { getCustomerJobs, createJob, updateJob, deleteJob } from '@/lib/jobs';
 import { format } from '@/lib/supabaseHelpers';
 import { useToast } from '@/components/ui/use-toast';
 
-function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate }) {
+function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate, initialTab = 'products' }) {
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -81,7 +81,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate 
   const [allProducts, setAllProducts] = useState([]);
 
   // UI States
-  const [activeTab, setActiveTab] = useState('products');
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [loading, setLoading] = useState(false);

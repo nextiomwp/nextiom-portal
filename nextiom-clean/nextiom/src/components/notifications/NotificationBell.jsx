@@ -132,6 +132,14 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
           if (clearedTime > 0 && timestamp && new Date(timestamp).getTime() <= clearedTime) {
             return;
           }
+          // Check if there is already a physical notification assigning this domain
+          const isAssignedDirectly = dbNotifications.some(n => 
+            (n.title === 'Domain Assigned' || n.title.includes('Domain Assigned')) && 
+            n.message && n.message.includes(r.domain_name)
+          );
+          if (isAssignedDirectly) {
+            return;
+          }
           const title = st === 'rejected'
             ? `Domain Request Rejected — ${r.domain_name}`
             : `Domain Request Approved — ${r.domain_name}`;
@@ -159,6 +167,14 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
             return;
           }
           const planName = r.package_type?.split('|')[0]?.trim() || 'Hosting';
+          // Check if there is already a physical notification assigning this hosting package
+          const isAssignedDirectly = dbNotifications.some(n => 
+            (n.title === 'Hosting Package Assigned' || n.title.includes('Hosting Assigned') || n.title.includes('Hosting Package Assigned')) && 
+            n.message && (n.message.includes(planName) || (r.domain && n.message.includes(r.domain)))
+          );
+          if (isAssignedDirectly) {
+            return;
+          }
           const title = st === 'rejected'
             ? `Hosting Request Rejected — ${planName}`
             : `Hosting Request Approved — ${planName}`;
@@ -209,21 +225,21 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
         .channel(`cust-notif-${userId}`)
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'notifications', filter: `customer_id=eq.${userId}` },
+          { event: '*', schema: 'public', table: 'notifications' },
           () => {
             loadNotifications();
           }
         )
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'domain_requests', filter: `customer_id=eq.${userId}` },
+          { event: '*', schema: 'public', table: 'domain_requests' },
           () => {
             loadNotifications();
           }
         )
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'hosting_requests', filter: `customer_id=eq.${userId}` },
+          { event: '*', schema: 'public', table: 'hosting_requests' },
           () => {
             loadNotifications();
           }
@@ -279,7 +295,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
     return null;
   };
 
-  const handleNotificationClick = async (notification) => {
+  const handleNotificationClick = (notification) => {
     // Mark as read
     if (!notification.read_status) {
       if (notification.virtual) {
@@ -290,7 +306,16 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
         );
         setUnreadCount(prev => Math.max(0, prev - 1));
       } else {
-        await markAsRead(notification.id);
+        // Optimistic UI update
+        setRecentNotifications(prev =>
+          prev.map(n => n.id === notification.id ? { ...n, read_status: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+        
+        // Background DB call
+        markAsRead(notification.id).catch(err => {
+          console.error('Failed to mark notification as read in background:', err);
+        });
       }
     }
     

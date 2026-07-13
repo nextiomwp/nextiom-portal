@@ -533,7 +533,7 @@ function ImpersonationDashboard() {
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `customer_id=eq.${customerProfile.id}` },
+        { event: '*', schema: 'public', table: 'notifications' },
         () => {
           fetchCounts();
         }

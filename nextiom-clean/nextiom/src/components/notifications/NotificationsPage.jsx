@@ -96,6 +96,14 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
             if (clearedTime > 0 && timestamp && new Date(timestamp).getTime() <= clearedTime) {
               return;
             }
+            // Check if there is already a physical notification assigning this domain
+            const isAssignedDirectly = dbNotifications.some(n => 
+              (n.title === 'Domain Assigned' || n.title.includes('Domain Assigned')) && 
+              n.message && n.message.includes(r.domain_name)
+            );
+            if (isAssignedDirectly) {
+              return;
+            }
             const title = st === 'rejected'
               ? `Domain Request Rejected — ${r.domain_name}`
               : `Domain Request Approved — ${r.domain_name}`;
@@ -121,6 +129,14 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
             const planName = r.package_type?.split('|')[0]?.trim() || 'Hosting';
             const timestamp = r.updated_at || r.created_at;
             if (clearedTime > 0 && timestamp && new Date(timestamp).getTime() <= clearedTime) {
+              return;
+            }
+            // Check if there is already a physical notification assigning this hosting package
+            const isAssignedDirectly = dbNotifications.some(n => 
+              (n.title === 'Hosting Package Assigned' || n.title.includes('Hosting Assigned') || n.title.includes('Hosting Package Assigned')) && 
+              n.message && (n.message.includes(planName) || (r.domain && n.message.includes(r.domain)))
+            );
+            if (isAssignedDirectly) {
               return;
             }
             const title = st === 'rejected'
@@ -157,14 +173,16 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
     load();
   }, [customerId]);
 
-  const handleRead = async (e, n) => {
-    e.stopPropagation();
+  const handleRead = (e, n) => {
+    if (e) e.stopPropagation();
     if (n.virtual) {
       setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read_status: true } : x));
       return;
     }
-    await markAsRead(n.id);
     setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read_status: true } : x));
+    markAsRead(n.id).catch(err => {
+      console.error('Failed to mark notification as read in background:', err);
+    });
   };
 
   const toggleExpand = (id) => setExpandedId(prev => prev === id ? null : id);
@@ -314,10 +332,10 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'quotation' || String(n.title || '').toLowerCase().includes('quotation')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   if (!isRead) {
-                                    await handleRead(e, n);
+                                    handleRead(e, n);
                                   }
                                   onNavigate('quotations');
                                 }}
@@ -331,10 +349,10 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'job' || n.type === 'job_update' || String(n.title || '').toLowerCase().includes('information required')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   if (!isRead) {
-                                    await handleRead(e, n);
+                                    handleRead(e, n);
                                   }
                                   const jobTitle = n.title.includes('—') ? n.title.split('—')[1].trim() : '';
                                   if (jobTitle) {
@@ -353,9 +371,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(String(n.type || '').startsWith('appointment') || String(n.title || '').toLowerCase().includes('appointment')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isRead) { await handleRead(e, n); }
+                                  if (!isRead) { handleRead(e, n); }
                                   const parts = String(n.type || '').split(':');
                                   const appointmentId = parts[1] || null;
                                   if (appointmentId) {
@@ -373,9 +391,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'invoice' || String(n.type || '').startsWith('payment_') || String(n.title || '').toLowerCase().includes('invoice') || String(n.title || '').toLowerCase().includes('payment')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isRead) { await handleRead(e, n); }
+                                  if (!isRead) { handleRead(e, n); }
                                   const invNo = getInvoiceNoFromTitle(n.title);
                                   if (invNo) {
                                     sessionStorage.setItem('highlight_invoice_number', invNo);
@@ -392,9 +410,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'domain_request' || String(n.title || '').toLowerCase().includes('domain')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isRead) { await handleRead(e, n); }
+                                  if (!isRead) { handleRead(e, n); }
                                   onNavigate('domains_my');
                                 }}
                                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
@@ -407,9 +425,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'hosting_request' || String(n.title || '').toLowerCase().includes('hosting')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isRead) { await handleRead(e, n); }
+                                  if (!isRead) { handleRead(e, n); }
                                   onNavigate('hosting_my');
                                 }}
                                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
@@ -422,9 +440,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'email_request' || String(n.title || '').toLowerCase().includes('email')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isRead) { await handleRead(e, n); }
+                                  if (!isRead) { handleRead(e, n); }
                                   onNavigate('emails_my');
                                 }}
                                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
@@ -437,9 +455,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'ticket' || String(n.type || '').startsWith('ticket:') || String(n.title || '').toLowerCase().includes('ticket')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isRead) { await handleRead(e, n); }
+                                  if (!isRead) { handleRead(e, n); }
                                   const ticketId = String(n.type).startsWith('ticket:') ? String(n.type).split(':')[1] : null;
                                   if (ticketId) {
                                     sessionStorage.setItem('auto_select_ticket_id', ticketId);
@@ -456,9 +474,9 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                             )}
                             {(n.type === 'product_assigned' || String(n.title || '').toLowerCase().includes('product')) && onNavigate && (
                               <button
-                                onClick={async (e) => {
+                                onClick={(e) => {
                                   e.stopPropagation();
-                                  if (!isRead) { await handleRead(e, n); }
+                                  if (!isRead) { handleRead(e, n); }
                                   onNavigate('products');
                                 }}
                                 className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
