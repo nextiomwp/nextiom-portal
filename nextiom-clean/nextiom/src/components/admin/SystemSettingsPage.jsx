@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard, Shield, Key } from 'lucide-react';
-import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, checkPasscodeSet, verifyPasscode, savePasscodeHash } from '@/lib/storage';
+import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard, Shield, Key, Bell, Search } from 'lucide-react';
+import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, checkPasscodeSet, verifyPasscode, savePasscodeHash, getCustomers } from '@/lib/storage';
 import { sendSms } from '@/lib/sms';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -20,6 +20,15 @@ export default function SystemSettingsPage({ isDark }) {
   const [themeColor, setThemeColor] = useState('#E87B35');
   const [originalColor, setOriginalColor] = useState('#E87B35');
   const [allSettings, setAllSettings] = useState({});
+
+  // Notifications Settings
+  const [customers, setCustomers] = useState([]);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationExemptCustomers, setNotificationExemptCustomers] = useState([]);
+  const [searchCustomerQuery, setSearchCustomerQuery] = useState('');
+
+  const [originalNotificationsEnabled, setOriginalNotificationsEnabled] = useState(true);
+  const [originalNotificationExemptCustomers, setOriginalNotificationExemptCustomers] = useState([]);
   
   // iPay Settings
   const [ipayEnabled, setIpayEnabled] = useState(false);
@@ -282,13 +291,24 @@ export default function SystemSettingsPage({ isDark }) {
         inputBorder: '#e2e8f0' 
       };
 
+  const arraysEqual = (a, b) => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((val, index) => val === sortedB[index]);
+  };
+
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         const portal = await getPortalSettings();
         const passcodeSetStatus = await checkPasscodeSet();
+        const customersData = await getCustomers().catch(() => []);
         if (mounted) {
+          setCustomers(customersData);
           setAllSettings(portal);
           setThemeColor(portal.themeColor || '#E87B35');
           setOriginalColor(portal.themeColor || '#E87B35');
@@ -300,6 +320,12 @@ export default function SystemSettingsPage({ isDark }) {
           setOriginalIpayEnabled(portal.ipayEnabled || false);
           setOriginalIpayWebToken(portal.ipayWebToken || '');
           setOriginalIpaySandbox(portal.ipaySandbox !== false);
+
+          setNotificationsEnabled(portal.notificationsEnabled !== false);
+          setNotificationExemptCustomers(portal.notificationExemptCustomers || []);
+          
+          setOriginalNotificationsEnabled(portal.notificationsEnabled !== false);
+          setOriginalNotificationExemptCustomers(portal.notificationExemptCustomers || []);
 
           setIsPasscodeSet(passcodeSetStatus);
         }
@@ -323,6 +349,8 @@ export default function SystemSettingsPage({ isDark }) {
         ipayEnabled: ipayEnabled,
         ipayWebToken: ipayWebToken,
         ipaySandbox: ipaySandbox,
+        notificationsEnabled: notificationsEnabled,
+        notificationExemptCustomers: notificationExemptCustomers,
       });
 
       setAllSettings(updated);
@@ -330,13 +358,15 @@ export default function SystemSettingsPage({ isDark }) {
       setOriginalIpayEnabled(ipayEnabled);
       setOriginalIpayWebToken(ipayWebToken);
       setOriginalIpaySandbox(ipaySandbox);
+      setOriginalNotificationsEnabled(notificationsEnabled);
+      setOriginalNotificationExemptCustomers(notificationExemptCustomers);
 
       // Create admin activity notification
       await addNotification({
         customer_id: null,
         type: 'admin_activity',
         title: 'System Settings Updated',
-        message: 'The administrator updated the system brand configuration and iPay gateway credentials.',
+        message: 'The administrator updated the system brand, notifications, and iPay gateway configurations.',
       }).catch(() => {});
 
       toast({
@@ -360,6 +390,8 @@ export default function SystemSettingsPage({ isDark }) {
     setIpayEnabled(originalIpayEnabled);
     setIpayWebToken(originalIpayWebToken);
     setIpaySandbox(originalIpaySandbox);
+    setNotificationsEnabled(originalNotificationsEnabled);
+    setNotificationExemptCustomers(originalNotificationExemptCustomers);
     toast({
       title: 'Settings Reset',
       description: 'Reverted settings back to the saved system configuration.',
@@ -381,10 +413,12 @@ export default function SystemSettingsPage({ isDark }) {
   const isChanged = themeColor !== originalColor ||
     ipayEnabled !== originalIpayEnabled ||
     ipayWebToken !== originalIpayWebToken ||
-    ipaySandbox !== originalIpaySandbox;
+    ipaySandbox !== originalIpaySandbox ||
+    notificationsEnabled !== originalNotificationsEnabled ||
+    !arraysEqual(notificationExemptCustomers, originalNotificationExemptCustomers);
 
   return (
-    <form onSubmit={handleSave} style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 32px' }} noValidate>
+    <form onSubmit={handleSave} style={{ maxWidth: 1040, margin: '0 auto', padding: '0 0 32px' }} noValidate>
       <style>{`
         .settings-header {
           display: flex;
@@ -395,17 +429,19 @@ export default function SystemSettingsPage({ isDark }) {
         }
         .settings-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1.15fr 1fr;
           gap: 24px;
+        }
+        @media (max-width: 992px) {
+          .settings-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
         }
         @media (max-width: 768px) {
           .settings-header {
             flex-direction: column;
             align-items: stretch;
-            gap: 16px;
-          }
-          .settings-grid {
-            grid-template-columns: 1fr;
             gap: 16px;
           }
         }
@@ -418,7 +454,7 @@ export default function SystemSettingsPage({ isDark }) {
             System Settings
           </h1>
           <p style={{ fontSize: 13, color: c.subText, marginTop: 4, maxWidth: 500 }}>
-            Configure global look-and-feel variables. Updating the theme color here immediately propagates the brand styling to all customer and admin pages.
+            Configure global look-and-feel variables, payment gateways, notifications, and security protocols.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -460,7 +496,7 @@ export default function SystemSettingsPage({ isDark }) {
       </div>
 
       <div className="settings-grid">
-        {/* ── Left Column: Configuration ──────────────── */}
+        {/* ── Left Column: Brand & Notifications ──────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Card: Brand Color Picker */}
           <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
@@ -475,7 +511,7 @@ export default function SystemSettingsPage({ isDark }) {
             {/* Presets Grid */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Color Presets</label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {COLOR_PRESETS.map((preset) => {
                   const isSelected = themeColor.toLowerCase() === preset.value.toLowerCase();
                   return (
@@ -483,18 +519,33 @@ export default function SystemSettingsPage({ isDark }) {
                       key={preset.value}
                       type="button"
                       onClick={() => handleSelectPreset(preset.value)}
+                      title={preset.name}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '8px 10px', borderRadius: 8,
-                        background: isSelected ? c.hover : 'transparent',
-                        border: `1.5px solid ${isSelected ? 'var(--brand-color)' : c.border}`,
-                        color: c.text, fontSize: 12, fontWeight: 600,
-                        cursor: 'pointer', transition: 'all 0.2s',
-                        textAlign: 'left'
+                        position: 'relative',
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        background: preset.value,
+                        border: isSelected ? `2.5px solid ${c.text}` : `1px solid ${c.borderStrong}`,
+                        cursor: 'pointer',
+                        transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: isSelected ? `0 0 12px ${preset.value}80` : 'none',
                       }}
                     >
-                      <span style={{ width: 14, height: 14, borderRadius: '50%', background: preset.value, border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
-                      <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{preset.name.split(' ')[0]}</span>
+                      {isSelected && (
+                        <div style={{
+                          position: 'absolute',
+                          top: -3, right: -3,
+                          width: 14, height: 14,
+                          borderRadius: '50%',
+                          background: '#10B981',
+                          border: `2px solid ${c.card}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          <CheckCircle2 size={8} style={{ color: '#fff' }} />
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -536,273 +587,172 @@ export default function SystemSettingsPage({ isDark }) {
             </div>
           </div>
 
-          {/* Card: iPay Gateway Integration */}
+          {/* Card: Notifications Control */}
           <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CreditCard size={16} style={{ color: themeColor }} />
-              iPay Payment Gateway Integration
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-              Configure your iPay Global Web Payments integration credentials.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Enable Toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
-                <input
-                  type="checkbox"
-                  checked={ipayEnabled}
-                  onChange={(e) => setIpayEnabled(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: 'var(--brand-color)', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Enable iPay Online Payment Method</span>
-              </label>
-
-              {/* Web Token */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>IPG Integration Token (Public)</label>
-                <input
-                  type="text"
-                  value={ipayWebToken}
-                  onChange={(e) => setIpayWebToken(e.target.value)}
-                  placeholder="Enter IPG Integration Token..."
-                  disabled={!ipayEnabled}
-                  style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 10,
-                    background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                    color: c.text, fontSize: 13,
-                    outline: 'none', transition: 'border-color 0.15s',
-                    opacity: ipayEnabled ? 1 : 0.6,
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                  onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                />
-              </div>
-
-
-
-              {/* Sandbox Mode */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', opacity: ipayEnabled ? 1 : 0.6 }}>
-                <input
-                  type="checkbox"
-                  checked={ipaySandbox}
-                  disabled={!ipayEnabled}
-                  onChange={(e) => setIpaySandbox(e.target.checked)}
-                  style={{ width: 16, height: 16, accentColor: 'var(--brand-color)', cursor: 'pointer' }}
-                />
-                 <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Sandbox Mode (Use Sandbox Endpoint)</span>
-              </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 4px 0' }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Bell size={16} style={{ color: themeColor }} />
+                System Notifications Control
+              </h2>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', backgroundColor: 'var(--brand-color)', padding: '2px 8px', borderRadius: 12 }}>
+                {notificationExemptCustomers.length} Muted
+              </span>
             </div>
-          </div>
-
-          {/* Card: Customer Deletion Security Passcode */}
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Shield size={16} style={{ color: themeColor }} />
-              Customer Deletion Security Passcode
-            </h2>
             <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-              Require a passcode before permanently deleting any customer from the portal.
+              Enable/disable global customer notifications and manage user exclusion lists.
             </p>
 
-            {!isPasscodeSet ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Set Security Passcode</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="password"
-                      value={passcode}
-                      onChange={(e) => setPasscode(e.target.value)}
-                      placeholder="Enter a secure passcode..."
-                      style={{
-                        flex: 1, padding: '10px 14px', borderRadius: 10,
-                        background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                        color: c.text, fontSize: 13,
-                        outline: 'none', transition: 'border-color 0.15s',
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                      onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSetPasscode}
-                      disabled={saving || !passcode}
-                      style={{
-                        padding: '0 16px', borderRadius: 10, border: 'none',
-                        background: passcode ? 'var(--brand-color)' : c.borderStrong,
-                        color: passcode ? '#fff' : c.subText,
-                        fontSize: 13, fontWeight: 700,
-                        cursor: passcode && !saving ? 'pointer' : 'not-allowed',
-                      }}
-                    >
-                      Set Passcode
-                    </button>
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Global Enable Toggle */}
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{
+                  position: 'relative',
+                  width: 44,
+                  height: 24,
+                  backgroundColor: notificationsEnabled ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
+                  borderRadius: 12,
+                  transition: 'background-color 0.2s',
+                  flexShrink: 0,
+                  marginTop: 2
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: notificationsEnabled ? 22 : 2,
+                    width: 20,
+                    height: 20,
+                    backgroundColor: '#fff',
+                    borderRadius: '50%',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                  <input
+                    type="checkbox"
+                    checked={notificationsEnabled}
+                    onChange={(e) => setNotificationsEnabled(e.target.checked)}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Enable Customer Notifications</span>
+                  <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2, lineHeight: 1.4 }}>
+                    If disabled, every customer will be blocked from receiving and viewing notifications on their dashboard.
+                  </span>
+                </div>
+              </label>
+
+              {/* Exempt Customers Section */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Select Exempt Customers (Muted)
+                </label>
+                <span style={{ fontSize: 11, color: c.subText, marginBottom: 8 }}>
+                  Select specific customers who should not receive or see notifications in the system (even when global notifications are enabled).
+                </span>
+
+                {/* Search Input */}
+                <div style={{ position: 'relative', marginBottom: 4 }}>
+                  <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+                  <input
+                    type="text"
+                    value={searchCustomerQuery}
+                    onChange={(e) => setSearchCustomerQuery(e.target.value)}
+                    placeholder="Search by name, email, or company..."
+                    style={{
+                      width: '100%', padding: '9px 12px 9px 34px', borderRadius: 10,
+                      background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                      color: c.text, fontSize: 12.5,
+                      outline: 'none', transition: 'all 0.2s',
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                    onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                  />
+                </div>
+
+                {/* Customer Search / List */}
+                <div style={{
+                  border: `1px solid ${c.inputBorder}`,
+                  borderRadius: 10,
+                  background: c.inputBg,
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  {(() => {
+                    const filtered = customers
+                      .filter(customer => {
+                        const query = searchCustomerQuery.toLowerCase().trim();
+                        if (!query) return true;
+                        return (
+                          String(customer.name || '').toLowerCase().includes(query) ||
+                          String(customer.email || '').toLowerCase().includes(query) ||
+                          String(customer.company || '').toLowerCase().includes(query)
+                        );
+                      })
+                      .sort((a, b) => {
+                        const isAMuted = notificationExemptCustomers.includes(a.id);
+                        const isBMuted = notificationExemptCustomers.includes(b.id);
+                        if (isAMuted && !isBMuted) return -1;
+                        if (!isAMuted && isBMuted) return 1;
+                        return String(a.name || '').localeCompare(String(b.name || ''));
+                      });
+
+                    if (filtered.length === 0) {
+                      return <div style={{ padding: 12, fontSize: 12, color: c.subText, textAlign: 'center' }}>No customers found</div>;
+                    }
+
+                    return filtered.map((customer) => {
+                      const isSelected = notificationExemptCustomers.includes(customer.id);
+                      return (
+                        <label
+                          key={customer.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 12px',
+                            borderBottom: `1px solid ${c.border}`,
+                            cursor: 'pointer',
+                            transition: 'background 0.15s',
+                            background: isSelected ? c.hover : 'transparent',
+                            userSelect: 'none'
+                          }}
+                          onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = c.hover; }}
+                          onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNotificationExemptCustomers([...notificationExemptCustomers, customer.id]);
+                              } else {
+                                setNotificationExemptCustomers(notificationExemptCustomers.filter(id => id !== customer.id));
+                              }
+                            }}
+                            style={{ width: 14, height: 14, accentColor: 'var(--brand-color)', cursor: 'pointer' }}
+                          />
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {customer.name || 'Unnamed Customer'}
+                              {isSelected && (
+                                <span style={{ fontSize: 9, fontWeight: 700, backgroundColor: isDark ? 'rgba(232,123,53,0.15)' : 'var(--brand-color-light)', color: 'var(--brand-color)', padding: '1px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
+                                  Muted
+                                </span>
+                              )}
+                            </span>
+                            <span style={{ fontSize: 11, color: c.subText }}>
+                              {customer.email || 'No Email'} {customer.company ? `• ${customer.company}` : ''}
+                            </span>
+                          </div>
+                        </label>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <CheckCircle2 size={16} style={{ color: '#22c55e' }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text }}>Passcode protection is currently active.</span>
-                </div>
-
-                {!showOtpSection ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Change Passcode</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Passcode</label>
-                        <input
-                          type="password"
-                          value={currentPasscode}
-                          onChange={(e) => setCurrentPasscode(e.target.value)}
-                          placeholder="Enter current passcode..."
-                          style={{
-                            width: '100%', padding: '10px 14px', borderRadius: 10,
-                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                            color: c.text, fontSize: 13,
-                            outline: 'none', transition: 'border-color 0.15s',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', gap: 12 }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Passcode</label>
-                          <input
-                            type="password"
-                            value={newPasscode}
-                            onChange={(e) => setNewPasscode(e.target.value)}
-                            placeholder="Enter new passcode..."
-                            style={{
-                              width: '100%', padding: '10px 14px', borderRadius: 10,
-                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                              color: c.text, fontSize: 13,
-                              outline: 'none', transition: 'border-color 0.15s',
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                          />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirm New Passcode</label>
-                          <input
-                            type="password"
-                            value={confirmNewPasscode}
-                            onChange={(e) => setConfirmNewPasscode(e.target.value)}
-                            placeholder="Confirm new passcode..."
-                            style={{
-                              width: '100%', padding: '10px 14px', borderRadius: 10,
-                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                              color: c.text, fontSize: 13,
-                              outline: 'none', transition: 'border-color 0.15s',
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                          />
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                        <button
-                          type="button"
-                          onClick={() => { setShowOtpSection(true); handleSendOtp(); }}
-                          style={{
-                            background: 'none', border: 'none', color: 'var(--brand-color)',
-                            fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
-                          }}
-                        >
-                          Forgot Passcode? Reset via OTP
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleUpdatePasscode}
-                          disabled={saving || !currentPasscode || !newPasscode || !confirmNewPasscode}
-                          style={{
-                            padding: '10px 20px', borderRadius: 10, border: 'none',
-                            background: (currentPasscode && newPasscode && confirmNewPasscode) ? 'var(--brand-color)' : c.borderStrong,
-                            color: (currentPasscode && newPasscode && confirmNewPasscode) ? '#fff' : c.subText,
-                            fontSize: 13, fontWeight: 700,
-                            cursor: (currentPasscode && newPasscode && confirmNewPasscode) && !saving ? 'pointer' : 'not-allowed',
-                          }}
-                        >
-                          Update Passcode
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Reset Passcode via OTP</h3>
-                    <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.4 }}>
-                      An OTP (One-Time Password) code has been generated and sent to the administrator's verification mobile number: <strong>0701766634</strong>.
-                    </p>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter 6-Digit OTP</label>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                          placeholder="e.g. 123456"
-                          style={{
-                            flex: 1, padding: '10px 14px', borderRadius: 10,
-                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                            color: c.text, fontSize: 14, fontWeight: 'bold', letterSpacing: 2,
-                            outline: 'none', transition: 'border-color 0.15s',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleVerifyOtp}
-                          disabled={verifyingOtp || otpCode.length !== 6}
-                          style={{
-                            padding: '0 20px', borderRadius: 10, border: 'none',
-                            background: otpCode.length === 6 ? 'var(--brand-color)' : c.borderStrong,
-                            color: otpCode.length === 6 ? '#fff' : c.subText,
-                            fontSize: 13, fontWeight: 700,
-                            cursor: otpCode.length === 6 && !verifyingOtp ? 'pointer' : 'not-allowed',
-                          }}
-                        >
-                          {verifyingOtp ? 'Verifying...' : 'Verify & Reset'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                      <button
-                        type="button"
-                        onClick={handleSendOtp}
-                        disabled={sendingOtp}
-                        style={{
-                          background: 'none', border: 'none', color: c.subText,
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
-                        }}
-                      >
-                        {sendingOtp ? 'Sending...' : 'Resend OTP'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setShowOtpSection(false); setOtpSent(false); setOtpCode(''); }}
-                        style={{
-                          background: 'none', border: 'none', color: '#ef4444',
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
           </div>
 
           {/* Info block */}
@@ -811,20 +761,21 @@ export default function SystemSettingsPage({ isDark }) {
             <div>
               <h4 style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#fff' : '#1e3a8a', margin: '0 0 4px 0' }}>Real-time Propagation</h4>
               <p style={{ fontSize: 12, color: isDark ? '#a5b4fc' : '#2563eb', margin: 0, lineHeight: 1.5 }}>
-                When you click Save, the new color is synchronized using Supabase. Any users active on their dashboards (both customers and other admins) will immediately see the layout refresh with the new color without reload.
+                When you click Save, the new configuration is synchronized using Supabase. Any users active on their dashboards will immediately see layout and preference changes propagate without needing a page refresh.
               </p>
             </div>
           </div>
         </div>
 
-        {/* ── Right Column: Live Preview ──────────────── */}
+        {/* ── Right Column: Preview, iPay & Security ──────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Card: Live Components Preview */}
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Layout size={16} style={{ color: themeColor }} />
               Live Components Preview
             </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 6px 0' }}>
+            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 4px 0' }}>
               Preview how buttons, tabs, links, and banners will look dynamically in the portal UI:
             </p>
 
@@ -901,6 +852,325 @@ export default function SystemSettingsPage({ isDark }) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Card: iPay Gateway Integration */}
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <CreditCard size={16} style={{ color: themeColor }} />
+              iPay Payment Gateway Integration
+            </h2>
+            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
+              Configure your iPay Global Web Payments integration credentials.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Enable Toggle */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
+                <div style={{
+                  position: 'relative',
+                  width: 44,
+                  height: 24,
+                  backgroundColor: ipayEnabled ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
+                  borderRadius: 12,
+                  transition: 'background-color 0.2s',
+                  flexShrink: 0
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: ipayEnabled ? 22 : 2,
+                    width: 20,
+                    height: 20,
+                    backgroundColor: '#fff',
+                    borderRadius: '50%',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                  <input
+                    type="checkbox"
+                    checked={ipayEnabled}
+                    onChange={(e) => setIpayEnabled(e.target.checked)}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Enable iPay Online Payments</span>
+                  <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
+                    Allow customers to pay invoices online using the iPay Payment Gateway.
+                  </span>
+                </div>
+              </label>
+
+              {/* Web Token */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>IPG Integration Token (Public)</label>
+                <input
+                  type="text"
+                  value={ipayWebToken}
+                  onChange={(e) => setIpayWebToken(e.target.value)}
+                  placeholder="Enter IPG Integration Token..."
+                  disabled={!ipayEnabled}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 10,
+                    background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                    color: c.text, fontSize: 13,
+                    outline: 'none', transition: 'border-color 0.15s',
+                    opacity: ipayEnabled ? 1 : 0.6,
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                  onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                />
+              </div>
+
+              {/* Sandbox Mode */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: ipayEnabled ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: ipayEnabled ? 1 : 0.6 }}>
+                <div style={{
+                  position: 'relative',
+                  width: 44,
+                  height: 24,
+                  backgroundColor: ipaySandbox ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
+                  borderRadius: 12,
+                  transition: 'background-color 0.2s',
+                  flexShrink: 0
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: 2,
+                    left: ipaySandbox ? 22 : 2,
+                    width: 20,
+                    height: 20,
+                    backgroundColor: '#fff',
+                    borderRadius: '50%',
+                    transition: 'left 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                  }} />
+                  <input
+                    type="checkbox"
+                    checked={ipaySandbox}
+                    disabled={!ipayEnabled}
+                    onChange={(e) => setIpaySandbox(e.target.checked)}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Sandbox Mode</span>
+                  <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
+                    Use the sandbox endpoint for testing transactions.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Card: Customer Deletion Security Passcode */}
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Shield size={16} style={{ color: themeColor }} />
+              Customer Deletion Security Passcode
+            </h2>
+            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
+              Require a passcode before permanently deleting any customer from the portal.
+            </p>
+
+            {!isPasscodeSet ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Set Security Passcode</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="password"
+                      value={passcode}
+                      onChange={(e) => setPasscode(e.target.value)}
+                      placeholder="Enter a secure passcode..."
+                      style={{
+                        flex: 1, padding: '10px 14px', borderRadius: 10,
+                        background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                        color: c.text, fontSize: 13,
+                        outline: 'none', transition: 'border-color 0.15s',
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                      onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSetPasscode}
+                      disabled={saving || !passcode}
+                      style={{
+                        padding: '0 16px', borderRadius: 10, border: 'none',
+                        background: passcode ? 'var(--brand-color)' : c.borderStrong,
+                        color: passcode ? '#fff' : c.subText,
+                        fontSize: 13, fontWeight: 700,
+                        cursor: passcode && !saving ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      Set
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: isDark ? 'rgba(16,185,129,0.08)' : '#ecfdf5', border: `1px solid ${isDark ? 'rgba(16,185,129,0.15)' : '#a7f3d0'}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Shield size={16} style={{ color: '#10b981' }} />
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: isDark ? '#34d399' : '#047857' }}>Passcode protection is active</span>
+                </div>
+
+                {!showOtpSection ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Change Passcode</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Passcode</label>
+                        <input
+                          type="password"
+                          value={currentPasscode}
+                          onChange={(e) => setCurrentPasscode(e.target.value)}
+                          placeholder="Enter current passcode..."
+                          style={{
+                            width: '100%', padding: '10px 14px', borderRadius: 10,
+                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                            color: c.text, fontSize: 13,
+                            outline: 'none', transition: 'border-color 0.15s',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Passcode</label>
+                          <input
+                            type="password"
+                            value={newPasscode}
+                            onChange={(e) => setNewPasscode(e.target.value)}
+                            placeholder="Enter new passcode..."
+                            style={{
+                              width: '100%', padding: '10px 14px', borderRadius: 10,
+                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                              color: c.text, fontSize: 13,
+                              outline: 'none', transition: 'border-color 0.15s',
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                          />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirm Passcode</label>
+                          <input
+                            type="password"
+                            value={confirmNewPasscode}
+                            onChange={(e) => setConfirmNewPasscode(e.target.value)}
+                            placeholder="Confirm new..."
+                            style={{
+                              width: '100%', padding: '10px 14px', borderRadius: 10,
+                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                              color: c.text, fontSize: 13,
+                              outline: 'none', transition: 'border-color 0.15s',
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => { setShowOtpSection(true); handleSendOtp(); }}
+                          style={{
+                            background: 'none', border: 'none', color: 'var(--brand-color)',
+                            fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                          }}
+                        >
+                          Forgot Passcode? Reset via OTP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleUpdatePasscode}
+                          disabled={saving || !currentPasscode || !newPasscode || !confirmNewPasscode}
+                          style={{
+                            padding: '10px 20px', borderRadius: 10, border: 'none',
+                            background: (currentPasscode && newPasscode && confirmNewPasscode) ? 'var(--brand-color)' : c.borderStrong,
+                            color: (currentPasscode && newPasscode && confirmNewPasscode) ? '#fff' : c.subText,
+                            fontSize: 13, fontWeight: 700,
+                            cursor: (currentPasscode && newPasscode && confirmNewPasscode) && !saving ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          Update
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Reset Passcode via OTP</h3>
+                    <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.4 }}>
+                      An OTP (One-Time Password) code has been generated and sent to the administrator's verification mobile number: <strong>0701766634</strong>.
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter 6-Digit OTP</label>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="text"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="e.g. 123456"
+                          style={{
+                            flex: 1, padding: '10px 14px', borderRadius: 10,
+                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                            color: c.text, fontSize: 14, fontWeight: 'bold', letterSpacing: 2,
+                            outline: 'none', transition: 'border-color 0.15s',
+                          }}
+                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleVerifyOtp}
+                          disabled={verifyingOtp || otpCode.length !== 6}
+                          style={{
+                            padding: '0 20px', borderRadius: 10, border: 'none',
+                            background: otpCode.length === 6 ? 'var(--brand-color)' : c.borderStrong,
+                            color: otpCode.length === 6 ? '#fff' : c.subText,
+                            fontSize: 13, fontWeight: 700,
+                            cursor: otpCode.length === 6 && !verifyingOtp ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          {verifyingOtp ? 'Verifying...' : 'Verify & Reset'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        disabled={sendingOtp}
+                        style={{
+                          background: 'none', border: 'none', color: c.subText,
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                        }}
+                      >
+                        {sendingOtp ? 'Sending...' : 'Resend OTP'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowOtpSection(false); setOtpSent(false); setOtpCode(''); }}
+                        style={{
+                          background: 'none', border: 'none', color: '#ef4444',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

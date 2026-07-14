@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server, Key, User as UserIcon } from 'lucide-react';
+import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server, Key, User as UserIcon, MessageSquare } from 'lucide-react';
 import { getEmailRequests, updateEmailRequest, deleteEmailRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import AssignEmailDialog from '@/components/dialogs/AssignEmailDialog';
+import SmsLogDialog from '@/components/dialogs/SmsLogDialog';
 
 function parseEmailNameType(raw) {
   if (!raw) return { emailType: '—', planName: '—', billing: '—' };
@@ -23,6 +24,7 @@ function AdminApprovedEmails({ isDark = true }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editItem, setEditItem] = useState(null);
+  const [smsLogCustomer, setSmsLogCustomer] = useState(null);
   const { toast } = useToast();
 
   const c = isDark
@@ -276,6 +278,7 @@ function AdminApprovedEmails({ isDark = true }) {
                     <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
+                        <Btn color="#10b981" onClick={() => setSmsLogCustomer({ id: h.customer_id, name: h.customers?.name || 'Customer', email: h.customers?.email || '', emailAddress: h.email })} title="SMS Logs"><MessageSquare size={12} /> SMS Log</Btn>
                         <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
                         <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                       </div>
@@ -335,6 +338,7 @@ function AdminApprovedEmails({ isDark = true }) {
 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
                   <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
+                  <Btn color="#10b981" onClick={() => setSmsLogCustomer({ id: h.customer_id, name: h.customers?.name || 'Customer', email: h.customers?.email || '', emailAddress: h.email })} title="SMS Logs"><MessageSquare size={12} /> SMS Log</Btn>
                   <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
                   <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                 </div>
@@ -360,6 +364,15 @@ function AdminApprovedEmails({ isDark = true }) {
           setEditItem(null);
           loadData();
         }}
+      />
+
+      <SmsLogDialog
+        open={!!smsLogCustomer}
+        onClose={() => setSmsLogCustomer(null)}
+        customer={smsLogCustomer}
+        serviceFilter={{ type: 'email', value: smsLogCustomer?.emailAddress }}
+        c={c}
+        isDark={isDark}
       />
     </div>
   );

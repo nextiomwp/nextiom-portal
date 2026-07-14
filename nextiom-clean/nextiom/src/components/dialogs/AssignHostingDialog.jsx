@@ -1,7 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Loader2, Check, DollarSign, HardDrive, Wifi } from 'lucide-react';
+import { Server, Loader2, Check, DollarSign, HardDrive, Wifi, Cpu, Layers, FolderOpen, Globe, Mail, Database } from 'lucide-react';
 import { assignHostingToCustomer, getHostingPlans, updateHostingRequest, parseHostingPackageSummary, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
+
+const parseValueAndUnit = (str, defaultUnit = 'GB') => {
+  if (!str) return { val: '', unit: defaultUnit };
+  const s = String(str).trim();
+  if (s.toLowerCase() === 'unlimited') {
+    return { val: 'Unlimited', unit: defaultUnit };
+  }
+  const match = s.match(/^([\d,.]+)\s*([a-zA-Z]+)$/);
+  if (match) {
+    return { val: match[1], unit: match[2] };
+  }
+  return { val: s, unit: defaultUnit };
+};
+
+const formatValueAndUnit = (val, unit, hasUnit) => {
+  if (!val) return '';
+  const trimmedVal = String(val).trim();
+  if (trimmedVal.toLowerCase() === 'unlimited') return 'Unlimited';
+  if (!hasUnit) return trimmedVal;
+  return `${trimmedVal}${unit}`;
+};
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const parseJson = (value) => {
@@ -29,6 +50,12 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [diskUsageLimit, setDiskUsageLimit] = useState('');
   const [bandwidthLimit, setBandwidthLimit] = useState('');
+  const [cpuCoresLimit, setCpuCoresLimit] = useState('');
+  const [ramLimit, setRamLimit] = useState('');
+  const [inodesLimit, setInodesLimit] = useState('');
+  const [addonDomainsLimit, setAddonDomainsLimit] = useState('');
+  const [emailAccountsLimit, setEmailAccountsLimit] = useState('');
+  const [databasesLimit, setDatabasesLimit] = useState('');
   const [enableResourceOverride, setEnableResourceOverride] = useState(false);
   const [cpanelUrl, setCpanelUrl] = useState('');
   const [cpanelUsername, setCpanelUsername] = useState('');
@@ -81,7 +108,22 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       setStartDate(request.start_date ? new Date(request.start_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
       setDiskUsageLimit(request.disk_usage_limit || '');
       setBandwidthLimit(request.bandwidth_limit || '');
-      setEnableResourceOverride(Boolean(request.disk_usage_limit || request.bandwidth_limit));
+      setCpuCoresLimit(request.cpu_cores_limit || '');
+      setRamLimit(request.ram_limit || '');
+      setInodesLimit(request.inodes_limit || '');
+      setAddonDomainsLimit(request.addon_domains_limit || '');
+      setEmailAccountsLimit(request.email_accounts_limit || '');
+      setDatabasesLimit(request.databases_limit || '');
+      setEnableResourceOverride(Boolean(
+        request.disk_usage_limit ||
+        request.bandwidth_limit ||
+        request.cpu_cores_limit ||
+        request.ram_limit ||
+        request.inodes_limit ||
+        request.addon_domains_limit ||
+        request.email_accounts_limit ||
+        request.databases_limit
+      ));
       setCpanelUrl(cpanelInfo.url || '');
       setCpanelUsername(cpanelInfo.username || '');
       setCpanelPassword(cpanelInfo.password || '');
@@ -112,6 +154,12 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       setStartDate(new Date().toISOString().split('T')[0]);
       setDiskUsageLimit('');
       setBandwidthLimit('');
+      setCpuCoresLimit('');
+      setRamLimit('');
+      setInodesLimit('');
+      setAddonDomainsLimit('');
+      setEmailAccountsLimit('');
+      setDatabasesLimit('');
       setEnableResourceOverride(false);
       setCpanelUrl('');
       setCpanelUsername('');
@@ -197,11 +245,29 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
   }
   const selectedPlans = hostingType ? plans.filter(p => p.hosting_type === hostingType && p.is_active !== false) : [];
   if (isRequestMode && hostingType && planName && !selectedPlans.find(p => p.plan_name === planName)) {
-    selectedPlans.unshift({ id: 'requested-plan', hosting_type: hostingType, plan_name: planName, storage: diskUsageLimit, bandwidth: bandwidthLimit });
+    selectedPlans.unshift({
+      id: 'requested-plan',
+      hosting_type: hostingType,
+      plan_name: planName,
+      storage: diskUsageLimit,
+      bandwidth: bandwidthLimit,
+      cpu_cores: cpuCoresLimit,
+      ram: ramLimit,
+      inodes: inodesLimit,
+      addon_domains: addonDomainsLimit,
+      email_accounts: emailAccountsLimit,
+      databases: databasesLimit
+    });
   }
   const selectedPlan = !planName || !hostingType ? null : plans.find(p => p.hosting_type === hostingType && p.plan_name === planName) || selectedPlans[0] || null;
   const planDisk = selectedPlan?.storage || '';
   const planBw = selectedPlan?.bandwidth || '';
+  const planCpu = selectedPlan?.cpu_cores || '';
+  const planRam = selectedPlan?.ram || '';
+  const planInodes = selectedPlan?.inodes || '';
+  const planAddon = selectedPlan?.addon_domains || '';
+  const planEmail = selectedPlan?.email_accounts || '';
+  const planDb = selectedPlan?.databases || '';
 
   const handlePlanChange = (val) => {
     setPlanName(val);
@@ -210,6 +276,12 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
       if (!enableResourceOverride) {
         setDiskUsageLimit(plan.storage || '');
         setBandwidthLimit(plan.bandwidth || '');
+        setCpuCoresLimit(plan.cpu_cores || '');
+        setRamLimit(plan.ram || '');
+        setInodesLimit(plan.inodes || '');
+        setAddonDomainsLimit(plan.addon_domains || '');
+        setEmailAccountsLimit(plan.email_accounts || '');
+        setDatabasesLimit(plan.databases || '');
       }
       if (plan.renewal_percentage != null) {
         setRenewalPercentage(String(plan.renewal_percentage));
@@ -226,6 +298,77 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
         setPrice(calculatedPrice.toFixed(2));
       }
     }
+  };
+
+  const renderOverrideCard = (title, icon, fieldVal, setFieldVal, planDefault, hasUnit, unitOptions = []) => {
+    const parsed = parseValueAndUnit(fieldVal, unitOptions[0] || 'GB');
+    const parsedDefault = parseValueAndUnit(planDefault, unitOptions[0] || 'GB');
+
+    const handleValChange = (newVal) => {
+      const formatted = formatValueAndUnit(newVal, parsed.unit, hasUnit);
+      setFieldVal(formatted);
+    };
+    
+    const handleUnitChange = (newUnit) => {
+      const formatted = formatValueAndUnit(parsed.val, newUnit, hasUnit);
+      setFieldVal(formatted);
+    };
+
+    const cardBg = isDark ? '#22252C' : '#fff';
+    const currentInputStyle = enableResourceOverride ? fieldStyle : disabledFieldStyle;
+
+    return (
+      <div key={title} style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: subText, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+          {icon}
+          <span>{title}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <input
+            style={{
+              flex: 1,
+              width: '100%',
+              minWidth: 0,
+              padding: '6px 10px',
+              borderRadius: 8,
+              border: `1.5px solid ${border}`,
+              background: currentInputStyle.background,
+              color: currentInputStyle.color,
+              cursor: currentInputStyle.cursor,
+              fontSize: 13,
+              outline: 'none',
+              boxSizing: 'border-box'
+            }}
+            placeholder={parsedDefault.val || (hasUnit ? 'e.g. 5' : 'e.g. 2')}
+            value={parsed.val}
+            onChange={e => handleValChange(e.target.value)}
+            disabled={!enableResourceOverride}
+          />
+          {hasUnit && (
+            <select
+              style={{
+                padding: '6px 8px',
+                borderRadius: 8,
+                border: `1.5px solid ${border}`,
+                background: currentInputStyle.background,
+                color: currentInputStyle.color,
+                cursor: currentInputStyle.cursor,
+                fontSize: 13,
+                outline: 'none'
+              }}
+              value={parsed.unit}
+              onChange={e => handleUnitChange(e.target.value)}
+              disabled={!enableResourceOverride}
+            >
+              {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          )}
+        </div>
+        <div style={{ fontSize: 10.5, color: subText, marginTop: 6, fontWeight: 500 }}>
+          Plan default: {planDefault || 'None'}
+        </div>
+      </div>
+    );
   };
 
   const handleSubmit = async () => {
@@ -253,6 +396,12 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
         start_date: startDate ? new Date(startDate).toISOString() : null,
         disk_usage_limit: enableResourceOverride ? diskUsageLimit.trim() || null : null,
         bandwidth_limit: enableResourceOverride ? bandwidthLimit.trim() || null : null,
+        cpu_cores_limit: enableResourceOverride ? cpuCoresLimit.trim() || null : null,
+        ram_limit: enableResourceOverride ? ramLimit.trim() || null : null,
+        inodes_limit: enableResourceOverride ? inodesLimit.trim() || null : null,
+        addon_domains_limit: enableResourceOverride ? addonDomainsLimit.trim() || null : null,
+        email_accounts_limit: enableResourceOverride ? emailAccountsLimit.trim() || null : null,
+        databases_limit: enableResourceOverride ? databasesLimit.trim() || null : null,
         cpanel: {
           url: cpanelUrl.trim() || null,
           username: cpanelUsername.trim() || null,
@@ -307,6 +456,12 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
           startDate,
           diskUsageLimit: enableResourceOverride ? diskUsageLimit.trim() || null : null,
           bandwidthLimit: enableResourceOverride ? bandwidthLimit.trim() || null : null,
+          cpuCoresLimit: enableResourceOverride ? cpuCoresLimit.trim() || null : null,
+          ramLimit: enableResourceOverride ? ramLimit.trim() || null : null,
+          inodesLimit: enableResourceOverride ? inodesLimit.trim() || null : null,
+          addonDomainsLimit: enableResourceOverride ? addonDomainsLimit.trim() || null : null,
+          emailAccountsLimit: enableResourceOverride ? emailAccountsLimit.trim() || null : null,
+          databasesLimit: enableResourceOverride ? databasesLimit.trim() || null : null,
           cpanel: payload.cpanel,
           ftp: payload.ftp,
           autoRenew,
@@ -410,14 +565,19 @@ function AssignHostingDialog({ open, onClose, customer, c, onSuccess, request, f
                   Enable custom values
                 </label>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <label style={labelS}>Disk Usage Limit</label>
-                  <input className={fieldClass} style={enableResourceOverride ? fieldStyle : disabledFieldStyle} type="text" placeholder={planDisk ? `Plan default: ${planDisk}` : 'e.g. 100 GB'} value={diskUsageLimit} onChange={e => setDiskUsageLimit(e.target.value)} disabled={!enableResourceOverride} />
+              <div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+                  {renderOverrideCard('Disk Space', <HardDrive size={14} />, diskUsageLimit, setDiskUsageLimit, planDisk, true, ['GB', 'MB', 'TB'])}
+                  {renderOverrideCard('Monthly Bandwidth', <Wifi size={14} />, bandwidthLimit, setBandwidthLimit, planBw, true, ['GB', 'TB', 'Unlimited'])}
+                  {renderOverrideCard('CPU Cores', <Cpu size={14} />, cpuCoresLimit, setCpuCoresLimit, planCpu, false)}
+                  {renderOverrideCard('RAM', <Layers size={14} />, ramLimit, setRamLimit, planRam, true, ['GB', 'MB'])}
+                  {renderOverrideCard('Inodes', <FolderOpen size={14} />, inodesLimit, setInodesLimit, planInodes, false)}
+                  {renderOverrideCard('Addon Domains', <Globe size={14} />, addonDomainsLimit, setAddonDomainsLimit, planAddon, false)}
+                  {renderOverrideCard('Email Accounts', <Mail size={14} />, emailAccountsLimit, setEmailAccountsLimit, planEmail, false)}
+                  {renderOverrideCard('Databases', <Database size={14} />, databasesLimit, setDatabasesLimit, planDb, false)}
                 </div>
-                <div>
-                  <label style={labelS}>Bandwidth Limit</label>
-                  <input className={fieldClass} style={enableResourceOverride ? fieldStyle : disabledFieldStyle} type="text" placeholder={planBw ? `Plan default: ${planBw}` : 'e.g. 1 TB'} value={bandwidthLimit} onChange={e => setBandwidthLimit(e.target.value)} disabled={!enableResourceOverride} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: subText, marginTop: 10 }}>
+                  <span>ⓘ Leave blank to use plan default value.</span>
                 </div>
               </div>
             </div>

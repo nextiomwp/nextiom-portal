@@ -81,7 +81,7 @@ export async function saveSmsSettings(settings) {
 
 // ── SMS Log fetching ──────────────────────────────────────────────────────────
 
-export async function getSmsLogs({ limit = 100, type = null } = {}) {
+export async function getSmsLogs({ limit = 100, type = null, customerId = null } = {}) {
   let query = supabase
     .from('sms_logs')
     .select(`
@@ -92,6 +92,7 @@ export async function getSmsLogs({ limit = 100, type = null } = {}) {
     .limit(limit);
 
   if (type) query = query.eq('type', type);
+  if (customerId) query = query.eq('customer_id', customerId);
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);

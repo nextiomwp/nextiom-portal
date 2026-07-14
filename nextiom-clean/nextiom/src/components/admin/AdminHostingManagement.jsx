@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Search, Edit, Plus, Server, Loader2, Trash2, X, Check, Star, DollarSign, Globe, HardDrive, Wifi, Monitor } from 'lucide-react';
+import { Search, Edit, Plus, Server, Loader2, Trash2, X, Check, Star, DollarSign, Globe, HardDrive, Wifi, Monitor, Cpu, Layers, FolderOpen, Mail, Database } from 'lucide-react';
 import { getHostingPlans, addHostingPlan, updateHostingPlan, deleteHostingPlan, deleteHostingType, renameHostingType } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -9,10 +9,33 @@ const DEFAULT_HOSTING_TYPES = ['Shared Hosting', 'VPS Hosting', 'Dedicated Serve
 const EMPTY_ROW = () => ({
   plan_name: '', storage: '', bandwidth: '', websites: '',
   price_monthly: '', discount_yearly: '', discount_2years: '', renewal_percentage: '', is_popular: false, is_active: true,
+  cpu_cores: '', ram: '', inodes: '', addon_domains: '', email_accounts: '', databases: '',
 });
 const EMPTY_EDIT = {
   hosting_type: '', plan_name: '', storage: '', bandwidth: '',
   websites: '', price_monthly: '', discount_yearly: '', discount_2years: '', renewal_percentage: '', is_popular: false, is_active: true,
+  cpu_cores: '', ram: '', inodes: '', addon_domains: '', email_accounts: '', databases: '',
+};
+
+const parseValueAndUnit = (str, defaultUnit = 'GB') => {
+  if (!str) return { val: '', unit: defaultUnit };
+  const s = String(str).trim();
+  if (s.toLowerCase() === 'unlimited') {
+    return { val: 'Unlimited', unit: defaultUnit };
+  }
+  const match = s.match(/^([\d,.]+)\s*([a-zA-Z]+)$/);
+  if (match) {
+    return { val: match[1], unit: match[2] };
+  }
+  return { val: s, unit: defaultUnit };
+};
+
+const formatValueAndUnit = (val, unit, hasUnit) => {
+  if (!val) return '';
+  const trimmedVal = String(val).trim();
+  if (trimmedVal.toLowerCase() === 'unlimited') return 'Unlimited';
+  if (!hasUnit) return trimmedVal;
+  return `${trimmedVal}${unit}`;
 };
 
 const Btn = ({ onClick, color, children, title }) => (
@@ -71,10 +94,59 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addType, setAddType] = useState('');
   const [addRows, setAddRows] = useState([EMPTY_ROW()]);
+  const [activePlanIndex, setActivePlanIndex] = useState(0);
 
   // Edit single modal
   const [editingPlan, setEditingPlan] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_EDIT);
+
+  const renderResourceCard = (title, icon, field, combinedVal, hasUnit, unitOptions = []) => {
+    const parsed = parseValueAndUnit(combinedVal, unitOptions[0] || 'GB');
+    
+    const handleValChange = (newVal) => {
+      const formatted = formatValueAndUnit(newVal, parsed.unit, hasUnit);
+      if (editingPlan) {
+        setEditForm(prev => ({ ...prev, [field]: formatted }));
+      } else {
+        updateRow(activePlanIndex, field, formatted);
+      }
+    };
+    
+    const handleUnitChange = (newUnit) => {
+      const formatted = formatValueAndUnit(parsed.val, newUnit, hasUnit);
+      if (editingPlan) {
+        setEditForm(prev => ({ ...prev, [field]: formatted }));
+      } else {
+        updateRow(activePlanIndex, field, formatted);
+      }
+    };
+
+    return (
+      <div key={title} style={{ background: c.input, border: `1px solid ${c.border}`, borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+          {icon}
+          <span>{title}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <input
+            style={{ flex: 1, width: '100%', minWidth: 0, padding: '6px 10px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: c.bg, color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+            placeholder={hasUnit ? 'e.g. 5' : 'e.g. 2'}
+            value={parsed.val}
+            onChange={e => handleValChange(e.target.value)}
+          />
+          {hasUnit && (
+            <select
+              style={{ padding: '6px 8px', borderRadius: 8, border: `1.5px solid ${c.border}`, background: c.bg, color: c.text, fontSize: 13, outline: 'none', cursor: 'pointer' }}
+              value={parsed.unit}
+              onChange={e => handleUnitChange(e.target.value)}
+            >
+              {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const c = isDark
     ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)', input: '#22252C' }
@@ -99,8 +171,8 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
   const allHostingTypes = [...new Set([...DEFAULT_HOSTING_TYPES, ...plans.map(p => p.hosting_type)])];
 
   // ── Add multiple plans ──────────────────────────────────────────────────────
-  const openAdd = () => { setAddType(''); setAddRows([EMPTY_ROW()]); setShowAddModal(true); };
-  const openAddForType = (type) => { setAddType(type); setAddRows([EMPTY_ROW()]); setShowAddModal(true); };
+  const openAdd = () => { setAddType(''); setAddRows([EMPTY_ROW()]); setActivePlanIndex(0); setShowAddModal(true); };
+  const openAddForType = (type) => { setAddType(type); setAddRows([EMPTY_ROW()]); setActivePlanIndex(0); setShowAddModal(true); };
 
   const updateRow = (i, field, val) => {
     setAddRows(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: val } : r));
@@ -127,6 +199,12 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
           renewal_percentage: row.renewal_percentage ? parseFloat(row.renewal_percentage) : 0,
           is_popular: row.is_popular,
           is_active: row.is_active,
+          cpu_cores: row.cpu_cores || '',
+          ram: row.ram || '',
+          inodes: row.inodes || '',
+          addon_domains: row.addon_domains || '',
+          email_accounts: row.email_accounts || '',
+          databases: row.databases || '',
         });
       }
       toast({ title: 'Saved', description: `${valid.length} plan(s) added for ${addType}` });
@@ -152,6 +230,12 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
       renewal_percentage: plan.renewal_percentage != null ? String(plan.renewal_percentage) : '',
       is_popular: plan.is_popular || false,
       is_active: plan.is_active,
+      cpu_cores: plan.cpu_cores || '',
+      ram: plan.ram || '',
+      inodes: plan.inodes || '',
+      addon_domains: plan.addon_domains || '',
+      email_accounts: plan.email_accounts || '',
+      databases: plan.databases || '',
     });
   };
 
@@ -172,6 +256,12 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
         renewal_percentage: editForm.renewal_percentage ? parseFloat(editForm.renewal_percentage) : 0,
         is_popular: editForm.is_popular,
         is_active: editForm.is_active,
+        cpu_cores: editForm.cpu_cores || '',
+        ram: editForm.ram || '',
+        inodes: editForm.inodes || '',
+        addon_domains: editForm.addon_domains || '',
+        email_accounts: editForm.email_accounts || '',
+        databases: editForm.databases || '',
       });
       toast({ title: 'Updated', description: 'Plan updated successfully' });
       setEditingPlan(null);
@@ -396,59 +486,130 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
                 </datalist>
               </div>
 
-              {/* Plan rows */}
+              {/* Plan tabs */}
               <div style={{ marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <label style={labelS}>Plans</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap', borderBottom: `1px solid ${c.border}`, paddingBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 8 }}>Plans:</span>
+                  {addRows.map((row, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: activePlanIndex === idx ? c.brand : c.bg,
+                        color: activePlanIndex === idx ? '#fff' : c.text,
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        border: `1.5px solid ${activePlanIndex === idx ? c.brand : c.border}`,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setActivePlanIndex(idx)}
+                    >
+                      <span>{row.plan_name || `Plan ${idx + 1}`}</span>
+                      {addRows.length > 1 && (
+                        <button
+                          type="button"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: activePlanIndex === idx ? '#fff' : '#ef4444',
+                            padding: 0,
+                            marginLeft: 6,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeRow(idx);
+                            if (activePlanIndex >= addRows.length - 1) {
+                              setActivePlanIndex(Math.max(0, addRows.length - 2));
+                            }
+                          }}
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                   <button
                     type="button"
-                    onClick={() => setAddRows(prev => [...prev, EMPTY_ROW()])}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 8, border: `1.5px solid ${c.brand}`, background: 'transparent', color: c.brand, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    onClick={() => { setAddRows(prev => [...prev, EMPTY_ROW()]); setActivePlanIndex(addRows.length); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, border: `1.5px solid ${c.brand}`, background: 'transparent', color: c.brand, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                   >
-                    <Plus size={12} /> Add Row
+                    <Plus size={12} /> Add Plan
                   </button>
                 </div>
 
-                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                  <div style={{ minWidth: 680 }}>
-                    {/* Column headers */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.7fr 0.6fr 0.6fr 0.6fr 0.8fr 50px 50px 28px', gap: 6, marginBottom: 6, padding: '0 4px' }}>
-                      {['Plan Name *', 'Storage', 'Bandwidth', '$/mo', '1 Yr %', '2 Yr %', 'Ren %', 'Popular', 'Active', ''].map(h => (
-                        <span key={h} style={{ fontSize: 10, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.7 }}>{h}</span>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {addRows.map((row, i) => (
-                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.7fr 0.7fr 0.6fr 0.6fr 0.6fr 0.8fr 50px 50px 28px', gap: 6, alignItems: 'center' }}>
-                          <input style={inputStyle} placeholder="e.g. Basic" value={row.plan_name} onChange={e => updateRow(i, 'plan_name', e.target.value)} />
-                          <input style={inputStyle} placeholder="10GB" value={row.storage} onChange={e => updateRow(i, 'storage', e.target.value)} />
-                          <input style={inputStyle} placeholder="100GB" value={row.bandwidth} onChange={e => updateRow(i, 'bandwidth', e.target.value)} />
-                          <input style={inputStyle} type="number" step="0.01" min="0" placeholder="2.99" value={row.price_monthly} onChange={e => updateRow(i, 'price_monthly', e.target.value)} />
-                          <input style={inputStyle} type="number" min="0" max="100" placeholder="20" value={row.discount_yearly} onChange={e => updateRow(i, 'discount_yearly', e.target.value)} />
-                          <input style={inputStyle} type="number" min="0" max="100" placeholder="30" value={row.discount_2years} onChange={e => updateRow(i, 'discount_2years', e.target.value)} />
-                          <input style={inputStyle} type="number" min="0" max="100" placeholder="10" value={row.renewal_percentage} onChange={e => updateRow(i, 'renewal_percentage', e.target.value)} />
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <PopularToggle value={row.is_popular} onChange={val => updateRow(i, 'is_popular', val)} />
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Toggle value={row.is_active} onChange={val => updateRow(i, 'is_active', val)} isDark={isDark} />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeRow(i)}
-                            disabled={addRows.length === 1}
-                            style={{ background: 'none', border: 'none', cursor: addRows.length === 1 ? 'not-allowed' : 'pointer', color: addRows.length === 1 ? c.border : '#ef4444', display: 'flex', alignItems: 'center', padding: 4 }}
-                          >
-                            <X size={14} />
-                          </button>
+                {addRows[activePlanIndex] && (() => {
+                  const row = addRows[activePlanIndex];
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {/* Plan details grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={labelS}>Plan Name *</label>
+                          <input style={inputStyle} placeholder="e.g. Basic, Pro" value={row.plan_name} onChange={e => updateRow(activePlanIndex, 'plan_name', e.target.value)} />
                         </div>
-                      ))}
+                        <div>
+                          <label style={labelS}>Price / Month ($)</label>
+                          <input style={inputStyle} type="number" step="0.01" min="0" placeholder="2.99" value={row.price_monthly} onChange={e => updateRow(activePlanIndex, 'price_monthly', e.target.value)} />
+                        </div>
+                        <div>
+                          <label style={labelS}>Websites</label>
+                          <input style={inputStyle} placeholder="e.g. 1, 5, Unlimited" value={row.websites} onChange={e => updateRow(activePlanIndex, 'websites', e.target.value)} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1.2fr', gap: 12 }}>
+                        <div>
+                          <label style={labelS}>1 Yr Discount (%)</label>
+                          <input style={inputStyle} type="number" min="0" max="100" placeholder="20" value={row.discount_yearly} onChange={e => updateRow(activePlanIndex, 'discount_yearly', e.target.value)} />
+                        </div>
+                        <div>
+                          <label style={labelS}>2 Yr Discount (%)</label>
+                          <input style={inputStyle} type="number" min="0" max="100" placeholder="30" value={row.discount_2years} onChange={e => updateRow(activePlanIndex, 'discount_2years', e.target.value)} />
+                        </div>
+                        <div>
+                          <label style={labelS}>Renewal Percentage (%)</label>
+                          <input style={inputStyle} type="number" min="0" max="100" placeholder="10" value={row.renewal_percentage} onChange={e => updateRow(activePlanIndex, 'renewal_percentage', e.target.value)} />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 20, marginBottom: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <PopularToggle value={row.is_popular} onChange={val => updateRow(activePlanIndex, 'is_popular', val)} />
+                          <span style={{ fontSize: 13, color: c.text }}>{row.is_popular ? <><Star size={12} style={{ display: 'inline', color: '#f59e0b', marginRight: 4 }} />Popular plan</> : 'Mark as Popular'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <Toggle value={row.is_active} onChange={val => updateRow(activePlanIndex, 'is_active', val)} isDark={isDark} />
+                          <span style={{ fontSize: 13, color: c.text }}>{row.is_active ? 'Active' : 'Inactive'}</span>
+                        </div>
+                      </div>
+
+                      {/* 8-Card Resource Grid */}
+                      <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>Plan Resources</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginTop: 10 }}>
+                          {renderResourceCard('Disk Space', <HardDrive size={14} />, 'storage', row.storage, true, ['GB', 'MB', 'TB'])}
+                          {renderResourceCard('Monthly Bandwidth', <Wifi size={14} />, 'bandwidth', row.bandwidth, true, ['GB', 'TB', 'Unlimited'])}
+                          {renderResourceCard('CPU Cores', <Cpu size={14} />, 'cpu_cores', row.cpu_cores, false)}
+                          {renderResourceCard('RAM', <Layers size={14} />, 'ram', row.ram, true, ['GB', 'MB'])}
+                          {renderResourceCard('Inodes', <FolderOpen size={14} />, 'inodes', row.inodes, false)}
+                          {renderResourceCard('Addon Domains', <Globe size={14} />, 'addon_domains', row.addon_domains, false)}
+                          {renderResourceCard('Email Accounts', <Mail size={14} />, 'email_accounts', row.email_accounts, false)}
+                          {renderResourceCard('Databases', <Database size={14} />, 'databases', row.databases, false)}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <p style={{ fontSize: 11, color: c.subText, marginTop: 10 }}>
-                  Rows with an empty Plan Name will be skipped. Price/mo is optional (leave blank for custom pricing). Discounts (1 Yr % / 2 Yr %) are percentages. Renewal % is added to the price.
+                  );
+                })()}
+
+                <p style={{ fontSize: 11, color: c.subText, marginTop: 16 }}>
+                  Plans with an empty Plan Name will be skipped. Price/mo is optional (leave blank for custom pricing). Discounts (1 Yr % / 2 Yr %) are percentages. Renewal % is added to the price.
                 </p>
               </div>
 
@@ -468,7 +629,7 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
       <AnimatePresence>
         {editingPlan && (
           <ModalOverlay onClose={() => setEditingPlan(null)}>
-            <ModalBox c={c}>
+            <ModalBox wide={true} c={c}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <span style={{ fontSize: 17, fontWeight: 700, color: c.text }}>Edit Plan</span>
                 <button onClick={() => setEditingPlan(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText }}><X size={18} /></button>
@@ -491,21 +652,15 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
                   </datalist>
                 </div>
 
-                {/* Plan Name */}
-                <div>
-                  <label style={labelS}>Plan Name</label>
-                  <input style={inputStyle} placeholder="e.g. Basic, Standard, Premium" value={editForm.plan_name} onChange={e => setEditForm(prev => ({ ...prev, plan_name: e.target.value }))} />
-                </div>
-
-                {/* Storage + Bandwidth + Websites */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                {/* Plan details grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={labelS}><HardDrive size={11} style={{ display: 'inline', marginRight: 4 }} />Storage</label>
-                    <input style={inputStyle} placeholder="e.g. 10GB" value={editForm.storage} onChange={e => setEditForm(prev => ({ ...prev, storage: e.target.value }))} />
+                    <label style={labelS}>Plan Name</label>
+                    <input style={inputStyle} placeholder="e.g. Basic, Standard, Premium" value={editForm.plan_name} onChange={e => setEditForm(prev => ({ ...prev, plan_name: e.target.value }))} />
                   </div>
                   <div>
-                    <label style={labelS}><Wifi size={11} style={{ display: 'inline', marginRight: 4 }} />Bandwidth</label>
-                    <input style={inputStyle} placeholder="e.g. 100GB" value={editForm.bandwidth} onChange={e => setEditForm(prev => ({ ...prev, bandwidth: e.target.value }))} />
+                    <label style={labelS}><DollarSign size={11} style={{ display: 'inline', marginRight: 4 }} />Price / Month ($)</label>
+                    <input style={inputStyle} type="number" step="0.01" min="0" placeholder="e.g. 2.99" value={editForm.price_monthly} onChange={e => setEditForm(prev => ({ ...prev, price_monthly: e.target.value }))} />
                   </div>
                   <div>
                     <label style={labelS}><Monitor size={11} style={{ display: 'inline', marginRight: 4 }} />Websites</label>
@@ -513,18 +668,11 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
                   </div>
                 </div>
 
-                {/* Pricing */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={labelS}><DollarSign size={11} style={{ display: 'inline', marginRight: 4 }} />Price / Month ($)</label>
-                    <input style={inputStyle} type="number" step="0.01" min="0" placeholder="e.g. 2.99" value={editForm.price_monthly} onChange={e => setEditForm(prev => ({ ...prev, price_monthly: e.target.value }))} />
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1.2fr', gap: 12 }}>
                   <div>
                     <label style={labelS}>1 Yr Discount (%)</label>
                     <input style={inputStyle} type="number" min="0" max="100" placeholder="e.g. 20" value={editForm.discount_yearly} onChange={e => setEditForm(prev => ({ ...prev, discount_yearly: e.target.value }))} />
                   </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label style={labelS}>2 Yr Discount (%)</label>
                     <input style={inputStyle} type="number" min="0" max="100" placeholder="e.g. 30" value={editForm.discount_2years} onChange={e => setEditForm(prev => ({ ...prev, discount_2years: e.target.value }))} />
@@ -534,12 +682,8 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
                     <input style={inputStyle} type="number" min="0" max="100" placeholder="e.g. 10" value={editForm.renewal_percentage} onChange={e => setEditForm(prev => ({ ...prev, renewal_percentage: e.target.value }))} />
                   </div>
                 </div>
-                <p style={{ fontSize: 11, color: c.subText, marginTop: -8 }}>
-                  Discounts are applied directly on the monthly price. Renewal percentage is added to the price upon renewal.
-                </p>
 
-                {/* Popular + Active */}
-                <div style={{ display: 'flex', gap: 20 }}>
+                <div style={{ display: 'flex', gap: 20, marginBottom: 8 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <PopularToggle value={editForm.is_popular} onChange={val => setEditForm(prev => ({ ...prev, is_popular: val }))} />
                     <span style={{ fontSize: 13, color: c.text }}>
@@ -551,9 +695,24 @@ function AdminHostingManagement({ isDark = true, isMobile = false }) {
                     <span style={{ fontSize: 13, color: c.text }}>{editForm.is_active ? 'Active – visible to customers' : 'Inactive – hidden from customers'}</span>
                   </div>
                 </div>
+
+                {/* 8-Card Resource Grid */}
+                <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.8 }}>Plan Resources</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginTop: 10 }}>
+                    {renderResourceCard('Disk Space', <HardDrive size={14} />, 'storage', editForm.storage, true, ['GB', 'MB', 'TB'])}
+                    {renderResourceCard('Monthly Bandwidth', <Wifi size={14} />, 'bandwidth', editForm.bandwidth, true, ['GB', 'TB', 'Unlimited'])}
+                    {renderResourceCard('CPU Cores', <Cpu size={14} />, 'cpu_cores', editForm.cpu_cores, false)}
+                    {renderResourceCard('RAM', <Layers size={14} />, 'ram', editForm.ram, true, ['GB', 'MB'])}
+                    {renderResourceCard('Inodes', <FolderOpen size={14} />, 'inodes', editForm.inodes, false)}
+                    {renderResourceCard('Addon Domains', <Globe size={14} />, 'addon_domains', editForm.addon_domains, false)}
+                    {renderResourceCard('Email Accounts', <Mail size={14} />, 'email_accounts', editForm.email_accounts, false)}
+                    {renderResourceCard('Databases', <Database size={14} />, 'databases', editForm.databases, false)}
+                  </div>
+                </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20, paddingTop: 16, borderTop: `1px solid ${c.border}` }}>
                 <button onClick={() => setEditingPlan(null)} style={{ padding: '8px 18px', borderRadius: 9, border: `1.5px solid ${c.border}`, background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleSaveEdit} disabled={saving} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 9, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                   {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}

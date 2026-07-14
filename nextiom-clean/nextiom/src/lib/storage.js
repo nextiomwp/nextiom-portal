@@ -110,7 +110,16 @@ const calculateHostingExpiryDate = (billingPeriod, startDate) => {
 };
 
 const getHostingPlanLimits = async (hostingType, planName) => {
-  if (!hostingType || !planName) return { disk_usage_limit: null, bandwidth_limit: null };
+  if (!hostingType || !planName) return {
+    disk_usage_limit: null,
+    bandwidth_limit: null,
+    cpu_cores_limit: null,
+    ram_limit: null,
+    inodes_limit: null,
+    addon_domains_limit: null,
+    email_accounts_limit: null,
+    databases_limit: null,
+  };
 
   try {
     const plans = await getHostingPlans();
@@ -118,9 +127,24 @@ const getHostingPlanLimits = async (hostingType, planName) => {
     return {
       disk_usage_limit: plan?.storage || null,
       bandwidth_limit: plan?.bandwidth || null,
+      cpu_cores_limit: plan?.cpu_cores || null,
+      ram_limit: plan?.ram || null,
+      inodes_limit: plan?.inodes || null,
+      addon_domains_limit: plan?.addon_domains || null,
+      email_accounts_limit: plan?.email_accounts || null,
+      databases_limit: plan?.databases || null,
     };
   } catch {
-    return { disk_usage_limit: null, bandwidth_limit: null };
+    return {
+      disk_usage_limit: null,
+      bandwidth_limit: null,
+      cpu_cores_limit: null,
+      ram_limit: null,
+      inodes_limit: null,
+      addon_domains_limit: null,
+      email_accounts_limit: null,
+      databases_limit: null,
+    };
   }
 };
 
@@ -131,7 +155,16 @@ export const buildHostingRequestUpdatePayload = async (request, { status, startD
   const startIso = isApproved ? (startDate ? new Date(startDate).toISOString() : new Date().toISOString()) : undefined;
   const limits = isApproved
     ? await getHostingPlanLimits(request?.hosting_type || parsed.hostingType, request?.plan_name || parsed.planName)
-    : { disk_usage_limit: null, bandwidth_limit: null };
+    : {
+        disk_usage_limit: null,
+        bandwidth_limit: null,
+        cpu_cores_limit: null,
+        ram_limit: null,
+        inodes_limit: null,
+        addon_domains_limit: null,
+        email_accounts_limit: null,
+        databases_limit: null,
+      };
 
   return {
     status: normalizedStatus,
@@ -145,8 +178,14 @@ export const buildHostingRequestUpdatePayload = async (request, { status, startD
     expiry_date: request?.expiry_date || (isApproved && (request?.billing_period || parsed.billingPeriod) ? calculateHostingExpiryDate(request?.billing_period || parsed.billingPeriod, startIso) : null),
     disk_usage_limit: request?.disk_usage_limit || limits.disk_usage_limit || null,
     bandwidth_limit: request?.bandwidth_limit || limits.bandwidth_limit || null,
-    cpanel: request?.cpanel || request?.cpanel || null,
-    ftp: request?.ftp || request?.ftp || null,
+    cpu_cores_limit: request?.cpu_cores_limit || limits.cpu_cores_limit || null,
+    ram_limit: request?.ram_limit || limits.ram_limit || null,
+    inodes_limit: request?.inodes_limit || limits.inodes_limit || null,
+    addon_domains_limit: request?.addon_domains_limit || limits.addon_domains_limit || null,
+    email_accounts_limit: request?.email_accounts_limit || limits.email_accounts_limit || null,
+    databases_limit: request?.databases_limit || limits.databases_limit || null,
+    cpanel: request?.cpanel || null,
+    ftp: request?.ftp || null,
     additional_credentials: request?.additional_credentials || request?.additionalCredentials || null,
     customer_message: request?.customer_message || request?.customerMessage || null,
     show_hosting_access: request?.show_hosting_access ?? request?.showHostingAccess ?? true,
@@ -1172,6 +1211,8 @@ export const DEFAULT_PORTAL_SETTINGS = {
   ipayEnabled: false,
   ipayWebToken: '',
   ipaySandbox: true,
+  notificationsEnabled: true,
+  notificationExemptCustomers: [],
 };
 
 const PORTAL_SETTINGS_STORAGE_KEY = 'portal_settings';
@@ -1207,6 +1248,8 @@ const toPortalSettingsRecord = (settings = {}) => ({
   ipay_enabled: !!settings.ipayEnabled,
   ipay_web_token: settings.ipayWebToken || '',
   ipay_sandbox: settings.ipaySandbox !== false,
+  notifications_enabled: settings.notificationsEnabled !== false,
+  notification_exempt_customers: settings.notificationExemptCustomers || [],
 });
 
 const fromPortalSettingsRecord = (record = {}) => ({
@@ -1224,6 +1267,8 @@ const fromPortalSettingsRecord = (record = {}) => ({
   ipayEnabled: !!(record.ipay_enabled ?? record.ipayEnabled),
   ipayWebToken: record.ipay_web_token ?? record.ipayWebToken ?? '',
   ipaySandbox: (record.ipay_sandbox ?? record.ipaySandbox) !== false,
+  notificationsEnabled: (record.notifications_enabled ?? record.notificationsEnabled) !== false,
+  notificationExemptCustomers: record.notification_exempt_customers ?? record.notificationExemptCustomers ?? [],
 });
 
 export const getPaymentSettings = async () => {
@@ -1675,6 +1720,12 @@ export const assignHostingToCustomer = async (data) => {
     startDate,
     diskUsageLimit,
     bandwidthLimit,
+    cpuCoresLimit,
+    ramLimit,
+    inodesLimit,
+    addonDomainsLimit,
+    emailAccountsLimit,
+    databasesLimit,
     cpanel,
     ftp,
     additionalCredentials,
@@ -1694,15 +1745,34 @@ export const assignHostingToCustomer = async (data) => {
 
   const diskLimit = diskUsageLimit && diskUsageLimit.trim() ? diskUsageLimit.trim() : null;
   const bwLimit = bandwidthLimit && bandwidthLimit.trim() ? bandwidthLimit.trim() : null;
+  const cpuLimit = cpuCoresLimit && cpuCoresLimit.trim() ? cpuCoresLimit.trim() : null;
+  const rLimit = ramLimit && ramLimit.trim() ? ramLimit.trim() : null;
+  const inLimit = inodesLimit && inodesLimit.trim() ? inodesLimit.trim() : null;
+  const addLimit = addonDomainsLimit && addonDomainsLimit.trim() ? addonDomainsLimit.trim() : null;
+  const emLimit = emailAccountsLimit && emailAccountsLimit.trim() ? emailAccountsLimit.trim() : null;
+  const dbLimit = databasesLimit && databasesLimit.trim() ? databasesLimit.trim() : null;
 
   // If admin didn't override allocated resources, pull defaults from hosting plans
   let finalDiskLimit = diskLimit;
   let finalBwLimit = bwLimit;
-  if (!finalDiskLimit || !finalBwLimit) {
+  let finalCpuLimit = cpuLimit;
+  let finalRamLimit = rLimit;
+  let finalInodesLimit = inLimit;
+  let finalAddonLimit = addLimit;
+  let finalEmailLimit = emLimit;
+  let finalDbLimit = dbLimit;
+
+  if (!finalDiskLimit || !finalBwLimit || !finalCpuLimit || !finalRamLimit || !finalInodesLimit || !finalAddonLimit || !finalEmailLimit || !finalDbLimit) {
     try {
       const planLimits = await getHostingPlanLimits(hostingType, planName);
       finalDiskLimit = finalDiskLimit || planLimits.disk_usage_limit || null;
       finalBwLimit = finalBwLimit || planLimits.bandwidth_limit || null;
+      finalCpuLimit = finalCpuLimit || planLimits.cpu_cores_limit || null;
+      finalRamLimit = finalRamLimit || planLimits.ram_limit || null;
+      finalInodesLimit = finalInodesLimit || planLimits.inodes_limit || null;
+      finalAddonLimit = finalAddonLimit || planLimits.addon_domains_limit || null;
+      finalEmailLimit = finalEmailLimit || planLimits.email_accounts_limit || null;
+      finalDbLimit = finalDbLimit || planLimits.databases_limit || null;
     } catch (e) {
       // ignore and leave limits as-is
     }
@@ -1724,6 +1794,12 @@ export const assignHostingToCustomer = async (data) => {
       currency: currency || 'LKR',
       disk_usage_limit: finalDiskLimit,
       bandwidth_limit: finalBwLimit,
+      cpu_cores_limit: finalCpuLimit,
+      ram_limit: finalRamLimit,
+      inodes_limit: finalInodesLimit,
+      addon_domains_limit: finalAddonLimit,
+      email_accounts_limit: finalEmailLimit,
+      databases_limit: finalDbLimit,
       cpanel: cpanel || null,
       ftp: ftp || null,
       additional_credentials: additionalCredentials || null,

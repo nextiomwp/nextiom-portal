@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Bell, AlertCircle, Info, ShoppingBag, Mail, CheckCircle, ChevronDown, ChevronUp, Globe, Server, Briefcase } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { markAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
+import { markAsRead, getCustomerDomainRequests, getCustomerHostingRequests, getPortalSettings } from '@/lib/storage';
 
 const getInvoiceNoFromTitle = (title) => {
   if (!title) return null;
@@ -63,6 +63,16 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
     const load = async () => {
       setIsLoading(true);
       try {
+        const portal = await getPortalSettings().catch(() => null);
+        const isExempt = portal?.notificationExemptCustomers?.includes(customerId);
+        const isGloballyDisabled = portal?.notificationsEnabled === false;
+
+        if (isGloballyDisabled || isExempt) {
+          setNotifications([]);
+          setIsLoading(false);
+          return;
+        }
+
         const [dbRes, domainReqs, hostingReqs, customerRes] = await Promise.all([
           supabase
             .from('notifications')
@@ -81,7 +91,8 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
         const clearedAt = customerRes?.data?.notifications_cleared_at;
         const clearedTime = clearedAt ? new Date(clearedAt).getTime() : 0;
 
-        let dbNotifications = (dbRes.data || []).filter(n => n.type !== 'customer_login');
+        const rawDbNotifications = dbRes.data || [];
+        let dbNotifications = rawDbNotifications.filter(n => n.type !== 'customer_login' && n.type !== 'muted');
         if (clearedTime > 0) {
           dbNotifications = dbNotifications.filter(n => !n.created_at || new Date(n.created_at).getTime() > clearedTime);
         }
@@ -97,7 +108,7 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
               return;
             }
             // Check if there is already a physical notification assigning this domain
-            const isAssignedDirectly = dbNotifications.some(n => 
+            const isAssignedDirectly = rawDbNotifications.some(n => 
               (n.title === 'Domain Assigned' || n.title.includes('Domain Assigned')) && 
               n.message && n.message.includes(r.domain_name)
             );
@@ -132,7 +143,7 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
               return;
             }
             // Check if there is already a physical notification assigning this hosting package
-            const isAssignedDirectly = dbNotifications.some(n => 
+            const isAssignedDirectly = rawDbNotifications.some(n => 
               (n.title === 'Hosting Package Assigned' || n.title.includes('Hosting Assigned') || n.title.includes('Hosting Package Assigned')) && 
               n.message && (n.message.includes(planName) || (r.domain && n.message.includes(r.domain)))
             );

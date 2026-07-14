@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Server, HardDrive, Wifi, CheckCircle, Clock, XCircle, Copy, ExternalLink, Shield, Lock, User, Key, Eye, EyeOff } from 'lucide-react';
+import { X, Server, HardDrive, Wifi, CheckCircle, Clock, XCircle, Copy, ExternalLink, Shield, Lock, User, Key, Eye, EyeOff, Cpu, Layers, FolderOpen, Globe, Mail, Database } from 'lucide-react';
 import { HOSTING_STATUS, REQUEST_STATUS, getHostingRequests, getHostingActivityLog, getHostingPlans } from '@/lib/storage';
 
 function statusBadgeStyle(status, isDark) {
@@ -15,7 +15,7 @@ function statusBadgeStyle(status, isDark) {
 
 function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = {} }) {
   const [requests, setRequests] = useState([]);
-  const [planDefaults, setPlanDefaults] = useState({ disk: '', bw: '' });
+  const [planDefaults, setPlanDefaults] = useState({ disk: '', bw: '', cpu: '', ram: '', inodes: '', addon: '', email: '', db: '' });
   const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const border = c.border || '#ebebeb';
@@ -131,7 +131,16 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
     getHostingPlans().then(plans => {
       const found = (plans || []).find(p => String(p.hosting_type || '').toLowerCase() === String(hostingType || '').toLowerCase() && String(p.plan_name || '').toLowerCase() === String(planName || '').toLowerCase());
       if (found) {
-        setPlanDefaults({ disk: found.storage || '', bw: found.bandwidth || '' });
+        setPlanDefaults({
+          disk: found.storage || '',
+          bw: found.bandwidth || '',
+          cpu: found.cpu_cores || '',
+          ram: found.ram || '',
+          inodes: found.inodes || '',
+          addon: found.addon_domains || '',
+          email: found.email_accounts || '',
+          db: found.databases || '',
+        });
       }
     }).catch(() => {});
   }, [pkg]);
@@ -372,7 +381,7 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
           {/* Usage Metrics */}
           <div>
             <p style={{ color: text, fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Resource Limits & Usage</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
               {[
                 {
                   Icon: HardDrive,
@@ -385,6 +394,42 @@ function HostingPackageDetailsModal({ pkg, isOpen, onClose, isDark = false, c = 
                   label: 'Bandwidth',
                   value: pkg.usage?.bandwidthUsage ? `${pkg.usage.bandwidthUsage} GB` : (pkg.bandwidth_limit || planDefaults.bw || 'N/A'),
                   subtext: 'Monthly data transfer limit'
+                },
+                {
+                  Icon: Cpu,
+                  label: 'CPU Cores',
+                  value: pkg.cpu_cores || planDefaults.cpu || 'N/A',
+                  subtext: 'Allocated CPU compute cores'
+                },
+                {
+                  Icon: Layers,
+                  label: 'RAM',
+                  value: pkg.ram || planDefaults.ram || 'N/A',
+                  subtext: 'Allocated system memory'
+                },
+                {
+                  Icon: FolderOpen,
+                  label: 'Inodes',
+                  value: pkg.inodes || planDefaults.inodes || 'N/A',
+                  subtext: 'File count allocation limit'
+                },
+                {
+                  Icon: Globe,
+                  label: 'Addon Domains',
+                  value: pkg.addon_domains || planDefaults.addon || 'N/A',
+                  subtext: 'Allowed secondary web domains'
+                },
+                {
+                  Icon: Mail,
+                  label: 'Email Accounts',
+                  value: pkg.email_accounts || planDefaults.email || 'N/A',
+                  subtext: 'Allocated custom email mailboxes'
+                },
+                {
+                  Icon: Database,
+                  label: 'Databases',
+                  value: pkg.databases || planDefaults.db || 'N/A',
+                  subtext: 'Allocated relational database slots'
                 },
               ].map(({ Icon, label, value, subtext }) => (
                 <div key={label} style={{

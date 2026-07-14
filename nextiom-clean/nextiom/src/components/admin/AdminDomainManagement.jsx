@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown } from 'lucide-react';
+import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, MessageSquare } from 'lucide-react';
 import { getDomainRequests, updateDomainRequest, deleteDomainRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import AssignDomainDialog from '@/components/dialogs/AssignDomainDialog';
+import SmsLogDialog from '@/components/dialogs/SmsLogDialog';
 
 function AdminDomainManagement({ isDark = true }) {
   const [domains, setDomains] = useState([]);
@@ -11,6 +12,7 @@ function AdminDomainManagement({ isDark = true }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editDomain, setEditDomain] = useState(null);
+  const [smsLogCustomer, setSmsLogCustomer] = useState(null);
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -255,6 +257,7 @@ function AdminDomainManagement({ isDark = true }) {
                   <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                       <Btn color="#378ADD" onClick={() => openEdit(d)} title="Edit"><Edit size={12} /> Edit</Btn>
+                      <Btn color="#10b981" onClick={() => setSmsLogCustomer({ id: d.customer_id, name: d.customers?.name || 'Customer', email: d.customers?.email || '', domainName: d.domain_name })} title="SMS Logs"><MessageSquare size={12} /> SMS Log</Btn>
                       <Btn color={c.brand} onClick={() => handleNotify(d)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
                       <Btn color="#ef4444" onClick={() => handleDelete(d)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                     </div>
@@ -304,6 +307,7 @@ function AdminDomainManagement({ isDark = true }) {
 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
                   <Btn color="#378ADD" onClick={() => openEdit(d)} title="Edit"><Edit size={12} /> Edit</Btn>
+                  <Btn color="#10b981" onClick={() => setSmsLogCustomer({ id: d.customer_id, name: d.customers?.name || 'Customer', email: d.customers?.email || '', domainName: d.domain_name })} title="SMS Logs"><MessageSquare size={12} /> SMS Log</Btn>
                   <Btn color={c.brand} onClick={() => handleNotify(d)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
                   <Btn color="#ef4444" onClick={() => handleDelete(d)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                 </div>
@@ -329,6 +333,15 @@ function AdminDomainManagement({ isDark = true }) {
           setEditDomain(null);
           loadData();
         }}
+      />
+
+      <SmsLogDialog
+        open={!!smsLogCustomer}
+        onClose={() => setSmsLogCustomer(null)}
+        customer={smsLogCustomer}
+        serviceFilter={{ type: 'domain', value: smsLogCustomer?.domainName }}
+        c={c}
+        isDark={isDark}
       />
     </div>
   );

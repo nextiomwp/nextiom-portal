@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server } from 'lucide-react';
+import { Search, Edit, Loader2, Trash2, Bell, X, ChevronDown, Server, MessageSquare } from 'lucide-react';
 import { getHostingRequests, updateHostingRequest, deleteHostingRequest, addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 import AssignHostingDialog from '@/components/dialogs/AssignHostingDialog';
+import SmsLogDialog from '@/components/dialogs/SmsLogDialog';
 
 function parsePackageType(raw) {
   if (!raw) return { hostingType: '—', planName: '—', billing: '—' };
@@ -23,6 +24,7 @@ function AdminApprovedHostings({ isDark = true }) {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [editItem, setEditItem] = useState(null);
+  const [smsLogCustomer, setSmsLogCustomer] = useState(null);
   const { toast } = useToast();
 
   const c = isDark
@@ -277,6 +279,7 @@ function AdminApprovedHostings({ isDark = true }) {
                     <td style={{ ...(i % 2 === 0 ? tdS : tdAlt), textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                         <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
+                        <Btn color="#10b981" onClick={() => setSmsLogCustomer({ id: h.customer_id, name: h.customers?.name || 'Customer', email: h.customers?.email || '', domainName: h.domain, planName: h.plan_name || parsePackageType(h.package_type).planName })} title="SMS Logs"><MessageSquare size={12} /> SMS Log</Btn>
                         <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
                         <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                       </div>
@@ -332,6 +335,7 @@ function AdminApprovedHostings({ isDark = true }) {
 
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }}>
                   <Btn color="#378ADD" onClick={() => openEdit(h)} title="Edit"><Edit size={12} /> Edit</Btn>
+                  <Btn color="#10b981" onClick={() => setSmsLogCustomer({ id: h.customer_id, name: h.customers?.name || 'Customer', email: h.customers?.email || '', domainName: h.domain, planName: h.plan_name || parsePackageType(h.package_type).planName })} title="SMS Logs"><MessageSquare size={12} /> SMS Log</Btn>
                   <Btn color={c.brand} onClick={() => handleNotify(h)} title="Send expiry notification"><Bell size={12} /> Notify</Btn>
                   <Btn color="#ef4444" onClick={() => handleDelete(h)} title="Delete"><Trash2 size={12} /> Delete</Btn>
                 </div>
@@ -357,6 +361,15 @@ function AdminApprovedHostings({ isDark = true }) {
           setEditItem(null);
           loadData();
         }}
+      />
+
+      <SmsLogDialog
+        open={!!smsLogCustomer}
+        onClose={() => setSmsLogCustomer(null)}
+        customer={smsLogCustomer}
+        serviceFilter={{ type: 'hosting', value: smsLogCustomer?.domainName, planName: smsLogCustomer?.planName }}
+        c={c}
+        isDark={isDark}
       />
     </div>
   );

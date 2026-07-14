@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, X, Mail, AlertCircle, ShoppingBag, Info, Receipt, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests } from '@/lib/storage';
+import { getNotifications, markAsRead, markAllNotificationsAsRead, getCustomerDomainRequests, getCustomerHostingRequests, getPortalSettings } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const playNotificationSound = () => {
@@ -93,6 +93,16 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
 
   const loadNotifications = async () => {
     try {
+      const portal = await getPortalSettings().catch(() => null);
+      const isExempt = portal?.notificationExemptCustomers?.includes(userId);
+      const isGloballyDisabled = portal?.notificationsEnabled === false;
+
+      if (isGloballyDisabled || isExempt) {
+        setRecentNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
+
       // Sync mark-all-at from user metadata (cross-browser)
       const { data: { user } } = await supabase.auth.getUser();
       const metaMarkAllAt = user?.user_metadata?.cust_notif_mark_all_at;
@@ -117,7 +127,8 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
       const clearedAt = customerRes?.data?.notifications_cleared_at;
       const clearedTime = clearedAt ? new Date(clearedAt).getTime() : 0;
 
-      let dbNotifications = (Array.isArray(all) ? all : []).filter(n => n.type !== 'customer_login' && n.type !== 'announcement');
+      const rawDbNotifications = Array.isArray(all) ? all : [];
+      let dbNotifications = rawDbNotifications.filter(n => n.type !== 'customer_login' && n.type !== 'announcement' && n.type !== 'muted');
       if (clearedTime > 0) {
         dbNotifications = dbNotifications.filter(n => !n.created_at || new Date(n.created_at).getTime() > clearedTime);
       }
@@ -133,7 +144,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
             return;
           }
           // Check if there is already a physical notification assigning this domain
-          const isAssignedDirectly = dbNotifications.some(n => 
+          const isAssignedDirectly = rawDbNotifications.some(n => 
             (n.title === 'Domain Assigned' || n.title.includes('Domain Assigned')) && 
             n.message && n.message.includes(r.domain_name)
           );
@@ -168,7 +179,7 @@ function NotificationBell({ userId, onViewAll, onNavigate, isDark = false, c = {
           }
           const planName = r.package_type?.split('|')[0]?.trim() || 'Hosting';
           // Check if there is already a physical notification assigning this hosting package
-          const isAssignedDirectly = dbNotifications.some(n => 
+          const isAssignedDirectly = rawDbNotifications.some(n => 
             (n.title === 'Hosting Package Assigned' || n.title.includes('Hosting Assigned') || n.title.includes('Hosting Package Assigned')) && 
             n.message && (n.message.includes(planName) || (r.domain && n.message.includes(r.domain)))
           );
