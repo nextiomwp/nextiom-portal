@@ -210,9 +210,7 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
   const [clientEmail, setClientEmail] = useState('');
   const [clientAddress, setClientAddress] = useState('');
   
-  // Nextiom signatory details
-  const [nextiomSignatoryName, setNextiomSignatoryName] = useState('SLT JAYATHILAKE');
-  const [nextiomSignatoryTitle, setNextiomSignatoryTitle] = useState('DIRECTOR');
+
   
   // Sections data
   const [sections, setSections] = useState([]);
@@ -405,11 +403,26 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
           doc.rect(0, 0, 8, 297, 'F');
           doc.rect(8, 0, 202, 3, 'F');
 
-          // Logo on top right
+          // Logo on top right (scaled preserving aspect ratio)
           if (logoBase64) {
             try {
+              const imgProps = doc.getImageProperties(logoBase64);
+              const aspectRatio = imgProps.width / imgProps.height;
+              const maxWidth = 42;
+              const maxHeight = 14;
+              let logoWidth = maxWidth;
+              let logoHeight = maxHeight;
+              if (aspectRatio > maxWidth / maxHeight) {
+                logoWidth = maxWidth;
+                logoHeight = maxWidth / aspectRatio;
+              } else {
+                logoHeight = maxHeight;
+                logoWidth = maxHeight * aspectRatio;
+              }
+              const logoX = 195 - logoWidth;
+              const logoY = 10 + (maxHeight - logoHeight) / 2;
               const format = getImageFormat(logoBase64);
-              doc.addImage(logoBase64, format, 150, 10, 42, 13);
+              doc.addImage(logoBase64, format, logoX, logoY, logoWidth, logoHeight);
             } catch (err) {
               console.error('[PDF Gen] Logo embed failed:', err);
             }
@@ -432,8 +445,23 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
 
           if (logoBase64) {
             try {
+              const imgProps = doc.getImageProperties(logoBase64);
+              const aspectRatio = imgProps.width / imgProps.height;
+              const maxWidth2 = 30;
+              const maxHeight2 = 9;
+              let logoWidth2 = maxWidth2;
+              let logoHeight2 = maxHeight2;
+              if (aspectRatio > maxWidth2 / maxHeight2) {
+                logoWidth2 = maxWidth2;
+                logoHeight2 = maxWidth2 / aspectRatio;
+              } else {
+                logoHeight2 = maxHeight2;
+                logoWidth2 = maxHeight2 * aspectRatio;
+              }
+              const logoX2 = 195 - logoWidth2;
+              const logoY2 = 8 + (maxHeight2 - logoHeight2) / 2;
               const format = getImageFormat(logoBase64);
-              doc.addImage(logoBase64, format, 165, 8, 30, 9);
+              doc.addImage(logoBase64, format, logoX2, logoY2, logoWidth2, logoHeight2);
             } catch (err) {
               console.error('[PDF Gen] Logo page-2 embed failed:', err);
             }
@@ -636,34 +664,36 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
       // For Client
       doc.text(`For ${clientCompany || clientName || 'Client'}`, col2X, y);
       
-      y += 6.5;
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(51, 51, 51);
-      doc.text(`Name: ${nextiomSignatoryName}`, col1X, y);
-      doc.text('Name: ...........................................', col2X, y);
-      
-      y += 6.5;
-      doc.text(`Title: ${nextiomSignatoryTitle}`, col1X, y);
-      doc.text('Title: ...........................................', col2X, y);
-      
-      let drewSignature = false;
+      // Draw Nextiom Seal/Signature
       if (sigBase64) {
         try {
           const format = getImageFormat(sigBase64);
           doc.addImage(sigBase64, format, col1X, y + 2, 45, 14);
-          drewSignature = true;
         } catch (err) {
-          console.error('[PDF Gen] Signature image embed failed:', err);
+          console.error('[PDF Gen] Seal image embed failed:', err);
         }
       }
+
+      // Draw Client details & signature lines
+      let clientY = y + 6.5;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(51, 51, 51);
+      doc.text('Name: ...........................................', col2X, clientY);
       
-      y += 7.5;
-      doc.text('Signature: ' + (drewSignature ? '' : '...........................'), col1X, y);
-      doc.text('Signature: ...................................', col2X, y);
+      clientY += 6.5;
+      doc.text('Title: ...........................................', col2X, clientY);
       
-      y += 8.5;
-      doc.text(`Date: ${formattedDate}`, col1X, y);
-      doc.text('Date: ...........................................', col2X, y);
+      clientY += 7.5;
+      doc.text('Signature: ...................................', col2X, clientY);
+      
+      clientY += 8.5;
+      doc.text('Date: ...........................................', col2X, clientY);
+
+      // Print Nextiom Date aligned with Client Date
+      doc.text(`Date: ${formattedDate}`, col1X, clientY);
+
+      // Update vertical cursor position
+      y = clientY;
 
       // Save PDF Blob
       const pdfBlob = doc.output('blob');
@@ -940,48 +970,7 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
             )}
           </div>
 
-          {/* Nextiom Signatory */}
-          <h2 style={{ fontSize: 14, fontWeight: 700, color: c.text, borderBottom: `1px solid ${c.border}`, paddingBottom: 10, marginBottom: 14, marginTop: 20 }}>Nextiom Signatory Details</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.subText, marginBottom: 6 }}>Signatory Name</label>
-              <input
-                type="text"
-                value={nextiomSignatoryName}
-                onChange={(e) => setNextiomSignatoryName(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  border: `1.5px solid ${c.border}`,
-                  borderRadius: 8,
-                  background: c.input,
-                  color: c.text,
-                  fontSize: 13,
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.subText, marginBottom: 6 }}>Signatory Title</label>
-              <input
-                type="text"
-                value={nextiomSignatoryTitle}
-                onChange={(e) => setNextiomSignatoryTitle(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px',
-                  border: `1.5px solid ${c.border}`,
-                  borderRadius: 8,
-                  background: c.input,
-                  color: c.text,
-                  fontSize: 13,
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-          </div>
+
         </div>
 
         {/* Right Side: Section Editor */}

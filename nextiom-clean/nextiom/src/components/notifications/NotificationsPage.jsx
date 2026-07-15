@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Bell, AlertCircle, Info, ShoppingBag, Mail, CheckCircle, ChevronDown, ChevronUp, Globe, Server, Briefcase } from 'lucide-react';
+import { Loader2, Bell, AlertCircle, Info, ShoppingBag, Mail, CheckCircle, ChevronDown, ChevronUp, Globe, Server, Briefcase, FileText } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { markAsRead, getCustomerDomainRequests, getCustomerHostingRequests, getPortalSettings } from '@/lib/storage';
 
@@ -28,6 +28,8 @@ function getIconData(type, isDark) {
       return { Icon: Server, color: '#0891b2', bg: isDark ? 'rgba(8,145,178,0.15)' : '#cffafe' };
     case 'email_request':
       return { Icon: Mail, color: 'var(--brand-color)', bg: isDark ? 'var(--brand-color-light)' : 'var(--brand-color-light)' };
+    case 'agreement':
+      return { Icon: FileText, color: 'var(--brand-color)', bg: isDark ? 'var(--brand-color-light)' : 'var(--brand-color-light)' };
     default:
       return { Icon: Mail, color: '#64748b', bg: isDark ? 'rgba(100,116,139,0.15)' : '#f1f5f9' };
   }
@@ -496,6 +498,21 @@ function NotificationsPage({ customerId, onNavigate, isDark = false, c = {} }) {
                                 onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                               >
                                 View Products
+                              </button>
+                            )}
+                            {(n.type === 'agreement' || String(n.title || '').toLowerCase().includes('agreement')) && onNavigate && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isRead) { handleRead(e, n); }
+                                  onNavigate('agreements');
+                                }}
+                                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                                style={{ color: '#fff', backgroundColor: brand }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                              >
+                                View Agreements
                               </button>
                             )}
                           </div>

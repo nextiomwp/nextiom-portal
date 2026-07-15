@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Upload, Loader2, CheckCircle2, Clock, ShieldCheck, AlertCircle } from 'lucide-react';
 import { getAgreements, uploadSignedAgreement, getAgreementUrl } from '@/lib/agreements';
+import { addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
 function CustomerAgreementManagement({ user, isDark = true, c }) {
@@ -35,6 +36,22 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
     try {
       setUploadingId(agreementId);
       await uploadSignedAgreement(agreementId, file);
+      
+      try {
+        const agreementObj = agreements.find(a => a.id === agreementId);
+        const agreementName = agreementObj ? agreementObj.name : 'Agreement';
+        const clientName = user.name || user.email || 'Customer';
+
+        await addNotification({
+          customer_id: null,
+          type: `agreement_signed:${agreementId}`,
+          title: `Agreement Signed — ${clientName}`,
+          message: `${clientName} has uploaded the signed copy of "${agreementName}".`
+        });
+      } catch (errNotif) {
+        console.error('Failed to create admin notification for signed agreement:', errNotif);
+      }
+
       toast({ title: 'Upload Successful', description: 'Your signed agreement has been uploaded and is waiting for review.' });
       loadData();
     } catch (err) {

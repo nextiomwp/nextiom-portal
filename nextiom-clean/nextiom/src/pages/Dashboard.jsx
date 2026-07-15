@@ -1631,6 +1631,7 @@ function Dashboard({ onLogout }) {
                         const n = item.data;
                         const isPayment = n.type === 'payment_submitted';
                         const isJobSubmission = String(n.type || '').startsWith('job_detail_submission:');
+                        const isAgreementSigned = String(n.type || '').startsWith('agreement_signed:');
                         return (
                           <div key={'notif' + (n.id || i)} style={rowStyle}
                             onClick={() => {
@@ -1665,6 +1666,12 @@ function Dashboard({ onLogout }) {
                                   sessionStorage.setItem('admin_highlight_appointment_id', aptId);
                                 }
                               }
+                              if (isAgreementSigned) {
+                                const agId = String(n.type).split(':')[1] || null;
+                                if (agId) {
+                                  sessionStorage.setItem('admin_highlight_agreement_id', agId);
+                                }
+                              }
                               setActive(
                                 isTicket ? 'logs' : 
                                 isEmailRequest ? 'emailRequests' : 
@@ -1672,6 +1679,7 @@ function Dashboard({ onLogout }) {
                                 isQuotation ? 'quotations' : 
                                 isJobSubmission ? 'jobs' :
                                 isAppointment ? 'appointments' :
+                                isAgreementSigned ? 'agreements' :
                                 'adminNotifications'
                               );
                               setIsNotificationsOpen(false);
@@ -2231,8 +2239,9 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
           const isPayment = nType === 'payment_submitted' || titleLower.includes('payment');
           const isQuotation = nType === 'quotation' || titleLower.includes('quotation');
           const isJobSubmission = nType.startsWith('job_detail_submission:');
+          const isAgreementSigned = nType.startsWith('agreement_signed:');
 
-          const isClickable = item.type !== 'notification' || isEmailRequest || isTicket || isPayment || isQuotation || isJobSubmission;
+          const isClickable = item.type !== 'notification' || isEmailRequest || isTicket || isPayment || isQuotation || isJobSubmission || isAgreementSigned;
 
           return (
             <div key={item.id + i} 
@@ -2258,12 +2267,19 @@ function AllAdminNotificationsPage({ notifications, requests, customers, onNavig
                     setHighlightJobId(parts[1] || null);
                     setHighlightReqId(parts[2] || null);
                   }
+                  if (isAgreementSigned) {
+                    const agId = String(item.nType).split(':')[1] || null;
+                    if (agId) {
+                      sessionStorage.setItem('admin_highlight_agreement_id', agId);
+                    }
+                  }
                   onNavigate(
                     isTicket ? 'logs' : 
                     isEmailRequest ? 'emailRequests' : 
                     isPayment ? 'invoices' : 
                     isQuotation ? 'quotations' : 
                     isJobSubmission ? 'jobs' :
+                    isAgreementSigned ? 'agreements' :
                     'adminNotifications'
                   );
                 }

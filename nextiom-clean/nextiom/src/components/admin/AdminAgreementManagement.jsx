@@ -20,6 +20,10 @@ function AdminAgreementManagement({ isDark = true }) {
   const [agreementName, setAgreementName] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   
+  const [highlightedAgreementId, setHighlightedAgreementId] = useState(() => {
+    return typeof window !== 'undefined' ? (sessionStorage.getItem('admin_highlight_agreement_id') || '') : '';
+  });
+  
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia('(max-width: 900px)').matches;
@@ -166,6 +170,15 @@ function AdminAgreementManagement({ isDark = true }) {
 
   return (
     <div>
+      <style>{`
+        @keyframes agreement-blink {
+          0%, 100% { background-color: transparent; }
+          50% { background-color: rgba(232, 123, 53, 0.22); }
+        }
+        .agreement-highlight-blink {
+          animation: agreement-blink 1.5s infinite ease-in-out;
+        }
+      `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Agreement Management</h1>
@@ -275,8 +288,20 @@ function AdminAgreementManagement({ isDark = true }) {
                     <td colSpan={6} style={emptyS}>No agreements found matching criteria</td>
                   </tr>
                 ) : (
-                  filteredAgreements.map((ag) => (
-                    <tr key={ag.id} style={{ borderTop: `1px solid ${c.border}` }}>
+                  filteredAgreements.map((ag) => {
+                    const isHighlighted = ag.id === highlightedAgreementId;
+                    return (
+                      <tr 
+                        key={ag.id} 
+                        className={isHighlighted ? 'agreement-highlight-blink' : ''}
+                        onClick={() => {
+                          if (isHighlighted) {
+                            setHighlightedAgreementId('');
+                            sessionStorage.removeItem('admin_highlight_agreement_id');
+                          }
+                        }}
+                        style={{ borderTop: `1px solid ${c.border}`, transition: 'background-color 0.2s' }}
+                      >
                       <td style={tdS}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <FileText size={16} style={{ color: c.brand }} />
@@ -388,7 +413,8 @@ function AdminAgreementManagement({ isDark = true }) {
                         </div>
                       </td>
                     </tr>
-                  ))
+                  );
+                })
                 )}
               </tbody>
             </table>
