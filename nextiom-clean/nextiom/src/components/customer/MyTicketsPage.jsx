@@ -955,9 +955,11 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
         case 'u':
           return <u key={key} style={{ textDecoration: 'underline' }}>{children}</u>;
         case 'code':
+          const isDarkTheme = isDark || c.text === '#fff';
           return (
             <code key={key} style={{ 
-              background: isOnBrand ? 'rgba(255,255,255,0.12)' : c.hover, 
+              background: isOnBrand ? 'rgba(255,255,255,0.12)' : (isDarkTheme ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'), 
+              color: isOnBrand ? 'rgba(255,255,255,0.95)' : (isDarkTheme ? '#d1d5db' : '#4b5563'),
               padding: '1px 5px', 
               borderRadius: 4, 
               fontSize: 12, 
@@ -1051,9 +1053,10 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
           codeLines.push(lines[j]);
           j++;
         }
+        const isDarkTheme = isDark || c.text === '#fff';
         out.push(
-          <pre key={`code${i}`} style={{ background: isOnBrand ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', padding: '6px 10px', borderRadius: 4, margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
-            <code style={{ background: 'transparent', padding: 0, borderRadius: 0 }}>
+          <pre key={`code${i}`} style={{ background: isOnBrand ? 'rgba(255,255,255,0.1)' : (isDarkTheme ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'), padding: '6px 10px', borderRadius: 4, margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: "'Fira Code', monospace", fontSize: 12, color: isOnBrand ? 'rgba(255,255,255,0.95)' : (isDarkTheme ? '#d1d5db' : '#4b5563') }}>
+            <code style={{ background: 'transparent', padding: 0, borderRadius: 0, color: 'inherit' }}>
               {codeLines.join('\n')}
             </code>
           </pre>
