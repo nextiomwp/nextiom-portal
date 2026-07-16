@@ -96,7 +96,7 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
     <div>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4, color: c.text }}>Agreements & Contracts</h1>
-        <p style={{ fontSize: 14, color: c.subText }}>Review, download templates, and upload signed agreements for your services.</p>
+        <p style={{ fontSize: 14, color: c.subText }}>Review, download agreements, and upload signed agreements for your services.</p>
       </div>
 
       {isLoading ? (
@@ -179,7 +179,7 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
                       {openingId === `template-${ag.id}` ? (
                         <><Loader2 size={15} className="animate-spin" />Opening...</>
                       ) : (
-                        <><Download size={15} />Download Template</>
+                        <><Download size={15} />Download Agreement</>
                       )}
                     </button>
                   )}
