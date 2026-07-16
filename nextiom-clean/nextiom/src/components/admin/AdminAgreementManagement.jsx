@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Loader2, Trash2, FileText, Download, Upload, Check, RefreshCw, X, ChevronDown, CheckCircle, Clock } from 'lucide-react';
 import { getCustomers } from '@/lib/storage';
-import { getAgreements, createAgreement, updateAgreementStatus, deleteAgreement, getAgreementUrl } from '@/lib/agreements';
+import { getAgreements, createAgreement, updateAgreementStatus, deleteAgreement, openAgreementSecurely } from '@/lib/agreements';
 import { useToast } from '@/components/ui/use-toast';
 import AdminAgreementCreator from '@/components/admin/AdminAgreementCreator';
 
@@ -14,6 +14,7 @@ function AdminAgreementManagement({ isDark = true }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [openingId, setOpeningId] = useState(null);
   
   // Upload form state
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -323,10 +324,18 @@ function AdminAgreementManagement({ isDark = true }) {
                       <td style={tdS}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {ag.file_path && (
-                            <a
-                              href={getAgreementUrl(ag.file_path)}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              disabled={openingId === `template-${ag.id}`}
+                              onClick={async () => {
+                                try {
+                                  setOpeningId(`template-${ag.id}`);
+                                  await openAgreementSecurely(ag.file_path);
+                                } catch (err) {
+                                  console.error('Failed to open template:', err);
+                                } finally {
+                                  setOpeningId(null);
+                                }
+                              }}
                               title="Download Unsigned Template"
                               style={{
                                 display: 'inline-flex',
@@ -338,18 +347,31 @@ function AdminAgreementManagement({ isDark = true }) {
                                 color: c.text,
                                 fontSize: 11,
                                 fontWeight: 500,
-                                textDecoration: 'none'
+                                border: 'none',
+                                cursor: openingId === `template-${ag.id}` ? 'not-allowed' : 'pointer',
+                                opacity: openingId === `template-${ag.id}` ? 0.6 : 1,
                               }}
                             >
-                              <Download size={12} />
-                              Template
-                            </a>
+                              {openingId === `template-${ag.id}` ? (
+                                <><Loader2 size={12} className="animate-spin" />...</>
+                              ) : (
+                                <><Download size={12} />Template</>
+                              )}
+                            </button>
                           )}
                           {ag.signed_file_path && (
-                            <a
-                              href={getAgreementUrl(ag.signed_file_path)}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              disabled={openingId === `signed-${ag.id}`}
+                              onClick={async () => {
+                                try {
+                                  setOpeningId(`signed-${ag.id}`);
+                                  await openAgreementSecurely(ag.signed_file_path);
+                                } catch (err) {
+                                  console.error('Failed to open signed file:', err);
+                                } finally {
+                                  setOpeningId(null);
+                                }
+                              }}
                               title="Download Signed Agreement"
                               style={{
                                 display: 'inline-flex',
@@ -361,12 +383,17 @@ function AdminAgreementManagement({ isDark = true }) {
                                 color: isDark ? '#38bdf8' : '#0369a1',
                                 fontSize: 11,
                                 fontWeight: 500,
-                                textDecoration: 'none'
+                                border: 'none',
+                                cursor: openingId === `signed-${ag.id}` ? 'not-allowed' : 'pointer',
+                                opacity: openingId === `signed-${ag.id}` ? 0.6 : 1,
                               }}
                             >
-                              <Download size={12} />
-                              Signed
-                            </a>
+                              {openingId === `signed-${ag.id}` ? (
+                                <><Loader2 size={12} className="animate-spin" />...</>
+                              ) : (
+                                <><Download size={12} />Signed</>
+                              )}
+                            </button>
                           )}
                         </div>
                       </td>

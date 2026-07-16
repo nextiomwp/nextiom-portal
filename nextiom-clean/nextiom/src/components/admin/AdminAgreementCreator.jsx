@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
 import { ArrowLeft, Save, Loader2, Calendar, FileText, ChevronDown, DollarSign, Trash2, Plus } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { createAgreement, getAgreementUrl } from '@/lib/agreements';
+import { createAgreement, openAgreementSecurely } from '@/lib/agreements';
 import { addNotification } from '@/lib/storage';
 import { resolveLogoUrl } from '@/lib/invoices';
 import { useToast } from '@/components/ui/use-toast';
@@ -714,10 +714,7 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
       
       // Instantly open the generated template PDF in a new tab for the admin to view
       try {
-        const pdfUrl = getAgreementUrl(savedAg.file_path);
-        if (pdfUrl) {
-          window.open(pdfUrl, '_blank');
-        }
+        await openAgreementSecurely(savedAg.file_path);
       } catch (err) {
         console.error('Failed to open PDF in new tab:', err);
       }

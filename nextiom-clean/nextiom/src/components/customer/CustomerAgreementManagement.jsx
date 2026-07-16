@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, Upload, Loader2, CheckCircle2, Clock, ShieldCheck, AlertCircle } from 'lucide-react';
-import { getAgreements, uploadSignedAgreement, getAgreementUrl } from '@/lib/agreements';
+import { getAgreements, uploadSignedAgreement, openAgreementSecurely } from '@/lib/agreements';
 import { addNotification } from '@/lib/storage';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -9,6 +9,7 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
   const [isLoading, setIsLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState(null);
   const { toast } = useToast();
+  const [openingId, setOpeningId] = useState(null);
 
   const cardS = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', padding: 20, marginBottom: 16, boxShadow: isDark ? '0 2px 10px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.04)' };
 
@@ -144,10 +145,18 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                   {ag.file_path && (
-                    <a
-                      href={getAgreementUrl(ag.file_path)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      disabled={openingId === `template-${ag.id}`}
+                      onClick={async () => {
+                        try {
+                          setOpeningId(`template-${ag.id}`);
+                          await openAgreementSecurely(ag.file_path);
+                        } catch (err) {
+                          toast({ title: 'Error', description: 'Could not open template. Please try again.', variant: 'destructive' });
+                        } finally {
+                          setOpeningId(null);
+                        }
+                      }}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -160,15 +169,19 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
                         fontSize: 13,
                         fontWeight: 600,
                         textDecoration: 'none',
-                        cursor: 'pointer',
+                        cursor: openingId === `template-${ag.id}` ? 'not-allowed' : 'pointer',
+                        opacity: openingId === `template-${ag.id}` ? 0.6 : 1,
                         transition: 'background 0.15s'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.background = c.hover}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
-                      <Download size={15} />
-                      Download Template
-                    </a>
+                      {openingId === `template-${ag.id}` ? (
+                        <><Loader2 size={15} className="animate-spin" />Opening...</>
+                      ) : (
+                        <><Download size={15} />Download Template</>
+                      )}
+                    </button>
                   )}
 
                   {ag.status === 'pending_signature' && (
@@ -217,10 +230,18 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
                   )}
 
                   {ag.signed_file_path && (
-                    <a
-                      href={getAgreementUrl(ag.signed_file_path)}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      disabled={openingId === `signed-${ag.id}`}
+                      onClick={async () => {
+                        try {
+                          setOpeningId(`signed-${ag.id}`);
+                          await openAgreementSecurely(ag.signed_file_path);
+                        } catch (err) {
+                          toast({ title: 'Error', description: 'Could not open signed copy. Please try again.', variant: 'destructive' });
+                        } finally {
+                          setOpeningId(null);
+                        }
+                      }}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -232,13 +253,16 @@ function CustomerAgreementManagement({ user, isDark = true, c }) {
                         color: isDark ? '#38bdf8' : '#0369a1',
                         fontSize: 13,
                         fontWeight: 600,
-                        textDecoration: 'none',
-                        cursor: 'pointer'
+                        cursor: openingId === `signed-${ag.id}` ? 'not-allowed' : 'pointer',
+                        opacity: openingId === `signed-${ag.id}` ? 0.6 : 1,
                       }}
                     >
-                      <Download size={15} />
-                      View Uploaded Signed Copy
-                    </a>
+                      {openingId === `signed-${ag.id}` ? (
+                        <><Loader2 size={15} className="animate-spin" />Opening...</>
+                      ) : (
+                        <><Download size={15} />View Uploaded Signed Copy</>
+                      )}
+                    </button>
                   )}
                 </div>
               </div>

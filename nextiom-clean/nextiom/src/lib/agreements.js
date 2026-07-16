@@ -100,13 +100,61 @@ export const normalizeAgreementPath = (documentPath) => String(documentPath || '
   .replace(/^\/+/, '');
 
 /**
- * Get public URL for an agreement file.
+ * Securely opens an agreement file in a new browser tab WITHOUT exposing
+ * any Supabase URL, project ID, or storage token in the browser.
+ *
+ * Strategy:
+ *   1. Download the file as a raw Blob via the authenticated Supabase SDK
+ *      (requires the user to be logged in; fails for unauthenticated requests
+ *      when the bucket is set to Private in the Supabase dashboard).
+ *   2. Wrap the blob in a local `blob:` object URL — this URL is only valid
+ *      inside the current browser session and reveals nothing about Supabase.
+ *   3. Open the blob URL in a new tab, then revoke it after 60 s to free memory.
+ *
+ * IMPORTANT: For this to enforce login-required access, the `agreements`
+ * Supabase Storage bucket MUST be set to Private in:
+ *   Supabase Dashboard → Storage → agreements → Settings → Make Private
  */
-export const getAgreementUrl = (filePath) => {
-  if (!filePath) return null;
+export const openAgreementSecurely = async (filePath) => {
+  if (!filePath) throw new Error('No file path provided.');
+
+  // Ensure the user has a valid session before proceeding
+  await getAccessToken();
+
   const path = normalizeAgreementPath(filePath);
-  const { data } = supabase.storage.from('agreements').getPublicUrl(path);
-  return data?.publicUrl;
+
+  // Download the file as a Blob via the authenticated SDK client.
+  // The SDK automatically attaches the user's JWT — unauthenticated
+  // users will receive a 403 when the bucket is set to Private.
+  const { data: blob, error } = await supabase.storage
+    .from('agreements')
+    .download(path);
+
+  if (error) throw error;
+  if (!blob) throw new Error('File could not be retrieved.');
+
+  // Determine MIME type from the file extension
+  const ext = path.split('.').pop()?.toLowerCase() || 'pdf';
+  const mimeType = getMimeType(ext);
+  const typedBlob = new Blob([blob], { type: mimeType });
+
+  // Create a short-lived local blob URL — no Supabase URL is ever visible
+  const blobUrl = URL.createObjectURL(typedBlob);
+  const tab = window.open(blobUrl, '_blank');
+
+  // Revoke the blob URL after 60 s to free browser memory.
+  // The opened tab keeps its own internal reference so the PDF stays visible.
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+
+  if (!tab) {
+    // Fallback: if popup was blocked, trigger a direct download instead
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = path.split('/').pop() || 'agreement.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 };
 
 /**
