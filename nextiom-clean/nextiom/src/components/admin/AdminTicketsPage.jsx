@@ -189,6 +189,14 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
   const [screenshotInput, setScreenshotInput] = useState('');
   const [screenshots, setScreenshots] = useState([]);
 
+  // Saved Messages state
+  const [showSavedMsgsModal, setShowSavedMsgsModal] = useState(false);
+  const [savedMessages, setSavedMessages] = useState([]);
+  const [savedMsgsLoading, setSavedMsgsLoading] = useState(false);
+  const [savingMessage, setSavingMessage] = useState(false);
+  const [savedMsgLabel, setSavedMsgLabel] = useState('');
+  const [showSaveLabelInput, setShowSaveLabelInput] = useState(false);
+
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -911,6 +919,118 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
     } catch {
       toast({ title: 'Failed to delete message', variant: 'destructive' });
     }
+  }
+
+  // Insert "Hi {customerName}" greeting into editor
+  function handleInsertHiGreeting() {
+    const customerName = selected?.customers?.name || selectedCustomer?.name || '';
+    const greeting = customerName ? `Hi ${customerName},\n\n` : 'Hi,\n\n';
+    const editor = replyRef.current;
+    if (!editor) return;
+    editor.focus();
+    const selection = window.getSelection();
+    // Move caret to beginning if editor is empty, else append
+    const isEmpty = editor.innerText.trim() === '';
+    if (isEmpty) {
+      editor.innerHTML = '';
+    }
+    const lines = greeting.split('\n');
+    const frag = document.createDocumentFragment();
+    lines.forEach((line, index) => {
+      if (index > 0) frag.appendChild(document.createElement('br'));
+      if (line) frag.appendChild(document.createTextNode(line));
+    });
+    if (isEmpty || !selection.rangeCount) {
+      editor.insertBefore(frag, editor.firstChild);
+    } else {
+      const range = selection.getRangeAt(0);
+      range.insertNode(frag);
+    }
+    // Move caret to end
+    const newRange = document.createRange();
+    newRange.selectNodeContents(editor);
+    newRange.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+    setReply(htmlToMarkdown(editor));
+  }
+
+  // Save current message to Supabase
+  async function handleSaveMessage() {
+    const currentText = reply.trim();
+    if (!currentText) {
+      toast({ title: 'Nothing to save', description: 'Write a message first before saving.', variant: 'destructive' });
+      return;
+    }
+    setShowSaveLabelInput(true);
+  }
+
+  async function handleConfirmSaveMessage() {
+    const currentText = reply.trim();
+    if (!currentText) return;
+    setSavingMessage(true);
+    try {
+      const { error } = await supabase.from('admin_saved_messages').insert([{
+        label: savedMsgLabel.trim() || currentText.slice(0, 60),
+        content: currentText,
+        created_by: user?.email || 'Admin',
+      }]);
+      if (error) throw error;
+      toast({ title: 'Message saved!', description: 'You can import it anytime from the toolbar.' });
+      setShowSaveLabelInput(false);
+      setSavedMsgLabel('');
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to save message', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavingMessage(false);
+    }
+  }
+
+  // Load saved messages from Supabase
+  async function handleOpenSavedMsgs() {
+    setShowSavedMsgsModal(true);
+    setSavedMsgsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('admin_saved_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setSavedMessages(data || []);
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Failed to load saved messages', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavedMsgsLoading(false);
+    }
+  }
+
+  // Delete a saved message
+  async function handleDeleteSavedMessage(id) {
+    try {
+      const { error } = await supabase.from('admin_saved_messages').delete().eq('id', id);
+      if (error) throw error;
+      setSavedMessages(prev => prev.filter(m => m.id !== id));
+      toast({ title: 'Saved message deleted' });
+    } catch (err) {
+      toast({ title: 'Failed to delete', variant: 'destructive' });
+    }
+  }
+
+  // Insert a saved message into the editor
+  function handleImportSavedMessage(content) {
+    const editor = replyRef.current;
+    if (!editor) return;
+    editor.focus();
+    const currentMd = htmlToMarkdown(editor);
+    const separator = currentMd.trim() ? '\n\n' : '';
+    const newContent = currentMd + separator + content;
+    // Rebuild editor html from markdown
+    editor.innerHTML = markdownToHtml(newContent);
+    setReply(htmlToMarkdown(editor));
+    setShowSavedMsgsModal(false);
+    toast({ title: 'Message imported!' });
   }
 
   // Formatting helpers
@@ -2160,6 +2280,22 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                       border: `1.5px solid ${c.border}`, borderBottom: 'none',
                       borderRadius: '8px 8px 0 0', background: isDark ? '#22252C' : '#f5f5f5', flexWrap: 'wrap'
                     }}>
+                      {/* Hi greeting button */}
+                      <button
+                        onMouseDown={e => { e.preventDefault(); handleInsertHiGreeting(); }}
+                        title={`Insert greeting: Hi ${selected?.customers?.name || selectedCustomer?.name || ''}…`}
+                        onMouseEnter={e => { e.currentTarget.style.background = c.hover; e.currentTarget.style.color = c.brand; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = c.subText; }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', height: 30, padding: '0 7px',
+                          border: 'none', borderRadius: 6, background: 'transparent', color: c.subText,
+                          cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
+                          fontSize: 11, fontWeight: 800, letterSpacing: 0.3,
+                        }}
+                      >
+                        Hi
+                      </button>
+                      {tbd}
                       {tbBtn(Bold, 'Bold', () => applyFormat('bold'), activeFormats.bold)}
                       {tbBtn(Italic, 'Italic', () => applyFormat('italic'), activeFormats.italic)}
                       {tbBtn(Underline, 'Underline', () => applyFormat('underline'), activeFormats.underline)}
@@ -2180,6 +2316,47 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                       })}
                       {tbBtn(Clipboard, 'Paste Link', handlePasteFromClipboard)}
                       {tbBtn(Image, 'Add Screenshot', () => setShowScreenshotHelper(!showScreenshotHelper), showScreenshotHelper)}
+                      {tbd}
+                      {/* Save message button */}
+                      <button
+                        onMouseDown={e => { e.preventDefault(); handleSaveMessage(); }}
+                        title="Save this message for later reuse"
+                        onMouseEnter={e => { e.currentTarget.style.background = c.hover; e.currentTarget.style.color = '#10b981'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = c.subText; }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', height: 30, padding: '0 7px',
+                          border: 'none', borderRadius: 6, background: 'transparent', color: c.subText,
+                          cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
+                          fontSize: 10, fontWeight: 800, letterSpacing: 0.3, gap: 3,
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                          <polyline points="17 21 17 13 7 13 7 21"/>
+                          <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Save
+                      </button>
+                      {/* Import saved message button */}
+                      <button
+                        onMouseDown={e => { e.preventDefault(); handleOpenSavedMsgs(); }}
+                        title="Import a previously saved message"
+                        onMouseEnter={e => { e.currentTarget.style.background = c.hover; e.currentTarget.style.color = c.brand; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = c.subText; }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', height: 30, padding: '0 7px',
+                          border: 'none', borderRadius: 6, background: 'transparent', color: c.subText,
+                          cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
+                          fontSize: 10, fontWeight: 800, letterSpacing: 0.3, gap: 3,
+                        }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="16 16 12 12 8 16"/>
+                          <line x1="12" y1="12" x2="12" y2="21"/>
+                          <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                        </svg>
+                        Import
+                      </button>
                     </div>
 
                     {/* Rich Editor Box */}
@@ -2197,7 +2374,8 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                         placeholder={editorTab === 'note' ? "Type internal note..." : "Type reply..."}
                         style={{
                           ...inp, flex: 1, padding: '8px 12px', border: 'none', background: 'transparent',
-                          color: c.text, fontSize: 13, minWidth: 0, minHeight: 70, maxHeight: 150, overflowY: 'auto'
+                          color: c.text, fontSize: 13, minWidth: 0, minHeight: 70, maxHeight: 150, overflowY: 'auto',
+                          whiteSpace: 'pre-wrap'
                         }}
                       />
                     </div>
@@ -2306,6 +2484,118 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
             )}
           </div>
         )
+      )}
+
+      {/* ================= MODAL: SAVE MESSAGE LABEL INPUT ================= */}
+      {showSaveLabelInput && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          onClick={() => { setShowSaveLabelInput(false); setSavedMsgLabel(''); }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 400, background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 800, fontSize: 14, color: c.text }}>Save Message</span>
+              <button onClick={() => { setShowSaveLabelInput(false); setSavedMsgLabel(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={16} /></button>
+            </div>
+            <p style={{ fontSize: 12, color: c.subText, margin: 0 }}>Give this message a label so you can find it later. Leave blank to auto-label.</p>
+            <input
+              type="text"
+              placeholder="e.g. Welcome greeting, Payment issue response…"
+              value={savedMsgLabel}
+              onChange={e => setSavedMsgLabel(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleConfirmSaveMessage(); }}
+              autoFocus
+              style={{ padding: '9px 12px', border: `1.5px solid ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowSaveLabelInput(false); setSavedMsgLabel(''); }} style={{ padding: '7px 14px', border: `1px solid ${c.border}`, borderRadius: 8, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 12 }}>Cancel</button>
+              <button
+                onClick={handleConfirmSaveMessage}
+                disabled={savingMessage}
+                style={{ padding: '7px 16px', border: 'none', borderRadius: 8, background: '#10b981', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700, opacity: savingMessage ? 0.7 : 1 }}
+              >
+                {savingMessage ? 'Saving…' : 'Save Message'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: IMPORT SAVED MESSAGES ================= */}
+      {showSavedMsgsModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowSavedMsgsModal(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, boxShadow: '0 20px 60px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: `1px solid ${c.border}`, background: c.card }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.brand} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="16 16 12 12 8 16"/>
+                  <line x1="12" y1="12" x2="12" y2="21"/>
+                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                </svg>
+                <span style={{ fontWeight: 800, fontSize: 14, color: c.text }}>Saved Messages</span>
+                <span style={{ fontSize: 11, color: c.subText, background: c.hover, borderRadius: 10, padding: '1px 7px' }}>{savedMessages.length}</span>
+              </div>
+              <button onClick={() => setShowSavedMsgsModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.subText, display: 'flex', padding: 4 }}><X size={16} /></button>
+            </div>
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {savedMsgsLoading ? (
+                <div style={{ textAlign: 'center', padding: 32, color: c.subText, fontSize: 12 }}>
+                  <Loader2 size={22} style={{ margin: '0 auto 8px', opacity: 0.5, animation: 'spin 1s linear infinite' }} />
+                  Loading saved messages…
+                </div>
+              ) : savedMessages.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 40, color: c.subText, fontSize: 13 }}>
+                  <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.3 }}>💬</div>
+                  No saved messages yet. Use the <strong style={{ color: c.text }}>Save</strong> button in the toolbar to store replies.
+                </div>
+              ) : savedMessages.map(msg => (
+                <div
+                  key={msg.id}
+                  style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, transition: 'border-color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = c.brand}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = c.border}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: c.text, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msg.label}</div>
+                      <div style={{ fontSize: 11, color: c.subText, whiteSpace: 'pre-wrap', maxHeight: 60, overflow: 'hidden', lineHeight: 1.5 }}>{msg.content}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button
+                        onClick={() => handleImportSavedMessage(msg.content)}
+                        style={{ padding: '5px 10px', background: c.brand, color: '#fff', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                        title="Use this message"
+                      >
+                        Use
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSavedMessage(msg.id)}
+                        style={{ padding: '5px 6px', background: 'transparent', color: '#ef4444', border: `1px solid rgba(239,68,68,0.3)`, borderRadius: 6, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                        title="Delete saved message"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                  {msg.created_by && (
+                    <div style={{ fontSize: 10, color: c.subText, opacity: 0.7 }}>Saved by {msg.created_by} · {msg.created_at ? new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ================= MODAL: CUSTOMER PROFILE SUMMARY (SLIDE OUT PANEL) ================= */}
