@@ -74,6 +74,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   const replyRef = useRef(null);
   const savedRangeRef = useRef(null);
   const editRef = useRef(null);
+  const activeLinkTargetRef = useRef('reply');
   const { toast } = useToast();
 
   const [activeFormats, setActiveFormats] = useState({
@@ -257,6 +258,9 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     a.textContent = linkText.trim();
     a.target = '_blank';
 
+    const isEdit = activeLinkTargetRef.current === 'edit';
+    const editor = isEdit ? editRef.current : replyRef.current;
+
     if (savedRangeRef.current) {
       savedRangeRef.current.deleteContents();
       savedRangeRef.current.insertNode(a);
@@ -269,23 +273,27 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
       range.collapse(true);
       selection.removeAllRanges();
       selection.addRange(range);
-    } else if (replyRef.current) {
-      replyRef.current.appendChild(a);
+    } else if (editor) {
+      editor.appendChild(a);
     }
 
-    const md = htmlToMarkdown(replyRef.current);
-    setReply(md);
+    const md = htmlToMarkdown(editor);
+    if (isEdit) {
+      setEditText(md);
+    } else {
+      setReply(md);
+    }
     setLinkUrl('');
     setLinkText('');
     setShowLinkModal(false);
   }
 
-  async function handlePasteFromClipboard() {
+  async function handlePasteFromClipboard(isEdit = false) {
+    const editor = isEdit ? editRef.current : replyRef.current;
     try {
       const perm = await navigator.permissions.query({ name: 'clipboard-read' });
       if (perm.state === 'denied') {
-        const ta = replyRef.current;
-        if (ta) ta.focus();
+        if (editor) editor.focus();
         toast({ title: 'Clipboard access blocked', description: 'Press Ctrl+V (Cmd+V) to paste, or type manually', variant: 'default' });
         return;
       }
@@ -305,7 +313,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
           a.href = href;
           a.textContent = url;
           a.target = '_blank';
-          if (selection.rangeCount > 0) {
+          if (selection.rangeCount > 0 && editor && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
             const range = selection.getRangeAt(0);
             range.deleteContents();
             range.insertNode(a);
@@ -316,13 +324,17 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
             newRange.collapse(true);
             selection.removeAllRanges();
             selection.addRange(newRange);
-          } else if (replyRef.current) {
-            replyRef.current.appendChild(a);
+          } else if (editor) {
+            editor.appendChild(a);
           }
-          const md = htmlToMarkdown(replyRef.current);
-          setReply(md);
+          const md = htmlToMarkdown(editor);
+          if (isEdit) {
+            setEditText(md);
+          } else {
+            setReply(md);
+          }
         } else {
-          if (selection.rangeCount > 0) {
+          if (selection.rangeCount > 0 && editor && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
             const range = selection.getRangeAt(0);
             range.deleteContents();
             const lines = text.split('\n');
@@ -332,18 +344,25 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
               fragment.appendChild(document.createTextNode(line));
             });
             range.insertNode(fragment);
-            const md = htmlToMarkdown(replyRef.current);
-            setReply(md);
-          } else if (replyRef.current) {
-            replyRef.current.appendChild(document.createTextNode(text));
-            const md = htmlToMarkdown(replyRef.current);
-            setReply(md);
+            const md = htmlToMarkdown(editor);
+            if (isEdit) {
+              setEditText(md);
+            } else {
+              setReply(md);
+            }
+          } else if (editor) {
+            editor.appendChild(document.createTextNode(text));
+            const md = htmlToMarkdown(editor);
+            if (isEdit) {
+              setEditText(md);
+            } else {
+              setReply(md);
+            }
           }
         }
       }
     } catch {
-      const ta = replyRef.current;
-      if (ta) ta.focus();
+      if (editor) editor.focus();
       toast({ title: 'Clipboard access blocked', description: 'Press Ctrl+V (Cmd+V) to paste, or type manually', variant: 'default' });
     }
   }
@@ -655,6 +674,33 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
   function applyFormat(type, isEdit = false) {
     const editor = isEdit ? editRef.current : replyRef.current;
     if (!editor) return;
+
+    function fragmentToText(fragment) {
+      let text = '';
+      for (let i = 0; i < fragment.childNodes.length; i++) {
+        const child = fragment.childNodes[i];
+        if (child.nodeType === 3) {
+          text += child.nodeValue;
+        } else if (child.nodeType === 1) {
+          const tagName = child.tagName.toLowerCase();
+          if (tagName === 'br') {
+            text += '\n';
+          } else if (tagName === 'div' || tagName === 'p' || tagName === 'pre' || tagName === 'blockquote') {
+            let childText = fragmentToText(child);
+            if (text && !text.endsWith('\n')) {
+              text += '\n';
+            }
+            text += childText;
+            if (!text.endsWith('\n')) {
+              text += '\n';
+            }
+          } else {
+            text += fragmentToText(child);
+          }
+        }
+      }
+      return text;
+    }
     
     const selection = window.getSelection();
     let range;
@@ -664,7 +710,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
       editor.focus();
       const newRange = document.createRange();
       newRange.selectNodeContents(editor);
-      newRange.collapse(false); // go to the end
+      newRange.collapse(false);
       selection.removeAllRanges();
       selection.addRange(newRange);
       range = newRange;
@@ -678,15 +724,49 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
         let node = range.commonAncestorContainer;
         if (node.nodeType === 3) node = node.parentNode;
         
-        const existingNode = type === 'quote' ? node.closest('blockquote') : node.closest('code');
+        const existingNode = type === 'quote' 
+          ? node.closest('blockquote') 
+          : (node.closest('pre') || node.closest('code'));
+          
         if (existingNode) {
-          const parent = existingNode.parentNode;
-          while (existingNode.firstChild) {
-            parent.insertBefore(existingNode.firstChild, existingNode);
+          let targetNode = existingNode;
+          if (type === 'code' && existingNode.tagName.toLowerCase() === 'pre') {
+            const innerCode = existingNode.querySelector('code');
+            if (innerCode) {
+              targetNode = innerCode;
+            }
           }
+          
+          const htmlContent = targetNode.textContent;
+          const tempDiv = document.createElement('div');
+          if (existingNode.tagName.toLowerCase() === 'pre' || existingNode.tagName.toLowerCase() === 'blockquote') {
+            tempDiv.innerHTML = markdownToHtml(htmlContent);
+          } else {
+            tempDiv.innerHTML = inlineMarkdownToHtml(htmlContent);
+          }
+          
+          const parent = existingNode.parentNode;
+          const fragment = document.createDocumentFragment();
+          while (tempDiv.firstChild) {
+            fragment.appendChild(tempDiv.firstChild);
+          }
+          
+          const firstChild = fragment.firstChild;
+          const lastChild = fragment.lastChild;
+          
+          parent.insertBefore(fragment, existingNode);
           existingNode.remove();
+          
+          if (firstChild && lastChild) {
+            const newRange = document.createRange();
+            newRange.setStartBefore(firstChild);
+            newRange.setEndAfter(lastChild);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          }
         } else {
-          const selectedText = range.toString();
+          const fragment = range.cloneContents();
+          const selectedText = fragmentToText(fragment).trim();
           let element;
           if (type === 'quote') {
             element = document.createElement('blockquote');
@@ -964,7 +1044,22 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
-      if (trimmed.startsWith('> ')) {
+      if (trimmed.startsWith('```')) {
+        let codeLines = [];
+        let j = i + 1;
+        while (j < lines.length && !lines[j].trim().startsWith('```')) {
+          codeLines.push(lines[j]);
+          j++;
+        }
+        out.push(
+          <pre key={`code${i}`} style={{ background: isOnBrand ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', padding: '6px 10px', borderRadius: 4, margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
+            <code style={{ background: 'transparent', padding: 0, borderRadius: 0 }}>
+              {codeLines.join('\n')}
+            </code>
+          </pre>
+        );
+        i = j;
+      } else if (trimmed.startsWith('> ')) {
         out.push(
           <div key={`q${i}`} style={{ borderLeft: `3px solid ${isOnBrand ? 'rgba(255,255,255,0.35)' : c.brand}`, paddingLeft: 10, margin: '4px 0', color: isOnBrand ? 'rgba(255,255,255,0.8)' : c.subText, fontStyle: 'italic' }}>
             {renderInline(trimmed.slice(2), isOnBrand)}
@@ -1385,6 +1480,20 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                                 {tbd}
                                 {tbBtn(TextQuote, 'Quote', () => applyFormat('quote', true), activeFormats.quote)}
                                 {tbBtn(Code2, 'Code', () => applyFormat('code', true), activeFormats.code)}
+                                {tbd}
+                                {tbBtn(Link2, 'Insert Link', () => {
+                                  const selection = window.getSelection();
+                                  activeLinkTargetRef.current = 'edit';
+                                  if (selection.rangeCount > 0 && editRef.current && editRef.current.contains(selection.getRangeAt(0).commonAncestorContainer) && !selection.getRangeAt(0).collapsed) {
+                                    savedRangeRef.current = selection.getRangeAt(0);
+                                    setLinkText(selection.toString());
+                                  } else {
+                                    savedRangeRef.current = null;
+                                    setLinkText('');
+                                  }
+                                  setShowLinkModal(true);
+                                })}
+                                {tbBtn(Clipboard, 'Paste Link', () => handlePasteFromClipboard(true))}
                               </div>
                               <div style={{
                                 display: 'flex',
@@ -1486,7 +1595,8 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                         {tbd}
                         {tbBtn(Link2, 'Insert Link', () => {
                           const selection = window.getSelection();
-                          if (selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
+                          activeLinkTargetRef.current = 'reply';
+                          if (selection.rangeCount > 0 && replyRef.current && replyRef.current.contains(selection.getRangeAt(0).commonAncestorContainer) && !selection.getRangeAt(0).collapsed) {
                             savedRangeRef.current = selection.getRangeAt(0);
                             setLinkText(selection.toString());
                           } else {
@@ -1495,7 +1605,7 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                           }
                           setShowLinkModal(true);
                         })}
-                        {tbBtn(Clipboard, 'Paste from Clipboard', handlePasteFromClipboard)}
+                        {tbBtn(Clipboard, 'Paste from Clipboard', () => handlePasteFromClipboard(false))}
                         {tbBtn(Image, 'Add Screenshots', () => setShowScreenshotHelper(!showScreenshotHelper), showScreenshotHelper)}
                       </div>
                       <div style={{ display: 'flex', border: `1.5px solid ${c.border}`, borderRadius: '0 0 10px 10px', borderTop: 'none', background: isDark ? '#22252C' : '#f5f5f5' }}>
@@ -1527,6 +1637,11 @@ export default function MyTicketsPage({ user, isDark, c, onNavigate }) {
                             margin: 4px 0;
                             white-space: pre-wrap;
                             word-break: break-all;
+                          }
+                          .editor-placeholder pre code {
+                            background: transparent;
+                            padding: 0;
+                            border-radius: 0;
                           }
                         `}</style>
                         <div

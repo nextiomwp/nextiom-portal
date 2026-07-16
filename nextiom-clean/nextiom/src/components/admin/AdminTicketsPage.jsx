@@ -173,6 +173,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
   const savedRangeRef = useRef(null);
   const editRef = useRef(null);
   const selectedRef = useRef(null);
+  const activeLinkTargetRef = useRef('reply');
   
   const [editingMsgId, setEditingMsgId] = useState(null);
   const [editText, setEditText] = useState('');
@@ -922,10 +923,10 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
   }
 
   // Insert "Hi {customerName}" greeting into editor
-  function handleInsertHiGreeting() {
+  function handleInsertHiGreeting(isEdit = false) {
     const customerName = selected?.customers?.name || selectedCustomer?.name || '';
     const greeting = customerName ? `Hi ${customerName},\n\n` : 'Hi,\n\n';
-    const editor = replyRef.current;
+    const editor = isEdit ? editRef.current : replyRef.current;
     if (!editor) return;
     editor.focus();
     const selection = window.getSelection();
@@ -952,7 +953,12 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
     newRange.collapse(false);
     selection.removeAllRanges();
     selection.addRange(newRange);
-    setReply(htmlToMarkdown(editor));
+    const md = htmlToMarkdown(editor);
+    if (isEdit) {
+      setEditText(md);
+    } else {
+      setReply(md);
+    }
   }
 
   // Save current message to Supabase
@@ -1060,6 +1066,9 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
     a.textContent = linkText.trim();
     a.target = '_blank';
 
+    const isEdit = activeLinkTargetRef.current === 'edit';
+    const editor = isEdit ? editRef.current : replyRef.current;
+
     if (savedRangeRef.current) {
       savedRangeRef.current.deleteContents();
       savedRangeRef.current.insertNode(a);
@@ -1070,22 +1079,27 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
       range.collapse(true);
       selection.removeAllRanges();
       selection.addRange(range);
-    } else if (replyRef.current) {
-      replyRef.current.appendChild(a);
+    } else if (editor) {
+      editor.appendChild(a);
     }
 
-    const md = htmlToMarkdown(replyRef.current);
-    setReply(md);
+    const md = htmlToMarkdown(editor);
+    if (isEdit) {
+      setEditText(md);
+    } else {
+      setReply(md);
+    }
     setLinkUrl('');
     setLinkText('');
     setShowLinkModal(false);
   }
 
-  async function handlePasteFromClipboard() {
+  async function handlePasteFromClipboard(isEdit = false) {
+    const editor = isEdit ? editRef.current : replyRef.current;
     try {
       const perm = await navigator.permissions.query({ name: 'clipboard-read' });
       if (perm.state === 'denied') {
-        if (replyRef.current) replyRef.current.focus();
+        if (editor) editor.focus();
         toast({ title: 'Clipboard access blocked', description: 'Use Ctrl+V to paste.', variant: 'default' });
         return;
       }
@@ -1102,7 +1116,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
           a.href = href;
           a.textContent = url;
           a.target = '_blank';
-          if (selection.rangeCount > 0) {
+          if (selection.rangeCount > 0 && editor && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
             const range = selection.getRangeAt(0);
             range.deleteContents();
             range.insertNode(a);
@@ -1113,12 +1127,17 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
             newRange.collapse(true);
             selection.removeAllRanges();
             selection.addRange(newRange);
-          } else if (replyRef.current) {
-            replyRef.current.appendChild(a);
+          } else if (editor) {
+            editor.appendChild(a);
           }
-          setReply(htmlToMarkdown(replyRef.current));
+          const md = htmlToMarkdown(editor);
+          if (isEdit) {
+            setEditText(md);
+          } else {
+            setReply(md);
+          }
         } else {
-          if (selection.rangeCount > 0) {
+          if (selection.rangeCount > 0 && editor && editor.contains(selection.getRangeAt(0).commonAncestorContainer)) {
             const range = selection.getRangeAt(0);
             range.deleteContents();
             const lines = text.split('\n');
@@ -1128,15 +1147,25 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
               frag.appendChild(document.createTextNode(line));
             });
             range.insertNode(frag);
-            setReply(htmlToMarkdown(replyRef.current));
-          } else if (replyRef.current) {
-            replyRef.current.appendChild(document.createTextNode(text));
-            setReply(htmlToMarkdown(replyRef.current));
+            const md = htmlToMarkdown(editor);
+            if (isEdit) {
+              setEditText(md);
+            } else {
+              setReply(md);
+            }
+          } else if (editor) {
+            editor.appendChild(document.createTextNode(text));
+            const md = htmlToMarkdown(editor);
+            if (isEdit) {
+              setEditText(md);
+            } else {
+              setReply(md);
+            }
           }
         }
       }
     } catch {
-      if (replyRef.current) replyRef.current.focus();
+      if (editor) editor.focus();
       toast({ title: 'Clipboard access blocked', description: 'Use Ctrl+V to paste.', variant: 'default' });
     }
   }
@@ -1399,6 +1428,33 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
   function applyFormat(type, isEdit = false) {
     const editor = isEdit ? editRef.current : replyRef.current;
     if (!editor) return;
+
+    function fragmentToText(fragment) {
+      let text = '';
+      for (let i = 0; i < fragment.childNodes.length; i++) {
+        const child = fragment.childNodes[i];
+        if (child.nodeType === 3) { // Node.TEXT_NODE
+          text += child.nodeValue;
+        } else if (child.nodeType === 1) { // Node.ELEMENT_NODE
+          const tagName = child.tagName.toLowerCase();
+          if (tagName === 'br') {
+            text += '\n';
+          } else if (tagName === 'div' || tagName === 'p' || tagName === 'pre' || tagName === 'blockquote') {
+            let childText = fragmentToText(child);
+            if (text && !text.endsWith('\n')) {
+              text += '\n';
+            }
+            text += childText;
+            if (!text.endsWith('\n')) {
+              text += '\n';
+            }
+          } else {
+            text += fragmentToText(child);
+          }
+        }
+      }
+      return text;
+    }
     
     const selection = window.getSelection();
     let range;
@@ -1421,15 +1477,50 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
       } else {
         let node = range.commonAncestorContainer;
         if (node.nodeType === 3) node = node.parentNode;
-        const existingNode = type === 'quote' ? node.closest('blockquote') : node.closest('code');
+        
+        const existingNode = type === 'quote' 
+          ? node.closest('blockquote') 
+          : (node.closest('pre') || node.closest('code'));
+          
         if (existingNode) {
-          const parent = existingNode.parentNode;
-          while (existingNode.firstChild) {
-            parent.insertBefore(existingNode.firstChild, existingNode);
+          let targetNode = existingNode;
+          if (type === 'code' && existingNode.tagName.toLowerCase() === 'pre') {
+            const innerCode = existingNode.querySelector('code');
+            if (innerCode) {
+              targetNode = innerCode;
+            }
           }
+          
+          const htmlContent = targetNode.textContent;
+          const tempDiv = document.createElement('div');
+          if (existingNode.tagName.toLowerCase() === 'pre' || existingNode.tagName.toLowerCase() === 'blockquote') {
+            tempDiv.innerHTML = markdownToHtml(htmlContent);
+          } else {
+            tempDiv.innerHTML = inlineMarkdownToHtml(htmlContent);
+          }
+          
+          const parent = existingNode.parentNode;
+          const fragment = document.createDocumentFragment();
+          while (tempDiv.firstChild) {
+            fragment.appendChild(tempDiv.firstChild);
+          }
+          
+          const firstChild = fragment.firstChild;
+          const lastChild = fragment.lastChild;
+          
+          parent.insertBefore(fragment, existingNode);
           existingNode.remove();
+          
+          if (firstChild && lastChild) {
+            const newRange = document.createRange();
+            newRange.setStartBefore(firstChild);
+            newRange.setEndAfter(lastChild);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+          }
         } else {
-          const selectedText = range.toString();
+          const fragment = range.cloneContents();
+          const selectedText = fragmentToText(fragment).trim();
           let element;
           if (type === 'quote') {
             element = document.createElement('blockquote');
@@ -1649,7 +1740,22 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmed = line.trim();
-      if (trimmed.startsWith('> ')) {
+      if (trimmed.startsWith('```')) {
+        let codeLines = [];
+        let j = i + 1;
+        while (j < lines.length && !lines[j].trim().startsWith('```')) {
+          codeLines.push(lines[j]);
+          j++;
+        }
+        out.push(
+          <pre key={`code${i}`} style={{ background: isOnBrand ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)', padding: '6px 10px', borderRadius: 4, margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontFamily: "'Fira Code', monospace", fontSize: 12 }}>
+            <code style={{ background: 'transparent', padding: 0, borderRadius: 0 }}>
+              {codeLines.join('\n')}
+            </code>
+          </pre>
+        );
+        i = j;
+      } else if (trimmed.startsWith('> ')) {
         out.push(
           <div key={`q${i}`} style={{ borderLeft: `3px solid ${isOnBrand ? 'rgba(255,255,255,0.35)' : c.brand}`, paddingLeft: 10, margin: '4px 0', color: isOnBrand ? 'rgba(255,255,255,0.8)' : c.subText, fontStyle: 'italic' }}>
             {renderInline(trimmed.slice(2), isOnBrand)}
@@ -2157,7 +2263,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                       {isSenderAdmin ? `You (${msg.sender_name || 'Admin'})` : (selected.customers?.name || 'Customer')} · {fmtTime(msg.created_at)}
                     </div>
                     <div style={{
-                      padding: '10px 12px',
+                      padding: isEditing ? '6px' : '10px 12px',
                       borderRadius: isSenderAdmin ? '12px 12px 4px 12px' : '12px 12px 12px 4px',
                       background: isSenderAdmin ? '#1E1E24' : c.card,
                       color: isSenderAdmin ? '#e8e8e8' : c.text,
@@ -2167,22 +2273,103 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                       wordBreak: 'break-word',
                       border: isSenderAdmin ? `1px solid ${c.brand}` : `1px solid ${c.border}`,
                       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                      position: 'relative'
+                      position: 'relative',
+                      minWidth: 0,
                     }}>
                       {isEditing ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <textarea
-                            ref={editRef}
-                            value={editText}
-                            onChange={e => setEditText(e.target.value)}
-                            style={{
-                              width: '100%', minHeight: 60, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${c.border}`,
-                              background: isDark ? '#22252C' : '#fff', color: c.text, fontSize: 12, outline: 'none', fontFamily: 'inherit', resize: 'vertical'
-                            }}
-                          />
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
-                            <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '4px 10px', border: `1px solid ${c.border}`, borderRadius: 6, background: 'transparent', color: c.subText, cursor: 'pointer', fontSize: 11 }}>Cancel</button>
-                            <button onClick={handleSaveEdit} style={{ padding: '4px 10px', border: 'none', borderRadius: 6, background: c.brand, color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>Save</button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minWidth: 0, width: '100%' }}>
+                          {/* Formatting Toolbar */}
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 2, padding: '4px 6px',
+                            border: `1.5px solid ${isSenderAdmin ? 'rgba(255,255,255,0.25)' : c.border}`, borderBottom: 'none',
+                            borderRadius: '8px 8px 0 0',
+                            background: isSenderAdmin ? 'rgba(255,255,255,0.05)' : (isDark ? '#22252C' : '#f5f5f5'),
+                            flexWrap: 'wrap',
+                          }}>
+                            {/* Hi greeting button */}
+                            <button
+                              onMouseDown={e => { e.preventDefault(); handleInsertHiGreeting(true); }}
+                              title={`Insert greeting: Hi ${selected?.customers?.name || selectedCustomer?.name || ''}…`}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', height: 30, padding: '0 7px',
+                                border: 'none', borderRadius: 6, background: 'transparent', color: 'rgba(255,255,255,0.7)',
+                                cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s',
+                                fontSize: 11, fontWeight: 800, letterSpacing: 0.3,
+                              }}
+                            >
+                              Hi
+                            </button>
+                            {tbd}
+                            {tbBtn(Bold, 'Bold', () => applyFormat('bold', true), activeFormats.bold)}
+                            {tbBtn(Italic, 'Italic', () => applyFormat('italic', true), activeFormats.italic)}
+                            {tbBtn(Underline, 'Underline', () => applyFormat('underline', true), activeFormats.underline)}
+                            {tbd}
+                            {tbBtn(TextQuote, 'Quote', () => applyFormat('quote', true), activeFormats.quote)}
+                            {tbBtn(Code2, 'Code', () => applyFormat('code', true), activeFormats.code)}
+                            {tbd}
+                            {tbBtn(Link2, 'Insert Link', () => {
+                              const sel = window.getSelection();
+                              activeLinkTargetRef.current = 'edit';
+                              if (sel.rangeCount > 0 && editRef.current && editRef.current.contains(sel.getRangeAt(0).commonAncestorContainer) && !sel.getRangeAt(0).collapsed) {
+                                savedRangeRef.current = sel.getRangeAt(0);
+                                setLinkText(sel.toString());
+                              } else {
+                                savedRangeRef.current = null;
+                                setLinkText('');
+                              }
+                              setShowLinkModal(true);
+                            })}
+                            {tbBtn(Clipboard, 'Paste Link', () => handlePasteFromClipboard(true))}
+                          </div>
+
+                          {/* Editor Box */}
+                          <div style={{
+                            display: 'flex',
+                            border: `1.5px solid ${isSenderAdmin ? 'rgba(255,255,255,0.25)' : c.border}`,
+                            borderRadius: '0 0 8px 8px',
+                            borderTop: 'none',
+                            background: isSenderAdmin ? 'rgba(255,255,255,0.08)' : (c.inputBg || (isDark ? '#1F222A' : '#ffffff')),
+                            color: isSenderAdmin ? '#fff' : c.text,
+                            minHeight: 80,
+                            outline: 'none',
+                          }}>
+                            <div
+                              ref={editRef}
+                              contentEditable
+                              onInput={e => setEditText(htmlToMarkdown(e.currentTarget))}
+                              onPaste={handlePaste}
+                              onKeyDown={e => handleKeyDown(e, true)}
+                              onKeyUp={handleSelectionChange}
+                              onMouseUp={handleSelectionChange}
+                              onFocus={handleSelectionChange}
+                              className="editor-placeholder"
+                              placeholder="Edit message…"
+                              dangerouslySetInnerHTML={{ __html: markdownToHtml(msg.message) }}
+                              style={{
+                                ...inp,
+                                flex: 1,
+                                padding: '8px 12px',
+                                border: 'none',
+                                background: 'transparent',
+                                color: isSenderAdmin ? '#fff' : c.text,
+                                fontSize: 12,
+                                minWidth: 0,
+                                minHeight: 60,
+                                maxHeight: 200,
+                                overflowY: 'auto',
+                                outline: 'none',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                              }}
+                            />
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
+                            <button onClick={() => { setEditingMsgId(null); setEditText(''); }} style={{ padding: '5px 12px', border: `1px solid ${isSenderAdmin ? 'rgba(255,255,255,0.3)' : c.border}`, borderRadius: 6, background: 'transparent', color: isSenderAdmin ? 'rgba(255,255,255,0.8)' : c.subText, cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>Cancel</button>
+                            <button onClick={handleSaveEdit} disabled={!editText.trim()} style={{ padding: '5px 12px', border: 'none', borderRadius: 6, background: isSenderAdmin ? 'rgba(255,255,255,0.9)' : c.brand, color: isSenderAdmin ? c.brand : '#fff', cursor: editText.trim() ? 'pointer' : 'not-allowed', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', opacity: editText.trim() ? 1 : 0.5 }}>Save</button>
                           </div>
                         </div>
                       ) : (
@@ -2305,7 +2492,8 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                       {tbd}
                       {tbBtn(Link2, 'Insert Link', () => {
                         const sel = window.getSelection();
-                        if (sel.rangeCount > 0 && !sel.getRangeAt(0).collapsed) {
+                        activeLinkTargetRef.current = 'reply';
+                        if (sel.rangeCount > 0 && replyRef.current && replyRef.current.contains(sel.getRangeAt(0).commonAncestorContainer) && !sel.getRangeAt(0).collapsed) {
                           savedRangeRef.current = sel.getRangeAt(0);
                           setLinkText(sel.toString());
                         } else {
@@ -2314,7 +2502,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                         }
                         setShowLinkModal(true);
                       })}
-                      {tbBtn(Clipboard, 'Paste Link', handlePasteFromClipboard)}
+                      {tbBtn(Clipboard, 'Paste Link', () => handlePasteFromClipboard(false))}
                       {tbBtn(Image, 'Add Screenshot', () => setShowScreenshotHelper(!showScreenshotHelper), showScreenshotHelper)}
                       {tbd}
                       {/* Save message button */}
@@ -3136,6 +3324,11 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
           margin: 4px 0;
           white-space: pre-wrap;
           word-break: break-all;
+        }
+        .editor-placeholder pre code {
+          background: transparent;
+          padding: 0;
+          border-radius: 0;
         }
       `}</style>
     </div>
