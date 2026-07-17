@@ -28,6 +28,7 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
     display_queue_position: true,
     auto_sort_jobs_in_queue: true,
     queue_position_mode: 'automatic',
+    custom_active_jobs_decrement_interval: 1,
   });
   
   const [loading, setLoading] = useState(true);
@@ -1409,20 +1410,37 @@ export default function AdminJobsPage({ c, isDark, isMobile, highlightJobId, hig
               </div>
 
               {settings.show_custom_active_jobs && (
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 4 }}>
-                    Custom Display Active Count
-                  </label>
-                  <input 
-                    type="number"
-                    value={settings.custom_active_jobs_count}
-                    onChange={(e) => handleUpdateSetting('custom_active_jobs_count', parseInt(e.target.value) || 0)}
-                    style={{
-                      width: '100%', padding: '8px 12px', background: c.bg, border: `1px solid ${c.border}`, 
-                      borderRadius: 6, color: c.text, fontSize: 14
-                    }}
-                  />
-                </div>
+                <>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 4 }}>
+                      Custom Display Active Count
+                    </label>
+                    <input 
+                      type="number"
+                      value={settings.custom_active_jobs_count}
+                      onChange={(e) => handleUpdateSetting('custom_active_jobs_count', parseInt(e.target.value) || 0)}
+                      style={{
+                        width: '100%', padding: '8px 12px', background: c.bg, border: `1px solid ${c.border}`, 
+                        borderRadius: 6, color: c.text, fontSize: 14
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: c.subText, display: 'block', marginBottom: 4 }}>
+                      Decrement Interval (Hours)
+                    </label>
+                    <input 
+                      type="number"
+                      min="1"
+                      value={settings.custom_active_jobs_decrement_interval ?? 1}
+                      onChange={(e) => handleUpdateSetting('custom_active_jobs_decrement_interval', Math.max(1, parseInt(e.target.value) || 1))}
+                      style={{
+                        width: '100%', padding: '8px 12px', background: c.bg, border: `1px solid ${c.border}`, 
+                        borderRadius: 6, color: c.text, fontSize: 14
+                      }}
+                    />
+                  </div>
+                </>
               )}
 
               <div>

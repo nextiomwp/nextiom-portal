@@ -111,6 +111,7 @@ export async function getJobSettings() {
       display_queue_position: true,
       auto_sort_jobs_in_queue: true,
       queue_position_mode: 'automatic',
+      custom_active_jobs_decrement_interval: 1,
     };
   }
 
