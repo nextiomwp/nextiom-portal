@@ -883,6 +883,8 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
 
+  const isPayPalSubmit = paymentMethod === 'PayPal' && (txn.trim() !== '' || file !== null);
+
   const filteredBanks = BANK_NAMES.filter(b =>
     b.toLowerCase().includes(bankName.toLowerCase())
   );
@@ -904,26 +906,26 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
       setSubmitting(true);
 
       if (paymentMethod === 'PayPal') {
-        // 1. Create a payment record in invoice_payments table with status 'pending_online'
-        const tempTxnId = 'paypal_init_' + Math.random().toString(36).substring(2, 10);
-        const { error: insertErr } = await supabase
-          .from('invoice_payments')
-          .insert({
-            invoice_id: invoice.id,
-            customer_email: invoice.client_email,
-            transaction_id: tempTxnId,
+        if (isPayPalSubmit) {
+          if (!txn.trim()) { setErr('PayPal Transaction ID is required'); return; }
+          if (!file) { setErr('Payment receipt file is required'); return; }
+          setErr('');
+          setSubmitting(true);
+
+          await submitInvoicePayment(invoice, {
             bank_account_name: 'PayPal',
+            transaction_id: txn.trim(),
             paid_amount: Number(amount),
             payment_date: payDate,
-            notes: notes.trim() || null,
-            status: 'pending_online',
-          });
-
-        if (insertErr) throw insertErr;
-
-        // 2. Redirect to PayPal native checkout page
-        window.location.href = 'https://www.paypal.com/ncp/payment/4T8JTWGYJPUVS';
-        return;
+            notes: notes.trim() || undefined,
+          }, file);
+          onSubmitted();
+          onClose();
+          return;
+        } else {
+          window.open('https://www.paypal.com/ncp/payment/4T8JTWGYJPUVS', '_blank');
+          return;
+        }
       }
 
       if (paymentMethod === 'Online payment') {
@@ -1217,6 +1219,13 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
               </div>
             )}
 
+            {paymentMethod === 'PayPal' && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={label}>PayPal Transaction ID *</label>
+                <input style={inp} value={txn} onChange={e => setTxn(e.target.value)} placeholder="Enter PayPal Transaction ID..." />
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={label}>Paid Amount ({invoice.currency || 'LKR'}) *</label>
@@ -1232,7 +1241,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
               <textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Anything we should know…" />
             </div>
             
-            {paymentMethod !== 'Online payment' && paymentMethod !== 'PayPal' && (
+            {paymentMethod !== 'Online payment' && (
               <div>
                 <label style={label}>Upload Payment Slip</label>
                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: `1.5px dashed ${c.border}`, borderRadius: 8, background: isDark ? '#22252C' : '#fafafa', color: c.subText, cursor: 'pointer', fontSize: 13 }}>
@@ -1264,12 +1273,29 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
               <div style={{ background: isDark ? 'rgba(37,99,235,0.08)' : 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 10, padding: 16, marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 8 }}>PayPal Secure Checkout</div>
                 <div style={{ fontSize: 13, color: c.text, lineHeight: 1.6 }}>
-                  You will be redirected to the secure PayPal Payment page. You can complete the payment using:
-                  <ul style={{ margin: '6px 0 0 16px', padding: 0, listStyleType: 'disc' }}>
-                    <li>PayPal Balance</li>
-                    <li>Linked Credit / Debit Cards</li>
-                    <li>Linked Bank Accounts</li>
-                  </ul>
+                  Click <strong>"Proceed to Pay"</strong> to open PayPal in a new tab and make your payment. 
+                  Once paid, enter your PayPal Transaction ID and upload the receipt screenshot in the left panel to submit for verification.
+                  <div style={{ marginTop: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => window.open('https://www.paypal.com/ncp/payment/4T8JTWGYJPUVS', '_blank')}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#2563eb',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      Open PayPal Checkout ↗
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1315,7 +1341,7 @@ function PayInvoiceDialog({ invoice, settings, isDark, c, onClose, onSubmitted, 
         <div style={{ padding: '14px 22px', borderTop: `1px solid ${c.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <button onClick={onClose} disabled={submitting} style={{ padding: '8px 18px', border: `1px solid ${c.border}`, background: 'transparent', color: c.text, borderRadius: 8, cursor: 'pointer', fontSize: 13, fontFamily: 'inherit' }}>Cancel</button>
           <button onClick={handleSubmit} disabled={submitting} style={{ padding: '8px 20px', background: c.brand, color: '#fff', border: 'none', borderRadius: 8, cursor: submitting ? 'wait' : 'pointer', fontSize: 13, fontWeight: 700, opacity: submitting ? 0.7 : 1, fontFamily: 'inherit' }}>
-            {submitting ? 'Submitting…' : (['Online payment', 'PayPal'].includes(paymentMethod) ? 'Proceed to Pay' : 'Submit Payment')}
+            {submitting ? 'Submitting…' : (paymentMethod === 'Online payment' ? 'Proceed to Pay' : (paymentMethod === 'PayPal' ? (isPayPalSubmit ? 'Submit Payment' : 'Proceed to Pay') : 'Submit Payment'))}
           </button>
         </div>
       </div>
