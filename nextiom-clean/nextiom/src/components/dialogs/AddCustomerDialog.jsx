@@ -31,7 +31,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
+    if (!formData.name || !formData.email || !formData.password) {
       toast({ title: 'Error', description: 'Please fill in all required fields.', variant: 'destructive' });
       return;
     }
@@ -76,7 +76,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
           user_id: userId,
           email: formData.email,
           name: formData.name,
-          phone: formData.phone,
+          phone: formData.phone || null,
           company: formData.company || null,
           country: formData.country || null,
           status: 'active',
@@ -144,8 +144,8 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
               <input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className={inp} required />
             </div>
             <div>
-              <Label htmlFor="phone">Phone *</Label>
-              <input id="phone" type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={inp} required />
+              <Label htmlFor="phone">Phone</Label>
+              <input id="phone" type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className={inp} />
             </div>
             <div>
               <Label htmlFor="country">Country</Label>

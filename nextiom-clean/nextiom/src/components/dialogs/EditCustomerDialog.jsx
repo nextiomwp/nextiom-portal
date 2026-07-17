@@ -33,7 +33,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.phone || !formData.country) {
+    if (!formData.name || !formData.email || !formData.country) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -44,6 +44,7 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
 
     const customerData = {
       ...formData,
+      phone: formData.phone || null,
       domains: formData.domains.filter(d => d.trim() !== '')
     };
 
@@ -105,14 +106,13 @@ function EditCustomerDialog({ open, onOpenChange, customer, onSuccess }) {
             </div>
 
             <div>
-              <Label htmlFor="phone">Phone *</Label>
+              <Label htmlFor="phone">Phone</Label>
               <input
                 id="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 className="w-full mt-1.5 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[var(--brand-color)]/30 focus:border-[var(--brand-color)] outline-none transition-all"
-                required
               />
             </div>
 
