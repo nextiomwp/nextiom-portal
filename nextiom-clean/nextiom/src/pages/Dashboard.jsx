@@ -612,12 +612,14 @@ function Dashboard({ onLogout }) {
   }, []);
 
   useEffect(() => {
+    console.log('[AdminRealtime] Setting up realtime subscription for dashboard...');
     const channel = supabase
       .channel('admin-dashboard-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notifications' },
         (payload) => {
+          console.log('[AdminRealtime] Received notifications change:', payload);
           // If it's a notification for admins (customer_id is null)
           if (!payload.new || payload.new.customer_id === null) {
             loadDataRef.current?.(false, true);
@@ -627,44 +629,63 @@ function Dashboard({ onLogout }) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'customers' },
-        () => {
+        (payload) => {
+          console.log('[AdminRealtime] Received customers change:', payload);
           loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'domain_requests' },
-        () => {
+        (payload) => {
+          console.log('[AdminRealtime] Received domain_requests change:', payload);
           loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'hosting_requests' },
-        () => {
+        (payload) => {
+          console.log('[AdminRealtime] Received hosting_requests change:', payload);
           loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'email_requests' },
-        () => {
+        (payload) => {
+          console.log('[AdminRealtime] Received email_requests change:', payload);
           loadDataRef.current?.(false, true);
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'appointments' },
-        () => {
+        (payload) => {
+          console.log('[AdminRealtime] Received appointments change:', payload);
           loadDataRef.current?.(false, true);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) {
+          console.error('[AdminRealtime] Subscription error:', err);
+        } else {
+          console.log('[AdminRealtime] Subscription status:', status);
+        }
+      });
+
+    // Polling fallback to ensure dashboard stays in sync even if websocket drops
+    const interval = setInterval(() => {
+      console.log('[AdminRealtime] Running background polling refresh...');
+      loadDataRef.current?.(false, true);
+    }, 30000);
 
     return () => {
+      clearInterval(interval);
       supabase.removeChannel(channel);
     };
   }, []);
+
 
   useEffect(() => {
     document.documentElement.classList.toggle('dashboard-dark', isDark);
