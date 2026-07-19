@@ -11,7 +11,7 @@ import { addNotification } from '@/lib/storage';
 const SUPABASE_URL = 'https://fewhvlsqkbsmqbrqclya.supabase.co';
 const SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZld2h2bHNxa2JzbXFicnFjbHlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDEwMjI4MSwiZXhwIjoyMDg1Njc4MjgxfQ.O7JlivddOXH2oElVnJ8LWzdDbpL-X4OP8GGdK_UYlhM';
 
-const EMPTY = { name: '', email: '', phone: '', company: '', country: 'Sri Lanka', password: '', confirmPassword: '', domains: [''] };
+const EMPTY = { name: '', email: '', phone: '', company: '', country: 'Sri Lanka', address: '', password: '', confirmPassword: '', domains: [''] };
 
 function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
   const [formData, setFormData] = useState(EMPTY);
@@ -79,6 +79,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
           phone: formData.phone || null,
           company: formData.company || null,
           country: formData.country || null,
+          address: formData.address || null,
           status: 'active',
           created_at: new Date().toISOString(),
         })
@@ -154,6 +155,10 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
             <div className="md:col-span-2">
               <Label htmlFor="company">Company Name</Label>
               <input id="company" type="text" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className={inp} />
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="address">Address</Label>
+              <input id="address" type="text" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} className={inp} />
             </div>
 
             {/* Password fields */}

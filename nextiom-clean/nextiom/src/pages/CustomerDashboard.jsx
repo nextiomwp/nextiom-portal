@@ -267,7 +267,7 @@ function CustomerDashboard() {
   const [isDark, setIsDark] = useState(
     () => localStorage.getItem('cust_dark') !== 'false'
   );
-  const { user, signOut, customerProfile } = useAuth();
+  const { user, signOut, customerProfile, refreshProfile } = useAuth();
   const c = isDark ? DARK : LIGHT;
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -852,7 +852,7 @@ function CustomerDashboard() {
         {mountedTabs.has('jobs') && wrap('jobs', <CustomerJobsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('appointments') && wrap('appointments', <CustomerAppointmentsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark={isDark} c={c} />)}
-        {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => { }} {...theme} />)}
+        {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={refreshProfile} {...theme} />)}
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} onNavigate={setActiveTab} {...theme} />)}
         {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
         {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { updateUserProfile } from '@/lib/storage';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -12,7 +12,20 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
     phone: safeUser.phone || '',
     company: safeUser.company || '',
     country: safeUser.country || '',
+    address: safeUser.address || '',
   });
+
+  useEffect(() => {
+    if (!isEditing) {
+      setFormData({
+        name: safeUser.name || '',
+        phone: safeUser.phone || '',
+        company: safeUser.company || '',
+        country: safeUser.country || '',
+        address: safeUser.address || '',
+      });
+    }
+  }, [user, isEditing]);
   const [isLoading, setIsLoading] = useState(false);
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [showPw, setShowPw] = useState(false);
@@ -198,6 +211,18 @@ function ProfilePage({ user, onUpdate, isDark = false, c = {} }) {
                 type="text"
                 value={formData.country}
                 onChange={e => setFormData({ ...formData, country: e.target.value })}
+                disabled={!isEditing}
+                style={inputStyle(isEditing)}
+                onFocus={e => { if (isEditing) e.target.style.borderColor = brand; }}
+                onBlur={e => e.target.style.borderColor = isEditing ? borderStrong : border}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label style={labelStyle}>Address</label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
                 disabled={!isEditing}
                 style={inputStyle(isEditing)}
                 onFocus={e => { if (isEditing) e.target.style.borderColor = brand; }}

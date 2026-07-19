@@ -186,18 +186,18 @@ export default function QuotationPrintPage() {
             <thead>
               <tr style={{ background: '#1f2937', color: 'white' }}>
                 <th style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', borderRadius: '6px 0 0 6px' }}>Description</th>
-                <th style={{ textAlign: 'center', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qty</th>
-                <th style={{ textAlign: 'right', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unit Price</th>
-                <th style={{ textAlign: 'right', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', borderRadius: '0 6px 6px 0' }}>Amount</th>
+                <th style={{ textAlign: 'center', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Qty</th>
+                <th style={{ textAlign: 'right', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Unit Price</th>
+                <th style={{ textAlign: 'right', padding: '10px 14px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', borderRadius: '0 6px 6px 0', whiteSpace: 'nowrap' }}>Amount</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item: any, i: number) => (
                 <tr key={i} style={{ borderBottom: '1px solid #e5e7eb', background: 'white' }}>
                   <td style={{ padding: '12px 14px', fontSize: 13, color: '#1f2937', fontWeight: 500 }}>{item.description}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center', fontSize: 13, color: '#4b5563' }}>{item.qty}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#4b5563' }}>{fmtCurrency(item.unit_price, currency)}</td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#111827' }}>{fmtCurrency(item.qty * item.unit_price, currency)}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'center', fontSize: 13, color: '#4b5563', whiteSpace: 'nowrap' }}>{item.qty}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#4b5563', whiteSpace: 'nowrap' }}>{fmtCurrency(item.unit_price, currency)}</td>
+                  <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{fmtCurrency(item.qty * item.unit_price, currency)}</td>
                 </tr>
               ))}
             </tbody>
@@ -208,11 +208,11 @@ export default function QuotationPrintPage() {
             <div style={{ width: 280, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', fontSize: 13, color: '#4b5563' }}>
                 <span>Subtotal</span>
-                <span>{fmtCurrency(total, currency)}</span>
+                <span style={{ whiteSpace: 'nowrap' }}>{fmtCurrency(total, currency)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 14px', background: '#E8650A', color: 'white', fontWeight: 700, fontSize: 15 }}>
                 <span>Grand Total</span>
-                <span>{fmtCurrency(total, currency)}</span>
+                <span style={{ whiteSpace: 'nowrap' }}>{fmtCurrency(total, currency)}</span>
               </div>
             </div>
           </div>

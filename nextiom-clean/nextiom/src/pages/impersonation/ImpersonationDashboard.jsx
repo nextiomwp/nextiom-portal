@@ -720,6 +720,12 @@ function ImpersonationDashboard() {
     setIsMobileSidebarOpen(false);
   };
 
+  const refreshProfile = async () => {
+    if (impersonatedUser) {
+      await fetchCustomerProfile(impersonatedUser);
+    }
+  };
+
   // Build user prop expected by customer components (memoize to prevent constant re-renders)
   const userProp = useMemo(() => 
     impersonatedUser && customerProfile
@@ -765,7 +771,7 @@ function ImpersonationDashboard() {
         {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark c={c} onNavigate={setActiveTab} />)}
         {mountedTabs.has('jobs') && wrap('jobs', <CustomerJobsPage user={userProp} isDark c={c} />)}
         {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark c={c} />)}
-        {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={() => {}} {...theme} />)}
+        {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={refreshProfile} {...theme} />)}
         {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} {...theme} />)}
         {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
         {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}

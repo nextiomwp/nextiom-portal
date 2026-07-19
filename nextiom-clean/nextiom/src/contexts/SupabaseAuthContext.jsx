@@ -254,11 +254,19 @@ export const AuthProvider = ({ children }) => {
     return { error };
   };
 
+  const refreshProfile = async () => {
+    if (user?.id) {
+      const profile = await getUserProfile(user.id);
+      if (profile) setCustomerProfile(profile);
+    }
+  };
+
   const value = {
     user,
     role,
     loading,
     customerProfile,
+    refreshProfile,
     signIn,
     signUp,
     signOut,

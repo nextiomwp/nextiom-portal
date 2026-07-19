@@ -391,7 +391,7 @@ export default function InvoicePrintPage() {
               return (
                 <div style={{ background: '#fff7ed', borderRadius: 12, padding: '16px 24px', textAlign: 'right', flexShrink: 0, border: '1px solid #fed7aa' }}>
                   <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>Grand total</div>
-                  <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em' }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, color: '#E8650A', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
                     {fmtCurrency(total, currency)}
                   </div>
                 </div>
@@ -407,7 +407,7 @@ export default function InvoicePrintPage() {
                   ? ['Description', 'Qty', 'Unit price', 'Discount', 'Amount']
                   : ['Description', 'Qty', 'Unit price', 'Amount']
                 ).map((h, i) => (
-                  <th key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', padding: '8px 10px' }}>{h}</th>
+                  <th key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#9ca3af', padding: '8px 10px', whiteSpace: i === 0 ? 'normal' : 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -449,12 +449,12 @@ export default function InvoicePrintPage() {
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{item.qty}</td>
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{formatUnitPrices(item)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap' }}>{item.qty}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap' }}>{formatUnitPrices(item)}</td>
                   {totalDiscount > 0 && (
-                    <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13 }}>{fmtCurrency(item.discount || 0, currency)}</td>
+                    <td style={{ padding: '11px 10px', textAlign: 'right', fontSize: 13, whiteSpace: 'nowrap' }}>{fmtCurrency(item.discount || 0, currency)}</td>
                   )}
-                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{formatAmounts(item)}</td>
+                  <td style={{ padding: '11px 10px', textAlign: 'right', fontWeight: 600, fontSize: 13, whiteSpace: 'nowrap' }}>{formatAmounts(item)}</td>
                 </tr>
               ))}
             </tbody>
@@ -468,19 +468,19 @@ export default function InvoicePrintPage() {
               </div>
             )} */}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-              <span>Subtotal</span><span>{fmtCurrency(subtotal, currency)}</span>
+              <span>Subtotal</span><span style={{ whiteSpace: 'nowrap' }}>{fmtCurrency(subtotal, currency)}</span>
             </div>
             {totalDiscount > 0 && (
               <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-                <span>Total Discount</span><span>{fmtCurrency(totalDiscount, currency)}</span>
+                <span>Total Discount</span><span style={{ whiteSpace: 'nowrap' }}>{fmtCurrency(totalDiscount, currency)}</span>
               </div>
             )}
             <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-              <span>Grand total (Primary)</span><span>{fmtCurrency(total, currency)}</span>
+              <span>Grand total (Primary)</span><span style={{ whiteSpace: 'nowrap' }}>{fmtCurrency(total, currency)}</span>
             </div>
             {totalUSD > 0 && (
               <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-                <span>Grand total (USD)</span><span>USD {totalUSD.toFixed(2)}</span>
+                <span>Grand total (USD)</span><span style={{ whiteSpace: 'nowrap' }}>USD {totalUSD.toFixed(2)}</span>
               </div>
             )}
             {/* {totalLKR > 0 && (
@@ -491,23 +491,23 @@ export default function InvoicePrintPage() {
             {refunded_amount && Number(refunded_amount) > 0 ? (
               <>
                 <div style={{ display: 'flex', gap: 56, fontSize: 13, color: 'var(--brand-color)', fontWeight: 600 }}>
-                  <span>Total Refunded</span><span>- {fmtCurrency(Number(refunded_amount), currency)}</span>
+                  <span>Total Refunded</span><span style={{ whiteSpace: 'nowrap' }}>- {fmtCurrency(Number(refunded_amount), currency)}</span>
                 </div>
                 {refund_service_charge && Number(refund_service_charge) > 0 ? (
                   <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#6b7280' }}>
-                    <span>Service Charge</span><span>{fmtCurrency(Number(refund_service_charge), currency)}</span>
+                    <span>Service Charge</span><span style={{ whiteSpace: 'nowrap' }}>{fmtCurrency(Number(refund_service_charge), currency)}</span>
                   </div>
                 ) : null}
               </>
             ) : null}
             <div style={{ display: 'flex', gap: 56, fontSize: 16, fontWeight: 700, borderTop: '2px solid #111', paddingTop: 8, marginTop: 4 }}>
               <span>{refunded_amount && Number(refunded_amount) > 0 ? 'Net Paid' : (status === 'paid' ? 'Total Amount' : 'Due total')}</span>
-              <span>{fmtCurrency(refunded_amount && Number(refunded_amount) > 0 ? Math.max(0, Number(data.paid_amount || total) - Number(refunded_amount)) : total, currency)}</span>
+              <span style={{ whiteSpace: 'nowrap' }}>{fmtCurrency(refunded_amount && Number(refunded_amount) > 0 ? Math.max(0, Number(data.paid_amount || total) - Number(refunded_amount)) : total, currency)}</span>
             </div>
             {status === 'paid' && paymentMethodText && (
               <div style={{ display: 'flex', gap: 56, fontSize: 13, color: '#4b5563', fontWeight: 600, marginTop: 6 }}>
                 <span>Payment Method</span>
-                <span>{paymentMethodText}</span>
+                <span style={{ whiteSpace: 'nowrap' }}>{paymentMethodText}</span>
               </div>
             )}
           </div>

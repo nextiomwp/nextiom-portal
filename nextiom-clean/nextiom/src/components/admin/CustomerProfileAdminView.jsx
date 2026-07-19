@@ -3,7 +3,7 @@ import {
   ChevronLeft, Mail, Phone, Building, Globe, Bell, Trash2, KeyRound, Package, 
   Edit, RefreshCw, Infinity, Lock, Key, X, Eye, Calendar, Clock, TrendingUp, 
   MessageSquare, Briefcase, CheckCircle2, AlertTriangle, AlertOctagon, Copy, 
-  Plus, ExternalLink, FileText, UserCheck, ShieldAlert
+  Plus, ExternalLink, FileText, UserCheck, ShieldAlert, MapPin
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useNavigate } from 'react-router-dom';
@@ -314,7 +314,8 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
         email: customerData.email,
         phone: customerData.phone, 
         company: customerData.company, 
-        country: customerData.country
+        country: customerData.country,
+        address: customerData.address
       });
       addNotification({ customer_id: null, type: 'customer_updated', title: `Customer Updated — ${customerData.name}`, message: `Admin updated profile for ${customerData.name} (${customerData.email}).` }).catch(() => {});
       toast({ title: 'Customer Updated', description: 'Profile saved.' });
@@ -938,7 +939,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
         client_company: customerData.company || '',
         client_phone: customerData.phone || '',
         client_email: customerData.email || '',
-        client_address: customerData.country || '',
+        client_address: customerData.address || customerData.country || '',
         notes: 'Generated from customer profile quick actions.',
         total: amount,
         currency: invCurrency
@@ -1730,6 +1731,21 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                   <input 
                     value={customerData.country || ''} 
                     onChange={e => setCustomerData({ ...customerData, country: e.target.value })}
+                    style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 13, fontWeight: 600, width: '100%', outline: 'none', padding: 0 }}
+                  />
+                </div>
+              </div>
+
+              {/* Address Card */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(232,123,53,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-color)', flexShrink: 0 }}>
+                  <MapPin size={16} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <label style={{ fontSize: 10, color: c.subText, fontWeight: 700, textTransform: 'uppercase' }}>Address</label>
+                  <input 
+                    value={customerData.address || ''} 
+                    onChange={e => setCustomerData({ ...customerData, address: e.target.value })}
                     style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 13, fontWeight: 600, width: '100%', outline: 'none', padding: 0 }}
                   />
                 </div>

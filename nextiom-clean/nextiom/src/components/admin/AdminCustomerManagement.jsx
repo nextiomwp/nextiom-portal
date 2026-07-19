@@ -705,7 +705,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
       toast({ title: 'Export Failed', description: 'No customers to export.', variant: 'destructive' });
       return;
     }
-    const headers = ['Name', 'Email', 'Company', 'Phone', 'Country', 'Joined', 'Status', 'Health', 'Products', 'Hosting', 'Domains', 'Emails', 'Jobs', 'Tickets'];
+    const headers = ['Name', 'Email', 'Company', 'Phone', 'Country', 'Address', 'Joined', 'Status', 'Health', 'Products', 'Hosting', 'Domains', 'Emails', 'Jobs', 'Tickets'];
     const rows = [headers];
     list.forEach(cu => {
       rows.push([
@@ -714,6 +714,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
         cu.company || '',
         cu.phone || '',
         cu.country || '',
+        cu.address || '',
         new Date(cu.created_at).toLocaleDateString(),
         cu.status || '',
         cu.health || '',
