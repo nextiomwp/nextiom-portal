@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Loader2, Trash2, FileText, Download, Upload, Check, RefreshCw, X, ChevronDown, CheckCircle, Clock } from 'lucide-react';
+import { Search, Plus, Loader2, Trash2, FileText, Download, Upload, Check, RefreshCw, X, ChevronDown, CheckCircle, Clock, Edit } from 'lucide-react';
 import { getCustomers } from '@/lib/storage';
 import { getAgreements, createAgreement, updateAgreementStatus, deleteAgreement, openAgreementSecurely } from '@/lib/agreements';
 import { useToast } from '@/components/ui/use-toast';
@@ -15,6 +15,9 @@ function AdminAgreementManagement({ isDark = true }) {
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [openingId, setOpeningId] = useState(null);
+  
+  // Edit agreement state
+  const [editAgreement, setEditAgreement] = useState(null);
   
   // Upload form state
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -156,13 +159,15 @@ function AdminAgreementManagement({ isDark = true }) {
     return ag.status === statusFilter;
   });
 
-  if (view === 'create') {
+  if (view === 'create' || view === 'edit') {
     return (
       <AdminAgreementCreator
         isDark={isDark}
         customers={customers}
+        agreement={editAgreement}
         onBack={() => {
           setView('list');
+          setEditAgreement(null);
           loadData();
         }}
       />
@@ -419,6 +424,27 @@ function AdminAgreementManagement({ isDark = true }) {
                               <Check size={14} />
                             </button>
                           )}
+                          <button
+                            onClick={() => {
+                              setEditAgreement(ag);
+                              setView('edit');
+                            }}
+                            title="Edit Agreement"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: 28,
+                              height: 28,
+                              borderRadius: 6,
+                              border: 'none',
+                              background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                              color: c.text,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Edit size={14} />
+                          </button>
                           <button
                             onClick={() => handleDelete(ag.id)}
                             title="Delete Agreement"

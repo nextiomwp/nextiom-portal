@@ -186,7 +186,7 @@ export const getAgreements = async (customerId = null) => {
  * session cache hasn't been populated yet (due to the custom lock bypass used
  * in this app), resulting in an unauthenticated request and an HTTP 400 error.
  */
-export const createAgreement = async (customerId, name, file) => {
+export const createAgreement = async (customerId, name, file, editorState = null) => {
   const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
   const fileName = `${Date.now()}_template_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
   const path = `templates/${customerId}/${fileName}`;
@@ -201,6 +201,7 @@ export const createAgreement = async (customerId, name, file) => {
     name,
     status: 'pending_signature',
     file_path: path,
+    editor_state: editorState
   }).select().single();
 
   if (error) {
@@ -249,6 +250,93 @@ export const uploadSignedAgreement = async (agreementId, file) => {
   if (error) {
     await supabase.storage.from('agreements').remove([path]);
     throw error;
+  }
+
+  return data;
+};
+
+/**
+ * Update an existing agreement's fields and handle optional new files.
+ */
+export const updateAgreement = async (agreementId, { name, customerId, status, newTemplateFile, newSignedFile, clearSignedFile, editorState }) => {
+  // 1. Fetch current agreement details to know customer ID and current file paths
+  const { data: agreement, error: getError } = await supabase
+    .from('agreements')
+    .select('*')
+    .eq('id', agreementId)
+    .single();
+
+  if (getError) throw getError;
+
+  const updateFields = {
+    name,
+    customer_id: customerId,
+    status,
+    editor_state: editorState,
+    updated_at: new Date().toISOString()
+  };
+
+  const oldPathsToDelete = [];
+
+  // 2. Handle new template file if provided
+  if (newTemplateFile) {
+    const ext = (newTemplateFile.name.split('.').pop() || 'pdf').toLowerCase();
+    const fileName = `${Date.now()}_template_${newTemplateFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const path = `templates/${customerId}/${fileName}`;
+    const contentType = newTemplateFile.type || getMimeType(ext);
+
+    // Upload using direct fetch
+    await uploadFileDirect('agreements', path, newTemplateFile, contentType);
+    
+    updateFields.file_path = path;
+    if (agreement.file_path) {
+      oldPathsToDelete.push(agreement.file_path);
+    }
+  }
+
+  // 3. Handle new signed file if provided
+  if (newSignedFile) {
+    const ext = (newSignedFile.name.split('.').pop() || 'pdf').toLowerCase();
+    const fileName = `${Date.now()}_signed_${newSignedFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const path = `signed/${customerId}/${fileName}`;
+    const contentType = newSignedFile.type || getMimeType(ext);
+
+    // Upload using direct fetch
+    await uploadFileDirect('agreements', path, newSignedFile, contentType);
+    
+    updateFields.signed_file_path = path;
+    if (agreement.signed_file_path) {
+      oldPathsToDelete.push(agreement.signed_file_path);
+    }
+  } else if (clearSignedFile) {
+    updateFields.signed_file_path = null;
+    if (agreement.signed_file_path) {
+      oldPathsToDelete.push(agreement.signed_file_path);
+    }
+  }
+
+  // 4. Update row in DB
+  const { data, error } = await supabase
+    .from('agreements')
+    .update(updateFields)
+    .eq('id', agreementId)
+    .select()
+    .single();
+
+  if (error) {
+    // If update failed, clean up newly uploaded files to prevent orphaned files in storage
+    const newPaths = [];
+    if (updateFields.file_path) newPaths.push(updateFields.file_path);
+    if (updateFields.signed_file_path) newPaths.push(updateFields.signed_file_path);
+    if (newPaths.length > 0) {
+      await supabase.storage.from('agreements').remove(newPaths);
+    }
+    throw error;
+  }
+
+  // 5. Clean up old files on successful DB update
+  if (oldPathsToDelete.length > 0) {
+    await supabase.storage.from('agreements').remove(oldPathsToDelete);
   }
 
   return data;

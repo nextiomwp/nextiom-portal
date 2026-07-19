@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { jsPDF } from 'jspdf';
-import { ArrowLeft, Save, Loader2, Calendar, FileText, ChevronDown, DollarSign, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Calendar, FileText, ChevronDown, DollarSign, Trash2, Plus, GripVertical } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { createAgreement, openAgreementSecurely } from '@/lib/agreements';
+import { createAgreement, openAgreementSecurely, updateAgreement } from '@/lib/agreements';
 import { addNotification } from '@/lib/storage';
 import { resolveLogoUrl } from '@/lib/invoices';
 import { useToast } from '@/components/ui/use-toast';
@@ -192,7 +192,7 @@ const getTemplates = (cust, fee, curr) => {
   ];
 };
 
-function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
+function AdminAgreementCreator({ isDark = true, customers = [], onBack, agreement }) {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [agreementName, setAgreementName] = useState('Service Agreement');
   
@@ -255,6 +255,43 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
     };
     fetchResources();
   }, []);
+
+  // Initialize from existing agreement (Edit Mode)
+  useEffect(() => {
+    if (agreement) {
+      const state = agreement.editor_state || {};
+      
+      const matchName = (agreement.name || '').match(/^(.*?)\s*\(#H\d+\)$/);
+      const nameVal = matchName ? matchName[1] : (agreement.name || 'Service Agreement');
+      
+      const matchId = (agreement.name || '').match(/\((#H\d+)\)$/);
+      const idVal = matchId ? matchId[1] : `#H${Math.floor(1000 + Math.random() * 9000)}`;
+
+      setSelectedCustomerId(agreement.customer_id || '');
+      setAgreementName(state.agreementName || nameVal);
+      setAgreementId(state.agreementId || idVal);
+      setAgreementDate(state.agreementDate || (agreement.created_at ? agreement.created_at.split('T')[0] : new Date().toISOString().split('T')[0]));
+      setDurationLabel(state.durationLabel || '1 Year');
+      setPackageFee(state.packageFee || '55000');
+      setCurrency(state.currency || 'LKR');
+      
+      setClientName(state.clientName || agreement.customers?.name || '');
+      setClientCompany(state.clientCompany || agreement.customers?.company || '');
+      setClientPhone(state.clientPhone || agreement.customers?.phone || '');
+      setClientEmail(state.clientEmail || agreement.customers?.email || '');
+      setClientAddress(state.clientAddress || agreement.customers?.address || '');
+      
+      if (state.sections) {
+        setSections(state.sections);
+      } else {
+        const cust = customers.find(cu => cu.id === agreement.customer_id);
+        if (cust) {
+          const freshTemplates = getTemplates(cust, state.packageFee || '55000', state.currency || 'LKR');
+          setSections(freshTemplates);
+        }
+      }
+    }
+  }, [agreement, customers]);
 
   // Initialize/Update templates when customer changes
   const handleCustomerChange = (customerId) => {
@@ -328,6 +365,40 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
   // Update Section Title
   const handleSectionTitleChange = (index, newTitle) => {
     setSections(prev => prev.map((sec, idx) => idx === index ? { ...sec, title: newTitle } : sec));
+  };
+
+  const [draggedIndex, setDraggedIndex] = useState(null);
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    setSections(prev => {
+      const list = [...prev];
+      const draggedItem = list[draggedIndex];
+      list.splice(draggedIndex, 1);
+      list.splice(index, 0, draggedItem);
+      return list;
+    });
+    setDraggedIndex(index);
+
+    if (expandedSectionIndex === draggedIndex) {
+      setExpandedSectionIndex(index);
+    } else if (expandedSectionIndex > draggedIndex && expandedSectionIndex <= index) {
+      setExpandedSectionIndex(prev => prev - 1);
+    } else if (expandedSectionIndex < draggedIndex && expandedSectionIndex >= index) {
+      setExpandedSectionIndex(prev => prev + 1);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   const handleSaveAgreement = async () => {
@@ -699,18 +770,46 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
       const pdfBlob = doc.output('blob');
       const pdfFile = new File([pdfBlob], `${agreementName.replace(/[^a-zA-Z0-9]/g, '_')}_${agreementId}.pdf`, { type: 'application/pdf' });
 
-      // 2. Upload file to Supabase storage & save agreement row
-      const savedAg = await createAgreement(selectedCustomerId, `${agreementName} (${agreementId})`, pdfFile);
+      const editorState = {
+        agreementName,
+        agreementId,
+        agreementDate,
+        durationLabel,
+        packageFee,
+        currency,
+        clientName,
+        clientCompany,
+        clientPhone,
+        clientEmail,
+        clientAddress,
+        sections
+      };
 
-      // 3. Add notification to client
-      await addNotification({
-        customer_id: selectedCustomerId,
-        type: 'agreement',
-        title: `New Service Agreement ${agreementId}`,
-        message: `A new service agreement template "${agreementName} (${agreementId})" is ready. Please download and upload the signed copy.`,
-      });
+      if (agreement) {
+        // Edit Mode: update existing agreement and replace template PDF
+        await updateAgreement(agreement.id, {
+          name: `${agreementName} (${agreementId})`,
+          customerId: selectedCustomerId,
+          status: agreement.status,
+          newTemplateFile: pdfFile,
+          editorState
+        });
 
-      toast({ title: 'Success', description: 'Agreement generated and assigned successfully.' });
+        toast({ title: 'Success', description: 'Agreement updated successfully.' });
+      } else {
+        // Create Mode: save new agreement template
+        await createAgreement(selectedCustomerId, `${agreementName} (${agreementId})`, pdfFile, editorState);
+
+        // Add notification to client
+        await addNotification({
+          customer_id: selectedCustomerId,
+          type: 'agreement',
+          title: `New Service Agreement ${agreementId}`,
+          message: `A new service agreement template "${agreementName} (${agreementId})" is ready. Please download and upload the signed copy.`,
+        });
+
+        toast({ title: 'Success', description: 'Agreement generated and assigned successfully.' });
+      }
 
       onBack();
     } catch (err) {
@@ -745,7 +844,9 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
           Back
         </button>
 
-        <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: c.text }}>Create Agreement Builder</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: c.text }}>
+          {agreement ? 'Edit Agreement Builder' : 'Create Agreement Builder'}
+        </h1>
 
         <button
           onClick={handleSaveAgreement}
@@ -768,12 +869,12 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
           {isSaving ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Generating...
+              Saving...
             </>
           ) : (
             <>
               <Save size={15} />
-              Generate & Assign
+              {agreement ? 'Save Changes' : 'Generate & Assign'}
             </>
           )}
         </button>
@@ -1005,10 +1106,17 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
                   return (
                     <div
                       key={idx}
+                      draggable={true}
+                      onDragStart={(e) => handleDragStart(e, idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDragEnd={handleDragEnd}
                       style={{
                         border: `1px solid ${isExpanded ? c.brand : c.border}`,
                         borderRadius: 8,
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        opacity: draggedIndex === idx ? 0.4 : 1,
+                        background: draggedIndex === idx ? (isDark ? 'rgba(255,255,255,0.02)' : '#f9fafb') : c.card,
+                        transition: 'opacity 0.15s, background-color 0.15s'
                       }}
                     >
                       <div
@@ -1024,23 +1132,33 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
                           cursor: 'pointer'
                         }}
                       >
-                        {/* Editable Section Title Input */}
-                        <input
-                          type="text"
-                          value={sec.title || ''}
-                          onClick={(e) => e.stopPropagation()} // prevent toggle collapse
-                          onChange={(e) => handleSectionTitleChange(idx, e.target.value)}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: isExpanded ? c.brand : c.text,
-                            fontWeight: 600,
-                            fontSize: 13.5,
-                            outline: 'none',
-                            width: '80%',
-                            fontFamily: 'inherit'
-                          }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '80%' }}>
+                          <div 
+                            style={{ cursor: 'grab', display: 'flex', alignItems: 'center', color: c.subText }}
+                            title="Drag to reorder"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <GripVertical size={14} />
+                          </div>
+                          
+                          {/* Editable Section Title Input */}
+                          <input
+                            type="text"
+                            value={sec.title || ''}
+                            onClick={(e) => e.stopPropagation()} // prevent toggle collapse
+                            onChange={(e) => handleSectionTitleChange(idx, e.target.value)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: isExpanded ? c.brand : c.text,
+                              fontWeight: 600,
+                              fontSize: 13.5,
+                              outline: 'none',
+                              width: '100%',
+                              fontFamily: 'inherit'
+                            }}
+                          />
+                        </div>
                         
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {/* Delete Section Button */}
