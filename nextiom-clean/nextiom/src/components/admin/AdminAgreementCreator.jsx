@@ -711,13 +711,6 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack }) {
       });
 
       toast({ title: 'Success', description: 'Agreement generated and assigned successfully.' });
-      
-      // Instantly open the generated template PDF in a new tab for the admin to view
-      try {
-        await openAgreementSecurely(savedAg.file_path);
-      } catch (err) {
-        console.error('Failed to open PDF in new tab:', err);
-      }
 
       onBack();
     } catch (err) {
