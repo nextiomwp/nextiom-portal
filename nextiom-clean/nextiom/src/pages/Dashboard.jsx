@@ -810,8 +810,10 @@ function Dashboard({ onLogout }) {
       const approvedEmailStatuses = new Set(['approved', 'active', 'completed', 'expired']);
       const activeEmails = (emailReqs || []).filter(r => approvedEmailStatuses.has(String(r.status || '').toLowerCase()));
       setActiveEmailsCount(activeEmails.length);
-      // Bump refreshKey so child components that accept it re-render
-      setRefreshKey(k => k + 1);
+      // Bump refreshKey so child components that accept it re-render (only if not a background update)
+      if (!isBackground) {
+        setRefreshKey(k => k + 1);
+      }
       const now = new Date();
       setLastRefreshed(now);
       if (isManualRefresh) {
@@ -1035,7 +1037,7 @@ function Dashboard({ onLogout }) {
       case 'maintenance': return <MaintenanceModePage key={refreshKey} isDark={isDark} />;
       case 'activityLog': return <AdminActivityLogPage key={refreshKey} isDark={isDark} />;
       case 'backup': return <AdminBackupPage key={refreshKey} isDark={isDark} />;
-      case 'agreements': return <AdminAgreementManagement isDark={isDark} />;
+      case 'agreements': return <AdminAgreementManagement key={refreshKey} isDark={isDark} />;
       case 'emailRequests': return <AdminEmailRequestManagement key={refreshKey} isDark={isDark} />;
       case 'approvedEmailsActive': return <AdminApprovedEmails key={refreshKey} isDark={isDark} />;
       case 'activeHosting': return <AdminApprovedHostings key={refreshKey} isDark={isDark} />;
