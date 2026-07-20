@@ -294,19 +294,41 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack, agreemen
   }, [agreement, customers]);
 
   // Initialize/Update templates when customer changes
-  const handleCustomerChange = (customerId) => {
+  const handleCustomerChange = async (customerId) => {
     setSelectedCustomerId(customerId);
     const cust = customers.find(cu => cu.id === customerId);
     if (!cust) return;
 
+    let address = cust.address || '';
+    let company = cust.company || '';
+    let phone = cust.phone || '';
+
+    // If address is missing on local object, fetch full customer record directly from DB
+    if (!address) {
+      try {
+        const { data: fullCust } = await supabase
+          .from('customers')
+          .select('address, company, phone')
+          .eq('id', customerId)
+          .maybeSingle();
+        if (fullCust) {
+          if (fullCust.address) address = fullCust.address;
+          if (fullCust.company) company = fullCust.company;
+          if (fullCust.phone) phone = fullCust.phone;
+        }
+      } catch (err) {
+        console.error('[AdminAgreementCreator] Error fetching customer address:', err);
+      }
+    }
+
     setClientName(cust.name || '');
-    setClientCompany(cust.company || '');
-    setClientPhone(cust.phone || '');
+    setClientCompany(company);
+    setClientPhone(phone);
     setClientEmail(cust.email || '');
-    setClientAddress(cust.address || '');
+    setClientAddress(address);
 
     // Reset templates to selected customer
-    const freshTemplates = getTemplates(cust, packageFee, currency);
+    const freshTemplates = getTemplates({ ...cust, address, company, phone }, packageFee, currency);
     setSections(freshTemplates);
   };
 
@@ -619,9 +641,16 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack, agreemen
         
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(51, 51, 51);
-        doc.text(field.value || '', margin + 36, y);
         
-        y += 2;
+        const valText = field.value || '';
+        const lines = doc.splitTextToSize(valText, 74);
+        let valY = y;
+        for (let i = 0; i < lines.length; i++) {
+          doc.text(lines[i], margin + 36, valY);
+          if (i < lines.length - 1) valY += 4.2;
+        }
+        
+        y = Math.max(y, valY) + 2;
         doc.setDrawColor(243, 244, 246);
         doc.line(margin + 4, y, margin + 110, y);
         y += 5.5;
@@ -1045,16 +1074,37 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack, agreemen
             </div>
           </div>
 
-          {/* Client Details Card (ReadOnly/Pre-populated) */}
+          {/* Client Details Card (Pre-populated with editable address) */}
           <div style={{ border: `1.5px solid ${c.border}`, borderRadius: 8, padding: 12, background: isDark ? 'rgba(255,255,255,0.01)' : '#fdfdfd', marginBottom: 16 }}>
             <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, letterSpacing: 0.5, margin: '0 0 10px' }}>Assigned Customer Info</h3>
             {selectedCustomerId ? (
-              <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 6, color: c.text }}>
+              <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 8, color: c.text }}>
                 <div><span style={{ fontWeight: 600, color: c.subText }}>Name:</span> {clientName}</div>
                 <div><span style={{ fontWeight: 600, color: c.subText }}>Company:</span> {clientCompany || '—'}</div>
                 <div><span style={{ fontWeight: 600, color: c.subText }}>Phone:</span> {clientPhone || '—'}</div>
                 <div><span style={{ fontWeight: 600, color: c.subText }}>E-mail:</span> {clientEmail}</div>
-                <div><span style={{ fontWeight: 600, color: c.subText }}>Address:</span> {clientAddress || '—'}</div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, color: c.subText, marginBottom: 4 }}>Address (Included in PDF):</label>
+                  <textarea
+                    rows={2}
+                    value={clientAddress}
+                    onChange={(e) => setClientAddress(e.target.value)}
+                    placeholder="Enter customer address..."
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px',
+                      border: `1.5px solid ${c.border}`,
+                      borderRadius: 6,
+                      background: c.input,
+                      color: c.text,
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                      resize: 'vertical',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
               </div>
             ) : (
               <div style={{ fontSize: 12, color: c.subText, fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>Select customer to populate details</div>

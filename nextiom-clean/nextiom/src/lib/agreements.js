@@ -165,7 +165,7 @@ export const openAgreementSecurely = async (filePath) => {
 export const getAgreements = async (customerId = null) => {
   let query = supabase.from('agreements').select(`
     *,
-    customers:customer_id (id, name, email)
+    customers:customer_id (id, name, email, company, phone, address)
   `);
 
   if (customerId) {
