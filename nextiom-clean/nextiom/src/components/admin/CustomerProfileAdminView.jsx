@@ -1665,9 +1665,9 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
             </div>
 
             {/* Editable Info Fields Cards (Styled borderless inputs inside cards) */}
-            <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <div style={{ padding: '20px 24px', display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12, width: '100%' }}>
               {/* Email Card */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10, minWidth: 0 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', flexShrink: 0 }}>
                   <Mail size={16} />
                 </div>
@@ -1679,7 +1679,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                     <input 
                       value={customerData.email || ''} 
                       onChange={e => setCustomerData({ ...customerData, email: e.target.value })}
-                      style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 13, fontWeight: 600, width: '100%', outline: 'none', padding: 0 }}
+                      style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 12.5, fontWeight: 600, width: '100%', outline: 'none', padding: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
                     />
                     <Copy size={12} style={{ color: c.subText, cursor: 'pointer', flexShrink: 0 }} onClick={() => handleCopyText(customerData.email, 'Email')} />
                   </div>
@@ -1687,7 +1687,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
               </div>
 
               {/* Phone Card */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10, minWidth: 0 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(139,92,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a78bfa', flexShrink: 0 }}>
                   <Phone size={16} />
                 </div>
@@ -1699,7 +1699,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                     <input 
                       value={customerData.phone || ''} 
                       onChange={e => setCustomerData({ ...customerData, phone: e.target.value })}
-                      style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 13, fontWeight: 600, width: '100%', outline: 'none', padding: 0 }}
+                      style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 12.5, fontWeight: 600, width: '100%', outline: 'none', padding: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}
                     />
                     <Copy size={12} style={{ color: c.subText, cursor: 'pointer', flexShrink: 0 }} onClick={() => handleCopyText(customerData.phone, 'Phone')} />
                   </div>
@@ -1707,7 +1707,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
               </div>
 
               {/* Company Card */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10, minWidth: 0 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa', flexShrink: 0 }}>
                   <Building size={16} />
                 </div>
@@ -1716,13 +1716,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                   <input 
                     value={customerData.company || ''} 
                     onChange={e => setCustomerData({ ...customerData, company: e.target.value })}
-                    style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 13, fontWeight: 600, width: '100%', outline: 'none', padding: 0 }}
+                    style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 12.5, fontWeight: 600, width: '100%', outline: 'none', padding: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}
                   />
                 </div>
               </div>
 
               {/* Country Card */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10, minWidth: 0 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ade80', flexShrink: 0 }}>
                   <Globe size={16} />
                 </div>
@@ -1731,13 +1731,13 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                   <input 
                     value={customerData.country || ''} 
                     onChange={e => setCustomerData({ ...customerData, country: e.target.value })}
-                    style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 13, fontWeight: 600, width: '100%', outline: 'none', padding: 0 }}
+                    style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 12.5, fontWeight: 600, width: '100%', outline: 'none', padding: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}
                   />
                 </div>
               </div>
 
               {/* Address Card */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: isDark ? '#22252C' : '#fff', border: `1px solid ${c.border}`, borderRadius: 10, minWidth: 0 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(232,123,53,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-color)', flexShrink: 0 }}>
                   <MapPin size={16} />
                 </div>
@@ -1746,7 +1746,7 @@ function CustomerProfileAdminView({ customer, onBack, isDark = true, onNavigate,
                   <input 
                     value={customerData.address || ''} 
                     onChange={e => setCustomerData({ ...customerData, address: e.target.value })}
-                    style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 13, fontWeight: 600, width: '100%', outline: 'none', padding: 0 }}
+                    style={{ background: 'transparent', border: 'none', color: c.text, fontSize: 12.5, fontWeight: 600, width: '100%', outline: 'none', padding: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}
                   />
                 </div>
               </div>

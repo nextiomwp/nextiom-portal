@@ -294,6 +294,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
    const subtotal = calcSubtotal(items)
   const totalDiscount = calcTotalDiscount(items)
   const total = calcTotal(items)
+  const hasRate = Boolean(exchangeRate && parseFloat(exchangeRate) > 0)
 
   const handleExchangeRateChange = (newRateStr: string) => {
     setExchangeRate(newRateStr)
@@ -793,14 +794,14 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                 <span style={{ textAlign: 'center' }}>Qty</span>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <span>Unit Price</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>LKR / USD</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>{hasRate ? 'LKR / USD' : 'LKR'}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span>Discount</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <span>Amount</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>LKR / USD</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, opacity: 0.7, marginTop: 2 }}>{hasRate ? 'LKR / USD' : 'LKR'}</span>
                 </div>
                 <span></span>
               </div>
@@ -907,7 +908,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                     </div>
                     {currency === 'LKR' ? (
                       <>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: hasRate ? '1fr 1fr' : '1fr', gap: 10 }}>
                           <div>
                             <label style={lbl}>Unit Price (LKR)</label>
                             <input
@@ -915,23 +916,25 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                               min={0}
                               placeholder="0.00"
                               style={inp}
-                              value={item.unit_price_lkr !== undefined && item.unit_price_lkr !== null ? item.unit_price_lkr : ''}
+                              value={item.unit_price_lkr ? item.unit_price_lkr : ''}
                               onChange={e => updateItem(i, 'unit_price_lkr', e.target.value)}
                             />
                           </div>
-                          <div>
-                            <label style={lbl}>Unit Price (USD)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              placeholder="0.00"
-                              style={inp}
-                              value={item.unit_price_usd !== undefined && item.unit_price_usd !== null ? item.unit_price_usd : ''}
-                              onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
-                            />
-                          </div>
+                          {hasRate && (
+                            <div>
+                              <label style={lbl}>Unit Price (USD)</label>
+                              <input
+                                type="number"
+                                min={0}
+                                placeholder="0.00"
+                                style={inp}
+                                value={item.unit_price_usd ? item.unit_price_usd : ''}
+                                onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
+                              />
+                            </div>
+                          )}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: hasRate ? '1fr 1fr' : '1fr', gap: 10 }}>
                           <div>
                             <label style={lbl}>Amount (LKR)</label>
                             <input
@@ -939,21 +942,23 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                               min={0}
                               placeholder="0.00"
                               style={inp}
-                              value={item.amount_lkr !== undefined && item.amount_lkr !== null ? item.amount_lkr : ''}
+                              value={item.amount_lkr ? item.amount_lkr : ''}
                               onChange={e => updateItem(i, 'amount_lkr', e.target.value)}
                             />
                           </div>
-                          <div>
-                            <label style={lbl}>Amount (USD)</label>
-                            <input
-                              type="number"
-                              min={0}
-                              placeholder="0.00"
-                              style={inp}
-                              value={item.amount_usd !== undefined && item.amount_usd !== null ? item.amount_usd : ''}
-                              onChange={e => updateItem(i, 'amount_usd', e.target.value)}
-                            />
-                          </div>
+                          {hasRate && (
+                            <div>
+                              <label style={lbl}>Amount (USD)</label>
+                              <input
+                                type="number"
+                                min={0}
+                                placeholder="0.00"
+                                style={inp}
+                                value={item.amount_usd ? item.amount_usd : ''}
+                                onChange={e => updateItem(i, 'amount_usd', e.target.value)}
+                              />
+                            </div>
+                          )}
                         </div>
                       </>
                     ) : (
@@ -965,7 +970,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                             min={0}
                             placeholder="0.00"
                             style={inp}
-                            value={item.unit_price_usd !== undefined && item.unit_price_usd !== null ? item.unit_price_usd : ''}
+                            value={item.unit_price_usd ? item.unit_price_usd : ''}
                             onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
                           />
                         </div>
@@ -976,7 +981,7 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                             min={0}
                             placeholder="0.00"
                             style={inp}
-                            value={item.amount_usd !== undefined && item.amount_usd !== null ? item.amount_usd : ''}
+                            value={item.amount_usd ? item.amount_usd : ''}
                             onChange={e => updateItem(i, 'amount_usd', e.target.value)}
                           />
                         </div>
@@ -992,10 +997,12 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                           <span style={{ fontSize: 12, color: c.subText }}>Amount (LKR)</span>
                           <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>LKR {item.amount_lkr ? Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}</div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: 12, color: c.subText }}>Amount (USD)</span>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>USD {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}</div>
-                        </div>
+                        {hasRate && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 12, color: c.subText }}>Amount (USD)</span>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: c.text }}>USD {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}</div>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1071,19 +1078,21 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                       <input
                         type="number"
                         min={0}
-                        placeholder="LKR"
+                        placeholder="0.00"
                         style={inp}
-                        value={item.unit_price_lkr !== undefined && item.unit_price_lkr !== null ? item.unit_price_lkr : ''}
+                        value={item.unit_price_lkr ? item.unit_price_lkr : ''}
                         onChange={e => updateItem(i, 'unit_price_lkr', e.target.value)}
                       />
-                      <input
-                        type="number"
-                        min={0}
-                        placeholder="USD"
-                        style={{ ...inp, fontSize: 12, opacity: 0.8 }}
-                        value={item.unit_price_usd !== undefined && item.unit_price_usd !== null ? item.unit_price_usd : ''}
-                        onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
-                      />
+                      {hasRate && (
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="0.00"
+                          style={{ ...inp, fontSize: 12, opacity: 0.8 }}
+                          value={item.unit_price_usd ? item.unit_price_usd : ''}
+                          onChange={e => updateItem(i, 'unit_price_usd', e.target.value)}
+                        />
+                      )}
                     </div>
 
                     {/* Discount input (4th column) */}
@@ -1094,9 +1103,11 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                       <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>
                         {item.amount_lkr ? Number(item.amount_lkr).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                       </span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: c.subText }}>
-                        {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}
-                      </span>
+                      {hasRate && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: c.subText }}>
+                          {item.amount_usd ? Number(item.amount_usd).toFixed(2) : '0.00'}
+                        </span>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: 6 }}>
@@ -1212,28 +1223,28 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
                 <span>Subtotal</span>
                 <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
                   <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                  {hasRate && <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: c.subText }}>
                 <span>Total Discount</span>
                 <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
                   <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalDiscountLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalDiscountUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                  {hasRate && <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalDiscountUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 700, borderTop: `1px solid ${c.border}`, paddingTop: 8, color: c.brand }}>
                 <span>Grand Total</span>
                 <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
                   <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                  {hasRate && <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 500, color: c.text }}>
                 <span>Due Total</span>
                 <div style={{ display: 'flex', gap: 24, fontFamily: 'monospace' }}>
                   <span style={{ minWidth: 120, textAlign: 'right' }}>LKR {calcTotalLKR(items, currency, parseFloat(exchangeRate) || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>
+                  {hasRate && <span style={{ minWidth: 100, textAlign: 'right' }}>USD {calcTotalUSD(items, currency, parseFloat(exchangeRate) || 0).toFixed(2)}</span>}
                 </div>
               </div>
             </div>

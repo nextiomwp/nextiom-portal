@@ -1074,15 +1074,91 @@ function AdminAgreementCreator({ isDark = true, customers = [], onBack, agreemen
             </div>
           </div>
 
-          {/* Client Details Card (Pre-populated with editable address) */}
+          {/* Client Details Card (Pre-populated with editable details) */}
           <div style={{ border: `1.5px solid ${c.border}`, borderRadius: 8, padding: 12, background: isDark ? 'rgba(255,255,255,0.01)' : '#fdfdfd', marginBottom: 16 }}>
             <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: c.subText, letterSpacing: 0.5, margin: '0 0 10px' }}>Assigned Customer Info</h3>
             {selectedCustomerId ? (
-              <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 8, color: c.text }}>
-                <div><span style={{ fontWeight: 600, color: c.subText }}>Name:</span> {clientName}</div>
-                <div><span style={{ fontWeight: 600, color: c.subText }}>Company:</span> {clientCompany || '—'}</div>
-                <div><span style={{ fontWeight: 600, color: c.subText }}>Phone:</span> {clientPhone || '—'}</div>
-                <div><span style={{ fontWeight: 600, color: c.subText }}>E-mail:</span> {clientEmail}</div>
+              <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 10, color: c.text }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, color: c.subText, marginBottom: 4 }}>Name:</label>
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="Enter customer name..."
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px',
+                      border: `1.5px solid ${c.border}`,
+                      borderRadius: 6,
+                      background: c.input,
+                      color: c.text,
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, color: c.subText, marginBottom: 4 }}>Company:</label>
+                  <input
+                    type="text"
+                    value={clientCompany}
+                    onChange={(e) => setClientCompany(e.target.value)}
+                    placeholder="Enter company name..."
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px',
+                      border: `1.5px solid ${c.border}`,
+                      borderRadius: 6,
+                      background: c.input,
+                      color: c.text,
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, color: c.subText, marginBottom: 4 }}>Phone:</label>
+                  <input
+                    type="text"
+                    value={clientPhone}
+                    onChange={(e) => setClientPhone(e.target.value)}
+                    placeholder="Enter phone number..."
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px',
+                      border: `1.5px solid ${c.border}`,
+                      borderRadius: 6,
+                      background: c.input,
+                      color: c.text,
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, color: c.subText, marginBottom: 4 }}>E-mail:</label>
+                  <input
+                    type="email"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    placeholder="Enter email address..."
+                    style={{
+                      width: '100%',
+                      padding: '7px 10px',
+                      border: `1.5px solid ${c.border}`,
+                      borderRadius: 6,
+                      background: c.input,
+                      color: c.text,
+                      fontSize: 12,
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
                 <div>
                   <label style={{ display: 'block', fontWeight: 600, color: c.subText, marginBottom: 4 }}>Address (Included in PDF):</label>
                   <textarea
