@@ -13,6 +13,10 @@ const ACTION_MAP = {
   account_rejected: { label: 'Account Rejected', color: '#f87171', bg: '#3a1515' },
   account_confirmed: { label: 'Account Confirmed', color: '#34d399', bg: '#0d2b1e' },
   admin_login: { label: 'Admin Login', color: 'var(--brand-color)', bg: '#2b1a0a' },
+  moderator_login: { label: 'Moderator Login', color: '#a78bfa', bg: '#2a1a4a' },
+  moderator_added: { label: 'Moderator Created', color: '#a78bfa', bg: '#2a1a4a' },
+  moderator_updated: { label: 'Moderator Updated', color: '#60a5fa', bg: '#0f1f3a' },
+  moderator_deleted: { label: 'Moderator Deleted', color: '#f87171', bg: '#3a1515' },
   customer_login: { label: 'Customer Login', color: '#34d399', bg: '#0d2b1e' },
   ticket: { label: 'Ticket', color: '#38bdf8', bg: '#0c2233' },
   ticket_reply: { label: 'Ticket Reply', color: '#38bdf8', bg: '#0c2233' },
@@ -115,6 +119,7 @@ function ExportModal({ open, onClose, onCSV, onPDF, isDark, c }) {
 function AdminActivityLogPage({ isDark = true }) {
   const [logs, setLogs] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [moderators, setModerators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
@@ -134,12 +139,14 @@ function AdminActivityLogPage({ isDark = true }) {
 
   const loadData = async () => {
     setLoading(true);
-    const [{ data: notifs }, { data: custs }] = await Promise.all([
+    const [{ data: notifs }, { data: custs }, { data: mods }] = await Promise.all([
       supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(2000),
       supabase.from('customers').select('id, name, email').order('name'),
+      supabase.from('moderators').select('id, user_id, name, email').order('name'),
     ]);
     setLogs(notifs || []);
     setCustomers(custs || []);
+    setModerators(mods || []);
     setLoading(false);
   };
 
@@ -149,23 +156,65 @@ function AdminActivityLogPage({ isDark = true }) {
     return m;
   }, [customers]);
 
+  const modMap = useMemo(() => {
+    const m = {};
+    moderators.forEach(mo => {
+      m[mo.id] = mo;
+      if (mo.user_id) m[mo.user_id] = mo;
+    });
+    return m;
+  }, [moderators]);
+
+  const getLogActorInfo = (log) => {
+    if (log.actor_role === 'moderator' || (log.actor_name && log.actor_name.startsWith('Moderator_')) || (log.actor_id && modMap[log.actor_id])) {
+      const mod = modMap[log.actor_id];
+      let actorName = log.actor_name || mod?.name || 'Moderator';
+      if (!actorName.endsWith(' + Mo')) {
+        actorName = `${actorName} + Mo`;
+      }
+      return {
+        role: 'Moderator',
+        name: actorName,
+        email: mod?.email || '',
+        color: 'var(--brand-color)',
+        bg: 'rgba(232, 123, 53, 0.14)'
+      };
+    }
+    if (log.customer_id || log.actor_role === 'customer') {
+      const cu = custMap[log.customer_id];
+      return {
+        role: 'Customer',
+        name: log.actor_name || cu?.name || 'Customer',
+        email: cu?.email || '',
+        color: '#60a5fa',
+        bg: 'rgba(96,165,250,0.14)'
+      };
+    }
+    return {
+      role: 'Admin',
+      name: log.actor_name || 'Admin',
+      email: '',
+      color: c.brand,
+      bg: 'rgba(232,123,53,0.18)'
+    };
+  };
+
   const filtered = useMemo(() => {
     const since = subDays(new Date(), days);
     return logs.filter(l => {
       const date = l.created_at ? parseISO(l.created_at) : null;
       if (date && !isWithinInterval(date, { start: since, end: new Date() })) return false;
-      const isAdmin = !l.customer_id;
-      if (roleFilter === 'Admin' && !isAdmin) return false;
-      if (roleFilter === 'Customer' && isAdmin) return false;
+      const actor = getLogActorInfo(l);
+
+      if (roleFilter !== 'All' && actor.role !== roleFilter) return false;
       if (actionFilter !== 'All' && l.type !== actionFilter) return false;
       if (search) {
         const q = search.toLowerCase();
-        const name = l.customer_id ? (custMap[l.customer_id]?.name || '') : 'Admin';
-        if (!l.title?.toLowerCase().includes(q) && !l.message?.toLowerCase().includes(q) && !name.toLowerCase().includes(q)) return false;
+        if (!l.title?.toLowerCase().includes(q) && !l.message?.toLowerCase().includes(q) && !actor.name.toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [logs, days, roleFilter, actionFilter, search, custMap]);
+  }, [logs, days, roleFilter, actionFilter, search, custMap, modMap]);
 
   // Reset to page 1 when filters change
   useEffect(() => { setPage(1); }, [search, roleFilter, actionFilter, days, perPage]);
@@ -261,7 +310,7 @@ function AdminActivityLogPage({ isDark = true }) {
               <button key={o.v} onClick={() => setDays(o.v)} style={{ padding: '7px 11px', borderRadius: 8, border: `1px solid ${days === o.v ? c.brand : c.border}`, background: days === o.v ? 'var(--brand-color-light)' : c.card, color: days === o.v ? c.brand : c.subText, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>{o.l}</button>
             ))}
             <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{ padding: '7px 8px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
-              {['All', 'Admin', 'Customer'].map(r => <option key={r}>{r}</option>)}
+              {['All', 'Admin', 'Moderator', 'Customer'].map(r => <option key={r}>{r}</option>)}
             </select>
             <select value={actionFilter} onChange={e => setActionFilter(e.target.value)} style={{ padding: '7px 8px', background: c.card, border: `1px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 12, outline: 'none', cursor: 'pointer' }}>
               {allTypes.map(t => <option key={t} value={t}>{t === 'All' ? 'All Actions' : getAction(t).label}</option>)}
@@ -298,27 +347,24 @@ function AdminActivityLogPage({ isDark = true }) {
                     </thead>
                     <tbody>
                       {paginated.map((log, i) => {
-                        const isAdm = !log.customer_id;
-                        const cu = log.customer_id ? custMap[log.customer_id] : null;
-                        const name = isAdm ? 'Admin' : (cu?.name || 'Customer');
-                        const email = isAdm ? '' : (cu?.email || '');
+                        const actor = getLogActorInfo(log);
                         const action = getAction(log.type);
                         return (
                           <tr key={log.id || i}>
                             <td style={i % 2 === 0 ? tdS : tdAlt}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{ width: 30, height: 30, borderRadius: '50%', background: isAdm ? 'rgba(232,123,53,0.18)' : 'rgba(96,165,250,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 700, color: isAdm ? c.brand : '#60a5fa' }}>
-                                  {name.charAt(0).toUpperCase()}
+                                <div style={{ width: 30, height: 30, borderRadius: '50%', background: actor.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 700, color: actor.color }}>
+                                  {actor.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div>
-                                  <div style={{ fontWeight: 600, fontSize: 13 }}>{name}</div>
-                                  {email && <div style={{ fontSize: 11, color: c.subText }}>{email}</div>}
+                                  <div style={{ fontWeight: 600, fontSize: 13 }}>{actor.name}</div>
+                                  {actor.email && <div style={{ fontSize: 11, color: c.subText }}>{actor.email}</div>}
                                 </div>
                               </div>
                             </td>
                             <td style={i % 2 === 0 ? tdS : tdAlt}>
-                              <span style={{ padding: '2px 9px', borderRadius: 12, fontSize: 11, fontWeight: 700, background: isAdm ? 'rgba(232,123,53,0.14)' : 'rgba(96,165,250,0.1)', color: isAdm ? c.brand : '#60a5fa' }}>
-                                {isAdm ? 'Admin' : 'Customer'}
+                              <span style={{ padding: '2px 9px', borderRadius: 12, fontSize: 11, fontWeight: 700, background: actor.bg, color: actor.color }}>
+                                {actor.role}
                               </span>
                             </td>
                             <td style={i % 2 === 0 ? tdS : tdAlt}>

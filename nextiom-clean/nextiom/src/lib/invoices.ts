@@ -2,7 +2,7 @@
 //All Supabase queries for the invoice module
 
 import { supabase, supabaseUrl as SUPABASE_URL, supabaseAnonKey as SUPABASE_ANON_KEY } from './customSupabaseClient'
-import { assertPortalActionsAllowed } from './storage'
+import { assertPortalActionsAllowed, logAdminOrModeratorActivity } from './storage'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -401,6 +401,12 @@ export async function createInvoice(invoice: Invoice, items: InvoiceItem[]): Pro
     )
   }
 
+  await logAdminOrModeratorActivity(
+    'invoice_added',
+    'Invoice Created',
+    `Created invoice #${invoice.invoice_no || data.id}`
+  );
+
   return data.id
 }
 
@@ -430,14 +436,36 @@ export async function updateInvoice(id: string, invoice: Partial<Invoice>, items
     )
     if (itemsError) throw itemsError
   }
+
+  await logAdminOrModeratorActivity(
+    'invoice_updated',
+    'Invoice Updated',
+    `Updated invoice #${invoice.invoice_no || id}`
+  );
 }
 
 export async function deleteInvoice(id: string): Promise<void> {
+  const { data: currentUser } = await supabase.auth.getUser()
+  if (currentUser?.user?.app_metadata?.role === 'moderator') {
+    await logAdminOrModeratorActivity(
+      'delete_attempt',
+      'Invoice Deletion Blocked',
+      `Moderator tried to delete invoice ID ${id} but was blocked.`
+    );
+    throw new Error('Access Denied: Moderators are not permitted to delete invoices.');
+  }
+
   const { error } = await supabase
     .from('invoices')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+
+  await logAdminOrModeratorActivity(
+    'invoice_deleted',
+    'Invoice Deleted',
+    `Deleted invoice ID ${id}`
+  );
 }
 
 export async function restoreInvoice(id: string): Promise<void> {

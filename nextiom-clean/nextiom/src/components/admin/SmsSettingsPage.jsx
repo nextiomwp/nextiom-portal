@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { getSmsSettings, saveSmsSettings, getSmsLogs, sendSms, triggerRenewalReminders } from '@/lib/sms';
 import { useToast } from '@/components/ui/use-toast';
+import { logAdminOrModeratorActivity } from '@/lib/storage';
 
 // ── small toggle switch ───────────────────────────────────────────────────────
 function Toggle({ value, onChange, disabled, id, c }) {
@@ -211,6 +212,7 @@ export default function SmsSettingsPage({ isDark }) {
         description: 'Your SMS configuration has been updated.',
         className: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       });
+      await logAdminOrModeratorActivity('update', 'SMS Settings Saved', 'Updated the system SMS gateway settings.');
     } catch (err) {
       toast({ title: 'Error saving settings', description: err.message, variant: 'destructive' });
     } finally {
@@ -231,6 +233,7 @@ export default function SmsSettingsPage({ isDark }) {
         description: `SMS dispatched to ${testPhone}`,
         className: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       });
+      await logAdminOrModeratorActivity('update', 'SMS Test Sent', `Dispatched test SMS to ${testPhone.trim()}`);
       if (showLogs) loadLogs();
     } catch (err) {
       toast({ title: 'Failed to send test SMS', description: err.message, variant: 'destructive' });
@@ -249,6 +252,7 @@ export default function SmsSettingsPage({ isDark }) {
         description: `${result.sent ?? 0} sent, ${result.failed ?? 0} failed.`,
         className: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       });
+      await logAdminOrModeratorActivity('update', 'Renewal Reminders Triggered', `Manually triggered SMS/email renewal reminders (${result.sent ?? 0} sent, ${result.failed ?? 0} failed).`);
       if (showLogs) loadLogs();
     } catch (err) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });

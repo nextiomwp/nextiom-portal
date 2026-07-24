@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/customSupabaseClient';
 import { handleSupabaseError } from '@/lib/supabaseHelpers';
 
@@ -293,6 +294,16 @@ export const updateCustomer = async (id, updates) => {
 };
 
 export const deleteCustomer = async (id) => {
+  const { data: currentUser } = await supabase.auth.getUser();
+  if (currentUser?.user?.app_metadata?.role === 'moderator') {
+    await logAdminOrModeratorActivity(
+      'delete_attempt',
+      'Customer Deletion Blocked',
+      `Moderator tried to delete customer ID ${id} but was blocked.`
+    );
+    throw new Error('Access Denied: Moderators are not permitted to delete customers.');
+  }
+
   // NO ACTION FKs — must be cleaned manually before delete
   await supabase.from('domain_requests').delete().eq('customer_id', id);
   await supabase.from('hosting_requests').delete().eq('customer_id', id);
@@ -336,6 +347,13 @@ export const addProduct = async (productData) => {
     .single();
 
   if (error) handleSupabaseError(error, 'addProduct');
+
+  await logAdminOrModeratorActivity(
+    'product_added',
+    'Product Added',
+    `Added new digital product "${data.name}"`
+  );
+
   return data;
 };
 
@@ -348,10 +366,27 @@ export const updateProduct = async (id, updates) => {
     .single();
 
   if (error) handleSupabaseError(error, 'updateProduct');
+
+  await logAdminOrModeratorActivity(
+    'product_updated',
+    'Product Updated',
+    `Updated digital product "${data.name}"`
+  );
+
   return data;
 };
 
 export const deleteProduct = async (id) => {
+  const { data: currentUser } = await supabase.auth.getUser();
+  if (currentUser?.user?.app_metadata?.role === 'moderator') {
+    await logAdminOrModeratorActivity(
+      'delete_attempt',
+      'Product Deletion Blocked',
+      `Moderator tried to delete product ID ${id} but was blocked.`
+    );
+    throw new Error('Access Denied: Moderators are not permitted to delete products.');
+  }
+
   // Clean up referencing licenses first to prevent foreign key constraint violations
   await supabase.from('licenses').delete().eq('product_id', id);
 
@@ -484,6 +519,16 @@ export const updateDomainRequest = async (id, updates) => {
 };
 
 export const deleteDomain = async (id) => {
+  const { data: currentUser } = await supabase.auth.getUser();
+  if (currentUser?.user?.app_metadata?.role === 'moderator') {
+    await logAdminOrModeratorActivity(
+      'delete_attempt',
+      'Domain Deletion Blocked',
+      `Moderator tried to delete domain ID ${id} but was blocked.`
+    );
+    throw new Error('Access Denied: Moderators are not permitted to delete domains.');
+  }
+
   const { error } = await supabase
     .from('domains')
     .delete()
@@ -584,6 +629,16 @@ export const updateHostingRequest = async (id, updates) => {
 };
 
 export const deleteHosting = async (id) => {
+  const { data: currentUser } = await supabase.auth.getUser();
+  if (currentUser?.user?.app_metadata?.role === 'moderator') {
+    await logAdminOrModeratorActivity(
+      'delete_attempt',
+      'Hosting Package Deletion Blocked',
+      `Moderator tried to delete hosting package ID ${id} but was blocked.`
+    );
+    throw new Error('Access Denied: Moderators are not permitted to delete hosting packages.');
+  }
+
   const { error } = await supabase
     .from('hosting_packages')
     .delete()
@@ -699,9 +754,26 @@ export const addNotification = async (notificationData) => {
   // Customers cannot SELECT null customer_id notifications due to SELECT RLS.
   // To prevent transaction rollback on SELECT, we do a minimal insert without .select() if customer_id is null.
   if (notificationData.customer_id === null) {
+    let populatedData = { ...notificationData };
+    try {
+      const { data: currentUser } = await supabase.auth.getUser();
+      if (currentUser?.user) {
+        const role = currentUser.user.app_metadata?.role || 'admin';
+        let actorName = currentUser.user.user_metadata?.full_name || (role === 'moderator' ? 'Moderator' : 'Admin');
+        if (role === 'moderator' && !actorName.endsWith(' + Mo')) {
+          actorName = `${actorName} + Mo`;
+        }
+        populatedData.actor_id = populatedData.actor_id || currentUser.user.id;
+        populatedData.actor_name = populatedData.actor_name || actorName;
+        populatedData.actor_role = populatedData.actor_role || role;
+      }
+    } catch (e) {
+      console.error('Failed to populate actor details in addNotification:', e);
+    }
+
     const { error } = await supabase
       .from('notifications')
-      .insert([notificationData]);
+      .insert([populatedData]);
     if (error) handleSupabaseError(error, 'addNotification');
     return null;
   }
@@ -900,6 +972,13 @@ export const addHostingPlan = async (planData) => {
     .select()
     .single();
   if (error) handleSupabaseError(error, 'addHostingPlan');
+
+  await logAdminOrModeratorActivity(
+    'hosting_request',
+    'Hosting Plan Created',
+    `Created new hosting plan "${data.plan_name}" for ${data.hosting_type}`
+  );
+
   return data;
 };
 
@@ -911,10 +990,27 @@ export const updateHostingPlan = async (id, updates) => {
     .select()
     .single();
   if (error) handleSupabaseError(error, 'updateHostingPlan');
+
+  await logAdminOrModeratorActivity(
+    'hosting_request',
+    'Hosting Plan Updated',
+    `Updated hosting plan "${data.plan_name}" for ${data.hosting_type}`
+  );
+
   return data;
 };
 
 export const deleteHostingPlan = async (id) => {
+  const { data: currentUser } = await supabase.auth.getUser();
+  if (currentUser?.user?.app_metadata?.role === 'moderator') {
+    await logAdminOrModeratorActivity(
+      'delete_attempt',
+      'Hosting Plan Deletion Blocked',
+      `Moderator tried to delete hosting plan ID ${id} but was blocked.`
+    );
+    throw new Error('Access Denied: Moderators are not permitted to delete hosting plans.');
+  }
+
   const { error } = await supabase
     .from('hosting_plans')
     .delete()
@@ -924,6 +1020,16 @@ export const deleteHostingPlan = async (id) => {
 };
 
 export const deleteHostingType = async (hostingType) => {
+  const { data: currentUser } = await supabase.auth.getUser();
+  if (currentUser?.user?.app_metadata?.role === 'moderator') {
+    await logAdminOrModeratorActivity(
+      'delete_attempt',
+      'Hosting Type Deletion Blocked',
+      `Moderator tried to delete hosting type "${hostingType}" but was blocked.`
+    );
+    throw new Error('Access Denied: Moderators are not permitted to delete hosting types.');
+  }
+
   const { error } = await supabase
     .from('hosting_plans')
     .delete()
@@ -1510,6 +1616,15 @@ export const createTicket = async (customerId, subject, priority = 'normal', dep
     .select()
     .single();
   if (error) handleSupabaseError(error, 'createTicket');
+
+  if (createdByAdmin) {
+    await logAdminOrModeratorActivity(
+      'ticket',
+      'Ticket Created by Staff',
+      `Created ticket "${subject}" (Priority: ${priority})`
+    );
+  }
+
   return data;
 };
 
@@ -1562,6 +1677,15 @@ export const addTicketMessage = async (ticketId, senderRole, message, senderName
     .single();
   if (error) handleSupabaseError(error, 'addTicketMessage');
   await supabase.from('tickets').update({ updated_at: new Date().toISOString() }).eq('id', ticketId);
+
+  if (senderRole !== 'customer') {
+    await logAdminOrModeratorActivity(
+      'ticket_reply',
+      'Ticket Reply Added',
+      `Sent a reply to ticket (ID: ${ticketId})`
+    );
+  }
+
   return data;
 };
 
@@ -1882,3 +2006,271 @@ export const assignEmailToCustomer = async (data) => {
 
   return record;
 };
+
+// --- Moderator Management Helper Functions ---
+
+const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZld2h2bHNxa2JzbXFicnFjbHlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDEwMjI4MSwiZXhwIjoyMDg1Njc4MjgxfQ.O7JlivddOXH2oElVnJ8LWzdDbpL-X4OP8GGdK_UYlhM';
+
+export const DEFAULT_MODERATOR_PERMISSIONS = {
+  can_manage_customers: true,
+  can_delete_customers: false,
+  can_manage_invoices: true,
+  can_delete_invoices: false,
+  can_manage_quotations: true,
+  can_delete_quotations: false,
+  can_manage_products: true,
+  can_delete_products: false,
+  can_manage_tickets: true,
+  can_delete_tickets: false,
+  can_manage_hosting: true,
+  can_delete_hosting: false,
+  can_manage_jobs: true,
+  can_manage_announcements: true,
+  can_manage_agreements: true,
+  can_manage_system_settings: false,
+  can_view_activity_logs: true,
+};
+
+export const ADMIN_PERMISSIONS = {
+  can_manage_customers: true,
+  can_delete_customers: true,
+  can_manage_invoices: true,
+  can_delete_invoices: true,
+  can_manage_quotations: true,
+  can_delete_quotations: true,
+  can_manage_products: true,
+  can_delete_products: true,
+  can_manage_tickets: true,
+  can_delete_tickets: true,
+  can_manage_hosting: true,
+  can_delete_hosting: true,
+  can_manage_jobs: true,
+  can_manage_announcements: true,
+  can_manage_agreements: true,
+  can_manage_system_settings: true,
+  can_view_activity_logs: true,
+};
+
+export const getModerators = async () => {
+  const { data, error } = await supabase
+    .from('moderators')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) handleSupabaseError(error, 'getModerators');
+  return data || [];
+};
+
+export const createModerator = async ({ name, email, password, permissions, phone }) => {
+  const tempClient = createClient(supabaseUrl, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+
+  // Enforce name formatting Moderator_Name per specification
+  let formattedName = name ? name.trim() : '';
+  if (!formattedName.toLowerCase().startsWith('moderator_')) {
+    formattedName = `Moderator_${formattedName}`;
+  }
+
+  // 1. Create auth user with role = moderator in app_metadata
+  const { data: authData, error: createError } = await tempClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    app_metadata: { role: 'moderator' },
+    user_metadata: { full_name: formattedName, role: 'moderator' },
+  });
+
+  if (createError) handleSupabaseError(createError, 'createModerator auth');
+  const userId = authData.user?.id;
+
+  // 2. Insert into moderators table using service role client to bypass FK/RLS constraints
+  const finalPermissions = permissions || DEFAULT_MODERATOR_PERMISSIONS;
+  const { data: modData, error: dbError } = await tempClient
+    .from('moderators')
+    .insert([{
+      user_id: userId,
+      name: formattedName,
+      email,
+      phone,
+      permissions: finalPermissions,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }])
+    .select()
+    .single();
+
+  if (dbError) {
+    await tempClient.auth.admin.deleteUser(userId).catch(() => {});
+    handleSupabaseError(dbError, 'createModerator db');
+  }
+
+  // Log in Activity Log
+  const { data: currentUser } = await supabase.auth.getUser();
+  const currentActorName = currentUser?.user?.user_metadata?.full_name || 'Admin';
+  await addNotification({
+    customer_id: null,
+    type: 'moderator_added',
+    title: `Moderator Created — ${formattedName}`,
+    message: `${currentActorName} created new moderator account "${formattedName}" (${email}).`,
+    actor_id: currentUser?.user?.id || null,
+    actor_name: currentActorName,
+    actor_role: currentUser?.user?.app_metadata?.role || 'admin',
+  });
+
+  return modData;
+};
+
+export const updateModeratorPermissions = async (moderatorId, permissions) => {
+  const tempClient = createClient(supabaseUrl, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await tempClient
+    .from('moderators')
+    .update({ permissions, updated_at: new Date().toISOString() })
+    .eq('id', moderatorId)
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'updateModeratorPermissions');
+
+  // Log in Activity Log
+  const { data: currentUser } = await supabase.auth.getUser();
+  const currentActorName = currentUser?.user?.user_metadata?.full_name || 'Admin';
+  await addNotification({
+    customer_id: null,
+    type: 'moderator_updated',
+    title: `Moderator Permissions Updated — ${data.name}`,
+    message: `${currentActorName} updated system permissions for ${data.name}.`,
+    actor_id: currentUser?.user?.id || null,
+    actor_name: currentActorName,
+    actor_role: currentUser?.user?.app_metadata?.role || 'admin',
+  });
+
+  return data;
+};
+
+export const updateModeratorStatus = async (moderatorId, status) => {
+  const tempClient = createClient(supabaseUrl, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await tempClient
+    .from('moderators')
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq('id', moderatorId)
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'updateModeratorStatus');
+
+  const { data: currentUser } = await supabase.auth.getUser();
+  const currentActorName = currentUser?.user?.user_metadata?.full_name || 'Admin';
+  await addNotification({
+    customer_id: null,
+    type: 'moderator_updated',
+    title: `Moderator Status Changed — ${data.name}`,
+    message: `${currentActorName} changed ${data.name} status to "${status}".`,
+    actor_id: currentUser?.user?.id || null,
+    actor_name: currentActorName,
+    actor_role: currentUser?.user?.app_metadata?.role || 'admin',
+  });
+
+  return data;
+};
+
+export const deleteModerator = async (moderatorId, userId) => {
+  const tempClient = createClient(supabaseUrl, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+
+  const { data: modRecord } = await tempClient
+    .from('moderators')
+    .select('name')
+    .eq('id', moderatorId)
+    .single();
+
+  const { error: dbError } = await tempClient
+    .from('moderators')
+    .delete()
+    .eq('id', moderatorId);
+
+  if (dbError) handleSupabaseError(dbError, 'deleteModerator db');
+
+  if (userId) {
+    await tempClient.auth.admin.deleteUser(userId).catch(err => {
+      console.error('Failed to delete auth user for moderator:', err);
+    });
+  }
+
+  const { data: currentUser } = await supabase.auth.getUser();
+  const currentActorName = currentUser?.user?.user_metadata?.full_name || 'Admin';
+  await addNotification({
+    customer_id: null,
+    type: 'moderator_deleted',
+    title: `Moderator Deleted — ${modRecord?.name || 'Moderator'}`,
+    message: `${currentActorName} deleted moderator "${modRecord?.name || 'Moderator'}".`,
+    actor_id: currentUser?.user?.id || null,
+    actor_name: currentActorName,
+    actor_role: currentUser?.user?.app_metadata?.role || 'admin',
+  });
+
+  return true;
+};
+
+export const updateModeratorPassword = async (userId, newPassword, name) => {
+  const tempClient = createClient(supabaseUrl, SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+
+  const { error } = await tempClient.auth.admin.updateUserById(userId, {
+    password: newPassword,
+  });
+
+  if (error) handleSupabaseError(error, 'updateModeratorPassword');
+
+  // Log in Activity Log
+  const { data: currentUser } = await supabase.auth.getUser();
+  const currentActorName = currentUser?.user?.user_metadata?.full_name || 'Admin';
+  await addNotification({
+    customer_id: null,
+    type: 'moderator_updated',
+    title: `Moderator Password Changed — ${name}`,
+    message: `${currentActorName} updated the login password for moderator "${name}".`,
+    actor_id: currentUser?.user?.id || null,
+    actor_name: currentActorName,
+    actor_role: currentUser?.user?.app_metadata?.role || 'admin',
+  });
+
+  return true;
+};
+
+export const logAdminOrModeratorActivity = async (type, title, message) => {
+  try {
+    const { data: currentUser } = await supabase.auth.getUser();
+    if (!currentUser?.user) return;
+    
+    const role = currentUser.user.app_metadata?.role || 'admin';
+    let actorName = currentUser.user.user_metadata?.full_name || (role === 'moderator' ? 'Moderator' : 'Admin');
+    
+    if (role === 'moderator' && !actorName.endsWith(' + Mo')) {
+      actorName = `${actorName} + Mo`;
+    }
+    
+    await addNotification({
+      customer_id: null,
+      type: type || 'admin_activity',
+      title,
+      message,
+      actor_id: currentUser.user.id,
+      actor_name: actorName,
+      actor_role: role,
+    });
+  } catch (err) {
+    console.error('Failed to log admin/moderator activity:', err);
+  }
+};
+
+

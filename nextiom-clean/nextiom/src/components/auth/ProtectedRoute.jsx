@@ -20,7 +20,17 @@ function ProtectedRoute({ children, allowedRoles }) {
       if (!loading && user) {
         try {
           const userRole = user.app_metadata?.role || 'customer';
-          if (userRole !== 'admin') {
+          if (userRole === 'moderator') {
+            const { data: mod, error: modErr } = await supabase
+              .from('moderators')
+              .select('status')
+              .eq('user_id', user.id)
+              .single();
+
+            if (modErr || (mod && mod.status !== 'active')) {
+              setAccessError("Your moderator account has been disabled.");
+            }
+          } else if (userRole !== 'admin') {
             // Check maintenance mode
             try {
               const { active, message } = await getMaintenanceStatus();
@@ -131,7 +141,7 @@ function ProtectedRoute({ children, allowedRoles }) {
 
   const effectiveRole = user.app_metadata?.role || 'customer';
   if (allowedRoles && !allowedRoles.includes(effectiveRole)) {
-    const redirectPath = effectiveRole === 'admin' ? '/admin-dashboard' : '/customer-dashboard';
+    const redirectPath = effectiveRole === 'admin' ? '/admin-dashboard' : effectiveRole === 'moderator' ? '/moderator-dashboard' : '/customer-dashboard';
     return <Navigate to={redirectPath} replace />;
   }
 

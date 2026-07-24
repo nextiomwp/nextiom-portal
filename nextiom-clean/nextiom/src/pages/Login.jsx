@@ -58,6 +58,7 @@ function Login({ onLoginSuccess }) {
   useEffect(() => {
     if (user) {
       if (role === 'admin') navigate('/admin-dashboard');
+      else if (role === 'moderator') navigate('/moderator-dashboard');
       else navigate('/customer-dashboard');
     }
   }, [user, role, navigate]);

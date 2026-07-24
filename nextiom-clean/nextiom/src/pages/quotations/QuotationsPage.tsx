@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, Calendar, Edit3, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, Eye } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { useAuth } from '@/contexts/SupabaseAuthContext'
 import { Quotation, getQuotations, getQuotation, deleteQuotation, fmtCurrency, updateQuotationStatus } from '@/lib/quotations'
 import { getPublicInvoiceSettings } from '@/lib/invoices'
 
@@ -108,6 +109,7 @@ interface Props {
 
 export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
   const { toast } = useToast()
+  const { permissions } = useAuth()
   const [isMobile, setIsMobile] = useState(() => {
     return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
   })
@@ -148,6 +150,12 @@ export default function QuotationsPage({ c, isDark, onNew, onEdit }: Props) {
 
   const handleDelete = async () => {
     if (!deleteId) return
+    if (permissions && permissions.can_delete_quotations === false) {
+      toast({ title: 'Access Denied', description: 'You do not have permission to delete quotations.', variant: 'destructive' })
+      setDeleteId(null)
+      setDeleteNo('')
+      return
+    }
     try {
       await deleteQuotation(deleteId)
       toast({ title: `Quotation ${deleteNo} deleted` })

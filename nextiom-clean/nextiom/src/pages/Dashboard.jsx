@@ -25,7 +25,7 @@ import SettingsDialog from '@/components/dialogs/SettingsDialog';
 import ProductList from '@/components/dashboard/ProductList';
 import EmailLogList from '@/components/dashboard/EmailLogList';
 import CustomerProfileAdminView from '@/components/admin/CustomerProfileAdminView';
-import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification, deleteCustomer, getDomains, getAllTickets } from '@/lib/storage';
+import { getCustomers, getProducts, getLicenses, getStorageStats, getEmailLogs, getEmailRequests, getDomainRequests, getHostingRequests, getHostingPackages, getHostingPlans, getAdminNotifications, getUnreadTicketCount, updateCustomer, addNotification, deleteCustomer, getDomains, getAllTickets, logAdminOrModeratorActivity } from '@/lib/storage';
 import AdminTicketsPage from '@/components/admin/AdminTicketsPage';
 import AdminActivityLogPage from '@/components/admin/AdminActivityLogPage';
 import MaintenanceModePage from '@/components/admin/MaintenanceModePage';
@@ -38,6 +38,8 @@ import AdminBackupPage from '@/components/admin/AdminBackupPage';
 import { TodayAppointmentBanner, AppointmentReminderPopup } from '@/components/admin/AppointmentDashboardWidgets';
 import { getAllAppointments } from '@/lib/appointments';
 import { getInvoices } from '@/lib/invoices';
+
+import AdminModeratorManagement from '@/components/admin/AdminModeratorManagement';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -111,6 +113,7 @@ const NAV = [
   { id: 'quotations', label: 'Quotations', icon: FileText },
   { id: 'agreements', label: 'Agreements', icon: AgreementIcon },
   { section: 'header', label: 'SYSTEM' },
+  { id: 'moderators', label: 'Moderators', icon: UserCog, adminOnly: true },
   { id: 'maintenance', label: 'Maintenance', icon: Shield },
   { id: 'activityLog', label: 'Activity Logs', icon: Activity },
   { id: 'backup', label: 'Backup & Restore', icon: Database },
@@ -132,14 +135,19 @@ const ADMIN_INTERNAL_NOTIFICATION_TYPES = new Set([
   'license_updated',
   'ticket_closed',
   'portal_pause',
+  'moderator_login',
+  'moderator_added',
+  'moderator_updated',
+  'moderator_deleted',
 ]);
 
 const isAdminInternalNotification = (notification) => {
   const type = String(notification?.type || '').toLowerCase();
   if (ADMIN_INTERNAL_NOTIFICATION_TYPES.has(type)) return true;
+  if (type.includes('moderator')) return true;
 
   const text = `${notification?.title || ''} ${notification?.message || ''}`.toLowerCase();
-  return text.startsWith('admin ') || text.includes(' administrator ');
+  return text.startsWith('admin ') || text.includes(' administrator ') || text.includes('moderator');
 };
 
 const playNotificationSound = () => {
@@ -570,7 +578,7 @@ function Dashboard({ onLogout }) {
     return results.slice(0, 15);
   };
   const { toast } = useToast();
-  const { signOut } = useAuth();
+  const { signOut, user, role, permissions, displayName } = useAuth();
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1024px)');
@@ -602,11 +610,16 @@ function Dashboard({ onLogout }) {
     loadData();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
+      const isMod = user.app_metadata?.role === 'moderator';
+      const actorName = user.user_metadata?.full_name || (isMod ? 'Moderator' : 'Admin');
       addNotification({
         customer_id: null,
-        type: 'admin_login',
-        title: `Admin Login`,
-        message: `Admin signed in as ${user.email}`,
+        type: isMod ? 'moderator_login' : 'admin_login',
+        title: isMod ? 'Moderator Login' : 'Admin Login',
+        message: isMod ? `Moderator signed in as ${user.email}` : `Admin signed in as ${user.email}`,
+        actor_id: user.id,
+        actor_name: actorName,
+        actor_role: isMod ? 'moderator' : 'admin',
       }).catch(() => { });
     });
   }, []);
@@ -1034,6 +1047,7 @@ function Dashboard({ onLogout }) {
         if (quotationView === 'edit' && editQuotationId) return <QuotationForm c={c} isDark={isDark} existingId={editQuotationId} onBack={goList} />;
         return <QuotationsPage key={refreshKey} c={c} isDark={isDark} onNew={() => setQuotationView('new')} onEdit={id => { setEditQuotationId(id); setQuotationView('edit'); }} />;
       }
+      case 'moderators': return role === 'admin' ? <AdminModeratorManagement key={refreshKey} isDark={isDark} /> : <div style={{ padding: 32, color: c.subText, textAlign: 'center' }}>Access Denied</div>;
       case 'maintenance': return <MaintenanceModePage key={refreshKey} isDark={isDark} />;
       case 'activityLog': return <AdminActivityLogPage key={refreshKey} isDark={isDark} />;
       case 'backup': return <AdminBackupPage key={refreshKey} isDark={isDark} />;
@@ -1077,7 +1091,7 @@ function Dashboard({ onLogout }) {
           <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>{sidebarOpen ? 'NEXTIOM' : 'ex'}</div>
-              {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>}
+              {sidebarOpen && <span style={{ color: c.subText, fontSize: 14 }}>{role === 'moderator' ? 'Moderator' : 'Admin'}</span>}
             </div>
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -1098,7 +1112,7 @@ function Dashboard({ onLogout }) {
             </button>
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
-            {NAV.map((item, i) => {
+            {NAV.filter(item => !(item.adminOnly && role !== 'admin')).map((item, i) => {
               if (item.section === 'divider') return <div key={`div-${i}`} style={{ height: 12 }} />;
               if (item.section === 'header') {
                 if (!sidebarOpen) return <div key={`h-${i}`} style={{ height: 4 }} />;
@@ -1130,10 +1144,12 @@ function Dashboard({ onLogout }) {
           </div>
           <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: sidebarOpen ? 'flex-start' : 'center', gap: 12, padding: sidebarOpen ? '12px' : '12px 0', background: c.bg, borderRadius: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>A</div>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: role === 'moderator' ? '#a78bfa' : c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>
+                {displayName ? displayName.replace('Moderator_', '').charAt(0).toUpperCase() : 'A'}
+              </div>
               {sidebarOpen && <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Admin</div>
-                <div style={{ fontSize: 11, color: c.subText, textOverflow: 'ellipsis', overflow: 'hidden' }}>info@nextiom.com</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{displayName || (role === 'moderator' ? 'Moderator' : 'Admin')}</div>
+                <div style={{ fontSize: 11, color: c.subText, textOverflow: 'ellipsis', overflow: 'hidden' }}>{user?.email || 'info@nextiom.com'}</div>
               </div>}
             </div>
             <div style={{ display: 'flex', flexDirection: sidebarOpen ? 'row' : 'column', gap: 8, marginTop: 12 }}>
@@ -1165,14 +1181,14 @@ function Dashboard({ onLogout }) {
             <div style={{ padding: '20px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${c.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ color: c.brand, fontWeight: 800, fontSize: 18, letterSpacing: 1 }}>NEXTIOM</div>
-                <span style={{ color: c.subText, fontSize: 14 }}>Admin</span>
+                <span style={{ color: c.subText, fontSize: 14 }}>{role === 'moderator' ? 'Moderator' : 'Admin'}</span>
               </div>
               <button onClick={() => setIsMobileSidebarOpen(false)} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', display: 'flex', padding: 2 }}>
                 <ChevronLeft size={16} />
               </button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 12px' }}>
-              {NAV.map((item, i) => {
+              {NAV.filter(item => !(item.adminOnly && role !== 'admin')).map((item, i) => {
                 if (item.section === 'divider') return <div key={`mdiv-${i}`} style={{ height: 12 }} />;
                 if (item.section === 'header') return <div key={`mh-${i}`} style={{ fontSize: 10, color: 'var(--brand-color)', padding: '0 12px 8px', fontWeight: 700, letterSpacing: 1, marginTop: i > 0 ? 4 : 0 }}>{item.label}</div>;
                 let badge = 0;
@@ -1198,10 +1214,12 @@ function Dashboard({ onLogout }) {
             </div>
             <div style={{ padding: '16px 12px', borderTop: `1px solid ${c.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px', background: c.bg, borderRadius: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>A</div>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: role === 'moderator' ? '#a78bfa' : c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', flexShrink: 0 }}>
+                  {displayName ? displayName.replace('Moderator_', '').charAt(0).toUpperCase() : 'A'}
+                </div>
                 <div style={{ overflow: 'hidden' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>Admin</div>
-                  <div style={{ fontSize: 11, color: c.subText, textOverflow: 'ellipsis', overflow: 'hidden' }}>info@nextiom.com</div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{displayName || (role === 'moderator' ? 'Moderator' : 'Admin')}</div>
+                  <div style={{ fontSize: 11, color: c.subText, textOverflow: 'ellipsis', overflow: 'hidden' }}>{user?.email || 'info@nextiom.com'}</div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -1725,7 +1743,25 @@ function Dashboard({ onLogout }) {
                 </div>
               )}
             </div>
-            <div onClick={() => navigateTo('adminProfile')} style={{ background: c.brand, width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#fff', cursor: 'pointer', flexShrink: 0 }} title="Admin Profile">A</div>
+            <div
+              onClick={() => navigateTo('adminProfile')}
+              style={{
+                background: role === 'moderator' ? '#a78bfa' : c.brand,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                color: '#fff',
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+              title={role === 'moderator' ? 'Moderator Profile' : 'Admin Profile'}
+            >
+              {(displayName || 'Admin').replace('Moderator_', '').charAt(0).toUpperCase()}
+            </div>
             {active === 'products' && (
               <button onClick={() => setIsAddProductOpen(true)} style={{ background: c.brand, color: '#fff', border: 'none', padding: isMobile ? '8px 10px' : '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                 <Plus size={16} />{!isMobile && ' Product'}
@@ -2197,24 +2233,112 @@ function OverviewContent({ stats, customers, requests, hostingPlans, pendingRequ
 
 function AdminProfileContent({ c, isDark }) {
   const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
+  const { role, displayName, user } = useAuth();
+  
+  const resolvedRole = role === 'moderator' ? 'Moderator' : 'Admin';
+  const resolvedRoleDesc = role === 'moderator' ? 'System Moderator' : 'Super Administrator';
+  const resolvedDisplayName = displayName || (role === 'moderator' ? 'Moderator' : 'Admin');
+
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handlePasswordChangeSubmit = async (e) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      toast({ title: 'Validation Error', description: 'Please fill in all fields.', variant: 'destructive' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({ title: 'Validation Error', description: 'New password must be at least 6 characters.', variant: 'destructive' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: 'Validation Error', description: 'New passwords do not match.', variant: 'destructive' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) throw error;
+
+      toast({ title: 'Success', description: 'Your password has been changed successfully.' });
+      await logAdminOrModeratorActivity('update', 'Password Changed', 'Staff member updated their login password.');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      toast({ title: 'Error', description: err.message || 'Failed to update password.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div style={{ maxWidth: 600 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 600, width: '100%' }}>
       <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 32, background: c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 24, flexShrink: 0 }}>A</div>
+          <div style={{ width: 64, height: 64, borderRadius: 32, background: role === 'moderator' ? '#a78bfa' : c.brand, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 24, flexShrink: 0 }}>
+            {resolvedDisplayName.replace('Moderator_', '').charAt(0).toUpperCase()}
+          </div>
           <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: c.text }}>Admin</div>
-            <div style={{ fontSize: 13, color: c.subText }}>Super Administrator</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: c.text }}>{resolvedDisplayName}</div>
+            <div style={{ fontSize: 13, color: c.subText }}>{resolvedRoleDesc}</div>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
-          {[{ label: 'Email', value: 'info@nextiom.com' }, { label: 'Role', value: 'Super Admin' }, { label: 'Portal', value: 'Nextiom Admin' }, { label: 'Status', value: 'Active' }].map(f => (
+          {[{ label: 'Email', value: user?.email || 'info@nextiom.com' }, { label: 'Role', value: resolvedRole }, { label: 'Portal', value: role === 'moderator' ? 'Nextiom Moderator' : 'Nextiom Admin' }, { label: 'Status', value: 'Active' }].map(f => (
             <div key={f.label}>
               <div style={{ fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{f.label}</div>
               <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, padding: '9px 12px', color: c.text, fontSize: 14 }}>{f.value}</div>
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Change Password Card */}
+      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 24 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 4px 0' }}>Security Settings</h3>
+        <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>Update your portal login password</p>
+
+        <form onSubmit={handlePasswordChangeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Minimum 6 characters"
+                required
+                style={{ width: '100%', padding: '9px 12px', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: c.subText, fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter new password"
+                required
+                style={{ width: '100%', padding: '9px 12px', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 8, color: c.text, fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            <button
+              type="submit"
+              disabled={loading}
+              style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: c.brand, color: '#fff', fontSize: 13, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, boxShadow: '0 4px 12px rgba(232, 123, 53, 0.2)' }}
+            >
+              {loading ? 'Updating Password...' : 'Change Password'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

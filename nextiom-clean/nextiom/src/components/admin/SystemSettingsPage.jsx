@@ -3,6 +3,7 @@ import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, 
 import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, checkPasscodeSet, verifyPasscode, savePasscodeHash, getCustomers } from '@/lib/storage';
 import { sendSms } from '@/lib/sms';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const COLOR_PRESETS = [
   { name: 'Nextiom Orange (Default)', value: '#E87B35' },
@@ -15,6 +16,7 @@ const COLOR_PRESETS = [
 ];
 
 export default function SystemSettingsPage({ isDark }) {
+  const { role } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [themeColor, setThemeColor] = useState('#E87B35');
@@ -855,323 +857,327 @@ export default function SystemSettingsPage({ isDark }) {
           </div>
 
           {/* Card: iPay Gateway Integration */}
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CreditCard size={16} style={{ color: themeColor }} />
-              iPay Payment Gateway Integration
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-              Configure your iPay Global Web Payments integration credentials.
-            </p>
+          {role !== 'moderator' && (
+            <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <CreditCard size={16} style={{ color: themeColor }} />
+                iPay Payment Gateway Integration
+              </h2>
+              <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
+                Configure your iPay Global Web Payments integration credentials.
+              </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Enable Toggle */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
-                <div style={{
-                  position: 'relative',
-                  width: 44,
-                  height: 24,
-                  backgroundColor: ipayEnabled ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
-                  borderRadius: 12,
-                  transition: 'background-color 0.2s',
-                  flexShrink: 0
-                }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Enable Toggle */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
                   <div style={{
-                    position: 'absolute',
-                    top: 2,
-                    left: ipayEnabled ? 22 : 2,
-                    width: 20,
-                    height: 20,
-                    backgroundColor: '#fff',
-                    borderRadius: '50%',
-                    transition: 'left 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
-                  <input
-                    type="checkbox"
-                    checked={ipayEnabled}
-                    onChange={(e) => setIpayEnabled(e.target.checked)}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-                <div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Enable iPay Online Payments</span>
-                  <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
-                    Allow customers to pay invoices online using the iPay Payment Gateway.
-                  </span>
-                </div>
-              </label>
+                    position: 'relative',
+                    width: 44,
+                    height: 24,
+                    backgroundColor: ipayEnabled ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
+                    borderRadius: 12,
+                    transition: 'background-color 0.2s',
+                    flexShrink: 0
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: ipayEnabled ? 22 : 2,
+                      width: 20,
+                      height: 20,
+                      backgroundColor: '#fff',
+                      borderRadius: '50%',
+                      transition: 'left 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    }} />
+                    <input
+                      type="checkbox"
+                      checked={ipayEnabled}
+                      onChange={(e) => setIpayEnabled(e.target.checked)}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Enable iPay Online Payments</span>
+                    <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
+                      Allow customers to pay invoices online using the iPay Payment Gateway.
+                    </span>
+                  </div>
+                </label>
 
-              {/* Web Token */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>IPG Integration Token (Public)</label>
-                <input
-                  type="text"
-                  value={ipayWebToken}
-                  onChange={(e) => setIpayWebToken(e.target.value)}
-                  placeholder="Enter IPG Integration Token..."
-                  disabled={!ipayEnabled}
-                  style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 10,
-                    background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                    color: c.text, fontSize: 13,
-                    outline: 'none', transition: 'border-color 0.15s',
-                    opacity: ipayEnabled ? 1 : 0.6,
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                  onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                />
-              </div>
-
-              {/* Sandbox Mode */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: ipayEnabled ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: ipayEnabled ? 1 : 0.6 }}>
-                <div style={{
-                  position: 'relative',
-                  width: 44,
-                  height: 24,
-                  backgroundColor: ipaySandbox ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
-                  borderRadius: 12,
-                  transition: 'background-color 0.2s',
-                  flexShrink: 0
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: 2,
-                    left: ipaySandbox ? 22 : 2,
-                    width: 20,
-                    height: 20,
-                    backgroundColor: '#fff',
-                    borderRadius: '50%',
-                    transition: 'left 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
+                {/* Web Token */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>IPG Integration Token (Public)</label>
                   <input
-                    type="checkbox"
-                    checked={ipaySandbox}
+                    type="text"
+                    value={ipayWebToken}
+                    onChange={(e) => setIpayWebToken(e.target.value)}
+                    placeholder="Enter IPG Integration Token..."
                     disabled={!ipayEnabled}
-                    onChange={(e) => setIpaySandbox(e.target.checked)}
-                    style={{ display: 'none' }}
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: 10,
+                      background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                      color: c.text, fontSize: 13,
+                      outline: 'none', transition: 'border-color 0.15s',
+                      opacity: ipayEnabled ? 1 : 0.6,
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                    onBlur={(e) => e.target.style.borderColor = c.inputBorder}
                   />
                 </div>
-                <div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Sandbox Mode</span>
-                  <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
-                    Use the sandbox endpoint for testing transactions.
-                  </span>
-                </div>
-              </label>
+
+                {/* Sandbox Mode */}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: ipayEnabled ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: ipayEnabled ? 1 : 0.6 }}>
+                  <div style={{
+                    position: 'relative',
+                    width: 44,
+                    height: 24,
+                    backgroundColor: ipaySandbox ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
+                    borderRadius: 12,
+                    transition: 'background-color 0.2s',
+                    flexShrink: 0
+                  }}>
+                    <div style={{
+                      position: 'absolute',
+                      top: 2,
+                      left: ipaySandbox ? 22 : 2,
+                      width: 20,
+                      height: 20,
+                      backgroundColor: '#fff',
+                      borderRadius: '50%',
+                      transition: 'left 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    }} />
+                    <input
+                      type="checkbox"
+                      checked={ipaySandbox}
+                      disabled={!ipayEnabled}
+                      onChange={(e) => setIpaySandbox(e.target.checked)}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Sandbox Mode</span>
+                    <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
+                      Use the sandbox endpoint for testing transactions.
+                    </span>
+                  </div>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Card: Customer Deletion Security Passcode */}
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Shield size={16} style={{ color: themeColor }} />
-              Customer Deletion Security Passcode
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-              Require a passcode before permanently deleting any customer from the portal.
-            </p>
+          {role !== 'moderator' && (
+            <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Shield size={16} style={{ color: themeColor }} />
+                Customer Deletion Security Passcode
+              </h2>
+              <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
+                Require a passcode before permanently deleting any customer from the portal.
+              </p>
 
-            {!isPasscodeSet ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Set Security Passcode</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <input
-                      type="password"
-                      value={passcode}
-                      onChange={(e) => setPasscode(e.target.value)}
-                      placeholder="Enter a secure passcode..."
-                      style={{
-                        flex: 1, padding: '10px 14px', borderRadius: 10,
-                        background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                        color: c.text, fontSize: 13,
-                        outline: 'none', transition: 'border-color 0.15s',
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                      onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSetPasscode}
-                      disabled={saving || !passcode}
-                      style={{
-                        padding: '0 16px', borderRadius: 10, border: 'none',
-                        background: passcode ? 'var(--brand-color)' : c.borderStrong,
-                        color: passcode ? '#fff' : c.subText,
-                        fontSize: 13, fontWeight: 700,
-                        cursor: passcode && !saving ? 'pointer' : 'not-allowed',
-                      }}
-                    >
-                      Set
-                    </button>
+              {!isPasscodeSet ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Set Security Passcode</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="password"
+                        value={passcode}
+                        onChange={(e) => setPasscode(e.target.value)}
+                        placeholder="Enter a secure passcode..."
+                        style={{
+                          flex: 1, padding: '10px 14px', borderRadius: 10,
+                          background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                          color: c.text, fontSize: 13,
+                          outline: 'none', transition: 'border-color 0.15s',
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                        onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSetPasscode}
+                        disabled={saving || !passcode}
+                        style={{
+                          padding: '0 16px', borderRadius: 10, border: 'none',
+                          background: passcode ? 'var(--brand-color)' : c.borderStrong,
+                          color: passcode ? '#fff' : c.subText,
+                          fontSize: 13, fontWeight: 700,
+                          cursor: passcode && !saving ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        Set
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ padding: '10px 14px', borderRadius: 10, background: isDark ? 'rgba(16,185,129,0.08)' : '#ecfdf5', border: `1px solid ${isDark ? 'rgba(16,185,129,0.15)' : '#a7f3d0'}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Shield size={16} style={{ color: '#10b981' }} />
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: isDark ? '#34d399' : '#047857' }}>Passcode protection is active</span>
-                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ padding: '10px 14px', borderRadius: 10, background: isDark ? 'rgba(16,185,129,0.08)' : '#ecfdf5', border: `1px solid ${isDark ? 'rgba(16,185,129,0.15)' : '#a7f3d0'}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Shield size={16} style={{ color: '#10b981' }} />
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: isDark ? '#34d399' : '#047857' }}>Passcode protection is active</span>
+                  </div>
 
-                {!showOtpSection ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Change Passcode</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {!showOtpSection ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                      <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Change Passcode</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Passcode</label>
+                          <input
+                            type="password"
+                            value={currentPasscode}
+                            onChange={(e) => setCurrentPasscode(e.target.value)}
+                            placeholder="Enter current passcode..."
+                            style={{
+                              width: '100%', padding: '10px 14px', borderRadius: 10,
+                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                              color: c.text, fontSize: 13,
+                              outline: 'none', transition: 'border-color 0.15s',
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Passcode</label>
+                            <input
+                              type="password"
+                              value={newPasscode}
+                              onChange={(e) => setNewPasscode(e.target.value)}
+                              placeholder="Enter new passcode..."
+                              style={{
+                                width: '100%', padding: '10px 14px', borderRadius: 10,
+                                background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                                color: c.text, fontSize: 13,
+                                outline: 'none', transition: 'border-color 0.15s',
+                              }}
+                              onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                              onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                            />
+                          </div>
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirm Passcode</label>
+                            <input
+                              type="password"
+                              value={confirmNewPasscode}
+                              onChange={(e) => setConfirmNewPasscode(e.target.value)}
+                              placeholder="Confirm new..."
+                              style={{
+                                width: '100%', padding: '10px 14px', borderRadius: 10,
+                                background: c.inputBg, border: `1px solid ${c.inputBorder}`,
+                                color: c.text, fontSize: 13,
+                                outline: 'none', transition: 'border-color 0.15s',
+                              }}
+                              onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
+                              onBlur={(e) => e.target.style.borderColor = c.inputBorder}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => { setShowOtpSection(true); handleSendOtp(); }}
+                            style={{
+                              background: 'none', border: 'none', color: 'var(--brand-color)',
+                              fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                            }}
+                          >
+                            Forgot Passcode? Reset via OTP
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleUpdatePasscode}
+                            disabled={saving || !currentPasscode || !newPasscode || !confirmNewPasscode}
+                            style={{
+                              padding: '10px 20px', borderRadius: 10, border: 'none',
+                              background: (currentPasscode && newPasscode && confirmNewPasscode) ? 'var(--brand-color)' : c.borderStrong,
+                              color: (currentPasscode && newPasscode && confirmNewPasscode) ? '#fff' : c.subText,
+                              fontSize: 13, fontWeight: 700,
+                              cursor: (currentPasscode && newPasscode && confirmNewPasscode) && !saving ? 'pointer' : 'not-allowed',
+                            }}
+                          >
+                            Update
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+                      <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Reset Passcode via OTP</h3>
+                      <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.4 }}>
+                        An OTP (One-Time Password) code has been generated and sent to the administrator's verification mobile number: <strong>0701766634</strong>.
+                      </p>
+
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Passcode</label>
-                        <input
-                          type="password"
-                          value={currentPasscode}
-                          onChange={(e) => setCurrentPasscode(e.target.value)}
-                          placeholder="Enter current passcode..."
-                          style={{
-                            width: '100%', padding: '10px 14px', borderRadius: 10,
-                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                            color: c.text, fontSize: 13,
-                            outline: 'none', transition: 'border-color 0.15s',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', gap: 12 }}>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Passcode</label>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter 6-Digit OTP</label>
+                        <div style={{ display: 'flex', gap: 8 }}>
                           <input
-                            type="password"
-                            value={newPasscode}
-                            onChange={(e) => setNewPasscode(e.target.value)}
-                            placeholder="Enter new passcode..."
+                            type="text"
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="e.g. 123456"
                             style={{
-                              width: '100%', padding: '10px 14px', borderRadius: 10,
+                              flex: 1, padding: '10px 14px', borderRadius: 10,
                               background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                              color: c.text, fontSize: 13,
+                              color: c.text, fontSize: 14, fontWeight: 'bold', letterSpacing: 2,
                               outline: 'none', transition: 'border-color 0.15s',
                             }}
                             onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
                             onBlur={(e) => e.target.style.borderColor = c.inputBorder}
                           />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirm Passcode</label>
-                          <input
-                            type="password"
-                            value={confirmNewPasscode}
-                            onChange={(e) => setConfirmNewPasscode(e.target.value)}
-                            placeholder="Confirm new..."
+                          <button
+                            type="button"
+                            onClick={handleVerifyOtp}
+                            disabled={verifyingOtp || otpCode.length !== 6}
                             style={{
-                              width: '100%', padding: '10px 14px', borderRadius: 10,
-                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                              color: c.text, fontSize: 13,
-                              outline: 'none', transition: 'border-color 0.15s',
+                              padding: '0 20px', borderRadius: 10, border: 'none',
+                              background: otpCode.length === 6 ? 'var(--brand-color)' : c.borderStrong,
+                              color: otpCode.length === 6 ? '#fff' : c.subText,
+                              fontSize: 13, fontWeight: 700,
+                              cursor: otpCode.length === 6 && !verifyingOtp ? 'pointer' : 'not-allowed',
                             }}
-                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                          />
+                          >
+                            {verifyingOtp ? 'Verifying...' : 'Verify & Reset'}
+                          </button>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                         <button
                           type="button"
-                          onClick={() => { setShowOtpSection(true); handleSendOtp(); }}
+                          onClick={handleSendOtp}
+                          disabled={sendingOtp}
                           style={{
-                            background: 'none', border: 'none', color: 'var(--brand-color)',
+                            background: 'none', border: 'none', color: c.subText,
                             fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
                           }}
                         >
-                          Forgot Passcode? Reset via OTP
+                          {sendingOtp ? 'Sending...' : 'Resend OTP'}
                         </button>
                         <button
                           type="button"
-                          onClick={handleUpdatePasscode}
-                          disabled={saving || !currentPasscode || !newPasscode || !confirmNewPasscode}
+                          onClick={() => { setShowOtpSection(false); setOtpSent(false); setOtpCode(''); }}
                           style={{
-                            padding: '10px 20px', borderRadius: 10, border: 'none',
-                            background: (currentPasscode && newPasscode && confirmNewPasscode) ? 'var(--brand-color)' : c.borderStrong,
-                            color: (currentPasscode && newPasscode && confirmNewPasscode) ? '#fff' : c.subText,
-                            fontSize: 13, fontWeight: 700,
-                            cursor: (currentPasscode && newPasscode && confirmNewPasscode) && !saving ? 'pointer' : 'not-allowed',
+                            background: 'none', border: 'none', color: '#ef4444',
+                            fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
                           }}
                         >
-                          Update
+                          Cancel
                         </button>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Reset Passcode via OTP</h3>
-                    <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.4 }}>
-                      An OTP (One-Time Password) code has been generated and sent to the administrator's verification mobile number: <strong>0701766634</strong>.
-                    </p>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter 6-Digit OTP</label>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input
-                          type="text"
-                          maxLength={6}
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                          placeholder="e.g. 123456"
-                          style={{
-                            flex: 1, padding: '10px 14px', borderRadius: 10,
-                            background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                            color: c.text, fontSize: 14, fontWeight: 'bold', letterSpacing: 2,
-                            outline: 'none', transition: 'border-color 0.15s',
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                          onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleVerifyOtp}
-                          disabled={verifyingOtp || otpCode.length !== 6}
-                          style={{
-                            padding: '0 20px', borderRadius: 10, border: 'none',
-                            background: otpCode.length === 6 ? 'var(--brand-color)' : c.borderStrong,
-                            color: otpCode.length === 6 ? '#fff' : c.subText,
-                            fontSize: 13, fontWeight: 700,
-                            cursor: otpCode.length === 6 && !verifyingOtp ? 'pointer' : 'not-allowed',
-                          }}
-                        >
-                          {verifyingOtp ? 'Verifying...' : 'Verify & Reset'}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                      <button
-                        type="button"
-                        onClick={handleSendOtp}
-                        disabled={sendingOtp}
-                        style={{
-                          background: 'none', border: 'none', color: c.subText,
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
-                        }}
-                      >
-                        {sendingOtp ? 'Sending...' : 'Resend OTP'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setShowOtpSection(false); setOtpSent(false); setOtpCode(''); }}
-                        style={{
-                          background: 'none', border: 'none', color: '#ef4444',
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </form>

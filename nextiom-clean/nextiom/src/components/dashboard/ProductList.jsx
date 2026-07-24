@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Package, Edit, Trash2, Download, RefreshCw, Infinity, Layers, Clock, Key, ArrowUpDown, Users } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { deleteProduct, addNotification } from '@/lib/storage';
 import EditProductDialog from '@/components/dialogs/EditProductDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -18,6 +19,7 @@ const LICENSE_LABEL = {
 };
 
 export default function ProductList({ products, licenses = [], customers = [], onUpdate, isDark, c }) {
+  const { permissions } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingCustomersProduct, setViewingCustomersProduct] = useState(null);
 
@@ -82,6 +84,11 @@ export default function ProductList({ products, licenses = [], customers = [], o
   };
 
   const handleDelete = async (productId) => {
+    if (permissions && permissions.can_delete_products === false) {
+      toast({ title: 'Access Denied', description: 'You do not have permission to delete products.', variant: 'destructive' });
+      setDeletingProductId(null);
+      return;
+    }
     const product = products.find(p => p.id === productId);
     await deleteProduct(productId);
     addNotification({

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, FileText, TrendingUp, CheckCircle, AlertCircle, Edit3, Trash2, Settings, ChevronLeft, ChevronRight, ArrowUpDown, CreditCard, X, ExternalLink, Clock, RotateCcw } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { useAuth } from '@/contexts/SupabaseAuthContext'
 import { supabase } from '@/lib/customSupabaseClient'
 import { Invoice, InvoiceCurrency, InvoicePayment, getInvoices, getInvoice, deleteInvoice, restoreInvoice, permanentlyDeleteInvoice, getInvoiceSettings, fmtCurrency, getLatestPaymentByInvoice, approveInvoicePayment, rejectInvoicePayment, requestPaymentInfo, getPaymentSlipSignedUrl, getInvoicePayments, refundInvoice, resolvePaymentMethod } from '@/lib/invoices'
 
@@ -805,6 +806,7 @@ interface Props {
 
 export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighlightInvoiceNo, onNew, onEdit, onSettings, isMobile: propIsMobile }: Props) {
   const { toast } = useToast()
+  const { permissions } = useAuth()
   const [isMobile, setIsMobile] = useState(() => {
     if (propIsMobile !== undefined) return propIsMobile
     return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
@@ -1004,6 +1006,11 @@ export default function InvoicesPage({ c, isDark, highlightInvoiceNo, clearHighl
 
   async function handleDelete() {
     if (!deleteId) return
+    if (permissions && permissions.can_delete_invoices === false) {
+      toast({ title: 'Access Denied', description: 'You do not have permission to delete invoices.', variant: 'destructive' })
+      setDeleteId(null)
+      return
+    }
     try {
       const invoiceToDelete = invoices.find(i => i.id === deleteId)
       await deleteInvoice(deleteId)

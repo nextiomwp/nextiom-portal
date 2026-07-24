@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { getCustomerByEmail, getUserProfile, addNotification, getMaintenanceStatus, getPortalSettings, applyThemeColor } from '@/lib/storage';
+import { getCustomerByEmail, getUserProfile, addNotification, getMaintenanceStatus, getPortalSettings, applyThemeColor, DEFAULT_MODERATOR_PERMISSIONS, ADMIN_PERMISSIONS } from '@/lib/storage';
 
 const AuthContext = createContext(undefined);
 
@@ -8,6 +8,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState(null);
+  const [permissions, setPermissions] = useState(ADMIN_PERMISSIONS);
+  const [moderatorProfile, setModeratorProfile] = useState(null);
   const [customerProfile, setCustomerProfile] = useState(null);
 
   const clearStaleAuth = () => {
@@ -53,7 +55,9 @@ export const AuthProvider = ({ children }) => {
         clearStaleAuth();
         setUser(null);
         setRole(null);
+        setModeratorProfile(null);
         setCustomerProfile(null);
+        setPermissions({});
         setLoading(false);
         return;
       }
@@ -71,7 +75,9 @@ export const AuthProvider = ({ children }) => {
         }
         setUser(null);
         setRole(null);
+        setModeratorProfile(null);
         setCustomerProfile(null);
+        setPermissions({});
         setLoading(false);
       }
     });
@@ -84,18 +90,42 @@ export const AuthProvider = ({ children }) => {
 
   const handleUserSession = async (authUser) => {
     try {
-      // Guard: re-verify the session is still active before touching any state.
-      // This prevents a race where signIn() calls signOut() (e.g. for restricted/
-      // pending accounts) but the deferred setTimeout fires AFTER the signOut,
-      // causing user/role to be set anyway and inadvertently triggering navigation.
       const { data: { session: liveSession } } = await supabase.auth.getSession();
       if (!liveSession || liveSession.user?.id !== authUser.id) return;
 
-      // Role MUST come from app_metadata (server-only). user_metadata is
-      // user-writable and can be tampered with via supabase.auth.updateUser.
       const userRole = authUser.app_metadata?.role || 'customer';
 
-      if (userRole === 'customer') {
+      if (userRole === 'admin') {
+        setPermissions(ADMIN_PERMISSIONS);
+        setModeratorProfile(null);
+        setCustomerProfile(null);
+      } else if (userRole === 'moderator') {
+        setCustomerProfile(null);
+        const { data: modProfile } = await supabase
+          .from('moderators')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .single();
+
+        if (modProfile) {
+          if (modProfile.status !== 'active') {
+            clearStaleAuth();
+            await supabase.auth.signOut({ scope: 'local' });
+            setUser(null);
+            setRole(null);
+            setModeratorProfile(null);
+            setPermissions({});
+            setLoading(false);
+            return;
+          }
+          setModeratorProfile(modProfile);
+          setPermissions({ ...DEFAULT_MODERATOR_PERMISSIONS, ...(modProfile.permissions || {}) });
+        } else {
+          setPermissions(DEFAULT_MODERATOR_PERMISSIONS);
+        }
+      } else if (userRole === 'customer') {
+        setModeratorProfile(null);
+        setPermissions({});
         let profile = await getUserProfile(authUser.id);
         if (!profile) {
           const { data: newProfile } = await supabase
@@ -118,7 +148,6 @@ export const AuthProvider = ({ children }) => {
       setUser(authUser);
       setRole(userRole);
 
-      // Fetch and apply portal settings / theme color on login/session update
       try {
         const settings = await getPortalSettings();
         if (settings?.themeColor) {
@@ -133,7 +162,9 @@ export const AuthProvider = ({ children }) => {
       await supabase.auth.signOut({ scope: 'local' });
       setUser(null);
       setRole(null);
+      setModeratorProfile(null);
       setCustomerProfile(null);
+      setPermissions({});
     } finally {
       setLoading(false);
     }
@@ -146,11 +177,44 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return { error };
     }
-    // Check if customer account is pending approval.
-    // Anyone who isn't an admin is treated as a customer (default role).
+
     const signedInRole = data.user?.app_metadata?.role || 'customer';
-    if (signedInRole !== 'admin') {
-      // Check if maintenance mode is active
+
+    if (signedInRole === 'admin') {
+      addNotification({
+        customer_id: null,
+        type: 'admin_login',
+        title: 'Admin Login',
+        message: `${email} signed in to the admin panel.`,
+        actor_id: data.user.id,
+        actor_name: 'Admin',
+        actor_role: 'admin',
+      }).catch(() => {});
+    } else if (signedInRole === 'moderator') {
+      const { data: modProfile } = await supabase
+        .from('moderators')
+        .select('id, name, status')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (modProfile && modProfile.status !== 'active') {
+        await supabase.auth.signOut();
+        setLoading(false);
+        return { error: { message: 'ACCOUNT_DISABLED', description: 'Your moderator account has been disabled. Please contact an administrator.' } };
+      }
+
+      const modName = modProfile?.name || data.user?.user_metadata?.full_name || 'Moderator';
+      addNotification({
+        customer_id: null,
+        type: 'moderator_login',
+        title: `Moderator Login — ${modName}`,
+        message: `${modName} (${email}) signed in to the admin panel.`,
+        actor_id: data.user.id,
+        actor_name: modName,
+        actor_role: 'moderator',
+      }).catch(() => {});
+    } else {
+      // Customer
       try {
         const { active, message } = await getMaintenanceStatus();
         if (active) {
@@ -181,25 +245,25 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         return { error: { message: 'ACCOUNT_REJECTED' } };
       }
-      // Log successful customer login
+
       addNotification({
         customer_id: profile?.id || null,
         type: 'customer_login',
         title: 'Customer Login',
         message: `${email} signed in to the portal.`,
+        actor_id: data.user.id,
+        actor_name: profile?.name || email,
+        actor_role: 'customer',
       }).catch((err) => {
         console.error('Failed to insert customer login notification:', err);
       });
     }
+
     return { data, error: null };
   };
 
   const signUp = async (email, password, metadata = {}) => {
     setLoading(true);
-    // Do NOT pass `role` here — `options.data` writes to user_metadata, which
-    // is user-writable and therefore untrusted. New users default to
-    // 'customer' on the server; admins must be promoted by setting
-    // app_metadata.role = 'admin' via Dashboard or service_role API.
     const { role: _ignoredRole, ...safeMetadata } = metadata;
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -215,10 +279,7 @@ export const AuthProvider = ({ children }) => {
       return { error };
     }
     
-    // Auth trigger usually creates the customer record, but if not, we do it here:
-    // This depends on backend triggers. Assuming manual creation for now:
     if (data.user) {
-        // Insert into customers table
         const { error: profileError } = await supabase.from('customers').insert([{
             user_id: data.user.id,
             email: email,
@@ -249,7 +310,9 @@ export const AuthProvider = ({ children }) => {
     clearStaleAuth();
     setUser(null);
     setRole(null);
+    setModeratorProfile(null);
     setCustomerProfile(null);
+    setPermissions({});
     setLoading(false);
     return { error };
   };
@@ -264,8 +327,14 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     role,
-    loading,
+    permissions,
+    moderatorProfile,
     customerProfile,
+    isAdmin: role === 'admin',
+    isModerator: role === 'moderator',
+    isStaff: role === 'admin' || role === 'moderator',
+    displayName: role === 'admin' ? 'Admin' : role === 'moderator' ? (moderatorProfile?.name || 'Moderator') : (customerProfile?.name || user?.email),
+    loading,
     refreshProfile,
     signIn,
     signUp,

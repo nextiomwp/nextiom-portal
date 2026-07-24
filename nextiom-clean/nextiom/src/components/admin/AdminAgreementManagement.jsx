@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Loader2, Trash2, FileText, Download, Upload, Check, RefreshCw, X, ChevronDown, CheckCircle, Clock, Edit } from 'lucide-react';
-import { getCustomers } from '@/lib/storage';
+import { getCustomers, logAdminOrModeratorActivity } from '@/lib/storage';
 import { getAgreements, createAgreement, updateAgreementStatus, deleteAgreement, openAgreementSecurely } from '@/lib/agreements';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import AdminAgreementCreator from '@/components/admin/AdminAgreementCreator';
 
 function AdminAgreementManagement({ isDark = true }) {
+  const { role } = useAuth();
   const [agreements, setAgreements] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [view, setView] = useState('list'); // 'list' or 'create'
@@ -118,6 +120,11 @@ function AdminAgreementManagement({ isDark = true }) {
   };
 
   const handleDelete = async (agreementId) => {
+    if (role === 'moderator') {
+      toast({ title: 'Access Denied', description: 'Moderators are not permitted to delete agreements.', variant: 'destructive' });
+      await logAdminOrModeratorActivity('delete_attempt', 'Agreement Deletion Blocked', `Moderator tried to delete agreement (ID: ${agreementId}) but was blocked.`);
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this agreement? This will delete the template and signed uploads.')) return;
     try {
       await deleteAgreement(agreementId);

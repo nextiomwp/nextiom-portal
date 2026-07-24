@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from '@/pages/Dashboard';
+import ModeratorDashboard from '@/pages/ModeratorDashboard';
 import CustomerDashboard from '@/pages/CustomerDashboard';
 import Login from '@/pages/Login';
 import AdminLogin from '@/pages/AdminLogin';
@@ -47,7 +48,7 @@ function App() {
             <Route 
               path="/dashboard" 
               element={
-                <ProtectedRoute allowedRoles={['customer', 'admin']}>
+                <ProtectedRoute allowedRoles={['customer', 'admin', 'moderator']}>
                    {/* Fallback - ProtectedRoute will redirect based on role */}
                    <div /> 
                 </ProtectedRoute>
@@ -59,6 +60,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                    <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/moderator-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['moderator']}>
+                   <ModeratorDashboard />
                 </ProtectedRoute>
               } 
             />

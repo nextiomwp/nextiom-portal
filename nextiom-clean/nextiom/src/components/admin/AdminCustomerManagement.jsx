@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff, ShieldCheck, ShieldOff, MoreVertical, Download, Users, Building, HelpCircle, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications, updateCustomer, createTicket, addTicketMessage } from '@/lib/storage';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications, updateCustomer, createTicket, addTicketMessage, logAdminOrModeratorActivity } from '@/lib/storage';
 import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
 import EditCustomerDialog from '@/components/dialogs/EditCustomerDialog';
 import AssignProductDialog from '@/components/dialogs/AssignProductDialog';
@@ -13,6 +14,7 @@ import CustomerProfileAdminView from './CustomerProfileAdminView';
 import { useNavigate } from 'react-router-dom';
 
 function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigate }) {
+  const { permissions, role } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState(() => localStorage.getItem('admin_customer_search_term') || '');
   const [statusFilter, setStatusFilter] = useState(() => localStorage.getItem('admin_customer_status_filter') || 'All');
@@ -414,6 +416,12 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
     const customer = customers.find(cu => cu.id === id);
     if (!customer) return;
 
+    if (role === 'moderator') {
+      toast({ title: 'Access Denied', description: 'Moderators are not permitted to delete customers.', variant: 'destructive' });
+      await logAdminOrModeratorActivity('delete_attempt', 'Customer Deletion Blocked', `Moderator tried to delete customer "${customer.name}" but was blocked.`);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('payment_settings')
@@ -633,6 +641,10 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
     } else if (action === 'clear_notifs') {
       handleClearNotifications(customer);
     } else if (action === 'delete') {
+      if (permissions && permissions.can_delete_customers === false) {
+        toast({ title: 'Access Denied', description: 'You do not have permission to delete customers.', variant: 'destructive' });
+        return;
+      }
       handleDelete(customer.id);
     }
   };
@@ -688,6 +700,11 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
   };
 
   const handleBulkDelete = async () => {
+    if (role === 'moderator') {
+      toast({ title: 'Access Denied', description: 'Moderators are not permitted to delete customers.', variant: 'destructive' });
+      await logAdminOrModeratorActivity('delete_attempt', 'Customer Bulk Deletion Blocked', `Moderator tried to bulk delete ${selectedCustomerIds.length} customers but was blocked.`);
+      return;
+    }
     if (!confirm(`WARNING: Are you sure you want to permanently delete the ${selectedCustomerIds.length} selected customers? This cannot be undone.`)) return;
     try {
       await Promise.all(selectedCustomerIds.map(id => deleteCustomer(id)));

@@ -164,6 +164,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
   const [noteSaving, setNoteSaving] = useState(false);
 
   const [customTransfer, setCustomTransfer] = useState('');
+  const [customAssignee, setCustomAssignee] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
   
@@ -812,6 +813,7 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
       setSelected(updatedSelected);
       setMessages(msgs => [...msgs, result.systemMessage]);
       setTickets(ts => ts.map(t => t.id === selected.id ? { ...t, assignee: result.assignee, updated_at: new Date().toISOString() } : t));
+      setCustomAssignee('');
       
       await addNotification({
         customer_id: selected.customer_id,
@@ -2433,6 +2435,49 @@ export default function AdminTicketsPage({ c, isDark, isMobile = false, initialT
                       {team}
                     </button>
                   ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 300, marginTop: 4 }}>
+                  <input
+                    type="text"
+                    placeholder="Or type custom assignee..."
+                    value={customAssignee}
+                    onChange={e => setCustomAssignee(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && customAssignee.trim()) {
+                        handleAssign(customAssignee);
+                      }
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '6px 12px',
+                      background: isDark ? '#22252C' : '#fff',
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 6,
+                      color: c.text,
+                      fontSize: 11.5,
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (customAssignee.trim()) handleAssign(customAssignee);
+                    }}
+                    disabled={!customAssignee.trim()}
+                    style={{
+                      padding: '6px 12px',
+                      background: c.brand,
+                      border: 'none',
+                      borderRadius: 6,
+                      color: '#fff',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      opacity: !customAssignee.trim() ? 0.6 : 1
+                    }}
+                  >
+                    Assign
+                  </button>
                 </div>
               </div>
             ) : (
