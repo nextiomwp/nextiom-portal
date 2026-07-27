@@ -145,7 +145,7 @@ export default function SmsSettingsPage({ isDark }) {
 
   // ── Test SMS state ────────────────────────────────────────────────────────
   const [testPhone, setTestPhone] = useState('');
-  const [testMessage, setTestMessage] = useState('This is a test SMS from Nextiom portal.');
+  const [testMessage, setTestMessage] = useState('');
   const [testSending, setTestSending] = useState(false);
 
   // ── Renewal trigger ───────────────────────────────────────────────────────
