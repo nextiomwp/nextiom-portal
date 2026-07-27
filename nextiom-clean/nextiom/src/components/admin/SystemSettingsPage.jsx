@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard, Shield, Key, Bell, Search } from 'lucide-react';
+import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard, Shield, Key, Bell, Search, Eye, EyeOff } from 'lucide-react';
 import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, checkPasscodeSet, verifyPasscode, savePasscodeHash, getCustomers } from '@/lib/storage';
 import { sendSms } from '@/lib/sms';
 import { useToast } from '@/components/ui/use-toast';
@@ -83,6 +83,7 @@ export default function SystemSettingsPage({ isDark }) {
   const [ipayEnabled, setIpayEnabled] = useState(false);
   const [ipayWebToken, setIpayWebToken] = useState('');
   const [ipaySandbox, setIpaySandbox] = useState(true);
+  const [showIpayToken, setShowIpayToken] = useState(false);
 
   const [originalIpayEnabled, setOriginalIpayEnabled] = useState(false);
   const [originalIpayWebToken, setOriginalIpayWebToken] = useState('');
@@ -1198,20 +1199,42 @@ export default function SystemSettingsPage({ isDark }) {
                       <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                         Public Integration API Token
                       </label>
-                      <input
-                        type="text"
-                        value={ipayWebToken}
-                        onChange={(e) => setIpayWebToken(e.target.value)}
-                        placeholder="Enter public IPG integration token..."
-                        disabled={!ipayEnabled}
-                        className="premium-input"
-                        style={{
-                          width: '100%', padding: '11px 14px', borderRadius: 10,
-                          background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
-                          color: c.text, fontSize: 13.5,
-                          outline: 'none'
-                        }}
-                      />
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input
+                          type={showIpayToken ? "text" : "password"}
+                          value={ipayWebToken}
+                          onChange={(e) => setIpayWebToken(e.target.value)}
+                          placeholder="Enter public IPG integration token..."
+                          disabled={!ipayEnabled}
+                          className="premium-input"
+                          style={{
+                            width: '100%', padding: '11px 44px 11px 14px', borderRadius: 10,
+                            background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                            color: c.text, fontSize: 13.5,
+                            outline: 'none',
+                            fontFamily: showIpayToken ? 'JetBrains Mono, monospace' : 'inherit'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={!ipayEnabled}
+                          onClick={() => setShowIpayToken(!showIpayToken)}
+                          style={{
+                            position: 'absolute',
+                            right: 14,
+                            background: 'none',
+                            border: 'none',
+                            color: c.subText,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: 0,
+                            opacity: ipayEnabled ? 0.8 : 0.4
+                          }}
+                        >
+                          {showIpayToken ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Sandbox Switch */}
