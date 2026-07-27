@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getCustomerByEmail, getUserProfile, addNotification, getMaintenanceStatus, getPortalSettings, applyThemeColor, DEFAULT_MODERATOR_PERMISSIONS, ADMIN_PERMISSIONS } from '@/lib/storage';
 
@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }) => {
   const [permissions, setPermissions] = useState(ADMIN_PERMISSIONS);
   const [moderatorProfile, setModeratorProfile] = useState(null);
   const [customerProfile, setCustomerProfile] = useState(null);
+  const loginTypeRef = useRef(null);
 
   const clearStaleAuth = () => {
     Object.keys(localStorage)
@@ -50,6 +51,25 @@ export const AuthProvider = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+
+      if (loginTypeRef.current === 'reject') {
+        if (event === 'SIGNED_OUT' || !session) {
+          loginTypeRef.current = null;
+        }
+        return;
+      }
+
+      if (session?.user) {
+        const userRole = session.user.app_metadata?.role || 'customer';
+        const isStaffRole = userRole === 'admin' || userRole === 'moderator';
+        const isStaffForm = loginTypeRef.current === 'staff';
+        
+        if (loginTypeRef.current && ((isStaffRole && !isStaffForm) || (!isStaffRole && isStaffForm))) {
+          loginTypeRef.current = 'reject';
+          supabase.auth.signOut();
+          return;
+        }
+      }
 
       if (event === 'TOKEN_REFRESHED' && !session) {
         clearStaleAuth();
@@ -170,15 +190,42 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signIn = async (email, password) => {
+  const signIn = async (email, password, isStaffForm = false) => {
     setLoading(true);
+    loginTypeRef.current = isStaffForm ? 'staff' : 'customer';
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
+      loginTypeRef.current = null;
       setLoading(false);
       return { error };
     }
 
     const signedInRole = data.user?.app_metadata?.role || 'customer';
+    const isStaffRole = signedInRole === 'admin' || signedInRole === 'moderator';
+
+    if (isStaffRole && !isStaffForm) {
+      loginTypeRef.current = null;
+      setLoading(false);
+      return {
+        error: {
+          message: 'invalid_credentials',
+          description: 'Invalid email or password. Please try again.'
+        }
+      };
+    }
+
+    if (!isStaffRole && isStaffForm) {
+      loginTypeRef.current = null;
+      setLoading(false);
+      return {
+        error: {
+          message: 'CUSTOMER_NOT_ALLOWED',
+          description: 'Customer accounts must use the customer login portal.'
+        }
+      };
+    }
+
+    loginTypeRef.current = null;
 
     if (signedInRole === 'admin') {
       addNotification({

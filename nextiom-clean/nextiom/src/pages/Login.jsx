@@ -112,6 +112,8 @@ function Login({ onLoginSuccess }) {
     if (msg === 'ACCOUNT_RESTRICTED') return 'RESTRICTED';
     if (msg === 'ACCOUNT_REJECTED') return 'REJECTED';
     if (msg === 'MAINTENANCE_MODE') return 'MAINTENANCE_MODE';
+    if (msg === 'STAFF_NOT_ALLOWED') return error?.description || 'Staff accounts must use the staff login portal (Ctrl + Shift + A).';
+    if (msg === 'CUSTOMER_NOT_ALLOWED') return error?.description || 'Customer accounts must use the customer login portal.';
     if (msg.includes('Invalid login credentials') || msg.includes('invalid_credentials')) {
       return 'Invalid email or password. Please try again.';
     }
@@ -202,7 +204,7 @@ function Login({ onLoginSuccess }) {
     e.preventDefault();
     setIsLoading(true);
 
-    const { data, error } = await signIn(email, password);
+    const { data, error } = await signIn(email, password, true);
 
     if (error) {
       toast({
@@ -214,19 +216,21 @@ function Login({ onLoginSuccess }) {
       return;
     }
 
-    if (data.user?.app_metadata?.role !== 'admin') {
+    const userRole = data.user?.app_metadata?.role;
+    if (userRole !== 'admin' && userRole !== 'moderator') {
       toast({
         title: "Access Denied",
-        description: "This portal is restricted to administrative staff only.",
+        description: "This portal is restricted to staff only.",
         variant: "destructive",
       });
       setIsLoading(false);
       return;
     }
 
+    const isSystemAdmin = userRole === 'admin';
     toast({
-      title: "Admin Access Granted",
-      description: "Welcome to the Nextiom Admin Portal.",
+      title: isSystemAdmin ? "Admin Access Granted" : "Moderator Access Granted",
+      description: isSystemAdmin ? "Welcome to the Nextiom Admin Portal." : "Welcome to the Nextiom Moderator Portal.",
       className: "bg-emerald-50 border-emerald-200 text-emerald-800",
     });
     if (onLoginSuccess) onLoginSuccess();

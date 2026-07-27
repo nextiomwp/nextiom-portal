@@ -167,7 +167,7 @@ function AdminLogin() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { data, error } = await signIn(email, password);
+    const { data, error } = await signIn(email, password, true);
 
     if (error) {
       toast({
