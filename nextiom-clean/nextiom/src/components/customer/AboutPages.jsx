@@ -1,7 +1,20 @@
-import React, { useState } from 'react';
-import { Building, Phone, Mail, MapPin, CheckCircle2, Shield, Heart, Users, Sparkles, Send, Code, Wrench, Zap, Search, ArrowUpCircle, ShieldAlert, Smartphone, Palette } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Building, Phone, Mail, MapPin, CheckCircle2, Shield, Heart, Users, Sparkles, Send, Code, Wrench, Zap, Search, ArrowUpCircle, ShieldAlert, Smartphone, Palette, Award, Star, Check, HelpCircle, Info, Globe, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { addNotification } from '@/lib/storage';
+import { addNotification, getCompanyInfoSections } from '@/lib/storage';
+import { supabase } from '@/lib/customSupabaseClient';
+
+const IconMap = {
+  Building, Phone, Mail, MapPin, CheckCircle2, Shield, Heart, Users, Sparkles,
+  Send, Code, Wrench, Zap, Search, ArrowUpCircle, ShieldAlert, Smartphone, Palette,
+  Award, Star, Check, HelpCircle, Info, Globe, Settings
+};
+
+const getIcon = (iconName, fallbackIcon = Sparkles) => {
+  if (!iconName) return fallbackIcon;
+  const IconComponent = IconMap[iconName] || fallbackIcon;
+  return IconComponent;
+};
 
 export function CompanyInfoPage({ isDark = false, c = {} }) {
   const border = c.border || '#ebebeb';
@@ -10,6 +23,29 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
   const brand = c.brand || 'var(--brand-color)';
   const brandLight = c.brandLight || 'var(--brand-color-light)';
   const cardBg = isDark ? 'rgba(28,30,36,0.85)' : 'rgba(255,255,255,0.9)';
+
+  const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const data = await getCompanyInfoSections();
+      setSections(data);
+    } catch (err) {
+      console.error('Failed to load company info sections:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const channel = supabase
+      .channel('company_info_channel')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'company_info_sections' }, () => { loadData(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const cardStyle = {
     background: cardBg,
@@ -20,6 +56,19 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
     WebkitBackdropFilter: 'blur(12px)',
     boxShadow: isDark ? '0 4px 24px rgba(0,0,0,0.2)' : '0 2px 16px rgba(0,0,0,0.05)',
   };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 300 }}>
+        <div className="animate-spin" style={{ width: 24, height: 24, border: `2px solid ${brand}`, borderTopColor: 'transparent', borderRadius: '50%' }} />
+      </div>
+    );
+  }
+
+  const aboutTextSections = sections.filter(s => s.category === 'about_text');
+  const aboutFeatureSections = sections.filter(s => s.category === 'about_feature');
+  const corePillarSections = sections.filter(s => s.category === 'core_pillar');
+  const serviceSections = sections.filter(s => s.category === 'service');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 64 }}>
@@ -39,41 +88,30 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
             </div>
             <h2 style={{ color: text, fontSize: 16, fontWeight: 700, margin: 0 }}>About NEXTIOM</h2>
           </div>
-          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
-            We are perfect in an innovative online marketing solution.
-            We are warmly welcome to you the useful online service website. We are hoping to create the
-            best service and fulfil customer needs, and wants. NEXTIOM is a full service- graphic design, web designing & developing print design, and much more for each of our clients based on their needs and goals.
-          </p>
-          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
-            We believe in the importance of improving the online services, which is why we established
-            NEXTIOM in three years ago. Our credibility and excellent service built satisfaction of 1000+ valued consumers. Just over a year ago, we had insured capacious victory and earned a lot of satisfying potential customers.
-          </p>
-          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
-            NEXTIOM has a great team, and which has uncanny ability to understand what objective customers are trying to achieve in the project. Our team has also worked to develop good imitation by creating proper communication and business ethics. We accept graphic/web design & developing, content marketing, presentation, or every high-impact task around the world.
-          </p>
-          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
-            Want an opportunity to achieve the best and profitable business owner? Are you not aware of
-            how to create the best path with the premium website to your business? NEXTIOM online service is ready to assist you at any time.
-          </p>
-          <p style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
-            We plan everything with our clients, and we create it as their performance. Our valued customers who have driven us so far.
-            At nextiom we have a theme, “Our clients are always our top precedence.”
-          </p>
+          
+          {aboutTextSections.length === 0 ? (
+            <p style={{ color: subText, fontSize: 14, fontStyle: 'italic', marginBottom: 16 }}>No about text content available.</p>
+          ) : (
+            aboutTextSections.map((s, idx) => (
+              <p key={s.id || idx} style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
+                {s.description}
+              </p>
+            ))
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, borderTop: `1px solid ${border}`, paddingTop: 20 }}>
-            {[
-              { icon: Shield, title: 'Secure By Design', desc: 'Enterprise-grade firewalls, isolated systems, and continuous monitoring.' },
-              { icon: Heart, title: 'Customer First', desc: 'Uncompromised focus on user experience, stability, and round-the-clock assistance.' },
-              { icon: Users, title: 'Trusted Globally', desc: 'Powering thousands of domain names, custom corporate emails, and websites.' }
-            ].map((v, i) => (
-              <div key={i}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <v.icon style={{ width: 16, height: 16, color: brand }} />
-                  <span style={{ color: text, fontSize: 13, fontWeight: 700 }}>{v.title}</span>
+            {aboutFeatureSections.map((v, i) => {
+              const Icon = getIcon(v.icon, Shield);
+              return (
+                <div key={v.id || i}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Icon style={{ width: 16, height: 16, color: brand }} />
+                    <span style={{ color: text, fontSize: 13, fontWeight: 700 }}>{v.title}</span>
+                  </div>
+                  <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{v.description}</p>
                 </div>
-                <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{v.desc}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -91,28 +129,18 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
-            {[
-              {
-                title: 'Reliable Infrastructure',
-                desc: 'Our hosting networks operate on high-grade servers with multi-homed carrier networks, assuring maximum uptime and high availability.'
-              },
-              {
-                title: '24/7 Customer Support',
-                desc: 'Our technical support personnel are available round-the-clock to assist with DNS setup, mail server configuration, and hosting optimization.'
-              },
-              {
-                title: 'Secure & Scalable Solutions',
-                desc: 'Grow your resources dynamically as your business demands expand, without complex migrations or lengthy deployment delays.'
-              }
-            ].map((p, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: 12 }}>
-                <CheckCircle2 style={{ width: 18, height: 18, color: brand, flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>{p.title}</h3>
-                  <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{p.desc}</p>
+            {corePillarSections.map((p, idx) => {
+              const Icon = getIcon(p.icon, CheckCircle2);
+              return (
+                <div key={p.id || idx} style={{ display: 'flex', gap: 12 }}>
+                  <Icon style={{ width: 18, height: 18, color: brand, flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>{p.title}</h3>
+                    <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{p.description}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -127,45 +155,39 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-          {[
-            { icon: Code, title: 'Custom Development', desc: 'Tailored web solutions built with cutting-edge tech stacks to meet your exact workflow requirements.' },
-            { icon: Wrench, title: 'WordPress Maintenance', desc: 'Continuous updates, plugin audits, database optimization, and core stability management.' },
-            { icon: Zap, title: 'WordPress Speed', desc: 'Aggressive caching, asset optimization, database pruning, and Core Web Vitals acceleration.' },
-            { icon: Search, title: 'SEO Optimization', desc: 'Strategic keyword targeting, schema markup, technical audit, and organic search engine growth.' },
-            { icon: ArrowUpCircle, title: 'Site Upgrade', desc: 'Seamless migration, modernization of outdated systems, and framework version transitions.' },
-            { icon: ShieldAlert, title: 'Malware Removal', desc: 'Comprehensive exploit auditing, virus cleanup, vulnerability patching, and security hardening.' },
-            { icon: Smartphone, title: 'App Development', desc: 'Native-feeling cross-platform mobile apps for iOS and Android built on robust frameworks.' },
-            { icon: Palette, title: 'Graphic Design', desc: 'High-impact UI/UX branding, vector logo creations, marketing mockups, and corporate media assets.' }
-          ].map((s, idx) => (
-            <div
-              key={idx}
-              style={{
-                ...cardStyle,
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                transition: 'transform 0.2s, border-color 0.2s',
-                cursor: 'default'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.borderColor = brand;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'none';
-                e.currentTarget.style.borderColor = border;
-              }}
-            >
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <s.icon style={{ width: 18, height: 18, color: brand }} />
+          {serviceSections.map((s, idx) => {
+            const Icon = getIcon(s.icon, Code);
+            return (
+              <div
+                key={s.id || idx}
+                style={{
+                  ...cardStyle,
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                  transition: 'transform 0.2s, border-color 0.2s',
+                  cursor: 'default'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.borderColor = brand;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'none';
+                  e.currentTarget.style.borderColor = border;
+                }}
+              >
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: brandLight, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon style={{ width: 18, height: 18, color: brand }} />
+                </div>
+                <div>
+                  <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: '0 0 6px 0' }}>{s.title}</h3>
+                  <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{s.description}</p>
+                </div>
               </div>
-              <div>
-                <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: '0 0 6px 0' }}>{s.title}</h3>
-                <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{s.desc}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

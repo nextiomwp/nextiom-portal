@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   MessageSquare, Save, RefreshCw, Loader2, Send, CheckCircle2, XCircle,
   Bell, Clock, Smartphone, AlertCircle, FileText,
@@ -7,6 +7,7 @@ import {
 import { getSmsSettings, saveSmsSettings, getSmsLogs, sendSms, triggerRenewalReminders } from '@/lib/sms';
 import { useToast } from '@/components/ui/use-toast';
 import { logAdminOrModeratorActivity } from '@/lib/storage';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 // ── small toggle switch ───────────────────────────────────────────────────────
 function Toggle({ value, onChange, disabled, id, c }) {
@@ -141,7 +142,7 @@ export default function SmsSettingsPage({ isDark }) {
   });
   const [logs, setLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
-  const [showLogs, setShowLogs] = useState(false);
+  const [activeTab, setActiveTab] = useState('logs');
 
   // ── Test SMS state ────────────────────────────────────────────────────────
   const [testPhone, setTestPhone] = useState('');
@@ -150,6 +151,10 @@ export default function SmsSettingsPage({ isDark }) {
 
   // ── Renewal trigger ───────────────────────────────────────────────────────
   const [reminderRunning, setReminderRunning] = useState(false);
+
+  // ── Modal states ──────────────────────────────────────────────────────────
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [testModalOpen, setTestModalOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -197,8 +202,8 @@ export default function SmsSettingsPage({ isDark }) {
   }, []);
 
   useEffect(() => {
-    if (showLogs) loadLogs();
-  }, [showLogs]);
+    if (activeTab === 'logs') loadLogs();
+  }, [activeTab]);
 
   // ── Save settings ─────────────────────────────────────────────────────────
   const handleSave = async (e) => {
@@ -234,7 +239,7 @@ export default function SmsSettingsPage({ isDark }) {
         className: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       });
       await logAdminOrModeratorActivity('update', 'SMS Test Sent', `Dispatched test SMS to ${testPhone.trim()}`);
-      if (showLogs) loadLogs();
+      if (activeTab === 'logs') loadLogs();
     } catch (err) {
       toast({ title: 'Failed to send custom SMS', description: err.message, variant: 'destructive' });
     } finally {
@@ -253,7 +258,7 @@ export default function SmsSettingsPage({ isDark }) {
         className: 'bg-emerald-50 border-emerald-200 text-emerald-800',
       });
       await logAdminOrModeratorActivity('update', 'Renewal Reminders Triggered', `Manually triggered SMS/email renewal reminders (${result.sent ?? 0} sent, ${result.failed ?? 0} failed).`);
-      if (showLogs) loadLogs();
+      if (activeTab === 'logs') loadLogs();
     } catch (err) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
@@ -303,6 +308,20 @@ export default function SmsSettingsPage({ isDark }) {
     border: `1px solid ${c.border}`,
   };
 
+  const togglesCardRef = useRef(null);
+  const [togglesHeight, setTogglesHeight] = useState(null);
+
+  useEffect(() => {
+    if (loading || !togglesCardRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setTogglesHeight(entry.target.getBoundingClientRect().height);
+      }
+    });
+    observer.observe(togglesCardRef.current);
+    return () => observer.disconnect();
+  }, [loading]);
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -312,40 +331,107 @@ export default function SmsSettingsPage({ isDark }) {
   }
 
   return (
-    <form onSubmit={handleSave} style={{ maxWidth: 900, margin: '0 auto', padding: '0 0 40px' }} noValidate>
+    <>
+      <form onSubmit={handleSave} style={{ width: '100%', padding: '0 0 40px' }} noValidate>
       <style>{`
         .sms-header {
           display: flex;
           justify-content: space-between;
-          align-items: flex-start;
+          align-items: center;
           gap: 24px;
           margin-bottom: 28px;
         }
         .sms-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
+          grid-template-columns: 1.25fr 1fr;
+          gap: 24px;
+          margin-bottom: 24px;
+          align-items: stretch;
         }
         .sms-card {
           border-radius: 16px;
           padding: 24px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-          margin-bottom: 20px;
+        }
+        .sms-tabbed-card {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+          overflow: hidden;
+        }
+        .sms-tab-content {
+          flex: 1;
+          overflow-y: auto;
+          min-height: 0;
+          padding: 24px;
         }
         .sms-save-btn {
           display: flex;
           align-items: center;
-          gap: 7px;
-          padding: 10px 22px;
+          gap: 8px;
+          padding: 10px 24px;
           border-radius: 10px;
           border: none;
-          background: var(--brand-color);
+          background: linear-gradient(135deg, var(--brand-color) 0%, #ea580c 100%);
           color: #fff;
-          font-size: 13px;
+          font-size: 13.5px;
           font-weight: 700;
           cursor: pointer;
           flex-shrink: 0;
-          transition: opacity 0.15s;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 12px rgba(232, 123, 53, 0.2);
+        }
+        .sms-save-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(232, 123, 53, 0.3);
+          opacity: 0.95;
+        }
+        .sms-save-btn:active:not(:disabled) {
+          transform: translateY(0);
+        }
+        .sms-sub-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          border-radius: 8px;
+          border: none;
+          background: linear-gradient(135deg, var(--brand-color) 0%, #ea580c 100%);
+          color: #fff;
+          font-size: 11.5px;
+          font-weight: 700;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 0.2s ease;
+          box-shadow: 0 3px 8px rgba(232, 123, 53, 0.15);
+        }
+        .sms-sub-btn:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 5px 12px rgba(232, 123, 53, 0.25);
+          opacity: 0.95;
+        }
+        .sms-sub-btn:active:not(:disabled) {
+          transform: translateY(0);
+        }
+        .sms-sub-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+        @media (max-width: 900px) {
+          .sms-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
+          .sms-tabbed-card {
+            height: auto !important;
+            max-height: none !important;
+          }
+          .sms-tab-content {
+            flex: initial;
+            overflow-y: visible;
+          }
         }
         @media (max-width: 768px) {
           .sms-header {
@@ -354,14 +440,9 @@ export default function SmsSettingsPage({ isDark }) {
             gap: 16px;
             margin-bottom: 20px;
           }
-          .sms-grid {
-            grid-template-columns: 1fr;
-            gap: 16px;
-          }
           .sms-card {
             padding: 16px;
             border-radius: 12px;
-            margin-bottom: 16px;
           }
           .sms-save-btn {
             width: 100%;
@@ -372,11 +453,29 @@ export default function SmsSettingsPage({ isDark }) {
 
       {/* ── Page Header ─────────────────────────────────────── */}
       <div className="sms-header">
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Smartphone size={22} style={{ color: c.brand }} />
             SMS Settings
           </h1>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="sms-sub-btn"
+              onClick={() => setTicketModalOpen(true)}
+            >
+              <MessageSquare size={13} />
+              Ticket SMS Settings
+            </button>
+            <button
+              type="button"
+              className="sms-sub-btn"
+              onClick={() => setTestModalOpen(true)}
+            >
+              <Send size={13} />
+              Test SMS Dispatcher
+            </button>
+          </div>
         </div>
         <button
           type="submit"
@@ -394,403 +493,527 @@ export default function SmsSettingsPage({ isDark }) {
 
       <div className="sms-grid">
 
-        {/* ── LEFT COLUMN ──────────────────────────────────── */}
-        <div>
-          {/* Feature Toggles */}
-          <div className="sms-card" style={cardStyle}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Bell size={16} style={{ color: c.brand }} />
-              Notification Toggles
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 4px 0' }}>
-              Control which SMS notifications are active.
-            </p>
+        {/* ── LEFT COLUMN: Notification Toggles ── */}
+        <div className="sms-card" style={{ ...cardStyle, alignSelf: 'start' }} ref={togglesCardRef}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Bell size={16} style={{ color: c.brand }} />
+            Notification Toggles
+          </h2>
+          <p style={{ fontSize: 12, color: c.subText, margin: '0 0 16px 0' }}>
+            Configure and control system-triggered SMS notifications.
+          </p>
 
-            <SettingRow
-              id="sms-master-toggle"
-              label="Enable SMS Notifications"
-              description="Master switch – disabling this stops all SMS delivery."
-              value={settings.sms_enabled}
-              onChange={v => setSettings(s => ({ ...s, sms_enabled: v }))}
-              c={c}
-            />
-            <SettingRow
-              id="sms-renewal-reminder"
-              label="Renewal Reminders"
-              description={`Send an SMS to customers ${settings.reminder_days} days before their domain, hosting, or email service expires.`}
-              value={settings.renewal_reminder}
-              onChange={v => setSettings(s => ({ ...s, renewal_reminder: v }))}
-              disabled={!settings.sms_enabled}
-              c={c}
-            />
-            <SettingRow
-              id="sms-purchase"
-              label="Purchase Thank-You SMS"
-              description="Send a thank-you message when hosting/domain/email or license is activated."
-              value={settings.purchase_sms}
-              onChange={v => setSettings(s => ({ ...s, purchase_sms: v }))}
-              disabled={!settings.sms_enabled}
-              c={c}
-            />
-            <SettingRow
-              id="sms-expiry-notification"
-              label="Expiry Notifications"
-              description="Send an SMS on the exact day a domain, hosting, email account, or product license expires, urging the customer to renew."
-              value={settings.expiry_notification}
-              onChange={v => setSettings(s => ({ ...s, expiry_notification: v }))}
-              disabled={!settings.sms_enabled}
-              c={c}
-            />
-            <SettingRow
-              id="sms-invoice-reminder"
-              label="Invoice Reminders"
-              description="Send an SMS to customers when invoices are created, 3 days before they are overdue, and on the overdue date."
-              value={settings.invoice_sms}
-              onChange={v => setSettings(s => ({ ...s, invoice_sms: v }))}
-              disabled={!settings.sms_enabled}
-              c={c}
-            />
-            <SettingRow
-              id="sms-login-otp"
-              label="Enable Login OTP"
-              description="Send a one-time password via SMS for enhanced login security."
-              value={settings.login_otp}
-              onChange={v => setSettings(s => ({ ...s, login_otp: v }))}
-              disabled={!settings.sms_enabled}
-              c={c}
-            />
-            <div style={{ borderBottom: 'none' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Group 1: Core Configuration */}
+            <div style={{ background: c.panel2, padding: '10px 16px', borderRadius: 12, border: `1px solid ${c.border}` }}>
               <SettingRow
-                id="sms-always-otp"
-                label="Always Require OTP on Login"
-                description="If enabled, every login attempt triggers an OTP even if the session is trusted."
-                value={settings.always_otp}
-                onChange={v => setSettings(s => ({ ...s, always_otp: v }))}
-                disabled={!settings.sms_enabled || !settings.login_otp}
+                id="sms-master-toggle"
+                label="Enable SMS Notifications"
+                description="Master switch – disabling this stops all SMS delivery."
+                value={settings.sms_enabled}
+                onChange={v => setSettings(s => ({ ...s, sms_enabled: v }))}
                 c={c}
               />
             </div>
 
-            {/* Reminder days */}
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${c.border}` }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>
-                Days before expiry to send reminder
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <input
-                  id="sms-reminder-days"
-                  type="number"
-                  min={1}
-                  max={30}
-                  value={settings.reminder_days}
-                  onChange={e => setSettings(s => ({ ...s, reminder_days: parseInt(e.target.value, 10) || 3 }))}
-                  style={{ ...inputStyle, width: 90 }}
-                  disabled={!settings.renewal_reminder}
-                  onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
-                  onBlur={e => e.target.style.borderColor = c.inputBorder}
+            {/* Group 2: Client Service Notifications */}
+            <div style={{ border: `1px solid ${c.border}`, borderRadius: 12, padding: '8px 16px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.brand, textTransform: 'uppercase', letterSpacing: 0.8, margin: '8px 0 4px' }}>Service Alerts & Reminders</div>
+              <SettingRow
+                id="sms-renewal-reminder"
+                label="Renewal Reminders"
+                description={`Send an SMS to customers before their service expires.`}
+                value={settings.renewal_reminder}
+                onChange={v => setSettings(s => ({ ...s, renewal_reminder: v }))}
+                disabled={!settings.sms_enabled}
+                c={c}
+              />
+              
+              {settings.renewal_reminder && (
+                <>
+                  <div style={{ padding: '14px 0', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Reminder Trigger Window</label>
+                      <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Specify how many days before service expiry to dispatch SMS alerts.</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        id="sms-reminder-days"
+                        type="number"
+                        min={1}
+                        max={30}
+                        value={settings.reminder_days}
+                        onChange={e => setSettings(s => ({ ...s, reminder_days: parseInt(e.target.value, 10) || 3 }))}
+                        style={{ ...inputStyle, width: 75, padding: '8px 10px', textAlign: 'center' }}
+                        disabled={!settings.renewal_reminder || !settings.sms_enabled}
+                        onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
+                        onBlur={e => e.target.style.borderColor = c.inputBorder}
+                      />
+                      <span style={{ fontSize: 13, color: c.subText, fontWeight: 500 }}>Days</span>
+                    </div>
+                  </div>
+                  <div style={{ padding: '14px 0', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Manual Check</label>
+                      <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Manually trigger renewal reminder checks for the configured window.</div>
+                    </div>
+                    <button
+                      id="sms-trigger-reminders-btn"
+                      type="button"
+                      onClick={handleTriggerReminders}
+                      disabled={reminderRunning || !settings.sms_enabled || !settings.renewal_reminder}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: 10,
+                        border: `1.5px solid ${settings.sms_enabled && settings.renewal_reminder ? 'var(--brand-color)' : c.border}`,
+                        background: 'transparent',
+                        color: settings.sms_enabled && settings.renewal_reminder ? 'var(--brand-color)' : c.subText,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        cursor: (reminderRunning || !settings.sms_enabled || !settings.renewal_reminder) ? 'not-allowed' : 'pointer',
+                        opacity: (reminderRunning || !settings.sms_enabled || !settings.renewal_reminder) ? 0.5 : 1,
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={e => {
+                        if (!reminderRunning && settings.sms_enabled && settings.renewal_reminder) {
+                          e.currentTarget.style.background = c.hover;
+                        }
+                      }}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {reminderRunning ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                      Run Check Now
+                    </button>
+                  </div>
+                </>
+              )}
+
+              <SettingRow
+                id="sms-expiry-notification"
+                label="Expiry Day Notifications"
+                description="Send an SMS on the exact day a service expires, urging the customer to renew."
+                value={settings.expiry_notification}
+                onChange={v => setSettings(s => ({ ...s, expiry_notification: v }))}
+                disabled={!settings.sms_enabled}
+                c={c}
+              />
+              <SettingRow
+                id="sms-purchase"
+                label="Purchase Thank-You SMS"
+                description="Send a thank-you message when hosting/domain/email or license is activated."
+                value={settings.purchase_sms}
+                onChange={v => setSettings(s => ({ ...s, purchase_sms: v }))}
+                disabled={!settings.sms_enabled}
+                c={c}
+              />
+              <div style={{ borderBottom: 'none' }}>
+                <SettingRow
+                  id="sms-invoice-reminder"
+                  label="Invoice Reminders"
+                  description="Send an SMS when invoices are created, 3 days before they are overdue, and on the overdue date."
+                  value={settings.invoice_sms}
+                  onChange={v => setSettings(s => ({ ...s, invoice_sms: v }))}
+                  disabled={!settings.sms_enabled}
+                  c={c}
                 />
-                <span style={{ fontSize: 13, color: c.subText }}>days before expiry</span>
               </div>
             </div>
-          </div>
 
-          {/* Ticket SMS Notifications Card */}
-          <div className="sms-card" style={cardStyle}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MessageSquare size={16} style={{ color: c.brand }} />
-              Ticket SMS Settings
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 4px 0' }}>
-              Enable or disable SMS alerts for ticket creation.
-            </p>
-
-            <SettingRow
-              id="sms-ticket-toggle"
-              label="Enable Ticket SMS"
-              description="Notify admin users via SMS when a customer creates a ticket."
-              value={settings.ticket_sms}
-              onChange={v => setSettings(s => ({ ...s, ticket_sms: v }))}
-              disabled={!settings.sms_enabled}
-              c={c}
-            />
-
-            {settings.ticket_sms && (
-              <div style={{ marginTop: 16 }}>
-                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>
-                  Admin Phone Numbers to Notify
-                </label>
-                
-                {/* Input row */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                  <input
-                    type="tel"
-                    id="new-admin-number"
-                    placeholder="e.g. +94771234567"
-                    style={{ ...inputStyle, flex: 1 }}
-                    onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
-                    onBlur={e => e.target.style.borderColor = c.inputBorder}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddAdminNumber();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddAdminNumber}
-                    style={{
-                      padding: '0 16px', borderRadius: 10, border: 'none',
-                      background: 'var(--brand-color)', color: '#fff',
-                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}
-                  >
-                    Add
-                  </button>
-                </div>
-
-                {/* List of numbers */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {(settings.ticket_sms_admin_numbers || []).length === 0 ? (
-                    <span style={{ fontSize: 12, color: c.subText, fontStyle: 'italic' }}>
-                      No numbers added yet. Adding numbers is required.
-                    </span>
-                  ) : (
-                    (settings.ticket_sms_admin_numbers || []).map((num, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          background: c.hover, border: `1px solid ${c.border}`,
-                          padding: '4px 10px', borderRadius: 8, fontSize: 12, color: c.text
-                        }}
-                      >
-                        <span style={{ fontFamily: 'monospace' }}>{num}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAdminNumber(num)}
-                          style={{
-                            background: 'none', border: 'none', color: '#ef4444',
-                            cursor: 'pointer', padding: 0, fontSize: 14, fontWeight: 'bold',
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: 16, height: 16
-                          }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
+            {/* Group 3: Security & Verification */}
+            <div style={{ border: `1px solid ${c.border}`, borderRadius: 12, padding: '8px 16px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: c.brand, textTransform: 'uppercase', letterSpacing: 0.8, margin: '8px 0 4px' }}>Security & Authentication</div>
+              <SettingRow
+                id="sms-login-otp"
+                label="Enable Login OTP"
+                description="Send a one-time password via SMS for enhanced login security."
+                value={settings.login_otp}
+                onChange={v => setSettings(s => ({ ...s, login_otp: v }))}
+                disabled={!settings.sms_enabled}
+                c={c}
+              />
+              <div style={{ borderBottom: 'none' }}>
+                <SettingRow
+                  id="sms-always-otp"
+                  label="Always Require OTP on Login"
+                  description="If enabled, every login attempt triggers an OTP even if the session is trusted."
+                  value={settings.always_otp}
+                  onChange={v => setSettings(s => ({ ...s, always_otp: v }))}
+                  disabled={!settings.sms_enabled || !settings.login_otp}
+                  c={c}
+                />
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN ─────────────────────────────────── */}
-        <div>
-          {/* Test SMS card */}
-          <div className="sms-card" style={cardStyle}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Send size={16} style={{ color: c.brand }} />
-              Send a custom SMS to any phone number.
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 16px 0' }}>
-              Verify your SMS by sending a test message to any phone number.
-            </p>
-
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
-                Phone Number
-              </label>
-              <input
-                id="sms-test-phone"
-                type="tel"
-                value={testPhone}
-                onChange={e => setTestPhone(e.target.value)}
-                placeholder="e.g. 0771234567 or 94771234567"
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
-                onBlur={e => e.target.style.borderColor = c.inputBorder}
-              />
+        {/* ── RIGHT COLUMN: Activity Logs & Overviews Tabbed Panel ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+          <div
+            className="sms-card sms-tabbed-card"
+            style={{
+              ...cardStyle,
+              padding: 0,
+              overflow: 'hidden',
+              height: togglesHeight ? `${togglesHeight}px` : 'auto'
+            }}
+          >
+            <div style={{
+              display: 'flex', borderBottom: `1px solid ${c.border}`,
+              background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              padding: '0 16px', overflowX: 'auto'
+            }}>
+              {[
+                { id: 'logs', label: 'SMS Activity Log', count: logs.length },
+                { id: 'expiring', label: 'Expiring Services (30 Days)', count: null },
+                { id: 'invoices', label: 'Invoice Reminders (3 Days)', count: null },
+              ].map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    style={{
+                      padding: '16px 20px', background: 'none', border: 'none',
+                      borderBottom: isActive ? `3px solid var(--brand-color)` : '3px solid transparent',
+                      color: isActive ? c.text : c.subText,
+                      fontWeight: isActive ? 700 : 500,
+                      fontSize: 14, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      transition: 'all 0.2s',
+                      marginBottom: -1,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {tab.label}
+                    {tab.id === 'logs' && logs.length > 0 && (
+                      <span style={{
+                        fontSize: 10.5, fontWeight: 700,
+                        background: isActive ? 'var(--brand-color)' : c.hover,
+                        color: isActive ? '#fff' : c.subText,
+                        padding: '2px 7px', borderRadius: 10,
+                      }}>
+                        {logs.length}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
-                Message
-              </label>
-              <textarea
-                id="sms-test-message"
-                value={testMessage}
-                onChange={e => setTestMessage(e.target.value)}
-                rows={3}
-                maxLength={160}
-                style={{ ...inputStyle, resize: 'vertical', minHeight: 72, fontFamily: 'inherit' }}
-                onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
-                onBlur={e => e.target.style.borderColor = c.inputBorder}
-              />
-              <div style={{ fontSize: 11, color: c.subText, textAlign: 'right' }}>{testMessage.length}/160</div>
-            </div>
+            <div className="sms-tab-content">
+              {activeTab === 'logs' && (
+                <div>
+                  {logsLoading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
+                      <Loader2 size={24} className="animate-spin" style={{ color: c.brand }} />
+                    </div>
+                  ) : logs.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 32, color: c.subText, fontSize: 13 }}>
+                      No SMS logs yet. Send a test SMS to see results here.
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+                            {['Sent At', 'Customer', 'Phone', 'Type', 'Status', 'Message'].map(h => (
+                              <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logs.map(log => (
+                            <tr
+                              key={log.id}
+                              style={{ borderBottom: `1px solid ${c.border}`, transition: 'background 0.1s' }}
+                              onMouseEnter={e => e.currentTarget.style.background = c.hover}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <td style={{ padding: '10px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
+                                {log.sent_at ? new Date(log.sent_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: c.text }}>
+                                {log.customers?.name || <span style={{ color: c.subText }}>—</span>}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: c.subText, fontFamily: 'monospace' }}>{log.phone}</td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <TypeBadge type={log.type} />
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <StatusBadge status={log.status} />
+                              </td>
+                              <td style={{ padding: '10px 12px', color: c.subText, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.message}>
+                                {log.message}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={loadLogs}
+                    disabled={logsLoading}
+                    style={{
+                      marginTop: 16, display: 'flex', alignItems: 'center', gap: 6,
+                      background: 'none', border: 'none', color: c.subText, fontSize: 12,
+                      cursor: 'pointer', padding: 0,
+                    }}
+                  >
+                    <RefreshCw size={12} style={{ animation: logsLoading ? 'spin 1s linear infinite' : 'none' }} />
+                    Refresh logs
+                  </button>
+                </div>
+              )}
 
+              {activeTab === 'expiring' && (
+                <ExpiringServicesPanel isDark={isDark} c={c} cardStyle={cardStyle} settings={settings} plain={true} />
+              )}
+
+              {activeTab === 'invoices' && (
+                <InvoiceRemindersPanel isDark={isDark} c={c} cardStyle={cardStyle} settings={settings} setSettings={setSettings} plain={true} />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </form>
+
+      {/* ── DIALOGS ── */}
+      <Dialog open={ticketModalOpen} onOpenChange={setTicketModalOpen}>
+        <DialogContent
+          style={{
+            background: isDark ? '#1C1E24' : '#fff',
+            color: c.text,
+            border: `1px solid ${c.borderStrong || c.border}`,
+            maxWidth: 550,
+            borderRadius: 16,
+            padding: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <MessageSquare size={18} style={{ color: c.brand }} />
+            Ticket SMS Settings
+          </h2>
+          <p style={{ fontSize: 12.5, color: c.subText, margin: '0 0 16px 0' }}>
+            Notify admin users via SMS when customers create new support tickets.
+          </p>
+
+          <SettingRow
+            id="sms-ticket-toggle"
+            label="Enable Ticket SMS"
+            description="Dispatch ticket alerts to administrative phone numbers."
+            value={settings.ticket_sms}
+            onChange={v => setSettings(s => ({ ...s, ticket_sms: v }))}
+            disabled={!settings.sms_enabled}
+            c={c}
+          />
+
+          {settings.ticket_sms && (
+            <div style={{ marginTop: 16 }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 8 }}>
+                Admin Phone Numbers to Notify
+              </label>
+              
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <input
+                  type="tel"
+                  id="new-admin-number"
+                  placeholder="e.g. +94771234567"
+                  style={{ ...inputStyle, flex: 1 }}
+                  onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
+                  onBlur={e => e.target.style.borderColor = c.inputBorder}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddAdminNumber();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddAdminNumber}
+                  style={{
+                    padding: '0 20px', borderRadius: 10, border: 'none',
+                    background: 'var(--brand-color)', color: '#fff',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 150, overflowY: 'auto' }}>
+                {(settings.ticket_sms_admin_numbers || []).length === 0 ? (
+                  <span style={{ fontSize: 12, color: c.subText, fontStyle: 'italic' }}>
+                    No numbers added yet. Adding numbers is required.
+                  </span>
+                ) : (
+                  (settings.ticket_sms_admin_numbers || []).map((num, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        background: c.hover, border: `1px solid ${c.border}`,
+                        padding: '4px 10px', borderRadius: 8, fontSize: 12, color: c.text
+                      }}
+                    >
+                      <span style={{ fontFamily: 'monospace' }}>{num}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAdminNumber(num)}
+                        style={{
+                          background: 'none', border: 'none', color: '#ef4444',
+                          cursor: 'pointer', padding: 0, fontSize: 14, fontWeight: 'bold',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: 16, height: 16
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+            <button
+              type="button"
+              onClick={() => setTicketModalOpen(false)}
+              style={{
+                padding: '8px 18px',
+                borderRadius: 8,
+                border: `1px solid ${c.border}`,
+                background: c.hover,
+                color: c.text,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={testModalOpen} onOpenChange={setTestModalOpen}>
+        <DialogContent
+          style={{
+            background: isDark ? '#1C1E24' : '#fff',
+            color: c.text,
+            border: `1px solid ${c.borderStrong || c.border}`,
+            maxWidth: 550,
+            borderRadius: 16,
+            padding: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Send size={18} style={{ color: c.brand }} />
+            Test SMS Dispatcher
+          </h2>
+          <p style={{ fontSize: 12.5, color: c.subText, margin: '0 0 16px 0' }}>
+            Send a manual test message to verify gateway connectivity.
+          </p>
+
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
+              Phone Number
+            </label>
+            <input
+              id="sms-test-phone"
+              type="tel"
+              value={testPhone}
+              onChange={e => setTestPhone(e.target.value)}
+              placeholder="e.g. 0771234567 or +94771234567"
+              style={inputStyle}
+              onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
+              onBlur={e => e.target.style.borderColor = c.inputBorder}
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>
+              Message
+            </label>
+            <textarea
+              id="sms-test-message"
+              value={testMessage}
+              onChange={e => setTestMessage(e.target.value)}
+              rows={3}
+              maxLength={160}
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 72, fontFamily: 'inherit' }}
+              onFocus={e => e.target.style.borderColor = 'var(--brand-color)'}
+              onBlur={e => e.target.style.borderColor = c.inputBorder}
+            />
+            <div style={{ fontSize: 11, color: c.subText, textAlign: 'right', marginTop: 4 }}>{testMessage.length}/160</div>
+          </div>
+
+          <div>
             <button
               id="sms-send-test-btn"
               type="button"
               onClick={handleTestSend}
               disabled={testSending || !settings.sms_enabled}
               style={{
-                width: '100%', padding: '10px', borderRadius: 10, border: 'none',
-                background: 'var(--brand-color)', color: '#fff',
-                fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                width: '100%', padding: '11px', borderRadius: 10, border: 'none',
+                background: settings.sms_enabled ? 'linear-gradient(135deg, var(--brand-color) 0%, #ea580c 100%)' : c.borderStrong,
+                color: settings.sms_enabled ? '#fff' : c.subText,
+                fontSize: 13.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 cursor: (testSending || !settings.sms_enabled) ? 'not-allowed' : 'pointer',
                 opacity: (testSending || !settings.sms_enabled) ? 0.6 : 1,
+                boxShadow: settings.sms_enabled ? '0 4px 12px rgba(232, 123, 53, 0.15)' : 'none',
+                transition: 'all 0.2s',
               }}
             >
               {testSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
               {testSending ? 'Sending…' : 'Send Custom SMS'}
             </button>
             {!settings.sms_enabled && (
-              <p style={{ fontSize: 11, color: c.subText, marginTop: 8, textAlign: 'center' }}>
+              <p style={{ fontSize: 11, color: c.subText, marginTop: 8, textAlign: 'center', marginBottom: 0 }}>
                 Enable SMS notifications above to send a test.
               </p>
             )}
           </div>
 
-          {/* Trigger renewal reminders card */}
-          <div className="sms-card" style={cardStyle}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Clock size={16} style={{ color: c.brand }} />
-              Renewal Reminder Trigger
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 16px 0' }}>
-              Manually run the renewal reminder check now. Normally this runs automatically each day.
-              Sends to all customers with services expiring in <strong style={{ color: c.text }}>{settings.reminder_days}</strong> days.
-            </p>
-
-            <button
-              id="sms-trigger-reminders-btn"
-              type="button"
-              onClick={handleTriggerReminders}
-              disabled={reminderRunning || !settings.sms_enabled || !settings.renewal_reminder}
-              style={{
-                width: '100%', padding: '10px', borderRadius: 10,
-                border: `1px solid ${c.borderStrong}`, background: 'transparent',
-                color: c.text, fontSize: 13, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                cursor: (reminderRunning || !settings.sms_enabled || !settings.renewal_reminder) ? 'not-allowed' : 'pointer',
-                opacity: (reminderRunning || !settings.sms_enabled || !settings.renewal_reminder) ? 0.5 : 1,
-              }}
-              onMouseEnter={e => { if (!reminderRunning) e.currentTarget.style.background = c.hover; }}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              {reminderRunning ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-              {reminderRunning ? 'Running…' : 'Run Renewal Check Now'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ── SMS Logs section ──────────────────────────────── */}
-      <div className="sms-card" style={cardStyle}>
-        <button
-          type="button"
-          onClick={() => setShowLogs(v => !v)}
-          style={{
-            width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: 0, color: c.text,
-          }}
-        >
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <History size={16} style={{ color: c.brand }} />
-            SMS Activity Log
-            {logs.length > 0 && (
-              <span style={{ fontSize: 11, background: c.hover, color: c.subText, padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
-                {logs.length} entries
-              </span>
-            )}
-          </h2>
-          {showLogs ? <ChevronUp size={16} style={{ color: c.subText }} /> : <ChevronDown size={16} style={{ color: c.subText }} />}
-        </button>
-
-        {showLogs && (
-          <div style={{ marginTop: 20 }}>
-            {logsLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}>
-                <Loader2 size={24} className="animate-spin" style={{ color: c.brand }} />
-              </div>
-            ) : logs.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 32, color: c.subText, fontSize: 13 }}>
-                No SMS logs yet. Send a test SMS to see results here.
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${c.border}` }}>
-                      {['Sent At', 'Customer', 'Phone', 'Type', 'Status', 'Message'].map(h => (
-                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map(log => (
-                      <tr
-                        key={log.id}
-                        style={{ borderBottom: `1px solid ${c.border}`, transition: 'background 0.1s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = c.hover}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <td style={{ padding: '10px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
-                          {log.sent_at ? new Date(log.sent_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                        </td>
-                        <td style={{ padding: '10px 12px', color: c.text }}>
-                          {log.customers?.name || <span style={{ color: c.subText }}>—</span>}
-                        </td>
-                        <td style={{ padding: '10px 12px', color: c.subText, fontFamily: 'monospace' }}>{log.phone}</td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <TypeBadge type={log.type} />
-                        </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <StatusBadge status={log.status} />
-                        </td>
-                        <td style={{ padding: '10px 12px', color: c.subText, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.message}>
-                          {log.message}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
             <button
               type="button"
-              onClick={loadLogs}
-              disabled={logsLoading}
+              onClick={() => setTestModalOpen(false)}
               style={{
-                marginTop: 12, display: 'flex', alignItems: 'center', gap: 6,
-                background: 'none', border: 'none', color: c.subText, fontSize: 12,
-                cursor: 'pointer', padding: 0,
+                padding: '8px 18px',
+                borderRadius: 8,
+                border: `1px solid ${c.border}`,
+                background: c.hover,
+                color: c.text,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
               }}
             >
-              <RefreshCw size={12} style={{ animation: logsLoading ? 'spin 1s linear infinite' : 'none' }} />
-              Refresh logs
+              Close
             </button>
           </div>
-        )}
-      </div>
-
-      {/* ── Invoice SMS Settings & Reminders Area ─────────── */}
-      <InvoiceRemindersPanel isDark={isDark} c={c} cardStyle={cardStyle} settings={settings} setSettings={setSettings} />
-
-      {/* ── Expiring Services Overview ────────────────────── */}
-      <ExpiringServicesPanel isDark={isDark} c={c} cardStyle={cardStyle} settings={settings} />
-    </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
 // ── Expiring Services overview panel ─────────────────────────────────────────
-function ExpiringServicesPanel({ isDark, c, cardStyle, settings }) {
+function ExpiringServicesPanel({ isDark, c, cardStyle, settings, plain }) {
   const [data, setData] = useState({ domains: [], hostings: [], emails: [], products: [] });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -802,48 +1025,13 @@ function ExpiringServicesPanel({ isDark, c, cardStyle, settings }) {
         const { supabase } = await import('@/lib/customSupabaseClient');
         const now = new Date();
         const windowEnd = new Date(now);
-        windowEnd.setDate(windowEnd.getDate() + 30); // show expiring within 30 days
+        windowEnd.setDate(windowEnd.getDate() + 30);
 
         const [domainsRes, hostingsRes, emailsRes, productsRes] = await Promise.all([
-          supabase
-            .from('domain_requests')
-            .select('id, domain_name, expiry_date, customers(name, phone)')
-            .in('status', ['approved', 'active', 'completed'])
-            .not('expiry_date', 'is', null)
-            .lte('expiry_date', windowEnd.toISOString())
-            .gte('expiry_date', now.toISOString())
-            .order('expiry_date', { ascending: true })
-            .limit(20),
-          supabase
-            .from('hosting_requests')
-            .select('id, plan_name, expiry_date, customers(name, phone)')
-            .in('status', ['approved', 'active', 'completed'])
-            .not('expiry_date', 'is', null)
-            .lte('expiry_date', windowEnd.toISOString())
-            .gte('expiry_date', now.toISOString())
-            .order('expiry_date', { ascending: true })
-            .limit(20),
-          supabase
-            .from('email_requests')
-            .select('id, email, expiry_date, customers(name, phone)')
-            .in('status', ['approved', 'active', 'completed'])
-            .not('expiry_date', 'is', null)
-            .lte('expiry_date', windowEnd.toISOString())
-            .gte('expiry_date', now.toISOString())
-            .order('expiry_date', { ascending: true })
-            .limit(20),
-          supabase
-            .from('licenses')
-            .select('id, expiry_date, license_type, products(name), customers(name, phone)')
-            .in('license_type', ['yearly', 'monthly'])
-            .not('expiry_date', 'is', null)
-            .neq('status', 'Disabled')
-            .neq('status', 'Suspended')
-            .neq('status', 'Expired')
-            .lte('expiry_date', windowEnd.toISOString())
-            .gte('expiry_date', now.toISOString())
-            .order('expiry_date', { ascending: true })
-            .limit(20),
+          supabase.from('domain_requests').select('id, domain_name, expiry_date, customers(name, phone)').in('status', ['approved', 'active', 'completed']).not('expiry_date', 'is', null).lte('expiry_date', windowEnd.toISOString()).gte('expiry_date', now.toISOString()).order('expiry_date', { ascending: true }).limit(20),
+          supabase.from('hosting_requests').select('id, plan_name, expiry_date, customers(name, phone)').in('status', ['approved', 'active', 'completed']).not('expiry_date', 'is', null).lte('expiry_date', windowEnd.toISOString()).gte('expiry_date', now.toISOString()).order('expiry_date', { ascending: true }).limit(20),
+          supabase.from('email_requests').select('id, email, expiry_date, customers(name, phone)').in('status', ['approved', 'active', 'completed']).not('expiry_date', 'is', null).lte('expiry_date', windowEnd.toISOString()).gte('expiry_date', now.toISOString()).order('expiry_date', { ascending: true }).limit(20),
+          supabase.from('licenses').select('id, expiry_date, license_type, products(name), customers(name, phone)').in('license_type', ['yearly', 'monthly']).not('expiry_date', 'is', null).neq('status', 'Disabled').neq('status', 'Suspended').neq('status', 'Expired').lte('expiry_date', windowEnd.toISOString()).gte('expiry_date', now.toISOString()).order('expiry_date', { ascending: true }).limit(20),
         ]);
 
         if (mounted) {
@@ -855,24 +1043,25 @@ function ExpiringServicesPanel({ isDark, c, cardStyle, settings }) {
           });
         }
       } catch (err) {
-        console.error('ExpiringServices error:', err);
+        if (mounted) {
+          toast({ title: 'Error loading expiring services', description: err.message, variant: 'destructive' });
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [toast]);
 
-  const daysUntil = (expiryStr) => {
-    const now = new Date(); now.setHours(0, 0, 0, 0);
-    const exp = new Date(expiryStr); exp.setHours(0, 0, 0, 0);
-    return Math.round((exp - now) / (1000 * 60 * 60 * 24));
+  const daysUntil = (d) => {
+    const diff = new Date(d) - new Date();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
   };
 
   const urgencyColor = (days) => {
     if (days <= 3) return '#ef4444';
     if (days <= 7) return '#f97316';
-    if (days <= 14) return '#f59e0b';
+    if (days <= 15) return '#eab308';
     return '#22c55e';
   };
 
@@ -883,13 +1072,103 @@ function ExpiringServicesPanel({ isDark, c, cardStyle, settings }) {
     ...data.products.map(p => ({ ...p, label: p.products?.name || 'Product', serviceType: 'Product' })),
   ].sort((a, b) => new Date(a.expiry_date) - new Date(b.expiry_date));
 
-  if (loading) return (
-    <div className="sms-card" style={cardStyle}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13 }}>
+  if (loading) {
+    return plain ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13, padding: '16px 0' }}>
         <Loader2 size={16} className="animate-spin" /> Loading expiring services…
       </div>
+    ) : (
+      <div className="sms-card" style={cardStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13 }}>
+          <Loader2 size={16} className="animate-spin" /> Loading expiring services…
+        </div>
+      </div>
+    );
+  }
+
+  const content = allItems.length === 0 ? (
+    <div style={{ textAlign: 'center', padding: '32px 0', color: c.subText, fontSize: 13 }}>
+      <CheckCircle2 size={28} style={{ color: '#22c55e', marginBottom: 8 }} />
+      <div>No services expiring in the next 30 days.</div>
+    </div>
+  ) : (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+            {['Customer', 'Service', 'Type', 'Expiry Date', 'Days Left', 'Auto Trigger', 'Phone'].map(h => (
+              <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {allItems.map(item => {
+            const days = daysUntil(item.expiry_date);
+            const col = urgencyColor(days);
+            const isAutoTrigger = settings?.sms_enabled && settings?.renewal_reminder && days >= 0 && days <= (settings?.reminder_days ?? 3) && !!item.customers?.phone;
+
+            return (
+              <tr
+                key={item.id + item.serviceType}
+                style={{ borderBottom: `1px solid ${c.border}`, transition: 'background 0.1s' }}
+                onMouseEnter={e => e.currentTarget.style.background = c.hover}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <td style={{ padding: '11px 12px', fontWeight: 600, color: c.text }}>
+                  {item.customers?.name || '—'}
+                </td>
+                <td style={{ padding: '11px 12px', color: c.subText, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
+                  {item.label}
+                </td>
+                <td style={{ padding: '11px 12px' }}>
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    background: item.serviceType === 'Domain' ? 'rgba(99,153,34,0.12)' : item.serviceType === 'Hosting' ? 'rgba(55,138,221,0.12)' : item.serviceType === 'Product' ? 'rgba(236,72,153,0.12)' : 'rgba(232,123,53,0.12)',
+                    color: item.serviceType === 'Domain' ? '#639922' : item.serviceType === 'Hosting' ? '#5b9aff' : item.serviceType === 'Product' ? '#ec4899' : 'var(--brand-color)',
+                  }}>
+                    {item.serviceType}
+                  </span>
+                </td>
+                <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
+                  {new Date(item.expiry_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </td>
+                <td style={{ padding: '11px 12px' }}>
+                  <span style={{
+                    fontWeight: 700, fontSize: 13, color: col,
+                    background: col + '18', padding: '2px 8px', borderRadius: 6,
+                  }}>
+                    {days <= 0 ? 'Expired' : `${days}d`}
+                  </span>
+                </td>
+                <td style={{ padding: '11px 12px' }}>
+                  {isAutoTrigger ? (
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                      background: 'rgba(34,197,94,0.12)', color: '#22c55e'
+                    }}>
+                      Yes
+                    </span>
+                  ) : (
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                      background: 'rgba(100,116,139,0.12)', color: '#64748b'
+                    }}>
+                      No
+                    </span>
+                  )}
+                </td>
+                <td style={{ padding: '11px 12px', color: c.subText, fontFamily: 'monospace', fontSize: 12 }}>
+                  {item.customers?.phone || <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
+
+  if (plain) return content;
 
   return (
     <div className="sms-card" style={cardStyle}>
@@ -903,94 +1182,13 @@ function ExpiringServicesPanel({ isDark, c, cardStyle, settings }) {
       <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
         Active domains, hostings, email accounts and product licenses that are coming up for renewal. SMS reminders will be sent automatically.
       </p>
-
-      {allItems.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '32px 0', color: c.subText, fontSize: 13 }}>
-          <CheckCircle2 size={28} style={{ color: '#22c55e', marginBottom: 8 }} />
-          <div>No services expiring in the next 30 days.</div>
-        </div>
-      ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${c.border}` }}>
-                {['Customer', 'Service', 'Type', 'Expiry Date', 'Days Left', 'Auto Trigger', 'Phone'].map(h => (
-                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {allItems.map(item => {
-                const days = daysUntil(item.expiry_date);
-                const col = urgencyColor(days);
-                const isAutoTrigger = settings?.sms_enabled && settings?.renewal_reminder && days >= 0 && days <= (settings?.reminder_days ?? 3) && !!item.customers?.phone;
-
-                return (
-                  <tr
-                    key={item.id + item.serviceType}
-                    style={{ borderBottom: `1px solid ${c.border}`, transition: 'background 0.1s' }}
-                    onMouseEnter={e => e.currentTarget.style.background = c.hover}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '11px 12px', fontWeight: 600, color: c.text }}>
-                      {item.customers?.name || '—'}
-                    </td>
-                    <td style={{ padding: '11px 12px', color: c.subText, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
-                      {item.label}
-                    </td>
-                    <td style={{ padding: '11px 12px' }}>
-                      <span style={{
-                        padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                        background: item.serviceType === 'Domain' ? 'rgba(99,153,34,0.12)' : item.serviceType === 'Hosting' ? 'rgba(55,138,221,0.12)' : item.serviceType === 'Product' ? 'rgba(236,72,153,0.12)' : 'rgba(232,123,53,0.12)',
-                        color: item.serviceType === 'Domain' ? '#639922' : item.serviceType === 'Hosting' ? '#5b9aff' : item.serviceType === 'Product' ? '#ec4899' : 'var(--brand-color)',
-                      }}>
-                        {item.serviceType}
-                      </span>
-                    </td>
-                    <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
-                      {new Date(item.expiry_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </td>
-                    <td style={{ padding: '11px 12px' }}>
-                      <span style={{
-                        fontWeight: 700, fontSize: 13, color: col,
-                        background: col + '18', padding: '2px 8px', borderRadius: 6,
-                      }}>
-                        {days <= 0 ? 'Expired' : `${days}d`}
-                      </span>
-                    </td>
-                    <td style={{ padding: '11px 12px' }}>
-                      {isAutoTrigger ? (
-                        <span style={{
-                          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                          background: 'rgba(34,197,94,0.12)', color: '#22c55e'
-                        }}>
-                          Yes
-                        </span>
-                      ) : (
-                        <span style={{
-                          padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                          background: 'rgba(100,116,139,0.12)', color: '#64748b'
-                        }}>
-                          No
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '11px 12px', color: c.subText, fontFamily: 'monospace', fontSize: 12 }}>
-                      {item.customers?.phone || <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {content}
     </div>
   );
 }
 
 // ── Invoice SMS Settings & Reminders panel ───────────────────────────────────
-function InvoiceRemindersPanel({ isDark, c, cardStyle, settings, setSettings }) {
+function InvoiceRemindersPanel({ isDark, c, cardStyle, settings, setSettings, plain }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showTable, setShowTable] = useState(false);
@@ -1039,6 +1237,100 @@ function InvoiceRemindersPanel({ isDark, c, cardStyle, settings, setSettings }) 
     return days >= 0 && days <= 3;
   });
 
+  if (loading && (plain || showTable)) {
+    return plain ? (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13, padding: '16px 0' }}>
+        <Loader2 size={16} className="animate-spin" /> Loading unpaid invoices…
+      </div>
+    ) : (
+      <div className="sms-card" style={cardStyle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13, padding: '16px 0' }}>
+          <Loader2 size={16} className="animate-spin" /> Loading unpaid invoices…
+        </div>
+      </div>
+    );
+  }
+
+  const content = filteredData.length === 0 ? (
+    <div style={{ textAlign: 'center', padding: '32px 0', color: c.subText, fontSize: 13 }}>
+      <CheckCircle2 size={28} style={{ color: '#22c55e', marginBottom: 8 }} />
+      <div>No unpaid or overdue invoices found within 3 days.</div>
+    </div>
+  ) : (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${c.border}` }}>
+            {['Customer', 'Invoice No', 'Amount', 'Due Date', 'Days Left', 'Auto Trigger', 'Phone'].map(h => (
+              <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {filteredData.map(item => {
+            const days = daysUntil(item.due_date);
+            const col = urgencyColor(days);
+            const isAutoTrigger = settings?.sms_enabled && settings?.invoice_sms && 
+              days === 3 && 
+              !!item.client_phone;
+
+            return (
+              <tr
+                key={item.id}
+                style={{ borderBottom: `1px solid ${c.border}`, transition: 'background 0.1s' }}
+                onMouseEnter={e => e.currentTarget.style.background = c.hover}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <td style={{ padding: '11px 12px', fontWeight: 600, color: c.text }}>
+                  {item.client_name || '—'}
+                </td>
+                <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
+                  {item.invoice_no}
+                </td>
+                <td style={{ padding: '11px 12px', color: c.text, fontWeight: 500 }}>
+                  {item.total} {item.currency}
+                </td>
+                <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
+                  {new Date(item.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                </td>
+                <td style={{ padding: '11px 12px' }}>
+                  <span style={{
+                    fontWeight: 700, fontSize: 13, color: col,
+                    background: col + '18', padding: '2px 8px', borderRadius: 6,
+                  }}>
+                    {days < 0 ? `Overdue (${Math.abs(days)}d)` : days === 0 ? 'Due Today' : `${days}d`}
+                  </span>
+                </td>
+                <td style={{ padding: '11px 12px' }}>
+                  {isAutoTrigger ? (
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                      background: 'rgba(34,197,94,0.12)', color: '#22c55e'
+                    }}>
+                      Yes
+                    </span>
+                  ) : (
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                      background: 'rgba(100,116,139,0.12)', color: '#64748b'
+                    }}>
+                      No
+                    </span>
+                  )}
+                </td>
+                <td style={{ padding: '11px 12px', color: c.subText, fontFamily: 'monospace', fontSize: 12 }}>
+                  {item.client_phone || <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  if (plain) return content;
+
   return (
     <div className="sms-card" style={cardStyle}>
       <button
@@ -1066,87 +1358,7 @@ function InvoiceRemindersPanel({ isDark, c, cardStyle, settings, setSettings }) 
 
       {showTable && (
         <div style={{ marginTop: 20 }}>
-          {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: c.subText, fontSize: 13, padding: '16px 0' }}>
-              <Loader2 size={16} className="animate-spin" /> Loading unpaid invoices…
-            </div>
-          ) : filteredData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 0', color: c.subText, fontSize: 13 }}>
-              <CheckCircle2 size={28} style={{ color: '#22c55e', marginBottom: 8 }} />
-              <div>No unpaid or overdue invoices found within 3 days.</div>
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: `1px solid ${c.border}` }}>
-                    {['Customer', 'Invoice No', 'Amount', 'Due Date', 'Days Left', 'Auto Trigger', 'Phone'].map(h => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredData.map(item => {
-                    const days = daysUntil(item.due_date);
-                    const col = urgencyColor(days);
-                    const isAutoTrigger = settings?.sms_enabled && settings?.invoice_sms && 
-                      days === 3 && 
-                      !!item.client_phone;
-
-                    return (
-                      <tr
-                        key={item.id}
-                        style={{ borderBottom: `1px solid ${c.border}`, transition: 'background 0.1s' }}
-                        onMouseEnter={e => e.currentTarget.style.background = c.hover}
-                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                      >
-                        <td style={{ padding: '11px 12px', fontWeight: 600, color: c.text }}>
-                          {item.client_name || '—'}
-                        </td>
-                        <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
-                          {item.invoice_no}
-                        </td>
-                        <td style={{ padding: '11px 12px', color: c.text, fontWeight: 500 }}>
-                          {item.total} {item.currency}
-                        </td>
-                        <td style={{ padding: '11px 12px', color: c.subText, whiteSpace: 'nowrap' }}>
-                          {new Date(item.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        </td>
-                        <td style={{ padding: '11px 12px' }}>
-                          <span style={{
-                            fontWeight: 700, fontSize: 13, color: col,
-                            background: col + '18', padding: '2px 8px', borderRadius: 6,
-                          }}>
-                            {days < 0 ? `Overdue (${Math.abs(days)}d)` : days === 0 ? 'Due Today' : `${days}d`}
-                          </span>
-                        </td>
-                        <td style={{ padding: '11px 12px' }}>
-                          {isAutoTrigger ? (
-                            <span style={{
-                              padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                              background: 'rgba(34,197,94,0.12)', color: '#22c55e'
-                            }}>
-                              Yes
-                            </span>
-                          ) : (
-                            <span style={{
-                              padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                              background: 'rgba(100,116,139,0.12)', color: '#64748b'
-                            }}>
-                              No
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '11px 12px', color: c.subText, fontFamily: 'monospace', fontSize: 12 }}>
-                          {item.client_phone || <span style={{ color: '#ef4444', fontSize: 11 }}>No phone</span>}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {content}
         </div>
       )}
     </div>

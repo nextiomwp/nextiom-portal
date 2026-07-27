@@ -15,8 +15,55 @@ const COLOR_PRESETS = [
   { name: 'Amber Gold', value: '#F59E0B' },
 ];
 
+// ── Small toggle switch component ─────────────────────────────────────────────
+function FormToggle({ checked, onChange, disabled, title, description, brandColor, isDark }) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 14, cursor: disabled ? 'not-allowed' : 'pointer', userSelect: 'none' }}>
+      <div style={{
+        position: 'relative',
+        width: 44,
+        height: 24,
+        backgroundColor: checked ? brandColor : (isDark ? '#2D3139' : '#E2E8F0'),
+        borderRadius: 12,
+        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        flexShrink: 0,
+        marginTop: 2,
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: 2,
+          left: checked ? 22 : 2,
+          width: 20,
+          height: 20,
+          backgroundColor: '#fff',
+          borderRadius: '50%',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }} />
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.checked)}
+          style={{ display: 'none' }}
+        />
+      </div>
+      <div>
+        <span style={{ fontSize: 13.5, fontWeight: 600, display: 'block' }}>{title}</span>
+        {description && (
+          <span style={{ fontSize: 11.5, color: 'var(--sub-text-color)', display: 'block', marginTop: 2, lineHeight: 1.4, opacity: 0.8 }}>
+            {description}
+          </span>
+        )}
+      </div>
+    </label>
+  );
+}
+
 export default function SystemSettingsPage({ isDark }) {
   const { role } = useAuth();
+  const [activeTab, setActiveTab] = useState('appearance');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [themeColor, setThemeColor] = useState('#E87B35');
@@ -419,9 +466,28 @@ export default function SystemSettingsPage({ isDark }) {
     notificationsEnabled !== originalNotificationsEnabled ||
     !arraysEqual(notificationExemptCustomers, originalNotificationExemptCustomers);
 
+  const tabs = [
+    { id: 'appearance', label: 'Appearance', icon: Palette, desc: 'Themes & branding' },
+    { id: 'notifications', label: 'Notifications', icon: Bell, desc: 'Global & customer alerts' },
+    ...(role !== 'moderator' ? [
+      { id: 'ipay', label: 'Payment Gateway', icon: CreditCard, desc: 'iPay IPG integration' },
+      { id: 'security', label: 'Access Security', icon: Shield, desc: 'Deletion passcode' }
+    ] : [])
+  ];
+
   return (
-    <form onSubmit={handleSave} style={{ maxWidth: 1040, margin: '0 auto', padding: '0 0 32px' }} noValidate>
+    <form onSubmit={handleSave} style={{ width: '100%', padding: '0 0 32px' }} noValidate>
       <style>{`
+        :root {
+          --brand-color: ${themeColor};
+          --brand-color-rgb: ${hexToRgb(themeColor) ? `${hexToRgb(themeColor).r}, ${hexToRgb(themeColor).g}, ${hexToRgb(themeColor).b}` : '232, 123, 53'};
+          --brand-color-light: ${hexToRgb(themeColor) ? `rgba(${hexToRgb(themeColor).r}, ${hexToRgb(themeColor).g}, ${hexToRgb(themeColor).b}, 0.12)` : 'rgba(232, 123, 53, 0.12)'};
+          --hover-color: ${c.hover};
+          --border-color: ${c.border};
+          --text-color: ${c.text};
+          --sub-text-color: ${c.subText};
+        }
+        
         .settings-header {
           display: flex;
           justify-content: space-between;
@@ -429,258 +495,542 @@ export default function SystemSettingsPage({ isDark }) {
           gap: 24px;
           margin-bottom: 24px;
         }
-        .settings-grid {
-          display: grid;
-          grid-template-columns: 1.15fr 1fr;
+        
+        .settings-container {
+          display: flex;
           gap: 24px;
+          align-items: stretch;
+          min-height: 600px;
         }
-        @media (max-width: 992px) {
-          .settings-grid {
-            grid-template-columns: 1fr;
-            gap: 20px;
+        
+        .settings-sidebar {
+          width: 260px;
+          flex-shrink: 0;
+          background: ${c.card};
+          border: 1px solid ${c.border};
+          border-radius: 16px;
+          padding: 20px 14px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: ${isDark ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.02)'};
+        }
+        
+        .settings-sidebar-btn {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          padding: 12px 14px;
+          border-radius: 10px;
+          border: none;
+          background: transparent;
+          color: ${c.subText};
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          text-align: left;
+        }
+        
+        .settings-sidebar-btn:hover {
+          background: ${c.hover} !important;
+          color: ${c.text};
+        }
+        
+        .settings-sidebar-btn.active {
+          background: var(--brand-color-light) !important;
+          color: var(--brand-color) !important;
+          font-weight: 600;
+        }
+        
+        .settings-content {
+          flex: 1;
+          min-width: 0;
+          background: ${c.card};
+          border: 1px solid ${c.border};
+          border-radius: 16px;
+          padding: 28px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: ${isDark ? '0 4px 20px rgba(0,0,0,0.15)' : '0 4px 20px rgba(0,0,0,0.02)'};
+        }
+        
+        .tab-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'};
+          border-radius: 4px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.16)'};
+        }
+        
+        .premium-input {
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .premium-input:focus {
+          border-color: var(--brand-color) !important;
+          box-shadow: 0 0 0 3px var(--brand-color-light) !important;
+        }
+        
+        .customer-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+          gap: 12px;
+          max-height: 400px;
+          overflow-y: auto;
+          padding: 4px;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tab-fade-in {
+          animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        @keyframes slideUp {
+          from { transform: translate(-50%, 100%); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        .floating-changed-bar {
+          animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        @keyframes pulse {
+          0% { transform: scale(0.95); opacity: 0.5; }
+          50% { transform: scale(1.08); opacity: 1; }
+          100% { transform: scale(0.95); opacity: 0.5; }
+        }
+        
+        @media (max-width: 950px) {
+          .appearance-grid, .gateway-grid, .security-grid {
+            grid-template-columns: 1fr !important;
+            gap: 28px !important;
           }
         }
+        
         @media (max-width: 768px) {
+          .settings-container {
+            flex-direction: column !important;
+            gap: 16px !important;
+            align-items: stretch !important;
+          }
+          .settings-sidebar {
+            width: 100% !important;
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            padding: 8px !important;
+            white-space: nowrap !important;
+            min-height: auto !important;
+          }
+          .settings-sidebar-btn {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+            padding: 8px 12px !important;
+            font-size: 11px !important;
+            flex-shrink: 0 !important;
+            gap: 6px !important;
+          }
+          .settings-sidebar-btn-desc {
+            display: none !important;
+          }
+          .settings-content {
+            padding: 20px !important;
+          }
           .settings-header {
             flex-direction: column;
             align-items: stretch;
             gap: 16px;
+            margin-bottom: 20px;
+          }
+        }
+        
+        @media (max-width: 600px) {
+          .passcode-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>
+
       {/* ── Page Header ─────────────────────────── */}
       <div className="settings-header">
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Settings size={22} style={{ color: c.brand }} />
+            <Settings size={22} style={{ color: 'var(--brand-color)' }} />
             System Settings
           </h1>
-          <p style={{ fontSize: 13, color: c.subText, marginTop: 4, maxWidth: 500 }}>
-            Configure global look-and-feel variables, payment gateways, notifications, and security protocols.
+          <p style={{ fontSize: 13, color: c.subText, marginTop: 4, maxWidth: 600 }}>
+            Configure global brand theme colors, payment gateways, customer notifications, and deletion passcodes.
           </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          {isChanged && (
-            <button
-              type="button"
-              onClick={handleReset}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '9px 16px', borderRadius: 10, border: `1px solid ${c.borderStrong}`,
-                background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = c.hover}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <RotateCcw size={14} />
-              Revert
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={saving || !isChanged}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '9px 20px', borderRadius: 10, border: 'none',
-              background: isChanged ? 'var(--brand-color)' : c.borderStrong,
-              color: isChanged ? '#fff' : c.subText,
-              fontSize: 13, fontWeight: 700,
-              cursor: isChanged && !saving ? 'pointer' : 'not-allowed',
-              opacity: saving ? 0.7 : 1,
-              transition: 'opacity 0.2s, background-color 0.2s',
-            }}
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            Save Changes
-          </button>
         </div>
       </div>
 
-      <div className="settings-grid">
-        {/* ── Left Column: Brand & Notifications ──────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Card: Brand Color Picker */}
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Palette size={16} style={{ color: c.brand }} />
-              Main Brand Theme Color
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-              Select a color below or pick a custom hex value.
-            </p>
-
-            {/* Presets Grid */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Color Presets</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {COLOR_PRESETS.map((preset) => {
-                  const isSelected = themeColor.toLowerCase() === preset.value.toLowerCase();
-                  return (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => handleSelectPreset(preset.value)}
-                      title={preset.name}
-                      style={{
-                        position: 'relative',
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: preset.value,
-                        border: isSelected ? `2.5px solid ${c.text}` : `1px solid ${c.borderStrong}`,
-                        cursor: 'pointer',
-                        transform: isSelected ? 'scale(1.12)' : 'scale(1)',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: isSelected ? `0 0 12px ${preset.value}80` : 'none',
-                      }}
-                    >
-                      {isSelected && (
-                        <div style={{
-                          position: 'absolute',
-                          top: -3, right: -3,
-                          width: 14, height: 14,
-                          borderRadius: '50%',
-                          background: '#10B981',
-                          border: `2px solid ${c.card}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          <CheckCircle2 size={8} style={{ color: '#fff' }} />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+      <div className="settings-container">
+        {/* ── Left Sidebar Navigation ──────────────── */}
+        <div className="settings-sidebar">
+          {/* Upper Branding Section */}
+          <div className="settings-sidebar-btn-desc" style={{ padding: '4px 8px 16px', borderBottom: `1px solid ${c.border}`, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: 'var(--brand-color-light)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <Sliders size={16} style={{ color: 'var(--brand-color)' }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Control Center</div>
+                <div style={{ fontSize: 10.5, color: c.subText, marginTop: 1 }}>Settings Dashboard</div>
               </div>
             </div>
+          </div>
 
-            {/* Custom Color Input */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: `1px solid ${c.border}`, paddingTop: 20 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Custom Color Picker</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ position: 'relative', width: 42, height: 42, borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${c.borderStrong}`, cursor: 'pointer', flexShrink: 0 }}>
-                  <input
-                    type="color"
-                    value={themeColor}
-                    onChange={(e) => setThemeColor(e.target.value)}
-                    style={{
-                      position: 'absolute', top: -8, left: -8, width: 58, height: 58,
-                      border: 'none', cursor: 'pointer', background: 'transparent', padding: 0
-                    }}
-                  />
+          {/* Navigation Tabs */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isTabActive = activeTab === tab.id;
+              
+              // Notification / Status dot calculations
+              let showStatusDot = false;
+              let statusDotColor = 'transparent';
+              if (tab.id === 'notifications') {
+                showStatusDot = notificationExemptCustomers.length > 0;
+                statusDotColor = 'var(--brand-color)';
+              } else if (tab.id === 'ipay') {
+                showStatusDot = ipayEnabled;
+                statusDotColor = '#10B981';
+              } else if (tab.id === 'security') {
+                showStatusDot = isPasscodeSet;
+                statusDotColor = '#10B981';
+              }
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`settings-sidebar-btn ${isTabActive ? 'active' : ''}`}
+                >
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <Icon size={18} style={{ color: isTabActive ? 'var(--brand-color)' : 'inherit' }} />
+                    {showStatusDot && (
+                      <span style={{
+                        position: 'absolute',
+                        top: -2, right: -4,
+                        width: 6, height: 6,
+                        borderRadius: '50%',
+                        background: statusDotColor,
+                        border: `1.5px solid ${isTabActive ? 'var(--brand-color-light)' : c.card}`
+                      }} />
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                    <span style={{ fontSize: 13, fontWeight: isTabActive ? 600 : 500 }}>{tab.label}</span>
+                    <span className="settings-sidebar-btn-desc" style={{ fontSize: 10.5, color: isTabActive ? 'var(--brand-color)' : c.subText, opacity: isTabActive ? 0.8 : 0.6, marginTop: 1, fontWeight: 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {tab.desc}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lower Sync State Section */}
+          <div className="settings-sidebar-btn-desc" style={{ padding: '16px 8px 4px', borderTop: `1px solid ${c.border}`, marginTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: c.subText }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#10B981', display: 'inline-block',
+                boxShadow: '0 0 8px #10B981'
+              }} />
+              <span style={{ fontWeight: 500 }}>Supabase Connected</span>
+            </div>
+            <div style={{ fontSize: 10, color: c.subText, opacity: 0.6, marginTop: 4 }}>
+              Active Session: {role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Admin'}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Right Content Area ──────────────────── */}
+        <div className="settings-content">
+          {/* TAB 1: APPEARANCE */}
+          <div style={{ display: activeTab === 'appearance' ? 'flex' : 'none' }} className="tab-fade-in tab-content">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 28, flex: 1 }} className="appearance-grid">
+              {/* Left Sub-column: Controls */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Palette size={18} style={{ color: 'var(--brand-color)' }} />
+                    Brand Aesthetics
+                  </h3>
+                  <p style={{ fontSize: 13, color: c.subText, margin: 0, lineHeight: 1.5 }}>
+                    Personalize the color system of the Nextiom customer portal and administrator workspace.
+                  </p>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <input
-                    type="text"
-                    value={themeColor.toUpperCase()}
-                    onChange={(e) => setThemeColor(e.target.value)}
-                    placeholder="#E87B35"
-                    style={{
-                      width: '100%', padding: '10px 14px', borderRadius: 10,
-                      background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                      color: c.text, fontSize: 14, fontFamily: 'JetBrains Mono, monospace',
-                      outline: 'none', transition: 'border-color 0.15s'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                    onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                  />
+
+                {/* Preset grid */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Color Presets</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', gap: 10 }}>
+                    {COLOR_PRESETS.map((preset) => {
+                      const isSelected = themeColor.toLowerCase() === preset.value.toLowerCase();
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          onClick={() => handleSelectPreset(preset.value)}
+                          title={preset.name}
+                          style={{
+                            position: 'relative',
+                            height: 40,
+                            borderRadius: 10,
+                            background: preset.value,
+                            border: isSelected ? `2.5px solid ${c.text}` : `1px solid ${c.borderStrong}`,
+                            cursor: 'pointer',
+                            transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            boxShadow: isSelected ? `0 0 16px ${preset.value}60` : 'none',
+                          }}
+                        >
+                          {isSelected && (
+                            <div style={{
+                              position: 'absolute',
+                              top: -4, right: -4,
+                              width: 16, height: 16,
+                              borderRadius: '50%',
+                              background: '#10B981',
+                              border: `2px solid ${c.card}`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                              <CheckCircle2 size={10} style={{ color: '#fff' }} />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Custom Picker */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: `1px solid ${c.border}`, paddingTop: 20 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Custom Hex Value</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ position: 'relative', width: 44, height: 44, borderRadius: 10, overflow: 'hidden', border: `1.5px solid ${c.borderStrong}`, cursor: 'pointer', flexShrink: 0 }}>
+                      <input
+                        type="color"
+                        value={themeColor}
+                        onChange={(e) => setThemeColor(e.target.value)}
+                        style={{
+                          position: 'absolute', top: -8, left: -8, width: 60, height: 60,
+                          border: 'none', cursor: 'pointer', background: 'transparent', padding: 0
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="text"
+                        value={themeColor.toUpperCase()}
+                        onChange={(e) => setThemeColor(e.target.value)}
+                        placeholder="#E87B35"
+                        className="premium-input"
+                        style={{
+                          width: '100%', padding: '11px 14px', borderRadius: 10,
+                          background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                          color: c.text, fontSize: 14, fontFamily: 'JetBrains Mono, monospace',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Sub-column: Live Preview */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Live Component Preview</label>
+                <div style={{
+                  padding: '16px 20px', 
+                  borderRadius: 14, 
+                  border: `1px solid ${c.border}`, 
+                  background: c.panel2, 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 14,
+                  boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.04)',
+                  height: '100%',
+                  minHeight: 380,
+                  justifyContent: 'space-between'
+                }}>
+                  {/* Mock Browser Header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 10, borderBottom: `1px solid ${c.borderStrong}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                      </div>
+                      <span style={{ fontSize: 10.5, color: c.subText, fontFamily: 'monospace', marginLeft: 8, background: isDark ? '#1C1E24' : '#fff', padding: '2.5px 10px', borderRadius: 6, border: `1px solid ${c.border}` }}>
+                        portal.nextiom.com/dashboard
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 9.5, color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#10b981' }} /> Live Demo
+                    </span>
+                  </div>
+                  
+                  {/* Mock Layout */}
+                  <div style={{ display: 'flex', gap: 16, flex: 1, paddingTop: 6 }}>
+                    {/* Mock Sidebar */}
+                    <div style={{ width: 100, display: 'flex', flexDirection: 'column', gap: 6, borderRight: `1px solid ${c.border}`, paddingRight: 10 }}>
+                      <div style={{ height: 12, width: 60, background: c.borderStrong, borderRadius: 3, marginBottom: 8 }} />
+                      <div style={{ height: 24, borderRadius: 6, background: 'var(--brand-color-light)', borderLeft: '3px solid var(--brand-color)', display: 'flex', alignItems: 'center', padding: '0 8px', gap: 6 }}>
+                        <div style={{ height: 10, width: 10, borderRadius: 2, background: 'var(--brand-color)' }} />
+                        <div style={{ height: 6, width: 40, background: 'var(--brand-color)', borderRadius: 1.5 }} />
+                      </div>
+                      {['35', '45', '30'].map((w, idx) => (
+                        <div key={idx} style={{ height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', padding: '0 8px', gap: 6 }}>
+                          <div style={{ height: 10, width: 10, borderRadius: 2, background: c.borderStrong }} />
+                          <div style={{ height: 6, width: parseInt(w), background: c.borderStrong, borderRadius: 1.5 }} />
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Mock Page Content */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {/* Mock Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ height: 12, width: 70, background: c.text, borderRadius: 2 }} />
+                        <button type="button" style={{
+                          padding: '5px 10px', borderRadius: 6,
+                          background: 'var(--brand-color)', border: 'none',
+                          color: '#fff', fontSize: 9, fontWeight: 700,
+                          boxShadow: '0 2px 6px var(--brand-color-light)', cursor: 'pointer'
+                        }}>
+                          New Order
+                        </button>
+                      </div>
+                      
+                      {/* Mock Alert/Banner */}
+                      <div style={{
+                        padding: '8px 12px', borderRadius: 8,
+                        background: 'var(--brand-color-light)',
+                        border: '1px solid var(--brand-color)',
+                        color: c.text, fontSize: 9.5, display: 'flex', alignItems: 'center', gap: 6
+                      }}>
+                        <ShieldAlert size={11} style={{ color: 'var(--brand-color)', flexShrink: 0 }} />
+                        <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Hosting renewal is due in 3 days.</span>
+                      </div>
+                      
+                      {/* Mock Dashboard Card */}
+                      <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 8, padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ height: 6, width: 30, background: c.subText, borderRadius: 2 }} />
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: c.text }}>$1,240.00</span>
+                          <span style={{ fontSize: 8, color: '#10b981', fontWeight: 600 }}>+12%</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                          <span style={{ padding: '2px 5px', borderRadius: 4, background: 'var(--brand-color-light)', color: 'var(--brand-color)', fontSize: 7, fontWeight: 700 }}>
+                            Active
+                          </span>
+                          <span style={{ padding: '2px 5px', borderRadius: 4, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: 7, fontWeight: 700 }}>
+                            Done
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Card: Notifications Control */}
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 4px 0' }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Bell size={16} style={{ color: themeColor }} />
-                System Notifications Control
-              </h2>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#fff', backgroundColor: 'var(--brand-color)', padding: '2px 8px', borderRadius: 12 }}>
-                {notificationExemptCustomers.length} Muted
-              </span>
-            </div>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-              Enable/disable global customer notifications and manage user exclusion lists.
-            </p>
+          {/* TAB 2: NOTIFICATIONS */}
+          <div style={{ display: activeTab === 'notifications' ? 'flex' : 'none' }} className="tab-fade-in tab-content">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, flex: 1 }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Bell size={18} style={{ color: 'var(--brand-color)' }} />
+                  System Alerts & Notifications
+                </h3>
+                <p style={{ fontSize: 13, color: c.subText, margin: 0, lineHeight: 1.5 }}>
+                  Configure customer-facing notifications rules and exclusions list.
+                </p>
+              </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              {/* Global Enable Toggle */}
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
-                <div style={{
-                  position: 'relative',
-                  width: 44,
-                  height: 24,
-                  backgroundColor: notificationsEnabled ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
-                  borderRadius: 12,
-                  transition: 'background-color 0.2s',
-                  flexShrink: 0,
-                  marginTop: 2
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    top: 2,
-                    left: notificationsEnabled ? 22 : 2,
-                    width: 20,
-                    height: 20,
-                    backgroundColor: '#fff',
-                    borderRadius: '50%',
-                    transition: 'left 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                  }} />
-                  <input
-                    type="checkbox"
-                    checked={notificationsEnabled}
-                    onChange={(e) => setNotificationsEnabled(e.target.checked)}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-                <div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Enable Customer Notifications</span>
-                  <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2, lineHeight: 1.4 }}>
-                    If disabled, every customer will be blocked from receiving and viewing notifications on their dashboard.
-                  </span>
-                </div>
-              </label>
+              {/* Toggle switch */}
+              <div style={{ 
+                padding: '16px 20px', 
+                borderRadius: 12, 
+                background: c.panel2, 
+                border: `1px solid ${c.border}`,
+              }}>
+                <FormToggle 
+                  checked={notificationsEnabled} 
+                  onChange={setNotificationsEnabled}
+                  title="Enable Customer Dashboard Notifications"
+                  description="When disabled, all notifications are globally hidden from customers."
+                  brandColor="var(--brand-color)"
+                  isDark={isDark}
+                />
+              </div>
 
-              {/* Exempt Customers Section */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
+              {/* Exempt list section */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Select Exempt Customers (Muted)
+                  Muted Customer Exceptions ({notificationExemptCustomers.length} Muted)
                 </label>
-                <span style={{ fontSize: 11, color: c.subText, marginBottom: 8 }}>
-                  Select specific customers who should not receive or see notifications in the system (even when global notifications are enabled).
-                </span>
 
-                {/* Search Input */}
-                <div style={{ position: 'relative', marginBottom: 4 }}>
-                  <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
+                {/* Search spot */}
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: c.subText }} />
                   <input
                     type="text"
                     value={searchCustomerQuery}
                     onChange={(e) => setSearchCustomerQuery(e.target.value)}
-                    placeholder="Search by name, email, or company..."
+                    placeholder="Search customers by name, email, or company..."
+                    className="premium-input"
                     style={{
-                      width: '100%', padding: '9px 12px 9px 34px', borderRadius: 10,
+                      width: '100%', padding: '11px 14px 11px 40px', borderRadius: 10,
                       background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
-                      color: c.text, fontSize: 12.5,
-                      outline: 'none', transition: 'all 0.2s',
+                      color: c.text, fontSize: 13.5,
+                      outline: 'none'
                     }}
-                    onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                    onBlur={(e) => e.target.style.borderColor = c.inputBorder}
                   />
+                  {searchCustomerQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchCustomerQuery('')}
+                      style={{
+                        position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
+                        background: 'none', border: 'none', color: c.subText, fontSize: 12, cursor: 'pointer'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
 
-                {/* Customer Search / List */}
-                <div style={{
-                  border: `1px solid ${c.inputBorder}`,
-                  borderRadius: 10,
-                  background: c.inputBg,
-                  maxHeight: 180,
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}>
+                {/* Customer list container (Grid Cards layout) */}
+                <div className="customer-grid custom-scrollbar">
                   {(() => {
                     const filtered = customers
                       .filter(customer => {
@@ -701,27 +1051,41 @@ export default function SystemSettingsPage({ isDark }) {
                       });
 
                     if (filtered.length === 0) {
-                      return <div style={{ padding: 12, fontSize: 12, color: c.subText, textAlign: 'center' }}>No customers found</div>;
+                      return (
+                        <div style={{ gridColumn: '1 / -1', padding: '40px 16px', fontSize: 13, color: c.subText, textAlign: 'center' }}>
+                          No active customer accounts found matching search criteria.
+                        </div>
+                      );
                     }
 
                     return filtered.map((customer) => {
                       const isSelected = notificationExemptCustomers.includes(customer.id);
+                      const initials = (customer.name || 'U').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                      
+                      const statusColors = {
+                        active: '#10b981',
+                        pending: '#f59e0b',
+                        rejected: '#ef4444'
+                      };
+                      const statusColor = statusColors[String(customer.status).toLowerCase()] || c.subText;
+
                       return (
                         <label
                           key={customer.id}
                           style={{
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            padding: '8px 12px',
-                            borderBottom: `1px solid ${c.border}`,
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            padding: 14,
+                            borderRadius: 12,
+                            border: isSelected ? `1.5px solid var(--brand-color)` : `1px solid ${c.border}`,
+                            background: isSelected ? 'var(--brand-color-light)' : c.card,
                             cursor: 'pointer',
-                            transition: 'background 0.15s',
-                            background: isSelected ? c.hover : 'transparent',
-                            userSelect: 'none'
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                            userSelect: 'none',
+                            position: 'relative',
+                            boxShadow: isSelected ? '0 4px 12px var(--brand-color-light)' : 'none',
                           }}
-                          onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = c.hover; }}
-                          onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                         >
                           <input
                             type="checkbox"
@@ -733,20 +1097,58 @@ export default function SystemSettingsPage({ isDark }) {
                                 setNotificationExemptCustomers(notificationExemptCustomers.filter(id => id !== customer.id));
                               }
                             }}
-                            style={{ width: 14, height: 14, accentColor: 'var(--brand-color)', cursor: 'pointer' }}
+                            style={{ display: 'none' }}
                           />
-                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                            <span style={{ fontSize: 12.5, fontWeight: 600, color: c.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              {customer.name || 'Unnamed Customer'}
-                              {isSelected && (
-                                <span style={{ fontSize: 9, fontWeight: 700, backgroundColor: isDark ? 'rgba(232,123,53,0.15)' : 'var(--brand-color-light)', color: 'var(--brand-color)', padding: '1px 6px', borderRadius: 4, textTransform: 'uppercase' }}>
-                                  Muted
-                                </span>
-                              )}
+                          
+                          {/* Card Top: Avatar, Checkbox */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                            <div style={{
+                              width: 32, height: 32, borderRadius: '50%',
+                              background: isSelected ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
+                              color: isSelected ? '#fff' : c.text,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 11.5, fontWeight: 700, transition: 'all 0.2s'
+                            }}>
+                              {initials}
+                            </div>
+                            
+                            <div style={{
+                              width: 18, height: 18, borderRadius: 4,
+                              border: `1.5px solid ${isSelected ? 'var(--brand-color)' : c.borderStrong}`,
+                              background: isSelected ? 'var(--brand-color)' : 'transparent',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              transition: 'all 0.2s'
+                            }}>
+                              {isSelected && <CheckCircle2 size={10} style={{ color: '#fff' }} />}
+                            </div>
+                          </div>
+
+                          {/* Card Content */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: c.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {customer.name || 'Unnamed'}
                             </span>
-                            <span style={{ fontSize: 11, color: c.subText }}>
-                              {customer.email || 'No Email'} {customer.company ? `• ${customer.company}` : ''}
+                            <span style={{ fontSize: 11, color: c.subText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {customer.email || 'No email'}
                             </span>
+                            {customer.company && (
+                              <span style={{ fontSize: 11, color: c.subText, opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 4 }}>
+                                🏢 {customer.company}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Card Bottom */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 8, borderTop: `1px solid ${c.border}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusColor }} />
+                              <span style={{ fontSize: 10.5, color: c.subText, textTransform: 'capitalize' }}>{customer.status || 'Active'}</span>
+                            </div>
+                            {isSelected && (
+                              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--brand-color)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                Muted
+                              </span>
+                            )}
                           </div>
                         </label>
                       );
@@ -757,429 +1159,522 @@ export default function SystemSettingsPage({ isDark }) {
             </div>
           </div>
 
-          {/* Info block */}
-          <div style={{ display: 'flex', gap: 12, padding: '16px 20px', borderRadius: 16, background: isDark ? 'rgba(99,102,241,0.08)' : '#eff6ff', border: `1px solid ${isDark ? 'rgba(99,102,241,0.15)' : '#bfdbfe'}` }}>
-            <Info size={20} style={{ color: isDark ? '#818cf8' : '#3b82f6', flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: isDark ? '#fff' : '#1e3a8a', margin: '0 0 4px 0' }}>Real-time Propagation</h4>
-              <p style={{ fontSize: 12, color: isDark ? '#a5b4fc' : '#2563eb', margin: 0, lineHeight: 1.5 }}>
-                When you click Save, the new configuration is synchronized using Supabase. Any users active on their dashboards will immediately see layout and preference changes propagate without needing a page refresh.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Right Column: Preview, iPay & Security ──────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Card: Live Components Preview */}
-          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Layout size={16} style={{ color: themeColor }} />
-              Live Components Preview
-            </h2>
-            <p style={{ fontSize: 12, color: c.subText, margin: '0 0 4px 0' }}>
-              Preview how buttons, tabs, links, and banners will look dynamically in the portal UI:
-            </p>
-
-            {/* Custom Theme Injector for Live Preview */}
-            <div style={{
-              padding: 20, borderRadius: 12, border: `1px solid ${c.border}`, 
-              background: c.panel2, display: 'flex', flexDirection: 'column', gap: 16,
-              // Overwriting CSS variable locally for preview container
-              '--brand-color': themeColor,
-              '--brand-color-rgb': hexToRgb(themeColor) ? `${hexToRgb(themeColor).r}, ${hexToRgb(themeColor).g}, ${hexToRgb(themeColor).b}` : '232, 123, 53',
-              '--brand-color-light': hexToRgb(themeColor) ? `rgba(${hexToRgb(themeColor).r}, ${hexToRgb(themeColor).g}, ${hexToRgb(themeColor).b}, 0.15)` : 'rgba(232, 123, 53, 0.15)',
-            }}>
-              {/* Preset 1: Buttons */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Buttons</span>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button type="button" style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--brand-color)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    Active Button
-                  </button>
-                  <button type="button" style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--brand-color-light)', border: 'none', color: 'var(--brand-color)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    Light Tint Button
-                  </button>
-                  <button type="button" style={{ padding: '8px 16px', borderRadius: 8, background: 'transparent', border: '1.5px solid var(--brand-color)', color: 'var(--brand-color)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    Outline Button
-                  </button>
-                </div>
-              </div>
-
-              {/* Preset 2: Badges & Tags */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Badges & Statuses</span>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'var(--brand-color-light)', color: 'var(--brand-color)', fontSize: 11, fontWeight: 700 }}>
-                    In Progress
-                  </span>
-                  <span style={{ padding: '3px 8px', borderRadius: 6, background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: 11, fontWeight: 700 }}>
-                    Completed
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--brand-color)', fontWeight: 600 }}>
-                    <CheckCircle2 size={14} />
-                    Verified Link
-                  </div>
-                </div>
-              </div>
-
-              {/* Preset 3: Side Menu Active Item */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Sidebar Active Item (Hover/Focus)</span>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 14px', borderRadius: 8,
-                  background: 'var(--brand-color-light)',
-                  borderLeft: '4px solid var(--brand-color)',
-                  color: 'var(--brand-color)',
-                  fontWeight: 700, fontSize: 13
-                }}>
-                  <Sliders size={16} />
-                  Active Section Title
-                </div>
-              </div>
-
-              {/* Preset 4: Warning Pulse Banner */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>System Banner (Theme matching)</span>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 14px', borderRadius: 10,
-                  background: 'var(--brand-color-light)',
-                  border: '1px solid var(--brand-color)',
-                  color: c.text, fontSize: 11.5
-                }}>
-                  <ShieldAlert size={14} style={{ color: 'var(--brand-color)' }} />
-                  Theme modification is active and shown in preview.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card: iPay Gateway Integration */}
+          {/* TAB 3: IPAY GATEWAY */}
           {role !== 'moderator' && (
-            <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <CreditCard size={16} style={{ color: themeColor }} />
-                iPay Payment Gateway Integration
-              </h2>
-              <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-                Configure your iPay Global Web Payments integration credentials.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Enable Toggle */}
-                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
-                  <div style={{
-                    position: 'relative',
-                    width: 44,
-                    height: 24,
-                    backgroundColor: ipayEnabled ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
-                    borderRadius: 12,
-                    transition: 'background-color 0.2s',
-                    flexShrink: 0
-                  }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: 2,
-                      left: ipayEnabled ? 22 : 2,
-                      width: 20,
-                      height: 20,
-                      backgroundColor: '#fff',
-                      borderRadius: '50%',
-                      transition: 'left 0.2s',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                    }} />
-                    <input
-                      type="checkbox"
-                      checked={ipayEnabled}
-                      onChange={(e) => setIpayEnabled(e.target.checked)}
-                      style={{ display: 'none' }}
-                    />
-                  </div>
+            <div style={{ display: activeTab === 'ipay' ? 'flex' : 'none' }} className="tab-fade-in tab-content">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, flex: 1 }} className="gateway-grid">
+                {/* Left controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                   <div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Enable iPay Online Payments</span>
-                    <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
-                      Allow customers to pay invoices online using the iPay Payment Gateway.
-                    </span>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CreditCard size={18} style={{ color: 'var(--brand-color)' }} />
+                      iPay Payment Gateway Setup
+                    </h3>
+                    <p style={{ fontSize: 13, color: c.subText, margin: 0, lineHeight: 1.5 }}>
+                      Integrate iPay Global Web Payments to authorize customer online checkout and payment transactions.
+                    </p>
                   </div>
-                </label>
 
-                {/* Web Token */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>IPG Integration Token (Public)</label>
-                  <input
-                    type="text"
-                    value={ipayWebToken}
-                    onChange={(e) => setIpayWebToken(e.target.value)}
-                    placeholder="Enter IPG Integration Token..."
-                    disabled={!ipayEnabled}
-                    style={{
-                      width: '100%', padding: '10px 14px', borderRadius: 10,
-                      background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                      color: c.text, fontSize: 13,
-                      outline: 'none', transition: 'border-color 0.15s',
-                      opacity: ipayEnabled ? 1 : 0.6,
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                    onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {/* Toggle Switch */}
+                    <div style={{ 
+                      padding: '16px 20px', 
+                      borderRadius: 12, 
+                      background: c.panel2, 
+                      border: `1px solid ${c.border}`,
+                    }}>
+                      <FormToggle 
+                        checked={ipayEnabled} 
+                        onChange={setIpayEnabled}
+                        title="Enable Online Payments via iPay"
+                        description="Allow customers to process payment receipts and checkout invoices via integration."
+                        brandColor="var(--brand-color)"
+                        isDark={isDark}
+                      />
+                    </div>
+
+                    {/* Integration Token */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, opacity: ipayEnabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Public Integration API Token
+                      </label>
+                      <input
+                        type="text"
+                        value={ipayWebToken}
+                        onChange={(e) => setIpayWebToken(e.target.value)}
+                        placeholder="Enter public IPG integration token..."
+                        disabled={!ipayEnabled}
+                        className="premium-input"
+                        style={{
+                          width: '100%', padding: '11px 14px', borderRadius: 10,
+                          background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                          color: c.text, fontSize: 13.5,
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+
+                    {/* Sandbox Switch */}
+                    <div style={{ 
+                      padding: '16px 20px', 
+                      borderRadius: 12, 
+                      background: c.panel2, 
+                      border: `1px solid ${c.border}`,
+                      opacity: ipayEnabled ? 1 : 0.5,
+                      transition: 'opacity 0.2s'
+                    }}>
+                      <FormToggle 
+                        checked={ipaySandbox} 
+                        onChange={setIpaySandbox}
+                        disabled={!ipayEnabled}
+                        title="Sandbox Testing Mode"
+                        description="Use mock transaction endpoints for payment development and validation cycles."
+                        brandColor="var(--brand-color)"
+                        isDark={isDark}
+                      />
+                    </div>
+
+                    
+                  </div>
                 </div>
 
-                {/* Sandbox Mode */}
-                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: ipayEnabled ? 'pointer' : 'not-allowed', userSelect: 'none', opacity: ipayEnabled ? 1 : 0.6 }}>
+                {/* Right mockup checkout */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Checkout Gateway Preview
+                  </label>
                   <div style={{
-                    position: 'relative',
-                    width: 44,
-                    height: 24,
-                    backgroundColor: ipaySandbox ? 'var(--brand-color)' : (isDark ? '#2D3139' : '#E2E8F0'),
-                    borderRadius: 12,
-                    transition: 'background-color 0.2s',
-                    flexShrink: 0
+                    padding: 20,
+                    borderRadius: 14,
+                    border: `1px solid ${c.border}`,
+                    background: c.panel2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16,
+                    boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.04)',
+                    opacity: ipayEnabled ? 1 : 0.5,
+                    transition: 'all 0.2s',
+                    height: '100%',
+                    justifyContent: 'center',
+                    minHeight: 320
                   }}>
+                    {/* Merchant Info */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: c.text }}>Nextiom Solutions</div>
+                        <div style={{ fontSize: 10, color: c.subText }}>Invoice #INV-2026-089</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--brand-color)' }}>$240.00</div>
+                        <div style={{ fontSize: 9, color: c.subText }}>USD Amount</div>
+                      </div>
+                    </div>
+
+                    {/* Gateway Indicator */}
                     <div style={{
-                      position: 'absolute',
-                      top: 2,
-                      left: ipaySandbox ? 22 : 2,
-                      width: 20,
-                      height: 20,
-                      backgroundColor: '#fff',
-                      borderRadius: '50%',
-                      transition: 'left 0.2s',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                    }} />
-                    <input
-                      type="checkbox"
-                      checked={ipaySandbox}
-                      disabled={!ipayEnabled}
-                      onChange={(e) => setIpaySandbox(e.target.checked)}
-                      style={{ display: 'none' }}
-                    />
+                      padding: '8px 12px', borderRadius: 8,
+                      background: isDark ? '#1C1E24' : '#fff',
+                      border: `1px solid ${c.border}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                      <span style={{ fontSize: 10, fontWeight: 600, color: c.text }}>Secure iPay IPG Gateway</span>
+                      <span style={{ fontSize: 8, fontWeight: 700, color: ipaySandbox ? '#f59e0b' : '#10b981', textTransform: 'uppercase', padding: '1px 6px', borderRadius: 4, background: ipaySandbox ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)' }}>
+                        {ipaySandbox ? 'Sandbox' : 'Production'}
+                      </span>
+                    </div>
+
+                    {/* Mock Card Form */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ height: 4, width: 40, background: c.borderStrong, borderRadius: 1 }} />
+                        <div style={{ height: 28, borderRadius: 6, background: isDark ? '#15161A' : '#f8f8f7', border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: 10, color: c.subText }}>
+                          •••• •••• •••• 4242
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ height: 4, width: 30, background: c.borderStrong, borderRadius: 1 }} />
+                          <div style={{ height: 28, borderRadius: 6, background: isDark ? '#15161A' : '#f8f8f7', border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: 10, color: c.subText }}>
+                            12/29
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ height: 4, width: 20, background: c.borderStrong, borderRadius: 1 }} />
+                          <div style={{ height: 28, borderRadius: 6, background: isDark ? '#15161A' : '#f8f8f7', border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', padding: '0 8px', fontSize: 10, color: c.subText }}>
+                            •••
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pay button */}
+                    <button type="button" disabled style={{
+                      width: '100%', padding: '8px 0', borderRadius: 8,
+                      background: 'var(--brand-color)', border: 'none',
+                      color: '#fff', fontSize: 11, fontWeight: 700,
+                      cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      boxShadow: '0 4px 12px var(--brand-color-light)'
+                    }}>
+                      Pay Securely ($240.00)
+                    </button>
                   </div>
-                  <div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: c.text, display: 'block' }}>Sandbox Mode</span>
-                    <span style={{ fontSize: 11, color: c.subText, display: 'block', marginTop: 2 }}>
-                      Use the sandbox endpoint for testing transactions.
-                    </span>
-                  </div>
-                </label>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Card: Customer Deletion Security Passcode */}
+          {/* TAB 4: ACCESS SECURITY */}
           {role !== 'moderator' && (
-            <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 16, padding: 24, boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Shield size={16} style={{ color: themeColor }} />
-                Customer Deletion Security Passcode
-              </h2>
-              <p style={{ fontSize: 12, color: c.subText, margin: '0 0 20px 0' }}>
-                Require a passcode before permanently deleting any customer from the portal.
-              </p>
-
-              {!isPasscodeSet ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Set Security Passcode</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <input
-                        type="password"
-                        value={passcode}
-                        onChange={(e) => setPasscode(e.target.value)}
-                        placeholder="Enter a secure passcode..."
-                        style={{
-                          flex: 1, padding: '10px 14px', borderRadius: 10,
-                          background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                          color: c.text, fontSize: 13,
-                          outline: 'none', transition: 'border-color 0.15s',
-                        }}
-                        onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                        onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSetPasscode}
-                        disabled={saving || !passcode}
-                        style={{
-                          padding: '0 16px', borderRadius: 10, border: 'none',
-                          background: passcode ? 'var(--brand-color)' : c.borderStrong,
-                          color: passcode ? '#fff' : c.subText,
-                          fontSize: 13, fontWeight: 700,
-                          cursor: passcode && !saving ? 'pointer' : 'not-allowed',
-                        }}
-                      >
-                        Set
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ padding: '10px 14px', borderRadius: 10, background: isDark ? 'rgba(16,185,129,0.08)' : '#ecfdf5', border: `1px solid ${isDark ? 'rgba(16,185,129,0.15)' : '#a7f3d0'}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Shield size={16} style={{ color: '#10b981' }} />
-                    <span style={{ fontSize: 12.5, fontWeight: 600, color: isDark ? '#34d399' : '#047857' }}>Passcode protection is active</span>
+            <div style={{ display: activeTab === 'security' ? 'flex' : 'none' }} className="tab-fade-in tab-content">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, flex: 1 }} className="security-grid">
+                {/* Left controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                  <div>
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Shield size={18} style={{ color: 'var(--brand-color)' }} />
+                      Customer Deletion Passcode
+                    </h3>
+                    <p style={{ fontSize: 13, color: c.subText, margin: 0, lineHeight: 1.5 }}>
+                      Add a high-security validation passcode layer to prevent accidental user account deletions.
+                    </p>
                   </div>
 
-                  {!showOtpSection ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
-                      <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Change Passcode</h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Passcode</label>
+                  {!isPasscodeSet ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                      <div style={{ display: 'flex', gap: 12, padding: '14px 18px', borderRadius: 12, background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                        <ShieldAlert size={18} style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }} />
+                        <p style={{ fontSize: 12.5, color: isDark ? '#fca5a5' : '#b91c1c', margin: 0, lineHeight: 1.5 }}>
+                          Security passcode has not been set. Customer records can currently be deleted without secondary approval.
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          Configure Access Passcode
+                        </label>
+                        <div style={{ display: 'flex', gap: 10 }}>
                           <input
                             type="password"
-                            value={currentPasscode}
-                            onChange={(e) => setCurrentPasscode(e.target.value)}
-                            placeholder="Enter current passcode..."
+                            value={passcode}
+                            onChange={(e) => setPasscode(e.target.value)}
+                            placeholder="Enter a secure passcode..."
+                            className="premium-input"
                             style={{
-                              width: '100%', padding: '10px 14px', borderRadius: 10,
-                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                              color: c.text, fontSize: 13,
-                              outline: 'none', transition: 'border-color 0.15s',
+                              flex: 1, padding: '11px 14px', borderRadius: 10,
+                              background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                              color: c.text, fontSize: 14,
+                              outline: 'none'
                             }}
-                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
                           />
-                        </div>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Passcode</label>
-                            <input
-                              type="password"
-                              value={newPasscode}
-                              onChange={(e) => setNewPasscode(e.target.value)}
-                              placeholder="Enter new passcode..."
-                              style={{
-                                width: '100%', padding: '10px 14px', borderRadius: 10,
-                                background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                                color: c.text, fontSize: 13,
-                                outline: 'none', transition: 'border-color 0.15s',
-                              }}
-                              onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                              onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                            />
-                          </div>
-                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirm Passcode</label>
-                            <input
-                              type="password"
-                              value={confirmNewPasscode}
-                              onChange={(e) => setConfirmNewPasscode(e.target.value)}
-                              placeholder="Confirm new..."
-                              style={{
-                                width: '100%', padding: '10px 14px', borderRadius: 10,
-                                background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                                color: c.text, fontSize: 13,
-                                outline: 'none', transition: 'border-color 0.15s',
-                              }}
-                              onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                              onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                           <button
                             type="button"
-                            onClick={() => { setShowOtpSection(true); handleSendOtp(); }}
+                            onClick={handleSetPasscode}
+                            disabled={saving || !passcode}
                             style={{
-                              background: 'none', border: 'none', color: 'var(--brand-color)',
-                              fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
+                              padding: '0 20px', borderRadius: 10, border: 'none',
+                              background: passcode ? 'var(--brand-color)' : c.borderStrong,
+                              color: passcode ? '#fff' : c.subText,
+                              fontSize: 13.5, fontWeight: 700,
+                              cursor: passcode && !saving ? 'pointer' : 'not-allowed',
+                              transition: 'all 0.2s',
+                              boxShadow: passcode ? '0 4px 12px var(--brand-color-light)' : 'none',
                             }}
                           >
-                            Forgot Passcode? Reset via OTP
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleUpdatePasscode}
-                            disabled={saving || !currentPasscode || !newPasscode || !confirmNewPasscode}
-                            style={{
-                              padding: '10px 20px', borderRadius: 10, border: 'none',
-                              background: (currentPasscode && newPasscode && confirmNewPasscode) ? 'var(--brand-color)' : c.borderStrong,
-                              color: (currentPasscode && newPasscode && confirmNewPasscode) ? '#fff' : c.subText,
-                              fontSize: 13, fontWeight: 700,
-                              cursor: (currentPasscode && newPasscode && confirmNewPasscode) && !saving ? 'pointer' : 'not-allowed',
-                            }}
-                          >
-                            Update
+                            Configure
                           </button>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, borderTop: `1px solid ${c.border}`, paddingTop: 16 }}>
-                      <h3 style={{ fontSize: 13, fontWeight: 700, color: c.text, margin: 0 }}>Reset Passcode via OTP</h3>
-                      <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.4 }}>
-                        An OTP (One-Time Password) code has been generated and sent to the administrator's verification mobile number: <strong>0701766634</strong>.
-                      </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                      {/* Active status */}
+                      <div style={{ 
+                        padding: '14px 18px', 
+                        borderRadius: 12, 
+                        background: isDark ? 'rgba(16,185,129,0.06)' : '#ecfdf5', 
+                        border: `1px solid ${isDark ? 'rgba(16,185,129,0.12)' : '#a7f3d0'}`, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 10 
+                      }}>
+                        <CheckCircle2 size={18} style={{ color: '#10b981' }} />
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: isDark ? '#34d399' : '#047857' }}>
+                          Passcode protection is currently active
+                        </span>
+                      </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter 6-Digit OTP</label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <input
-                            type="text"
-                            maxLength={6}
-                            value={otpCode}
-                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                            placeholder="e.g. 123456"
-                            style={{
-                              flex: 1, padding: '10px 14px', borderRadius: 10,
-                              background: c.inputBg, border: `1px solid ${c.inputBorder}`,
-                              color: c.text, fontSize: 14, fontWeight: 'bold', letterSpacing: 2,
-                              outline: 'none', transition: 'border-color 0.15s',
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = 'var(--brand-color)'}
-                            onBlur={(e) => e.target.style.borderColor = c.inputBorder}
-                          />
-                          <button
-                            type="button"
-                            onClick={handleVerifyOtp}
-                            disabled={verifyingOtp || otpCode.length !== 6}
-                            style={{
-                              padding: '0 20px', borderRadius: 10, border: 'none',
-                              background: otpCode.length === 6 ? 'var(--brand-color)' : c.borderStrong,
-                              color: otpCode.length === 6 ? '#fff' : c.subText,
-                              fontSize: 13, fontWeight: 700,
-                              cursor: otpCode.length === 6 && !verifyingOtp ? 'pointer' : 'not-allowed',
-                            }}
-                          >
-                            {verifyingOtp ? 'Verifying...' : 'Verify & Reset'}
-                          </button>
+                      {!showOtpSection ? (
+                        <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                          <h4 style={{ fontSize: 14, fontWeight: 700, color: c.text, margin: 0 }}>Update Passcode</h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Current Passcode</label>
+                              <input
+                                type="password"
+                                value={currentPasscode}
+                                onChange={(e) => setCurrentPasscode(e.target.value)}
+                                placeholder="Enter current passcode..."
+                                className="premium-input"
+                                style={{
+                                  width: '100%', padding: '11px 14px', borderRadius: 10,
+                                  background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                                  color: c.text, fontSize: 13.5,
+                                  outline: 'none'
+                                }}
+                              />
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="passcode-grid">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>New Passcode</label>
+                                <input
+                                  type="password"
+                                  value={newPasscode}
+                                  onChange={(e) => setNewPasscode(e.target.value)}
+                                  placeholder="Enter new passcode..."
+                                  className="premium-input"
+                                  style={{
+                                    width: '100%', padding: '11px 14px', borderRadius: 10,
+                                    background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                                    color: c.text, fontSize: 13.5,
+                                    outline: 'none'
+                                  }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Confirm New Passcode</label>
+                                <input
+                                  type="password"
+                                  value={confirmNewPasscode}
+                                  onChange={(e) => setConfirmNewPasscode(e.target.value)}
+                                  placeholder="Confirm new passcode..."
+                                  className="premium-input"
+                                  style={{
+                                    width: '100%', padding: '11px 14px', borderRadius: 10,
+                                    background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                                    color: c.text, fontSize: 13.5,
+                                    outline: 'none'
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => { setShowOtpSection(true); handleSendOtp(); }}
+                                style={{
+                                  background: 'none', border: 'none', color: 'var(--brand-color)',
+                                  fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0,
+                                  textDecoration: 'underline'
+                                }}
+                              >
+                                Forgot passcode? Reset via SMS OTP
+                              </button>
+                              
+                              <button
+                                type="button"
+                                onClick={handleUpdatePasscode}
+                                disabled={saving || !currentPasscode || !newPasscode || !confirmNewPasscode}
+                                style={{
+                                  padding: '10px 20px', borderRadius: 10, border: 'none',
+                                  background: (currentPasscode && newPasscode && confirmNewPasscode) ? 'var(--brand-color)' : c.borderStrong,
+                                  color: (currentPasscode && newPasscode && confirmNewPasscode) ? '#fff' : c.subText,
+                                  fontSize: 13.5, fontWeight: 700,
+                                  cursor: (currentPasscode && newPasscode && confirmNewPasscode) && !saving ? 'pointer' : 'not-allowed',
+                                  transition: 'all 0.2s',
+                                  boxShadow: (currentPasscode && newPasscode && confirmNewPasscode) ? '0 4px 12px var(--brand-color-light)' : 'none',
+                                }}
+                              >
+                                Update Passcode
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div style={{ borderTop: `1px solid ${c.border}`, paddingTop: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                          <h4 style={{ fontSize: 14, fontWeight: 700, color: c.text, margin: 0 }}>Reset Passcode via OTP</h4>
+                          <p style={{ fontSize: 13, color: c.subText, margin: 0, lineHeight: 1.5 }}>
+                            We have generated a 6-digit verification code and dispatched it to your primary security contact phone: <strong>0701766634</strong>.
+                          </p>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                        <button
-                          type="button"
-                          onClick={handleSendOtp}
-                          disabled={sendingOtp}
-                          style={{
-                            background: 'none', border: 'none', color: c.subText,
-                            fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
-                          }}
-                        >
-                          {sendingOtp ? 'Sending...' : 'Resend OTP'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setShowOtpSection(false); setOtpSent(false); setOtpCode(''); }}
-                          style={{
-                            background: 'none', border: 'none', color: '#ef4444',
-                            fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>Enter 6-Digit Code</label>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                              <input
+                                type="text"
+                                maxLength={6}
+                                value={otpCode}
+                                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                                placeholder="••••••"
+                                className="premium-input"
+                                style={{
+                                  flex: 1, padding: '11px 14px', borderRadius: 10,
+                                  background: c.inputBg, border: `1.5px solid ${c.inputBorder}`,
+                                  color: c.text, fontSize: 18, fontWeight: 'bold', letterSpacing: 6,
+                                  textAlign: 'center', outline: 'none'
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={handleVerifyOtp}
+                                disabled={verifyingOtp || otpCode.length !== 6}
+                                style={{
+                                  padding: '0 24px', borderRadius: 10, border: 'none',
+                                  background: otpCode.length === 6 ? 'var(--brand-color)' : c.borderStrong,
+                                  color: otpCode.length === 6 ? '#fff' : c.subText,
+                                  fontSize: 13.5, fontWeight: 700,
+                                  cursor: otpCode.length === 6 && !verifyingOtp ? 'pointer' : 'not-allowed',
+                                  transition: 'all 0.2s',
+                                  boxShadow: otpCode.length === 6 ? '0 4px 12px var(--brand-color-light)' : 'none',
+                                }}
+                              >
+                                {verifyingOtp ? 'Verifying...' : 'Verify & Reset'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                            <button
+                              type="button"
+                              onClick={handleSendOtp}
+                              disabled={sendingOtp}
+                              style={{
+                                background: 'none', border: 'none', color: c.subText,
+                                fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0
+                              }}
+                            >
+                              {sendingOtp ? 'Sending...' : 'Resend Verification SMS'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowOtpSection(false); setOtpSent(false); setOtpCode(''); }}
+                              style={{
+                                background: 'none', border: 'none', color: '#ef4444',
+                                fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0
+                              }}
+                            >
+                              Cancel Reset
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
+
+                {/* Right Protected Operations Checklist */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Guarded Portal Operations
+                  </label>
+                  <div style={{
+                    padding: 20,
+                    borderRadius: 14,
+                    border: `1px solid ${c.border}`,
+                    background: c.panel2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16,
+                    boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.04)',
+                    height: '100%',
+                    justifyContent: 'center',
+                    minHeight: 280
+                  }}>
+                    <p style={{ fontSize: 12, color: c.subText, margin: 0, lineHeight: 1.4 }}>
+                      The following sensitive operations require passcode confirmation to execute:
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
+                      {[
+                        { label: 'Customer Account Deletion', desc: 'Permanently erases authentication records, active license configurations, and hosting logs.' },
+                        { label: 'Billing Configuration Modifications', desc: 'Overrides default bank details, iPay integration keys, or invoice template defaults.' },
+                        { label: 'System Logs Purging', desc: 'Cleans audit trails, edge executions, or error databases.' }
+                      ].map((action, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                          <div style={{
+                            width: 22, height: 22, borderRadius: '50%',
+                            background: isPasscodeSet ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)',
+                            color: isPasscodeSet ? '#10b981' : '#ef4444',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2
+                          }}>
+                            <Shield size={11} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 12.5, fontWeight: 700, color: c.text }}>{action.label}</div>
+                            <div style={{ fontSize: 10.5, color: c.subText, marginTop: 2, lineHeight: 1.3 }}>{action.desc}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Floating Action Bar for Unsaved Changes ───── */}
+      {isChanged && (
+        <div className="floating-changed-bar" style={{
+          position: 'fixed',
+          bottom: 24,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: isDark ? 'rgba(28, 30, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+          borderRadius: 16,
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 32,
+          boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 100,
+          width: '90%',
+          maxWidth: 680,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand-color)', animation: 'pulse 1.5s infinite' }} />
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: c.text }}>You have unsaved changes</span>
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${c.borderStrong}`,
+                background: 'transparent', color: c.text, fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = c.hover}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              Revert
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 20px', borderRadius: 8, border: 'none',
+                background: 'var(--brand-color)',
+                color: '#fff',
+                fontSize: 13, fontWeight: 700,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.7 : 1,
+                transition: 'all 0.2s',
+                boxShadow: '0 4px 12px var(--brand-color-light)',
+              }}
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              Save Settings
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

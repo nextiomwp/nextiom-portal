@@ -2273,4 +2273,53 @@ export const logAdminOrModeratorActivity = async (type, title, message) => {
   }
 };
 
+// --- Company Information Sections ---
+
+export const getCompanyInfoSections = async () => {
+  const { data, error } = await supabase
+    .from('company_info_sections')
+    .select('*')
+    .order('display_order', { ascending: true })
+    .order('created_at', { ascending: true });
+
+  if (error) handleSupabaseError(error, 'getCompanyInfoSections');
+  return data || [];
+};
+
+export const createCompanyInfoSection = async (section) => {
+  const { data, error } = await supabase
+    .from('company_info_sections')
+    .insert([section])
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'createCompanyInfoSection');
+  return data;
+};
+
+export const updateCompanyInfoSection = async (id, updates) => {
+  const { data, error } = await supabase
+    .from('company_info_sections')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'updateCompanyInfoSection');
+  return data;
+};
+
+export const deleteCompanyInfoSection = async (id) => {
+  const { data, error } = await supabase
+    .from('company_info_sections')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) handleSupabaseError(error, 'deleteCompanyInfoSection');
+  return data;
+};
+
+
 

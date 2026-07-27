@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown, Calendar, Database, Search, X } from 'lucide-react';
+import { Users, Globe, Server, Star, Bell, Plus, LogOut, Settings, LayoutDashboard, FileText, FileCheck, MessageSquare, Package, ClipboardList, ChevronRight, Loader2, Moon, Sun, CheckCircle, Menu, Receipt, CheckSquare, Megaphone, Activity, Mail, Home, Zap, ChevronLeft, Shield, UserCog, Briefcase, ExternalLink, RefreshCw, ChevronDown, Calendar, Database, Search, X, Building } from 'lucide-react';
 import InvoicesPage from '@/pages/invoices/InvoicesPage';
 import NewInvoicePage from '@/pages/invoices/NewInvoicePage';
 import EditInvoicePage from '@/pages/invoices/EditInvoicePage';
@@ -40,6 +40,7 @@ import { getAllAppointments } from '@/lib/appointments';
 import { getInvoices } from '@/lib/invoices';
 
 import AdminModeratorManagement from '@/components/admin/AdminModeratorManagement';
+import AdminCompanyInfoManagement from '@/components/admin/AdminCompanyInfoManagement';
 
 const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
   const sizePx = size ? `${size}px` : undefined;
@@ -119,6 +120,7 @@ const NAV = [
   { id: 'backup', label: 'Backup & Restore', icon: Database },
   // { id: 'adminManagement', label: 'Admin Management', icon: Shield },
   { id: 'systemSettings', label: 'System Settings', icon: Settings },
+  { id: 'companyInfo', label: 'Company Info', icon: Building },
   { id: 'smsSettings', label: 'SMS Settings', icon: MessageSquare },
 ];
 
@@ -1057,6 +1059,7 @@ function Dashboard({ onLogout }) {
       case 'activeHosting': return <AdminApprovedHostings key={refreshKey} isDark={isDark} />;
       case 'adminManagement': return <div style={{ padding: 32, color: c.subText, textAlign: 'center', fontSize: 13 }}>Admin management page coming soon.</div>;
       case 'systemSettings': return <SystemSettingsPage key={refreshKey} isDark={isDark} />;
+      case 'companyInfo': return <AdminCompanyInfoManagement key={refreshKey} isDark={isDark} c={c} />;
       case 'smsSettings': return <SmsSettingsPage key={refreshKey} isDark={isDark} />;
       default: return null;
     }
