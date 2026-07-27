@@ -236,7 +236,7 @@ export default function SmsSettingsPage({ isDark }) {
       await logAdminOrModeratorActivity('update', 'SMS Test Sent', `Dispatched test SMS to ${testPhone.trim()}`);
       if (showLogs) loadLogs();
     } catch (err) {
-      toast({ title: 'Failed to send test SMS', description: err.message, variant: 'destructive' });
+      toast({ title: 'Failed to send custom SMS', description: err.message, variant: 'destructive' });
     } finally {
       setTestSending(false);
     }
@@ -377,9 +377,6 @@ export default function SmsSettingsPage({ isDark }) {
             <Smartphone size={22} style={{ color: c.brand }} />
             SMS Settings
           </h1>
-          <p style={{ fontSize: 13, color: c.subText, marginTop: 5, maxWidth: 520, lineHeight: 1.5 }}>
-            Configure the Text.lk SMS Gateway integration. Enable renewal reminders, purchase thank-you messages, and OTP settings. The API token is set directly in the Edge Function code.
-          </p>
         </div>
         <button
           type="submit"
@@ -597,10 +594,10 @@ export default function SmsSettingsPage({ isDark }) {
           <div className="sms-card" style={cardStyle}>
             <h2 style={{ fontSize: 15, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Send size={16} style={{ color: c.brand }} />
-              Send Test SMS
+              Send a custom SMS to any phone number.
             </h2>
             <p style={{ fontSize: 12, color: c.subText, margin: '0 0 16px 0' }}>
-              Verify your integration by sending a test message to any phone number.
+              Verify your SMS by sending a test message to any phone number.
             </p>
 
             <div style={{ marginBottom: 12 }}>
@@ -650,7 +647,7 @@ export default function SmsSettingsPage({ isDark }) {
               }}
             >
               {testSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              {testSending ? 'Sending…' : 'Send Test SMS'}
+              {testSending ? 'Sending…' : 'Send Custom SMS'}
             </button>
             {!settings.sms_enabled && (
               <p style={{ fontSize: 11, color: c.subText, marginTop: 8, textAlign: 'center' }}>

@@ -1373,13 +1373,13 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
                         <button
                           onClick={() => setSelectedCustomer(customer)}
-                          style={{ background: 'transparent', border: 'none', color: '#378add', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          style={{ background: 'transparent', border: 'none', color: '#f97316', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           View
                         </button>
                         <button
                           onClick={() => handleLoginAsCustomer(customer)}
-                          style={{ background: 'transparent', border: 'none', color: '#8b5cf6', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          style={{ background: 'transparent', border: 'none', color: '#ea580c', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           Login As
                         </button>
@@ -1515,13 +1515,13 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
                   <button
                     onClick={() => setSelectedCustomer(customer)}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #378add`, background: 'transparent', color: '#378add', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #f97316`, background: 'transparent', color: '#f97316', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                   >
                     View Details
                   </button>
                   <button
                     onClick={() => handleLoginAsCustomer(customer)}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #8b5cf6`, background: 'transparent', color: '#8b5cf6', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #ea580c`, background: 'transparent', color: '#ea580c', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                   >
                     Login As
                   </button>

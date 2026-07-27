@@ -31,17 +31,22 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.password) {
-      toast({ title: 'Error', description: 'Please fill in all required fields.', variant: 'destructive' });
-      return;
-    }
-    if (formData.password.length < 6) {
-      toast({ title: 'Error', description: 'Password must be at least 6 characters.', variant: 'destructive' });
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      toast({ title: 'Error', description: 'Passwords do not match.', variant: 'destructive' });
-      return;
+    const name = formData.name.trim() || `Customer_${Math.floor(100000 + Math.random() * 900000)}`;
+    const email = formData.email.trim() || `customer_${Date.now()}_${Math.floor(Math.random() * 1000)}@nextiom.com`;
+
+    let password = formData.password;
+    if (!password) {
+      // Auto-generate safe random password
+      password = Math.random().toString(36).substring(2, 10) + 'A1!';
+    } else {
+      if (password.length < 6) {
+        toast({ title: 'Error', description: 'Password must be at least 6 characters.', variant: 'destructive' });
+        return;
+      }
+      if (password !== formData.confirmPassword) {
+        toast({ title: 'Error', description: 'Passwords do not match.', variant: 'destructive' });
+        return;
+      }
     }
 
     setLoading(true);
@@ -50,13 +55,13 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         auth: { persistSession: false },
       });
 
-      const passwordHash = bcrypt.hashSync(formData.password, 10);
+      const passwordHash = bcrypt.hashSync(password, 10);
 
       const { data: authData, error: createError } = await tempClient.auth.admin.createUser({
-        email: formData.email,
+        email: email,
         password_hash: passwordHash,
         email_confirm: true,
-        user_metadata: { full_name: formData.name },
+        user_metadata: { full_name: name },
       });
 
       if (createError) {
@@ -74,8 +79,8 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         .from('customers')
         .insert({
           user_id: userId,
-          email: formData.email,
-          name: formData.name,
+          email: email,
+          name: name,
           phone: formData.phone || null,
           company: formData.company || null,
           country: formData.country || null,
@@ -111,8 +116,11 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         }
       }
 
-      addNotification({ customer_id: null, type: 'customer_added', title: `Customer Added — ${formData.name}`, message: `Admin created new customer account: ${formData.name} (${formData.email}).` }).catch(() => {});
-      toast({ title: 'Success', description: `Customer ${formData.name} created successfully.` });
+      addNotification({ customer_id: null, type: 'customer_added', title: `Customer Added — ${name}`, message: `Admin created new customer account: ${name} (${email}).` }).catch(() => {});
+      const successMsg = formData.password
+        ? `Customer ${name} created successfully.`
+        : `Customer ${name} created successfully. Generated Password: ${password}`;
+      toast({ title: 'Success', description: successMsg });
       onSuccess();
       onOpenChange(false);
       setFormData(EMPTY);
@@ -137,12 +145,12 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="name">Name *</Label>
-              <input id="name" type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={inp} required />
+              <Label htmlFor="name">Name</Label>
+              <input id="name" type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className={inp} />
             </div>
             <div>
-              <Label htmlFor="email">Email *</Label>
-              <input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className={inp} required />
+              <Label htmlFor="email">Email</Label>
+              <input id="email" type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className={inp} />
             </div>
             <div>
               <Label htmlFor="phone">Phone</Label>
@@ -163,7 +171,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
 
             {/* Password fields */}
             <div>
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative mt-1.5">
                 <input
                   id="password"
@@ -171,8 +179,7 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   className={inp + ' pr-10 mt-0'}
-                  placeholder="Min. 6 characters"
-                  required
+                  placeholder="Min. 6 characters (Optional)"
                 />
                 <button type="button" onClick={() => setShowPassword(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -180,15 +187,14 @@ function AddCustomerDialog({ open, onOpenChange, onSuccess }) {
               </div>
             </div>
             <div>
-              <Label htmlFor="confirmPassword">Confirm Password *</Label>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
               <input
                 id="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
                 className={inp}
-                placeholder="Repeat password"
-                required
+                placeholder="Repeat password (Optional)"
               />
             </div>
           </div>

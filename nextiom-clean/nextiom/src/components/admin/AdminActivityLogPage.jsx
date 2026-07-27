@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Activity, Search, Download, RefreshCw, Shield, Users, Zap, AlertTriangle, TrendingUp, FileText, HelpCircle, Database, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getPublicInvoiceSettings, resolveLogoUrl } from '@/lib/invoices';
@@ -127,7 +127,10 @@ function AdminActivityLogPage({ isDark = true }) {
   const [days, setDays] = useState(30);
   const [exportOpen, setExportOpen] = useState(false);
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  const [userPerPage, setUserPerPage] = useState(null);
+  const [computedPerPage, setComputedPerPage] = useState(10);
+  const perPage = userPerPage || computedPerPage;
+  const containerRef = useRef(null);
 
   const c = isDark
     ? { bg: '#15161A', card: '#1C1E24', border: 'rgba(255,255,255,0.06)', text: '#fff', subText: '#a0a0a0', hover: 'rgba(255,255,255,0.04)', brand: 'var(--brand-color)', panel: '#22252C' }
@@ -136,6 +139,36 @@ function AdminActivityLogPage({ isDark = true }) {
   const cardStyle = { background: c.card, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden', boxShadow: isDark ? '0 2px 12px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.06)' };
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      if (window.innerWidth <= 900) {
+        setComputedPerPage(10);
+        return;
+      }
+
+      const containerHeight = containerRef.current.getBoundingClientRect().height;
+      const filtersEl = containerRef.current.querySelector('.alog-filters');
+      const cardHeaderEl = containerRef.current.querySelector('.alog-table-card > div:first-child');
+      const tableHeaderEl = containerRef.current.querySelector('thead');
+      const paginationEl = containerRef.current.querySelector('.alog-table-card > div:last-child');
+
+      const filtersHeight = filtersEl ? filtersEl.getBoundingClientRect().height : 50;
+      const cardHeaderHeight = cardHeaderEl ? cardHeaderEl.getBoundingClientRect().height : 45;
+      const tableHeaderHeight = tableHeaderEl ? tableHeaderEl.getBoundingClientRect().height : 40;
+      const paginationHeight = paginationEl ? paginationEl.getBoundingClientRect().height : 60;
+
+      const availableTableBodyHeight = containerHeight - filtersHeight - cardHeaderHeight - tableHeaderHeight - paginationHeight - 40;
+      const rowHeight = 52;
+      const calculatedCount = Math.max(3, Math.floor(availableTableBodyHeight / rowHeight));
+      setComputedPerPage(calculatedCount);
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [loading]);
 
   const loadData = async () => {
     setLoading(true);
@@ -262,19 +295,79 @@ function AdminActivityLogPage({ isDark = true }) {
   const tdAlt = { ...tdS, background: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.012)' };
 
   return (
-    <div>
+    <div className="alog-container" ref={containerRef}>
       <style>{`
-        .alog-grid { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: start; }
-        .alog-bottom { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 20px; }
-        .alog-filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+        .alog-container {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 0;
+        }
+        .alog-grid {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 1fr 280px;
+          gap: 20px;
+          min-height: 0;
+        }
+        .alog-left {
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          height: 100%;
+        }
+        .alog-right {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          max-height: 100%;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+        .alog-table-card {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
         .alog-table-wrapper {
+          flex: 1;
+          overflow-y: auto;
+          min-height: 0;
           display: block;
         }
+        .alog-bottom { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 20px; }
+        .alog-filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
         .alog-cards-wrapper {
           display: none;
         }
         @media (max-width: 900px) {
-          .alog-grid { grid-template-columns: 1fr; }
+          .alog-container {
+            height: auto;
+            display: block;
+          }
+          .alog-grid {
+            display: flex;
+            flex-direction: column;
+            height: auto;
+            min-height: initial;
+          }
+          .alog-left {
+            height: auto;
+            display: block;
+          }
+          .alog-table-card {
+            height: auto;
+            display: block;
+          }
+          .alog-table-wrapper {
+            height: auto;
+            overflow-y: visible;
+          }
+          .alog-right {
+            max-height: initial;
+            overflow-y: visible;
+          }
           .alog-bottom { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 768px) {
@@ -298,7 +391,7 @@ function AdminActivityLogPage({ isDark = true }) {
 
       <div className="alog-grid">
         {/* LEFT */}
-        <div>
+        <div className="alog-left">
           {/* Filters */}
           <div className="alog-filters">
             <div style={{ position: 'relative', flex: 1, minWidth: 150 }}>
@@ -324,7 +417,7 @@ function AdminActivityLogPage({ isDark = true }) {
           </div>
 
           {/* Table card */}
-          <div style={{ ...cardStyle, marginBottom: 16 }}>
+          <div className="alog-table-card" style={{ ...cardStyle, marginBottom: 16 }}>
             <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', gap: 8, background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)' }}>
               <div style={{ width: 3, height: 16, borderRadius: 2, background: c.brand }} />
               <span style={{ fontWeight: 700, fontSize: 14, color: c.text }}>Activity Log</span>
@@ -334,7 +427,7 @@ function AdminActivityLogPage({ isDark = true }) {
               <div style={{ padding: 48, textAlign: 'center', color: c.subText }}>Loading…</div>
             ) : (
               <>
-                <div className="alog-table-wrapper" style={{ overflowX: 'auto' }}>
+                <div className="alog-table-wrapper" style={{ overflowX: 'auto', overflowY: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
                     <thead>
                       <tr>
@@ -437,7 +530,7 @@ function AdminActivityLogPage({ isDark = true }) {
                   )}
                 </div>
 
-                <Pagination page={page} totalPages={totalPages} total={filtered.length} perPage={perPage} onPage={setPage} onPerPage={setPerPage} c={c} isDark={isDark} />
+                <Pagination page={page} totalPages={totalPages} total={filtered.length} perPage={perPage} onPage={setPage} onPerPage={setUserPerPage} c={c} isDark={isDark} />
               </>
             )}
           </div>
@@ -445,7 +538,7 @@ function AdminActivityLogPage({ isDark = true }) {
         </div>
 
         {/* RIGHT */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="alog-right" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Summary */}
           <div style={cardStyle}>
             <div style={{ padding: '12px 14px', borderBottom: `1px solid ${c.border}`, fontWeight: 700, fontSize: 13, color: c.text }}>Log Summary</div>
@@ -512,29 +605,6 @@ function AdminActivityLogPage({ isDark = true }) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Bottom info cards */}
-      <div className="alog-bottom">
-        {[
-          { icon: HelpCircle, color: '#60a5fa', title: 'What is Activity Log?', desc: 'Tracks all system events — admin logins, registrations, approvals, rejections, and status changes in real time.' },
-          { icon: Shield, color: '#a78bfa', title: 'Why Activity Logs?', desc: 'Provides accountability, helps troubleshoot issues, and maintains an audit trail of all important actions.' },
-          { icon: Database, color: '#34d399', title: 'Data Retention', desc: 'Records are retained indefinitely until manually removed. Use date filters to narrow down the entries you need.' },
-          { icon: Download, color: c.brand, title: 'Export & Reports', desc: 'Download as CSV for spreadsheets or PDF with full company branding, logo, and a formatted layout.', action: true },
-          { icon: Lock, color: '#f87171', title: 'Access Control', desc: 'Only authenticated admins can view this page. All customer activity is visible here for oversight.' },
-        ].map(({ icon: Icon, color, title, desc, action }) => (
-          <button key={title} onClick={action ? () => setExportOpen(true) : undefined}
-            style={{ background: c.card, border: `1px solid ${action ? color + '44' : c.border}`, borderRadius: 12, padding: '15px 14px', textAlign: 'left', cursor: action ? 'pointer' : 'default', boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.04)', width: '100%' }}
-            onMouseEnter={action ? e => e.currentTarget.style.borderColor = color : undefined}
-            onMouseLeave={action ? e => e.currentTarget.style.borderColor = color + '44' : undefined}>
-            <div style={{ width: 34, height: 34, borderRadius: 9, background: color + '1e', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 9 }}>
-              <Icon size={16} color={color} />
-            </div>
-            <div style={{ fontWeight: 700, fontSize: 12.5, color: c.text, marginBottom: 4 }}>{title}</div>
-            <div style={{ fontSize: 11.5, color: c.subText, lineHeight: 1.5 }}>{desc}</div>
-            {action && <div style={{ marginTop: 7, fontSize: 11, fontWeight: 700, color }}>Click to export →</div>}
-          </button>
-        ))}
       </div>
     </div>
   );

@@ -133,13 +133,13 @@ export default function AppointmentSettingsSection({ c, isDark, onSaved }) {
       await createAppointmentAdmin({
         customerId: null,
         appointmentType: fakeType,
-        notes: fakeNotes || 'Fake Blocked Slot',
+        notes: fakeNotes || 'Manual Blocked Slot',
         requestedDate: fakeDate,
         requestedTime: fakeTime,
         status: 'accepted',
         isFake: true,
       });
-      toast({ title: '✓ Fake Appointment Added', description: 'Blocked slot created successfully.' });
+      toast({ title: '✓ Manual Appointment Added', description: 'Blocked slot created successfully.' });
       setFakeDate('');
       setFakeTime('');
       setFakeNotes('');
@@ -147,7 +147,7 @@ export default function AppointmentSettingsSection({ c, isDark, onSaved }) {
         onSaved();
       }
     } catch (e) {
-      toast({ title: 'Error', description: e.message || 'Failed to add fake appointment', variant: 'destructive' });
+      toast({ title: 'Error', description: e.message || 'Failed to add manual appointment', variant: 'destructive' });
     } finally {
       setAddingFake(false);
     }
@@ -288,12 +288,12 @@ export default function AppointmentSettingsSection({ c, isDark, onSaved }) {
 
       {/* Customer Calendar Visibility */}
       <div style={sectionStyle}>
-        {sectionTitle(<Settings size={16} color="var(--brand-color)" />, 'Calendar Visibility for Customers', 'Choose whether customers can see fake or real appointments on their calendar')}
+        {sectionTitle(<Settings size={16} color="var(--brand-color)" />, 'Calendar Visibility for Customers', 'Choose whether customers can see manual or real appointments on their calendar')}
         
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${c.border}` }}>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>Show Fake Appointments</div>
-            <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Allow customers to see fake/placeholder appointments as busy slots</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: c.text }}>Show Manual Appointments</div>
+            <div style={{ fontSize: 12, color: c.subText, marginTop: 2 }}>Allow customers to see manual/placeholder appointments as busy slots</div>
           </div>
           <Toggle value={settings.show_fake_to_customers ?? true} onChange={v => update('show_fake_to_customers', v)} c={c} />
         </div>
@@ -437,9 +437,9 @@ export default function AppointmentSettingsSection({ c, isDark, onSaved }) {
         </div>
       </div>
 
-      {/* Add Fake Appointment / Block Slot */}
+      {/* Add Manual Appointment / Block Slot */}
       <div style={sectionStyle}>
-        {sectionTitle(<Calendar size={16} color="var(--brand-color)" />, 'Add Fake Appointment / Block Slot', 'Manually add a fake/blocked slot on the calendar')}
+        {sectionTitle(<Calendar size={16} color="var(--brand-color)" />, 'Add Manual Appointment / Block Slot', 'Manually add a manual/blocked slot on the calendar')}
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
           <div>
@@ -508,7 +508,7 @@ export default function AppointmentSettingsSection({ c, isDark, onSaved }) {
           }}
         >
           {addingFake ? <Loader2 size={14} className="animate-spin" /> : null}
-          Add Fake Appointment
+          Add Manual Appointment
         </button>
         {settings.appointment_sms_enabled && (
           <div style={{ marginTop: 8, fontSize: 11, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 5, fontWeight: 500 }}>

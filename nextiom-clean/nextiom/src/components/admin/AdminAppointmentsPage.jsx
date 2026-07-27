@@ -777,7 +777,7 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
                   background: isDark ? 'rgba(239,68,68,0.15)' : '#fee2e2', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)',
                   textTransform: 'uppercase', letterSpacing: 0.5,
                 }}>
-                  Fake
+                  Manual
                 </span>
               )}
             </div>
@@ -948,7 +948,7 @@ function StatsRow({ appointments, c, isDark }) {
     { label: "Today's Confirmed", value: todayApts, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff5ee', icon: Clock },
     { label: 'This Week', value: thisWeek, color: '#6366f1', bg: isDark ? 'rgba(99,102,241,0.1)' : '#e0e7ff', icon: Calendar },
     { label: 'Completed', value: completed, color: '#22c55e', bg: isDark ? 'rgba(34,197,94,0.1)' : '#dcfce7', icon: CheckCircle },
-    { label: 'Fakes', value: fakes, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2', icon: CalendarDays },
+    { label: 'Manual', value: fakes, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2', icon: CalendarDays },
   ];
 
   return (
