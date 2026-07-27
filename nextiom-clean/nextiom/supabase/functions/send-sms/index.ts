@@ -101,14 +101,14 @@ serve(async (req) => {
         auth: { persistSession: false },
       })
       const { data: { user }, error: uErr } = await supabase.auth.getUser(token)
-      if (!uErr && user && user.app_metadata?.role === 'admin') {
+      if (!uErr && user && (user.app_metadata?.role === 'admin' || user.app_metadata?.role === 'moderator')) {
         authorized = true
-        console.log(`[send-sms] Authenticated via admin user: ${user.email}`);
+        console.log(`[send-sms] Authenticated via ${user.app_metadata?.role} user: ${user.email}`);
       }
     }
 
     if (!authorized) {
-      return jsonRes({ error: 'Admins or service role only' }, 403)
+      return jsonRes({ error: 'Admins, moderators, or service role only' }, 403)
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {

@@ -23,6 +23,7 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import AppointmentSettingsSection from '@/components/admin/AppointmentSettingsSection';
+import { sendSms } from '@/lib/sms';
 
 const getLocalDateString = (d = new Date()) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -450,7 +451,7 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
       try {
         const { data, error } = await supabase
           .from('customers')
-          .select('id, name, email, company')
+          .select('id, name, email, company, phone')
           .order('name');
         if (!error && data) {
           setCustomers(data);
@@ -496,6 +497,7 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
       await onSubmit({
         customerId: selectedCust.id,
         customerName: selectedCust.name,
+        customerPhone: selectedCust.phone,
         appointmentType: type,
         requestedDate: date,
         requestedTime: time,
@@ -1120,7 +1122,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
     }
   };
 
-  const handleCreateAppointment = async ({ customerId, customerName, appointmentType, requestedDate, requestedTime, notes, isFake = false }) => {
+  const handleCreateAppointment = async ({ customerId, customerName, customerPhone, appointmentType, requestedDate, requestedTime, notes, isFake = false }) => {
     try {
       const apt = await createAppointmentAdmin({
         customerId,
@@ -1138,6 +1140,29 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
           title: 'Appointment Booked By Admin',
           message: `We have booked a ${getAppointmentTypeLabel(appointmentType)} appointment for you on ${new Date(requestedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${new Date(`2000-01-01T${requestedTime}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`,
         });
+
+        if (customerPhone) {
+          try {
+            const dateFormatted = new Date(requestedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const timeFormatted = new Date(`2000-01-01T${requestedTime}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const typeLabel = getAppointmentTypeLabel(appointmentType);
+            
+            let smsMessage = `Dear ${customerName}, you have a ${typeLabel} appointment on ${dateFormatted} at ${timeFormatted}.`;
+            if (notes && notes.trim()) {
+              smsMessage += ` Note: ${notes.trim()}`;
+            }
+            smsMessage += ` - Team Nextiom`;
+
+            await sendSms({
+              phone: customerPhone,
+              message: smsMessage,
+              type: 'appointment_created',
+              customerId,
+            });
+          } catch (smsErr) {
+            console.error('Failed to send appointment SMS:', smsErr);
+          }
+        }
       }
 
       toast({ 
