@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff, ShieldCheck, ShieldOff, MoreVertical, Download, Users, Building, HelpCircle, X } from 'lucide-react';
+import { Search, Trash2, Plus, Eye, Loader2, MonitorSmartphone, BellOff, ShieldCheck, ShieldOff, MoreVertical, Download, Users, Building, HelpCircle, X, LogIn } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { getCustomers, deleteCustomer, addNotification, clearCustomerNotifications, updateCustomer, createTicket, addTicketMessage, logAdminOrModeratorActivity } from '@/lib/storage';
@@ -1283,7 +1283,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
               <col style={{ width: 36 }} />          {/* Jobs */}
               <col style={{ width: 36 }} />          {/* Tickets */}
               <col style={{ width: 90 }} />          {/* Last Activity */}
-              <col style={{ width: 175 }} />         {/* Actions */}
+              <col style={{ width: 220 }} />         {/* Actions */}
             </colgroup>
             <thead>
               <tr>
@@ -1373,34 +1373,44 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
                         <button
                           onClick={() => setSelectedCustomer(customer)}
-                          className="transition-all duration-150 hover:underline hover:opacity-80 active:scale-95"
+                          className="transition-all duration-150 hover:opacity-80 hover:bg-[rgba(232,123,53,0.05)] active:scale-95"
                           style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
                             background: 'transparent',
-                            border: 'none',
+                            border: '1px solid rgba(var(--brand-color-rgb), 0.4)',
+                            borderRadius: '6px',
                             color: c.brand,
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            padding: '4px 6px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '5px 10px',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap'
                           }}
                         >
+                          <Eye size={14} className="flex-shrink-0" />
                           View
                         </button>
                         <button
                           onClick={() => handleLoginAsCustomer(customer)}
-                          className="transition-all duration-150 hover:underline hover:opacity-80 active:scale-95"
+                          className="transition-all duration-150 hover:opacity-80 hover:bg-[rgba(232,123,53,0.05)] active:scale-95"
                           style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
                             background: 'transparent',
-                            border: 'none',
-                            color: isDark ? '#a78bfa' : '#7c3aed',
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            padding: '4px 6px',
+                            border: '1px solid rgba(var(--brand-color-rgb), 0.4)',
+                            borderRadius: '6px',
+                            color: c.text,
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            padding: '5px 10px',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap'
                           }}
                         >
+                          <LogIn size={14} className="flex-shrink-0" style={{ color: c.brand }} />
                           Login As
                         </button>
                         <div>
