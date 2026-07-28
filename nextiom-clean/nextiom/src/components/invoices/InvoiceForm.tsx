@@ -446,8 +446,14 @@ export default function InvoiceForm({ c, isDark, existing, onBack }: Props) {
         }
       }
       onBack()
-    } catch { toast({ title: 'Failed to save invoice', variant: 'destructive' }) }
-    finally { setSaving(false) }
+    } catch (err: any) {
+      console.error('Failed to save invoice:', err)
+      toast({
+        title: 'Failed to save invoice',
+        description: err?.message || 'An unknown error occurred.',
+        variant: 'destructive',
+      })
+    } finally { setSaving(false) }
   }
 
   const handlePrint = () => {
