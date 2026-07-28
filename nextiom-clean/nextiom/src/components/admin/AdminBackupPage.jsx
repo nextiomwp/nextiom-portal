@@ -751,15 +751,20 @@ export default function AdminBackupPage({ isDark }) {
       </div>
 
       {/* ── Tabs Selector ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 25, borderBottom: `1px solid ${c.border}`, paddingBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 24, marginBottom: 25, borderBottom: `1px solid ${c.border}` }}>
         <button
           onClick={() => setActiveTab('export')}
+          className="transition-all duration-200 hover:opacity-100"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: activeTab === 'export' ? 700 : 500,
-            background: activeTab === 'export' ? 'var(--brand-color)' : 'transparent',
-            color: activeTab === 'export' ? '#fff' : c.subText,
-            border: 'none', cursor: 'pointer', transition: 'all 0.2s'
+            padding: '10px 4px 12px 4px', fontSize: 14, fontWeight: activeTab === 'export' ? 700 : 500,
+            background: 'none',
+            color: activeTab === 'export' ? c.brand : c.subText,
+            border: 'none',
+            borderBottom: `2px solid ${activeTab === 'export' ? c.brand : 'transparent'}`,
+            marginBottom: -1,
+            opacity: activeTab === 'export' ? 1 : 0.7,
+            cursor: 'pointer'
           }}
         >
           <Download size={15} />
@@ -767,12 +772,17 @@ export default function AdminBackupPage({ isDark }) {
         </button>
         <button
           onClick={() => setActiveTab('import')}
+          className="transition-all duration-200 hover:opacity-100"
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: activeTab === 'import' ? 700 : 500,
-            background: activeTab === 'import' ? 'var(--brand-color)' : 'transparent',
-            color: activeTab === 'import' ? '#fff' : c.subText,
-            border: 'none', cursor: 'pointer', transition: 'all 0.2s'
+            padding: '10px 4px 12px 4px', fontSize: 14, fontWeight: activeTab === 'import' ? 700 : 500,
+            background: 'none',
+            color: activeTab === 'import' ? c.brand : c.subText,
+            border: 'none',
+            borderBottom: `2px solid ${activeTab === 'import' ? c.brand : 'transparent'}`,
+            marginBottom: -1,
+            opacity: activeTab === 'import' ? 1 : 0.7,
+            cursor: 'pointer'
           }}
         >
           <Upload size={15} />

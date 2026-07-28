@@ -141,9 +141,20 @@ const ADMIN_INTERNAL_NOTIFICATION_TYPES = new Set([
   'moderator_added',
   'moderator_updated',
   'moderator_deleted',
+  'invoice_added',
+  'invoice_updated',
+  'invoice_deleted',
+  'settings_updated',
+  'update',
+  'delete_attempt',
+  'ticket_replied',
+  'maintenance_updated',
 ]);
 
 const isAdminInternalNotification = (notification) => {
+  const role = String(notification?.actor_role || '').toLowerCase();
+  if (role === 'admin' || role === 'moderator') return true;
+
   const type = String(notification?.type || '').toLowerCase();
   if (ADMIN_INTERNAL_NOTIFICATION_TYPES.has(type)) return true;
   if (type.includes('moderator')) return true;

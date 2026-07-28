@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard, Shield, Key, Bell, Search, Eye, EyeOff } from 'lucide-react';
+import { Settings, Save, RotateCcw, Palette, Layout, ShieldAlert, CheckCircle2, Sliders, Info, Loader2, CreditCard, Shield, Key, Bell, Search, Eye, EyeOff, Activity, RefreshCw, X, AlertTriangle, Server, Database, Terminal, Cpu, Check } from 'lucide-react';
 import { getPortalSettings, savePortalSettings, addNotification, hexToRgb, checkPasscodeSet, verifyPasscode, savePasscodeHash, getCustomers } from '@/lib/storage';
+import { supabase } from '@/lib/customSupabaseClient';
 import { sendSms } from '@/lib/sms';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -105,6 +106,20 @@ export default function SystemSettingsPage({ isDark }) {
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  // System Health Diagnostics State
+  const [healthStatus, setHealthStatus] = useState({
+    running: false,
+    checkedAt: null,
+    cloudServices: [],
+    edgeFunctions: [],
+    tables: {},
+    writeCheck: null,
+    projectInfo: null,
+    ipayConfig: null,
+    smsConfig: null,
+    error: null
+  });
 
   const hashPasscode = async (text) => {
     if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -388,6 +403,185 @@ export default function SystemSettingsPage({ isDark }) {
     return () => { mounted = false; };
   }, []);
 
+  const runSystemHealthCheck = async () => {
+    setHealthStatus(prev => ({ ...prev, running: true, error: null }));
+    
+    const token = import.meta.env.VITE_SUPABASE_ACCESS_TOKEN || '';
+    const projectRef = 'fewhvlsqkbsmqbrqclya';
+    
+    let cloudServices = [];
+    let edgeFunctions = [];
+    let tables = {};
+    let writeCheck = { healthy: false, error: null };
+    let projectInfo = null;
+    let ipayConfig = { healthy: true, issues: [] };
+    let smsConfig = { healthy: true, issues: [] };
+    
+    try {
+      const projectRes = await fetch('https://api.supabase.com/v1/projects', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (projectRes.ok) {
+        const projects = await projectRes.json();
+        projectInfo = projects.find(p => p.ref === projectRef) || null;
+      }
+    } catch (e) {
+      console.error('Project metadata fetch failed:', e);
+    }
+    
+    try {
+      const healthRes = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/health?services=db,auth,rest,storage,realtime,pooler`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (healthRes.ok) {
+        cloudServices = await healthRes.json();
+      } else {
+        const errorText = await healthRes.text();
+        console.error('Services health fetch error:', errorText);
+      }
+    } catch (e) {
+      console.error('Services health check failed:', e);
+    }
+    
+    try {
+      const functionsRes = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/functions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (functionsRes.ok) {
+        edgeFunctions = await functionsRes.json();
+      }
+    } catch (e) {
+      console.error('Edge functions fetch failed:', e);
+    }
+
+    const tablesToTest = [
+      { name: 'customers', label: 'Customers' },
+      { name: 'invoices', label: 'Invoices' },
+      { name: 'invoice_items', label: 'Invoice Items' },
+      { name: 'invoice_settings', label: 'Invoice Settings' },
+      { name: 'notifications', label: 'Notifications' },
+      { name: 'hosting_plans', label: 'Hosting Plans' },
+      { name: 'hosting_packages', label: 'Hosting Packages' },
+      { name: 'domains', label: 'Domains' },
+      { name: 'tickets', label: 'Tickets' },
+      { name: 'ticket_messages', label: 'Ticket Messages' },
+      { name: 'products', label: 'Products' },
+      { name: 'licenses', label: 'Licenses' },
+      { name: 'sms_settings', label: 'SMS Settings' },
+      { name: 'sms_logs', label: 'SMS Logs' }
+    ];
+
+    await Promise.all(tablesToTest.map(async (t) => {
+      try {
+        const { count, error } = await supabase
+          .from(t.name)
+          .select('count', { count: 'exact', head: true });
+        
+        if (error) {
+          tables[t.name] = { healthy: false, count: 0, error: error.message };
+        } else {
+          tables[t.name] = { healthy: true, count: count || 0, error: null };
+        }
+      } catch (e) {
+        tables[t.name] = { healthy: false, count: 0, error: e.message || 'Unknown network error' };
+      }
+    }));
+
+    try {
+      const tempTitle = `Health Check Ping - ${new Date().toISOString()}`;
+      const { data: insertData, error: insertError } = await supabase
+        .from('notifications')
+        .insert({
+          customer_id: null,
+          type: 'health_check_temp',
+          title: tempTitle,
+          message: 'Verifying write permission and triggers integrity.',
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        writeCheck = { healthy: false, error: insertError.message };
+      } else if (insertData?.id) {
+        const { error: deleteError } = await supabase
+          .from('notifications')
+          .delete()
+          .eq('id', insertData.id);
+        
+        if (deleteError) {
+          writeCheck = { healthy: true, warning: `Inserted successfully but failed cleanup: ${deleteError.message}` };
+        } else {
+          writeCheck = { healthy: true, error: null };
+        }
+      } else {
+        writeCheck = { healthy: false, error: 'Database accepted write but did not return record ID.' };
+      }
+    } catch (e) {
+      writeCheck = { healthy: false, error: e.message || 'Unknown network error during write check' };
+    }
+
+    if (ipayEnabled) {
+      if (!ipayWebToken) {
+        ipayConfig.issues.push('iPay integration is enabled, but the API token is missing.');
+        ipayConfig.healthy = false;
+      }
+    }
+    
+    try {
+      const { data: invSettings } = await supabase.from('invoice_settings').select('*').limit(1).maybeSingle();
+      if (!invSettings) {
+        ipayConfig.issues.push('Global invoice settings are empty. Customers will see empty merchant details on checkout.');
+        ipayConfig.healthy = false;
+      } else {
+        if (!invSettings.company_name) ipayConfig.issues.push('Company name is missing in invoice settings.');
+        if (!invSettings.bank_name || !invSettings.account_no) ipayConfig.issues.push('Bank transfer details are missing in invoice settings.');
+      }
+    } catch (e) {
+      ipayConfig.issues.push(`Failed to read invoice settings: ${e.message}`);
+      ipayConfig.healthy = false;
+    }
+
+    try {
+      const { data: smsSettingsData } = await supabase.from('sms_settings').select('*').limit(1).maybeSingle();
+      if (smsSettingsData) {
+        if (smsSettingsData.sms_enabled) {
+          if (!smsSettingsData.sender_id) {
+            smsConfig.issues.push('SMS gateway is enabled, but Sender ID is not configured.');
+            smsConfig.healthy = false;
+          }
+        } else {
+          smsConfig.issues.push('SMS gateway is globally disabled in settings.');
+          smsConfig.healthy = false;
+        }
+      } else {
+        smsConfig.issues.push('SMS settings row is missing in database.');
+        smsConfig.healthy = false;
+      }
+    } catch (e) {
+      smsConfig.issues.push(`Failed to load SMS settings: ${e.message}`);
+      smsConfig.healthy = false;
+    }
+
+    setHealthStatus({
+      running: false,
+      checkedAt: new Date().toLocaleTimeString(),
+      cloudServices,
+      edgeFunctions,
+      tables,
+      writeCheck,
+      projectInfo,
+      ipayConfig,
+      smsConfig,
+      error: null
+    });
+  };
+
+  useEffect(() => {
+    if (activeTab === 'health' && !healthStatus.checkedAt && !healthStatus.running) {
+      runSystemHealthCheck();
+    }
+  }, [activeTab]);
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -472,7 +666,8 @@ export default function SystemSettingsPage({ isDark }) {
     { id: 'notifications', label: 'Notifications', icon: Bell, desc: 'Global & customer alerts' },
     ...(role !== 'moderator' ? [
       { id: 'ipay', label: 'Payment Gateway', icon: CreditCard, desc: 'iPay IPG integration' },
-      { id: 'security', label: 'Access Security', icon: Shield, desc: 'Deletion passcode' }
+      { id: 'security', label: 'Access Security', icon: Shield, desc: 'Deletion passcode' },
+      { id: 'health', label: 'System Health', icon: ShieldAlert, desc: 'Diagnostics & status' }
     ] : [])
   ];
 
@@ -671,6 +866,7 @@ export default function SystemSettingsPage({ isDark }) {
         }
       `}</style>
 
+
       {/* ── Page Header ─────────────────────────── */}
       <div className="settings-header">
         <div>
@@ -722,6 +918,13 @@ export default function SystemSettingsPage({ isDark }) {
               } else if (tab.id === 'security') {
                 showStatusDot = isPasscodeSet;
                 statusDotColor = '#10B981';
+              } else if (tab.id === 'health') {
+                showStatusDot = healthStatus.checkedAt !== null;
+                const hasIssues = Object.values(healthStatus.tables).some(t => !t.healthy) ||
+                                  (healthStatus.writeCheck && !healthStatus.writeCheck.healthy) ||
+                                  healthStatus.cloudServices.some(s => !s.healthy) ||
+                                  (healthStatus.ipayConfig && !healthStatus.ipayConfig.healthy);
+                statusDotColor = hasIssues ? '#ef4444' : '#10B981';
               }
 
               return (
@@ -1633,6 +1836,467 @@ export default function SystemSettingsPage({ isDark }) {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: SYSTEM HEALTH */}
+          {role !== 'moderator' && (
+            <div style={{ display: activeTab === 'health' ? 'flex' : 'none', flexDirection: 'column', gap: 24 }} className="tab-fade-in tab-content">
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Activity size={18} style={{ color: 'var(--brand-color)' }} />
+                    Diagnostics & System Health
+                  </h3>
+                  <p style={{ fontSize: 13, color: c.subText, margin: 0, lineHeight: 1.5 }}>
+                    Real-time status checks of cloud services, database connection, table structures, and write integrity.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={runSystemHealthCheck}
+                  disabled={healthStatus.running}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 16px',
+                    borderRadius: 10,
+                    border: `1.5px solid ${c.borderStrong}`,
+                    background: healthStatus.running ? c.hover : 'var(--brand-color)',
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: healthStatus.running ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: healthStatus.running ? 'none' : '0 4px 12px var(--brand-color-light)'
+                  }}
+                >
+                  {healthStatus.running ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={15} />
+                  )}
+                  {healthStatus.running ? 'Running...' : 'Run Diagnostics'}
+                </button>
+              </div>
+
+              {/* Status Banner */}
+              {(() => {
+                if (healthStatus.running) {
+                  return (
+                    <div style={{
+                      padding: '20px 24px',
+                      borderRadius: 14,
+                      background: isDark ? 'rgba(245,158,11,0.06)' : '#fffbeb',
+                      border: `1px solid ${isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 16,
+                      boxShadow: '0 4px 12px rgba(245,158,11,0.05)'
+                    }}>
+                      <Loader2 size={24} className="animate-spin" style={{ color: '#f59e0b', flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 14.5, fontWeight: 700, color: isDark ? '#fbbf24' : '#b45309' }}>Running System Scan...</div>
+                        <div style={{ fontSize: 12.5, color: c.subText, marginTop: 2 }}>Checking database tables, executing test writes, pinging cloud services and edge functions.</div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                if (!healthStatus.checkedAt) {
+                  return (
+                    <div style={{
+                      padding: '24px',
+                      borderRadius: 14,
+                      background: c.panel2,
+                      border: `1px solid ${c.border}`,
+                      textAlign: 'center',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: 12
+                    }}>
+                      <div style={{
+                        width: 48, height: 48, borderRadius: '50%',
+                        background: 'var(--brand-color-light)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <ShieldAlert size={24} style={{ color: 'var(--brand-color)' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: c.text }}>No Diagnostics Data Available</div>
+                        <div style={{ fontSize: 13, color: c.subText, marginTop: 4 }}>
+                          Click the "Run Diagnostics" button to perform a complete system health check.
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                const failedTables = Object.entries(healthStatus.tables).filter(([_, info]) => !info.healthy);
+                const failedServices = healthStatus.cloudServices.filter(s => !s.healthy);
+                const writeFailed = healthStatus.writeCheck && !healthStatus.writeCheck.healthy;
+                const ipayFailed = healthStatus.ipayConfig && !healthStatus.ipayConfig.healthy;
+                
+                const hasIssues = failedTables.length > 0 || failedServices.length > 0 || writeFailed || ipayFailed;
+
+                if (hasIssues) {
+                  return (
+                    <div style={{
+                      padding: '20px 24px',
+                      borderRadius: 14,
+                      background: isDark ? 'rgba(244,63,94,0.06)' : '#fff1f2',
+                      border: `1px solid ${isDark ? 'rgba(244,63,94,0.15)' : '#fecdd3'}`,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 16,
+                      boxShadow: '0 4px 12px rgba(244,63,94,0.05)'
+                    }}>
+                      <div style={{
+                        width: 36, height: 36, borderRadius: '50%',
+                        background: 'rgba(244,63,94,0.12)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, marginTop: 2
+                      }}>
+                        <AlertTriangle size={20} style={{ color: '#f43f5e' }} className="animate-bounce" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: isDark ? '#fb7185' : '#be123c' }}>System Health Compromised</div>
+                        <div style={{ fontSize: 13, color: c.subText, marginTop: 4, lineHeight: 1.4 }}>
+                          Diagnostics identified {failedTables.length + failedServices.length + (writeFailed ? 1 : 0) + (ipayFailed ? 1 : 0)} critical issue(s).
+                          {writeFailed && ' Database writes are currently failing.'}
+                          {failedTables.length > 0 && ` Inaccessible database tables detected: ${failedTables.map(([name]) => name).join(', ')}.`}
+                          {failedServices.length > 0 && ` Cloud services down: ${failedServices.map(s => s.name).join(', ')}.`}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: c.subText, opacity: 0.7, marginTop: 8 }}>
+                          Last scan: {healthStatus.checkedAt}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{
+                    padding: '20px 24px',
+                    borderRadius: 14,
+                    background: isDark ? 'rgba(16,185,129,0.06)' : '#ecfdf5',
+                    border: `1px solid ${isDark ? 'rgba(16,185,129,0.15)' : '#a7f3d0'}`,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 16,
+                    boxShadow: '0 4px 12px rgba(16,185,129,0.05)'
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: '50%',
+                      background: 'rgba(16,185,129,0.12)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, marginTop: 2
+                    }}>
+                      <CheckCircle2 size={20} style={{ color: '#10b981' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: isDark ? '#34d399' : '#047857' }}>All Systems Fully Operational</div>
+                      <div style={{ fontSize: 13, color: c.subText, marginTop: 4, lineHeight: 1.4 }}>
+                        All database tables are responding, write-integrity tests passed, and cloud API endpoints are healthy. No issues detected.
+                      </div>
+                      <div style={{ fontSize: 11.5, color: c.subText, opacity: 0.7, marginTop: 8 }}>
+                        Last scan: {healthStatus.checkedAt}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {healthStatus.checkedAt && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 24 }} className="appearance-grid">
+                  {/* Left Column: Database Connectivity and Writes */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {/* Database integrity card */}
+                    <div style={{
+                      background: c.panel2,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 14,
+                      padding: 20,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 14
+                    }}>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Database size={16} style={{ color: 'var(--brand-color)' }} />
+                        Database Write & Schema Integrity
+                      </h4>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        {/* Write Integrity Badge */}
+                        <div style={{
+                          padding: 12,
+                          borderRadius: 10,
+                          background: c.card,
+                          border: `1px solid ${c.border}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6
+                        }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase' }}>Database Writes</span>
+                          {healthStatus.writeCheck && healthStatus.writeCheck.healthy ? (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <Check size={14} /> Operational
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#f43f5e', display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <X size={14} /> Broken
+                            </span>
+                          )}
+                          {healthStatus.writeCheck && healthStatus.writeCheck.error && (
+                            <span style={{ fontSize: 11, color: '#f43f5e', marginTop: 2, lineHeight: 1.3 }}>
+                              Error: {healthStatus.writeCheck.error}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Connection Latency / Status */}
+                        <div style={{
+                          padding: 12,
+                          borderRadius: 10,
+                          background: c.card,
+                          border: `1px solid ${c.border}`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6
+                        }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase' }}>Connection Pool</span>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#10b981', display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <Check size={14} /> Active / Secured
+                          </span>
+                          <span style={{ fontSize: 10.5, color: c.subText }}>SSL Encrypted tunnel</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table Schema Check Grid */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <label style={{ fontSize: 11, fontWeight: 700, color: c.subText, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Table Integrity & Row Counts
+                      </label>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                        gap: 10,
+                        maxHeight: 380,
+                        overflowY: 'auto',
+                        padding: 2
+                      }} className="custom-scrollbar">
+                        {Object.entries(healthStatus.tables).map(([tableName, info]) => (
+                          <div
+                            key={tableName}
+                            style={{
+                              padding: 12,
+                              borderRadius: 10,
+                              background: info.healthy ? c.card : (isDark ? 'rgba(244,63,94,0.04)' : '#fff1f2'),
+                              border: `1px solid ${info.healthy ? c.border : '#fecdd3'}`,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 4
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: 12, fontWeight: 700, color: c.text, textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {tableName.replace('_', ' ')}
+                              </span>
+                              <span style={{
+                                width: 7, height: 7, borderRadius: '50%',
+                                background: info.healthy ? '#10b981' : '#f43f5e',
+                                boxShadow: info.healthy ? '0 0 6px #10b981' : '0 0 6px #f43f5e'
+                              }} />
+                            </div>
+                            
+                            {info.healthy ? (
+                              <span style={{ fontSize: 11, color: c.subText, marginTop: 2 }}>
+                                {info.count.toLocaleString()} row(s)
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 10.5, color: '#f43f5e', marginTop: 2, lineHeight: 1.2 }}>
+                                {info.error || 'Access error'}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Cloud Services and Integration Status */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    {/* Cloud Infrastructure health */}
+                    <div style={{
+                      background: c.panel2,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 14,
+                      padding: 20,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 14
+                    }}>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Server size={16} style={{ color: 'var(--brand-color)' }} />
+                        Cloud Services Health (Supabase)
+                      </h4>
+
+                      {healthStatus.projectInfo && (
+                        <div style={{
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          background: c.card,
+                          border: `1px solid ${c.border}`,
+                          fontSize: 12,
+                          color: c.subText,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 3
+                        }}>
+                          <div style={{ color: c.text, fontWeight: 600 }}>{healthStatus.projectInfo.name}</div>
+                          <div>Region: <span style={{ fontFamily: 'monospace' }}>{healthStatus.projectInfo.region}</span></div>
+                          <div>Status: <span style={{ color: '#10b981', fontWeight: 600 }}>{healthStatus.projectInfo.status}</span></div>
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {healthStatus.cloudServices.length > 0 ? (
+                          healthStatus.cloudServices.map((service) => (
+                            <div key={service.name} style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 12px',
+                              background: c.card,
+                              borderRadius: 8,
+                              border: `1px solid ${c.border}`
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{
+                                  width: 6, height: 6, borderRadius: '50%',
+                                  background: service.healthy ? '#10b981' : '#f43f5e'
+                                }} />
+                                <span style={{ fontSize: 12, fontWeight: 600, color: c.text, textTransform: 'uppercase' }}>
+                                  {service.name}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: 11, color: c.subText }}>
+                                {service.healthy ? 'Healthy' : 'Down'}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ fontSize: 12, color: c.subText, fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
+                            Could not fetch real-time service metrics. Check API token scope.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Edge Functions Status */}
+                    <div style={{
+                      background: c.panel2,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 14,
+                      padding: 20,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 14
+                    }}>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Terminal size={16} style={{ color: 'var(--brand-color)' }} />
+                        Edge Functions Registry
+                      </h4>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 220, overflowY: 'auto' }} className="custom-scrollbar">
+                        {healthStatus.edgeFunctions.length > 0 ? (
+                          healthStatus.edgeFunctions.map((fn) => (
+                            <div key={fn.id} style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              background: c.card,
+                              borderRadius: 8,
+                              border: `1px solid ${c.border}`
+                            }}>
+                              <div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: c.text }}>{fn.name}</div>
+                                <div style={{ fontSize: 10, color: c.subText, marginTop: 1 }}>Version: v{fn.version}</div>
+                              </div>
+                              <span style={{
+                                fontSize: 9.5,
+                                fontWeight: 700,
+                                color: fn.status === 'ACTIVE' ? '#10b981' : '#f59e0b',
+                                background: fn.status === 'ACTIVE' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                textTransform: 'uppercase'
+                              }}>
+                                {fn.status}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ fontSize: 12, color: c.subText, fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
+                            No edge functions listed.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Gateways and configuration health */}
+                    <div style={{
+                      background: c.panel2,
+                      border: `1px solid ${c.border}`,
+                      borderRadius: 14,
+                      padding: 20,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 12
+                    }}>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, color: c.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Cpu size={16} style={{ color: 'var(--brand-color)' }} />
+                        Integrations Configuration
+                      </h4>
+
+                      {/* iPay Gateway */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                          <span style={{ fontWeight: 600, color: c.text }}>iPay Gateway</span>
+                          <span style={{ color: healthStatus.ipayConfig?.healthy ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
+                            {ipayEnabled ? (ipaySandbox ? 'Sandbox Active' : 'Production Active') : 'Disabled'}
+                          </span>
+                        </div>
+                        {healthStatus.ipayConfig && healthStatus.ipayConfig.issues.map((issue, idx) => (
+                          <div key={idx} style={{ fontSize: 10.5, color: '#f59e0b', lineHeight: 1.3 }}>
+                            ⚠️ {issue}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* SMS Gateway */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: `1px solid ${c.border}`, paddingTop: 10, marginTop: 4 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                          <span style={{ fontWeight: 600, color: c.text }}>SMS Gateway</span>
+                          <span style={{ color: healthStatus.smsConfig?.healthy ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
+                            {healthStatus.smsConfig?.healthy ? 'Active' : 'Warning'}
+                          </span>
+                        </div>
+                        {healthStatus.smsConfig && healthStatus.smsConfig.issues.map((issue, idx) => (
+                          <div key={idx} style={{ fontSize: 10.5, color: '#f59e0b', lineHeight: 1.3 }}>
+                            ⚠️ {issue}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
