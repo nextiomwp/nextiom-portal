@@ -952,9 +952,7 @@ export default function SmsSettingsPage({ isDark }) {
                 <Send size={18} style={{ color: c.brand }} />
                 Send a custom SMS to any phone number.
               </h2>
-              <p style={{ fontSize: 12, color: c.subText, margin: 0 }}>
-                Verify your SMS by sending a test message to any phone number.
-              </p>
+             
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
