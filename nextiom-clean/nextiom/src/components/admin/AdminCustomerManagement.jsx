@@ -1283,7 +1283,7 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
               <col style={{ width: 36 }} />          {/* Jobs */}
               <col style={{ width: 36 }} />          {/* Tickets */}
               <col style={{ width: 90 }} />          {/* Last Activity */}
-              <col style={{ width: 130 }} />         {/* Actions */}
+              <col style={{ width: 175 }} />         {/* Actions */}
             </colgroup>
             <thead>
               <tr>
@@ -1373,13 +1373,33 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6, flexWrap: 'nowrap' }}>
                         <button
                           onClick={() => setSelectedCustomer(customer)}
-                          style={{ background: 'transparent', border: 'none', color: '#f97316', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          className="transition-all duration-150 hover:underline hover:opacity-80 active:scale-95"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: c.brand,
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            padding: '4px 6px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
                         >
                           View
                         </button>
                         <button
                           onClick={() => handleLoginAsCustomer(customer)}
-                          style={{ background: 'transparent', border: 'none', color: '#ea580c', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          className="transition-all duration-150 hover:underline hover:opacity-80 active:scale-95"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: isDark ? '#a78bfa' : '#7c3aed',
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            padding: '4px 6px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
                         >
                           Login As
                         </button>
@@ -1515,13 +1535,31 @@ function AdminCustomerManagement({ products, onSuccess, isDark = true, onNavigat
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
                   <button
                     onClick={() => setSelectedCustomer(customer)}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #f97316`, background: 'transparent', color: '#f97316', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    className="transition-all duration-150 hover:underline hover:opacity-80 active:scale-95"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: c.brand,
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      padding: '6px 8px',
+                      cursor: 'pointer'
+                    }}
                   >
                     View Details
                   </button>
                   <button
                     onClick={() => handleLoginAsCustomer(customer)}
-                    style={{ padding: '6px 12px', borderRadius: 8, border: `1.5px solid #ea580c`, background: 'transparent', color: '#ea580c', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    className="transition-all duration-150 hover:underline hover:opacity-80 active:scale-95"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: isDark ? '#a78bfa' : '#7c3aed',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      padding: '6px 8px',
+                      cursor: 'pointer'
+                    }}
                   >
                     Login As
                   </button>
