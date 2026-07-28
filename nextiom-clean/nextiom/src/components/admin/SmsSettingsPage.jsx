@@ -950,7 +950,7 @@ export default function SmsSettingsPage({ isDark }) {
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Send size={18} style={{ color: c.brand }} />
-                Send a custom SMS to any phone number.
+                Send a custom SMS
               </h2>
              
             </div>
