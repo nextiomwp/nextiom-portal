@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Loader2, ShieldCheck, X, Eye, EyeOff, CheckCircle, TriangleAlert, Clock } from 'lucide-react';
@@ -36,6 +36,29 @@ function Login({ onLoginSuccess }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const longPressTimer = useRef(null);
+
+  const handleLogoPointerDown = (e) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+    longPressTimer.current = setTimeout(() => {
+      setShowAdminLogin(prev => !prev);
+      if (navigator.vibrate) {
+        try {
+          navigator.vibrate(100);
+        } catch (err) {}
+      }
+    }, 3000);
+  };
+
+  const handleLogoPointerUp = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   // Auto-open the Forgot Password panel when redirected from the Register page
   useEffect(() => {
     if (location.state?.openForgotPassword) {
@@ -44,6 +67,15 @@ function Login({ onLoginSuccess }) {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state?.openForgotPassword]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-open Admin Login when redirected from Register page
+  useEffect(() => {
+    if (location.state?.showAdminLogin) {
+      setShowAdminLogin(true);
+      // Clean the state so a refresh doesn't re-trigger it
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state?.showAdminLogin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setEmail('');
@@ -352,7 +384,12 @@ function Login({ onLoginSuccess }) {
                   loading="eager"
                   decoding="sync"
                   fetchPriority="high"
-                  className="h-10 w-auto object-contain mb-8"
+                  className="h-10 w-auto object-contain mb-8 select-none cursor-pointer"
+                  style={{ WebkitTouchCallout: 'none' }}
+                  onPointerDown={handleLogoPointerDown}
+                  onPointerUp={handleLogoPointerUp}
+                  onPointerLeave={handleLogoPointerUp}
+                  onPointerCancel={handleLogoPointerUp}
                 />
                 <div className="text-center space-y-2">
                   <h1 className="text-2xl font-bold text-[#1a1a1a]">Sign in to your account</h1>

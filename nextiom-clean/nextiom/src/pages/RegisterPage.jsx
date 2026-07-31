@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -236,10 +236,39 @@ function RegisterPage() {
     );
   };
 
+  const longPressTimer = useRef(null);
+
+  const startLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+    longPressTimer.current = setTimeout(() => {
+      navigate('/', { state: { showAdminLogin: true } });
+      if (navigator.vibrate) {
+        try {
+          navigator.vibrate(100);
+        } catch (err) {}
+      }
+    }, 3000);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
   const logo = (
     <img
       src="/nextiomLogo.png"
-      alt="Nextiom" className="h-10 w-auto object-contain mx-auto mb-6"
+      alt="Nextiom"
+      className="h-10 w-auto object-contain mx-auto mb-6 select-none cursor-pointer"
+      style={{ WebkitTouchCallout: 'none' }}
+      onPointerDown={startLongPress}
+      onPointerUp={cancelLongPress}
+      onPointerLeave={cancelLongPress}
+      onPointerCancel={cancelLongPress}
     />
   );
 
