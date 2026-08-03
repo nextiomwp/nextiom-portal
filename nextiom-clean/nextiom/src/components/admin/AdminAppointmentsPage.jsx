@@ -473,23 +473,6 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
     );
   });
 
-  const startTime = settings?.booking_start_time || '09:00:00';
-  const endTime = settings?.booking_end_time || '15:00:00';
-  const duration = settings?.slot_duration_minutes || 60;
-
-  const slots = [];
-  const [startH] = startTime.split(':').map(Number);
-  const [endH] = endTime.split(':').map(Number);
-  const startMins = startH * 60;
-  const endMins = endH * 60;
-  for (let m = startMins; m < endMins; m += duration) {
-    const h = Math.floor(m / 60);
-    const min = m % 60;
-    const label = `${h % 12 === 0 ? 12 : h % 12}:${String(min).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
-    const value = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
-    slots.push({ value, label });
-  }
-
   const handleSave = async () => {
     if (!selectedCust || !date || !time) return;
     setSubmitting(true);
@@ -500,7 +483,7 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
         customerPhone: selectedCust.phone,
         appointmentType: type,
         requestedDate: date,
-        requestedTime: time,
+        requestedTime: time.length === 5 ? `${time}:00` : time,
         notes,
       });
     } finally {
@@ -647,8 +630,9 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>4. Time Slot</label>
-              <select
+              <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>4. Time (24h)</label>
+              <input
+                type="time"
                 value={time}
                 onChange={e => setTime(e.target.value)}
                 style={{
@@ -656,12 +640,7 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
                   border: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
                   color: c.text, fontSize: 13, boxSizing: 'border-box', outline: 'none'
                 }}
-              >
-                <option value="">Select slot</option>
-                {slots.map(slot => (
-                  <option key={slot.value} value={slot.value}>{slot.label}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
