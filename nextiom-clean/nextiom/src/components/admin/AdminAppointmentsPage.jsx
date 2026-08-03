@@ -442,8 +442,20 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
   const [type, setType] = useState('office_visit');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [hour, setHour] = useState('08');
+  const [minute, setMinute] = useState('30');
+  const [period, setPeriod] = useState('am');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let hr = parseInt(hour, 10) || 12;
+    if (period === 'pm' && hr < 12) hr += 12;
+    if (period === 'am' && hr === 12) hr = 0;
+    const hrStr = String(hr).padStart(2, '0');
+    const minStr = String(parseInt(minute, 10) || 0).padStart(2, '0');
+    setTime(`${hrStr}:${minStr}`);
+  }, [hour, minute, period]);
 
   useEffect(() => {
     // Fetch customers
@@ -613,34 +625,202 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
             </div>
           </div>
 
-          {/* Date & Time selection */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>3. Date</label>
-              <input
-                type="date"
-                value={date}
-                min={getLocalDateString()}
-                onChange={e => setDate(e.target.value)}
-                style={{
-                  width: '100%', padding: '9px 12px', borderRadius: 9,
-                  border: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
-                  color: c.text, fontSize: 13, boxSizing: 'border-box', outline: 'none'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>4. Time (24h)</label>
-              <input
-                type="time"
-                value={time}
-                onChange={e => setTime(e.target.value)}
-                style={{
-                  width: '100%', padding: '9px 12px', borderRadius: 9,
-                  border: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
-                  color: c.text, fontSize: 13, boxSizing: 'border-box', outline: 'none'
-                }}
-              />
+          {/* Date selection */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>3. Date</label>
+            <input
+              type="date"
+              value={date}
+              min={getLocalDateString()}
+              onChange={e => setDate(e.target.value)}
+              style={{
+                width: '100%', padding: '9px 12px', borderRadius: 9,
+                border: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                color: c.text, fontSize: 13, boxSizing: 'border-box', outline: 'none'
+              }}
+            />
+          </div>
+
+          {/* Time Slot Selection (Styled as in gUP.jpeg) */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>4. Time</label>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Hour Input Block */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHour(prev => {
+                      let val = parseInt(prev, 10) || 12;
+                      val = val + 1;
+                      if (val > 12) val = 1;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  +
+                </button>
+                <input
+                  type="text"
+                  value={hour}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val === '') { setHour(''); return; }
+                    let num = parseInt(val, 10);
+                    if (num > 12) num = 12;
+                    if (num === 0) num = 1;
+                    setHour(String(num).padStart(2, '0'));
+                  }}
+                  onBlur={() => { if (!hour) setHour('08'); }}
+                  style={{
+                    width: 50, height: 40, borderRadius: 10,
+                    border: `1px solid ${c.border}`,
+                    background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                    color: c.text, fontSize: 16, fontWeight: 700,
+                    textAlign: 'center', outline: 'none'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHour(prev => {
+                      let val = parseInt(prev, 10) || 12;
+                      val = val - 1;
+                      if (val < 1) val = 12;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  -
+                </button>
+              </div>
+
+              {/* Colon separator */}
+              <div style={{ fontSize: 20, fontWeight: 700, color: c.text, alignSelf: 'center', margin: '0 4px' }}>:</div>
+
+              {/* Minute Input Block */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinute(prev => {
+                      let val = parseInt(prev, 10) || 0;
+                      val = (Math.floor(val / 5) * 5) + 5;
+                      if (val >= 60) val = 0;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  +
+                </button>
+                <input
+                  type="text"
+                  value={minute}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val === '') { setMinute(''); return; }
+                    let num = parseInt(val, 10);
+                    if (num >= 60) num = 59;
+                    setMinute(String(num).padStart(2, '0'));
+                  }}
+                  onBlur={() => { if (!minute) setMinute('30'); }}
+                  style={{
+                    width: 50, height: 40, borderRadius: 10,
+                    border: `1px solid ${c.border}`,
+                    background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                    color: c.text, fontSize: 16, fontWeight: 700,
+                    textAlign: 'center', outline: 'none'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinute(prev => {
+                      let val = parseInt(prev, 10) || 0;
+                      val = (Math.ceil(val / 5) * 5) - 5;
+                      if (val < 0) val = 55;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  -
+                </button>
+              </div>
+
+              {/* AM / PM Selector */}
+              <div style={{ display: 'flex', gap: 8, marginLeft: 20 }}>
+                <button
+                  type="button"
+                  onClick={() => setPeriod('am')}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 14,
+                    border: period === 'am' ? '1px solid var(--brand-color)' : `1px solid ${c.border}`,
+                    background: period === 'am' ? 'var(--brand-color-light)' : (isDark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                    color: period === 'am' ? 'var(--brand-color)' : c.text,
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  am
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPeriod('pm')}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 14,
+                    border: period === 'pm' ? '1px solid var(--brand-color)' : `1px solid ${c.border}`,
+                    background: period === 'pm' ? 'var(--brand-color-light)' : (isDark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                    color: period === 'pm' ? 'var(--brand-color)' : c.text,
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  pm
+                </button>
+              </div>
             </div>
           </div>
 
