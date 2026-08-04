@@ -93,7 +93,7 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
             <p style={{ color: subText, fontSize: 14, fontStyle: 'italic', marginBottom: 16 }}>No about text content available.</p>
           ) : (
             aboutTextSections.map((s, idx) => (
-              <p key={s.id || idx} style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16 }}>
+              <p key={s.id || idx} style={{ color: text, fontSize: 14, lineHeight: 1.7, marginBottom: 16, whiteSpace: 'pre-wrap' }}>
                 {s.description}
               </p>
             ))
@@ -108,7 +108,7 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
                     <Icon style={{ width: 16, height: 16, color: brand }} />
                     <span style={{ color: text, fontSize: 13, fontWeight: 700 }}>{v.title}</span>
                   </div>
-                  <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{v.description}</p>
+                  <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{v.description}</p>
                 </div>
               );
             })}
@@ -136,7 +136,7 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
                   <Icon style={{ width: 18, height: 18, color: brand, flexShrink: 0, marginTop: 2 }} />
                   <div>
                     <h3 style={{ color: text, fontSize: 13, fontWeight: 700, margin: '0 0 4px 0' }}>{p.title}</h3>
-                    <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{p.description}</p>
+                    <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{p.description}</p>
                   </div>
                 </div>
               );
@@ -183,7 +183,7 @@ export function CompanyInfoPage({ isDark = false, c = {} }) {
                 </div>
                 <div>
                   <h3 style={{ color: text, fontSize: 14, fontWeight: 700, margin: '0 0 6px 0' }}>{s.title}</h3>
-                  <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{s.description}</p>
+                  <p style={{ color: subText, fontSize: 11, lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>{s.description}</p>
                 </div>
               </div>
             );

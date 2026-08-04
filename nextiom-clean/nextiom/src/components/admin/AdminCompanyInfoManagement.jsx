@@ -326,7 +326,7 @@ export default function AdminCompanyInfoManagement({ isDark = false, c = {} }) {
                 >
                   <div style={{ flex: 1 }}>
                     <span style={{ color: brand, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Paragraph {idx + 1}</span>
-                    <p style={{ color: text, fontSize: 13, lineHeight: 1.5, margin: '4px 0 0 0' }}>{s.description}</p>
+                    <p style={{ color: text, fontSize: 13, lineHeight: 1.5, margin: '4px 0 0 0', whiteSpace: 'pre-wrap' }}>{s.description}</p>
                   </div>
                   {renderItemActions(s, idx, aboutTextSections.length)}
                 </div>
@@ -366,7 +366,7 @@ export default function AdminCompanyInfoManagement({ isDark = false, c = {} }) {
                       </div>
                       <div>
                         <h4 style={{ color: text, fontSize: 13, fontWeight: 700, margin: 0 }}>{s.title}</h4>
-                        <p style={{ color: subText, fontSize: 11, margin: '2px 0 0 0' }}>{s.description}</p>
+                        <p style={{ color: subText, fontSize: 11, margin: '2px 0 0 0', whiteSpace: 'pre-wrap' }}>{s.description}</p>
                       </div>
                     </div>
                     {renderItemActions(s, idx, aboutFeatureSections.length)}
@@ -408,7 +408,7 @@ export default function AdminCompanyInfoManagement({ isDark = false, c = {} }) {
                       </div>
                       <div>
                         <h4 style={{ color: text, fontSize: 13, fontWeight: 700, margin: 0 }}>{s.title}</h4>
-                        <p style={{ color: subText, fontSize: 11, margin: '2px 0 0 0' }}>{s.description}</p>
+                        <p style={{ color: subText, fontSize: 11, margin: '2px 0 0 0', whiteSpace: 'pre-wrap' }}>{s.description}</p>
                       </div>
                     </div>
                     {renderItemActions(s, idx, corePillarSections.length)}
@@ -450,7 +450,7 @@ export default function AdminCompanyInfoManagement({ isDark = false, c = {} }) {
                       </div>
                       <div>
                         <h4 style={{ color: text, fontSize: 13, fontWeight: 700, margin: 0 }}>{s.title}</h4>
-                        <p style={{ color: subText, fontSize: 11, margin: '2px 0 0 0' }}>{s.description}</p>
+                        <p style={{ color: subText, fontSize: 11, margin: '2px 0 0 0', whiteSpace: 'pre-wrap' }}>{s.description}</p>
                       </div>
                     </div>
                     {renderItemActions(s, idx, serviceSections.length)}
@@ -549,7 +549,7 @@ export default function AdminCompanyInfoManagement({ isDark = false, c = {} }) {
                       borderRadius: 8,
                       fontSize: 13,
                       outline: 'none',
-                      resize: 'none'
+                      resize: 'vertical'
                     }}
                   />
                 </div>
