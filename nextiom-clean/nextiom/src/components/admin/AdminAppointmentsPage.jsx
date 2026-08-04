@@ -384,6 +384,80 @@ function RejectReasonModal({ onClose, onSubmit, c, isDark }) {
   );
 }
 
+// ── Close Appointment Modal ─────────────────────────────────────────────────────
+function CloseAppointmentModal({ onClose, onSubmit, c, isDark }) {
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await onSubmit(note);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+      zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}
+    onClick={e => e.target === e.currentTarget && onClose()}>
+      <motion.div
+        initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+        style={{
+          background: c.card, border: `1px solid ${c.border}`, borderRadius: 20,
+          width: '100%', maxWidth: 450,
+          boxShadow: isDark ? '0 25px 60px rgba(0,0,0,0.5)' : '0 25px 60px rgba(0,0,0,0.15)',
+          padding: 24,
+        }}
+      >
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: '0 0 8px' }}>Close Appointment</h3>
+        <p style={{ fontSize: 13, color: c.subText, margin: '0 0 16px' }}>Provide a closing note explaining the outcome (e.g., details of the meeting or if the customer did not show up). The customer will be notified.</p>
+
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="e.g. Meeting completed successfully. Follow-up action items sent via email, or Customer did not show up for the visit."
+          rows={4}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 10,
+            border: `1px solid ${c.border}`,
+            background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+            color: c.text, fontSize: 13, resize: 'vertical', fontFamily: 'inherit',
+            outline: 'none', boxSizing: 'border-box', marginBottom: 16,
+          }}
+        />
+
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button type="button" onClick={onClose} style={{
+            flex: 1, padding: '10px', borderRadius: 10,
+            border: `1px solid ${c.border}`, background: 'transparent',
+            color: c.text, fontWeight: 600, fontSize: 13, cursor: 'pointer',
+          }}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={{
+              flex: 1, padding: '10px', borderRadius: 10,
+              background: 'var(--brand-color)', border: 'none',
+              color: '#fff', fontWeight: 600, fontSize: 13, cursor: submitting ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            }}
+          >
+            {submitting ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            Close Appointment
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Delete Confirmation Modal ──────────────────────────────────────────────────
 function DeleteConfirmationModal({ onClose, onSubmit, c, isDark }) {
   return (
@@ -1247,7 +1321,7 @@ function EditAppointmentModal({ onClose, onSubmit, apt, settings, c, isDark }) {
 }
 
 // ── Appointment Detail Card (admin view) ──────────────────────────────────────
-function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, onDeleteClick, onEdit, settings, c, isDark, isHighlighted, onClearHighlight }) {
+function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, onDeleteClick, onEdit, onCloseClick, settings, c, isDark, isHighlighted, onClearHighlight }) {
   const sc = getStatusColor(apt.status);
   const TypeIcon = TYPE_ICONS[apt.appointment_type] || Calendar;
   const { date: effDate, time: effTime } = getEffectiveDateTime(apt);
@@ -1380,7 +1454,9 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
             background: isDark ? 'rgba(232,123,53,0.07)' : 'rgba(232,123,53,0.05)',
             border: '1px solid rgba(232,123,53,0.2)',
           }}>
-            <div style={{ fontSize: 11, color: 'var(--brand-color)', marginBottom: 3, fontWeight: 600 }}>Admin Reason / Note</div>
+            <div style={{ fontSize: 11, color: 'var(--brand-color)', marginBottom: 3, fontWeight: 600 }}>
+              {apt.status === 'completed' ? 'Closing Note / Outcome' : 'Admin Reason / Note'}
+            </div>
             <div style={{ fontSize: 13, color: c.text, lineHeight: 1.4 }}>{apt.admin_notes}</div>
           </div>
         )}
@@ -1447,21 +1523,38 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
             <div style={{ padding: '8px 12px', borderRadius: 10, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 12, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
               <CheckCircle size={13} /> Appointment confirmed
             </div>
-            <button
-              type="button"
-              onClick={() => onEdit(apt)}
-              style={{
-                padding: '6px 12px', borderRadius: 8,
-                background: 'rgba(232,123,53,0.1)', border: '1px solid rgba(232,123,53,0.3)',
-                color: 'var(--brand-color)', fontWeight: 600, fontSize: 12, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 4,
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(232,123,53,0.18)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(232,123,53,0.1)'}
-            >
-              <Edit2 size={12} /> Edit Details
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => onEdit(apt)}
+                style={{
+                  padding: '6px 12px', borderRadius: 8,
+                  background: 'rgba(232,123,53,0.1)', border: '1px solid rgba(232,123,53,0.3)',
+                  color: 'var(--brand-color)', fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(232,123,53,0.18)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(232,123,53,0.1)'}
+              >
+                <Edit2 size={12} /> Edit Details
+              </button>
+              <button
+                type="button"
+                onClick={() => onCloseClick(apt.id, apt.customer_id)}
+                style={{
+                  padding: '6px 12px', borderRadius: 8,
+                  background: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)', border: `1px solid ${c.border}`,
+                  color: c.text, fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}
+                onMouseLeave={e => e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}
+              >
+                <XCircle size={12} /> Close
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1541,6 +1634,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
   const [rejectData, setRejectData] = useState(null); // { id, customerId }
   const [showCreate, setShowCreate] = useState(false);
   const [editApt, setEditApt] = useState(null);
+  const [closeData, setCloseData] = useState(null);
 
   const { toast } = useToast();
 
@@ -1785,6 +1879,56 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
     }
   };
 
+  const handleCloseConfirm = async (note) => {
+    if (!closeData) return;
+    const { id, customerId } = closeData;
+    try {
+      const apt = appointments.find(a => a.id === id);
+      await updateAppointmentAdmin(id, {
+        status: 'completed',
+        admin_notes: note || 'Appointment has been closed.',
+      });
+
+      if (!apt.is_fake) {
+        await sendAppointmentNotification({
+          customerId,
+          type: `appointment_completed:${id}`,
+          title: 'Appointment Closed',
+          message: `Your appointment on ${new Date((apt.confirmed_date || apt.requested_date) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} has been closed. Note: ${note || 'None'}`,
+        });
+
+        // Send SMS to customer if they have a phone number
+        const customerPhone = apt.customers?.phone;
+        const customerName = apt.customers?.name || 'Customer';
+        if (customerPhone) {
+          try {
+            const dateFormatted = new Date((apt.confirmed_date || apt.requested_date) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            let smsMessage = `Dear ${customerName}, your appointment on ${dateFormatted} has been marked as closed.`;
+            if (note && note.trim()) {
+              smsMessage += ` Note: ${note.trim()}`;
+            }
+            smsMessage += ` - Team Nextiom`;
+
+            await sendSms({
+              phone: customerPhone,
+              message: smsMessage,
+              type: 'appointment_completed',
+              customerId,
+            });
+          } catch (smsErr) {
+            console.error('Failed to send appointment close SMS:', smsErr);
+          }
+        }
+      }
+
+      toast({ title: '✓ Appointment closed successfully' });
+      setCloseData(null);
+      await loadData();
+    } catch (e) {
+      toast({ title: 'Error closing appointment', description: e.message, variant: 'destructive' });
+    }
+  };
+
   // Filtering
   const filtered = appointments.filter(apt => {
     if (apt.is_fake) return false;
@@ -1813,7 +1957,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
     // { id: 'counter_proposed', label: 'Counter Proposed' },
     { id: 'rejected', label: 'Rejected' },
     { id: 'cancelled', label: 'Cancelled' },
-    // { id: 'completed', label: 'Completed' },
+    { id: 'completed', label: 'Completed' },
   ];
 
   if (loading) {
@@ -1999,6 +2143,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
                     onCounterPropose={setCounterApt}
                     onDeleteClick={setDeleteAptId}
                     onEdit={setEditApt}
+                    onCloseClick={(id, customerId) => setCloseData({ id, customerId })}
                     settings={settings}
                     c={c} isDark={isDark}
                     isHighlighted={apt.id === highlightedAptId}
@@ -2037,6 +2182,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
                   onCounterPropose={setCounterApt}
                   onDeleteClick={setDeleteAptId}
                   onEdit={setEditApt}
+                  onCloseClick={(id, customerId) => setCloseData({ id, customerId })}
                   settings={settings}
                   c={c} isDark={isDark}
                   isHighlighted={apt.id === highlightedAptId}
@@ -2193,6 +2339,18 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
             onSubmit={handleEditAppointment}
             apt={editApt}
             settings={settings}
+            c={c}
+            isDark={isDark}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Close Appointment Modal */}
+      <AnimatePresence>
+        {closeData && (
+          <CloseAppointmentModal
+            onClose={() => setCloseData(null)}
+            onSubmit={handleCloseConfirm}
             c={c}
             isDark={isDark}
           />
