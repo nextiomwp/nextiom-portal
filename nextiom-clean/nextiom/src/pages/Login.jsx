@@ -340,12 +340,16 @@ function Login({ onLoginSuccess }) {
                   <X className="w-5 h-5" />
                 </button>
 
-                <div className="flex flex-col items-center">
-                  <div className="bg-orange-50 p-3 rounded-full mb-4">
-                    <ShieldCheck className="w-8 h-8 text-[#FF8C42]" />
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <img 
+                    src="/icon-512.png"
+                    alt="Nextiom Logo"
+                    className="h-16 w-16 object-contain select-none"
+                  />
+                  <div className="space-y-1">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Portal</h1>
+                    <p className="text-sm text-slate-500 font-medium">Restricted Access System</p>
                   </div>
-                  <h1 className="text-2xl font-bold text-[#1a1a1a]">Admin Portal</h1>
-                  <p className="text-slate-500 text-sm mt-2 font-medium">Restricted System Access</p>
                 </div>
 
                 <form onSubmit={handleAdminLogin} className="space-y-6">

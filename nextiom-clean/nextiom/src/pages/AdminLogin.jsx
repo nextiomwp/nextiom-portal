@@ -197,7 +197,10 @@ function AdminLogin() {
         <title>Admin Portal - Nextiom</title>
       </Helmet>
 
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
+      <div className="min-h-screen bg-slate-50 relative flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">
+        {/* Decorative background glow for a premium feel */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-gradient-to-b from-orange-100/30 to-transparent rounded-full blur-3xl pointer-events-none" />
+        
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -207,21 +210,24 @@ function AdminLogin() {
           <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 space-y-8">
             {showForgotPassword ? (
               <div className="space-y-6">
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full mb-4">
-                    <ShieldCheck className="w-4 h-4 text-[#FF8C42]" />
-                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">OTP Account Recovery</span>
+                <div className="flex flex-col items-center text-center space-y-4">
+                  <img 
+                    src="/icon-512.png"
+                    alt="Nextiom Logo"
+                    className="h-14 w-14 object-contain select-none"
+                  />
+                  <div className="space-y-1">
+                    <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                      {forgotStep === 1 && "Forgot Password"}
+                      {forgotStep === 2 && "Enter OTP Verification"}
+                      {forgotStep === 3 && "Set New Password"}
+                    </h1>
+                    <p className="text-xs text-slate-500 max-w-[320px] mx-auto">
+                      {forgotStep === 1 && "Enter your registered staff email address to receive a one-time verification code."}
+                      {forgotStep === 2 && `We sent a 6-digit verification code to ${forgotEmail}.`}
+                      {forgotStep === 3 && "Choose a strong password of at least 6 characters."}
+                    </p>
                   </div>
-                  <h1 className="text-xl font-bold text-[#1a1a1a]">
-                    {forgotStep === 1 && "Forgot Password"}
-                    {forgotStep === 2 && "Enter OTP Verification"}
-                    {forgotStep === 3 && "Set New Password"}
-                  </h1>
-                  <p className="text-xs text-slate-500 text-center mt-2">
-                    {forgotStep === 1 && "Enter your registered staff email address to receive a one-time verification code."}
-                    {forgotStep === 2 && `We sent a 6-digit verification code to ${forgotEmail}.`}
-                    {forgotStep === 3 && "Choose a strong password of at least 6 characters."}
-                  </p>
                 </div>
 
                 {forgotStep === 1 && (
@@ -369,17 +375,16 @@ function AdminLogin() {
               </div>
             ) : (
               <>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-center text-center space-y-4">
                   <img 
-                    src="https://horizons-cdn.hostinger.com/147148b5-9ad3-49b5-a69f-decad9e9a152/c4356b200db1f138597a66d14c006177.jpg"
-                    alt="Nextiom"
-                    className="h-8 w-auto object-contain mb-6"
+                    src="/icon-512.png"
+                    alt="Nextiom Logo"
+                    className="h-16 w-16 object-contain select-none"
                   />
-                  <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full mb-4">
-                    <ShieldCheck className="w-4 h-4 text-[#FF8C42]" />
-                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Restricted Access</span>
+                  <div className="space-y-1">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Portal</h1>
+                    <p className="text-sm text-slate-500 font-medium">Restricted Access System</p>
                   </div>
-                  <h1 className="text-2xl font-bold text-[#1a1a1a]">Admin Portal</h1>
                 </div>
 
                 {maintenance?.active && (
