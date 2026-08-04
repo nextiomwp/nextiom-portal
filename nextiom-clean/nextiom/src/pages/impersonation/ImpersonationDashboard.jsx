@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LogOut, Clock, AlertTriangle, LayoutDashboard, Globe, Server, Mail,
   ShoppingCart, MessageSquare, Package, User, Loader2, Menu, X,
-  CreditCard, FileText, Info, BellOff, Briefcase, Megaphone, BookOpen
+  CreditCard, FileText, Info, BellOff, Briefcase, Megaphone, BookOpen,
+  Calendar, Search, Sun, Moon
 } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -37,6 +39,7 @@ import CollapsibleMenuItem from '@/components/ui/CollapsibleMenuItem';
 import { CompanyInfoPage, ContactDetailsPage } from '@/components/customer/AboutPages';
 import CustomerJobsPage from '@/components/customer/CustomerJobsPage';
 import CustomerAgreementManagement from '@/components/customer/CustomerAgreementManagement';
+import CustomerAppointmentsPage from '@/components/customer/CustomerAppointmentsPage';
 import KnowledgebasePage from '@/components/customer/KnowledgebasePage';
 import useDisableRightClick from '@/hooks/useDisableRightClick';
 
@@ -84,11 +87,16 @@ const CustomImageIcon = ({ src, alt, size, className, style, color }) => {
 const OnProgressIcon = (props) => <CustomImageIcon src="/on-progress.png" alt="Jobs" {...props} />;
 const AgreementIcon = (props) => <CustomImageIcon src="/agreement.png" alt="Agreement" {...props} />;
 
-const c = {
+const DARK = {
   bg: '#15161A', sidebar: '#1C1E24', border: 'rgba(255,255,255,0.06)',
   borderStrong: 'rgba(255,255,255,0.10)', text: '#fff', subText: '#a0a0a0',
   card: '#1C1E24', panel2: '#22252C', hover: 'rgba(255,255,255,0.04)',
   brand: 'var(--brand-color)', brandLight: 'var(--brand-color-light)',
+};
+const LIGHT = {
+  bg: '#f8f8f7', sidebar: '#fff', border: '#ebebeb', borderStrong: '#d0d0d0',
+  text: '#1a1a1a', subText: '#888', card: '#fff', panel2: '#f5f5f5',
+  hover: '#f5f5f5', brand: 'var(--brand-color)', brandLight: 'var(--brand-color-light)',
 };
 
 function getValidity(license) {
@@ -191,7 +199,7 @@ const NAV_STRUCTURE = [
   },
 ];
 
-const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
+const KEEP_ALIVE_TABS = ['dashboard', 'announcements', 'hosting_my', 'domains_my', 'emails_my', 'services', 'order_history', 'invoices', 'quotations', 'support_tickets', 'jobs', 'appointments', 'products', 'profile', 'notifications', 'about_company', 'about_contact', 'agreements', 'knowledgebase'];
 
 function ImpersonationDashboard() {
   useDisableRightClick();
@@ -206,12 +214,35 @@ function ImpersonationDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mountedTabs, setMountedTabs] = useState(() => new Set(['dashboard']));
   const [expandedMenus, setExpandedMenus] = useState([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    () => localStorage.getItem('cust_sidebar_collapsed') === 'true'
+  );
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showStatusTooltip, setShowStatusTooltip] = useState(false);
   const [isMobile, setIsMobile] = useState(() => {
     return typeof window !== 'undefined' && window.matchMedia('(max-width: 1024px)').matches
   });
+
+  const [isDark, setIsDark] = useState(
+    () => localStorage.getItem('cust_dark') !== 'false'
+  );
+  const c = isDark ? DARK : LIGHT;
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
+
+  const toggleDark = () => {
+    const next = !isDark;
+    setIsDark(next);
+    localStorage.setItem('cust_dark', String(next));
+  };
+
+  const toggleSidebarCollapse = () => {
+    const next = !isSidebarCollapsed;
+    setIsSidebarCollapsed(next);
+    localStorage.setItem('cust_sidebar_collapsed', String(next));
+  };
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 1024px)')
@@ -233,6 +264,15 @@ function ImpersonationDashboard() {
   const [domainsCount, setDomainsCount] = useState(0);
   const [hostingCount, setHostingCount] = useState(0);
   const [overdueInvoicesCount, setOverdueInvoicesCount] = useState(0);
+
+  // States for search datasets and modal
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [ticketsList, setTicketsList] = useState([]);
+  const [licensesList, setLicensesList] = useState([]);
+  const [invoicesList, setInvoicesList] = useState([]);
+  const [domainsList, setDomainsList] = useState([]);
+  const [hostingPackagesList, setHostingPackagesList] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!customerProfile?.id) return;
@@ -275,6 +315,9 @@ function ImpersonationDashboard() {
         setActiveTicketsCount(ticketsData.filter(t => t.status === 'open').length);
         setUnreadAnnouncementsCount(announcementsCountRes?.count || 0);
 
+        setTicketsList(ticketsData);
+        setLicensesList(licensesData);
+
         // Count Active products
         const activeLics = licensesData.filter(l => {
           const status = getLicenseStatus(l);
@@ -291,6 +334,7 @@ function ImpersonationDashboard() {
           }
           return { ...inv, status };
         });
+        setInvoicesList(processedInvoices);
 
         // Count overdue invoices
         const overdueCount = processedInvoices.filter(inv => inv.status === 'overdue').length;
@@ -372,31 +416,35 @@ function ImpersonationDashboard() {
         // Deduplicate and combine domains
         const seenDomains = new Set();
         let combinedDomainsCount = 0;
+        const combinedDomainsSearch = [];
         (domainsDataRes?.data || []).forEach(d => {
-          if (isDomainActive(d)) {
-            const name = d.domain_name || d.domain || d.name;
-            if (name) {
-              const key = name.toLowerCase().trim();
-              if (!seenDomains.has(key)) {
-                seenDomains.add(key);
+          const name = d.domain_name || d.domain || d.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            if (!seenDomains.has(key)) {
+              seenDomains.add(key);
+              combinedDomainsSearch.push({ ...d, domain_name: name });
+              if (isDomainActive(d)) {
                 combinedDomainsCount++;
               }
             }
           }
         });
         (domainRequestsRes?.data || []).forEach(d => {
-          if (isDomainActive(d)) {
-            const name = d.domain_name || d.domain || d.name;
-            if (name) {
-              const key = name.toLowerCase().trim();
-              if (!seenDomains.has(key)) {
-                seenDomains.add(key);
+          const name = d.domain_name || d.domain || d.name;
+          if (name) {
+            const key = name.toLowerCase().trim();
+            if (!seenDomains.has(key)) {
+              seenDomains.add(key);
+              combinedDomainsSearch.push({ ...d, domain_name: name });
+              if (isDomainActive(d)) {
                 combinedDomainsCount++;
               }
             }
           }
         });
         setDomainsCount(combinedDomainsCount);
+        setDomainsList(combinedDomainsSearch);
 
         // Deduplicate and combine hosting packages and requests
         const normalizeHostingKey = (value) => String(value || '').split('|')[0].trim().toLowerCase();
@@ -447,6 +495,29 @@ function ImpersonationDashboard() {
           }
         });
         setHostingCount(activeHostingSet.size);
+
+        // Populate hosting list for search
+        const seenHostingsSearch = new Set();
+        const combinedHostingsSearch = [];
+        enrichedPackages.forEach(h => {
+          const pkgName = h.package_name || h.package_type || h.packageName;
+          const domName = h.domain_name || h.domain;
+          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
+          if (pkgName || domName) {
+            seenHostingsSearch.add(key);
+            combinedHostingsSearch.push({ ...h, package_type: pkgName, domain_name: domName });
+          }
+        });
+        unlinkedRequests.forEach(h => {
+          const pkgName = h.package_name || h.package_type || h.packageName;
+          const domName = h.domain_name || h.domain;
+          const key = `${pkgName || ''}_${domName || ''}`.toLowerCase().trim();
+          if (!seenHostingsSearch.has(key) && (pkgName || domName)) {
+            seenHostingsSearch.add(key);
+            combinedHostingsSearch.push({ ...h, package_type: pkgName, domain_name: domName });
+          }
+        });
+        setHostingPackagesList(combinedHostingsSearch);
 
         // Emails count
         const activeEmails = (emailRequestsRes?.data || []).filter(isEmailActive);
@@ -740,7 +811,7 @@ function ImpersonationDashboard() {
 
   const renderContent = () => {
     if (!userProp) return null;
-    const theme = { isDark: true, c };
+    const theme = { isDark, c };
 
     // Form pages — render fresh each visit (no keep-alive for these)
     if (activeTab === 'hosting_new')
@@ -750,7 +821,7 @@ function ImpersonationDashboard() {
     if (activeTab === 'emails_new')
       return <NewEmailRequestPage onSuccess={() => setActiveTab('emails_my')} user={userProp} {...theme} />;
     if (activeTab === 'support_create')
-      return <CreateTicketPage user={userProp} isDark c={c} onNavigate={setActiveTab} />;
+      return <CreateTicketPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />;
 
     // Keep-alive pages: mount once, toggle visibility with display:none/block
     const wrap = (id, node) => (
@@ -766,17 +837,18 @@ function ImpersonationDashboard() {
         {mountedTabs.has('emails_my') && wrap('emails_my', <MyEmailsPage user={userProp} {...theme} />)}
         {mountedTabs.has('services') && wrap('services', <MyServicesPage user={userProp} {...theme} />)}
         {mountedTabs.has('order_history') && wrap('order_history', <OrderHistoryPage user={userProp} {...theme} />)}
-        {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark c={c} />)}
-        {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark c={c} />)}
-        {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark c={c} onNavigate={setActiveTab} />)}
-        {mountedTabs.has('jobs') && wrap('jobs', <CustomerJobsPage user={userProp} isDark c={c} />)}
-        {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark c={c} />)}
+        {mountedTabs.has('invoices') && wrap('invoices', <CustomerInvoicesPage user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('quotations') && wrap('quotations', <CustomerQuotationsPage user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('support_tickets') && wrap('support_tickets', <MyTicketsPage user={userProp} isDark={isDark} c={c} onNavigate={setActiveTab} />)}
+        {mountedTabs.has('jobs') && wrap('jobs', <CustomerJobsPage user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('appointments') && wrap('appointments', <CustomerAppointmentsPage user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('products') && wrap('products', <MyProductsPage user={userProp} isDark={isDark} c={c} />)}
         {mountedTabs.has('profile') && wrap('profile', <ProfilePage user={userProp} onUpdate={refreshProfile} {...theme} />)}
-        {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} {...theme} />)}
+        {mountedTabs.has('notifications') && wrap('notifications', <NotificationsPage customerId={customerProfile.id} onNavigate={switchTab} {...theme} />)}
         {mountedTabs.has('about_company') && wrap('about_company', <CompanyInfoPage {...theme} />)}
         {mountedTabs.has('about_contact') && wrap('about_contact', <ContactDetailsPage user={userProp} {...theme} />)}
-        {mountedTabs.has('agreements') && wrap('agreements', <CustomerAgreementManagement user={userProp} isDark c={c} />)}
-        {mountedTabs.has('knowledgebase') && wrap('knowledgebase', <KnowledgebasePage isDark c={c} />)}
+        {mountedTabs.has('agreements') && wrap('agreements', <CustomerAgreementManagement user={userProp} isDark={isDark} c={c} />)}
+        {mountedTabs.has('knowledgebase') && wrap('knowledgebase', <KnowledgebasePage isDark={isDark} c={c} />)}
       </>
     );
   };
@@ -796,7 +868,7 @@ function ImpersonationDashboard() {
               hasSubItems={!collapsed}
               collapsed={collapsed}
               c={c}
-              isDark={true}
+              isDark={isDark}
               onToggle={() => {
                 if (collapsed) switchTab(item.children[0].id);
                 else toggleMenu(item.id);
@@ -874,7 +946,7 @@ function ImpersonationDashboard() {
             hasSubItems={false}
             collapsed={collapsed}
             c={c}
-            isDark={true}
+            isDark={isDark}
             onClick={() => switchTab(item.id)}
             badge={item.id === 'jobs' ? activeJobsCount : (item.id === 'products' ? activeProductsCount : (item.id === 'announcements' ? unreadAnnouncementsCount : 0))}
             badgeColor={item.id === 'announcements' ? '#f97316' : '#16a34a'}
@@ -886,8 +958,54 @@ function ImpersonationDashboard() {
     </nav>
   );
 
+  const getSearchResults = () => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return { products: [], domains: [], hosting: [], tickets: [], invoices: [] };
+
+    const filteredProducts = licensesList.filter(l => 
+      String(l.products?.name || l.name || '').toLowerCase().includes(q) ||
+      String(l.license_key || '').toLowerCase().includes(q)
+    );
+
+    const filteredDomains = domainsList.filter(d => 
+      String(d.domain_name || '').toLowerCase().includes(q) ||
+      String(d.status || '').toLowerCase().includes(q)
+    );
+
+    const filteredHosting = hostingPackagesList.filter(h => 
+      String(h.package_type || '').toLowerCase().includes(q) ||
+      String(h.domain_name || '').toLowerCase().includes(q) ||
+      String(h.status || '').toLowerCase().includes(q)
+    );
+
+    const filteredTickets = ticketsList.filter(t => 
+      String(t.subject || '').toLowerCase().includes(q) ||
+      String(t.status || '').toLowerCase().includes(q) ||
+      String(t.ticket_number || '').toLowerCase().includes(q)
+    );
+
+    const filteredInvoices = invoicesList.filter(i => 
+      String(i.invoice_number || '').toLowerCase().includes(q) ||
+      String(i.status || '').toLowerCase().includes(q) ||
+      String(i.total || '').toLowerCase().includes(q)
+    );
+
+    return {
+      products: filteredProducts,
+      domains: filteredDomains,
+      hosting: filteredHosting,
+      tickets: filteredTickets,
+      invoices: filteredInvoices
+    };
+  };
+
+  const searchResults = getSearchResults();
+  const hasResults = Object.values(searchResults).some(arr => arr.length > 0);
+
   return (
     <div style={{ background: c.bg, minHeight: '100vh', display: 'flex', flexDirection: 'column' }} className="customer-dashboard-container">
+      <Helmet><title>Customer Impersonation – {impersonatedUser?.name || 'Portal'}</title></Helmet>
+
       {/* Impersonation Banner */}
       <div
         style={{
@@ -983,24 +1101,26 @@ function ImpersonationDashboard() {
 
         {/* Desktop Sidebar */}
         <aside
-          className="hidden lg:flex flex-col flex-shrink-0 overflow-hidden"
+          className="hidden lg:flex flex-col h-screen flex-shrink-0 overflow-hidden"
           style={{
             width: isSidebarCollapsed ? 64 : 260,
-            height: '100%',
-            transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1)',
-            background: isSidebarCollapsed ? 'rgba(22,24,30,0.92)' : c.sidebar,
+            transition: 'width 0.25s cubic-bezier(0.4,0,0.2,1), border-radius 0.25s cubic-bezier(0.4,0,0.2,1)',
+            background: isSidebarCollapsed
+              ? (isDark ? 'rgba(22,24,30,0.92)' : 'rgba(255,255,255,0.92)')
+              : c.sidebar,
             backdropFilter: isSidebarCollapsed ? 'blur(24px)' : 'none',
+            WebkitBackdropFilter: isSidebarCollapsed ? 'blur(24px)' : 'none',
             borderRight: isSidebarCollapsed ? 'none' : `1px solid ${c.border}`,
           }}
         >
         {/* Sidebar header */}
         <div
-          className="h-14 flex items-center px-4 flex-shrink-0"
+          className="h-16 flex items-center px-4 flex-shrink-0"
           style={{ borderBottom: `1px solid ${c.border}` }}
         >
           {/* Hamburger icon to toggle collapse */}
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onClick={toggleSidebarCollapse}
             className="p-1.5 rounded-md transition-colors flex-shrink-0"
             style={{ color: c.subText }}
             title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -1053,7 +1173,7 @@ function ImpersonationDashboard() {
             style={{ background: c.sidebar, paddingTop: 44 }}
           >
             <div
-              className="h-14 flex items-center px-4 flex-shrink-0"
+              className="h-16 flex items-center px-4 flex-shrink-0"
               style={{ borderBottom: `1px solid ${c.border}` }}
             >
               <span style={{ color: c.brand }} className="font-bold text-lg tracking-wide">
@@ -1089,24 +1209,233 @@ function ImpersonationDashboard() {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto flex flex-col">
+      <main className="flex-1 overflow-auto h-screen flex flex-col min-w-0">
         {/* Header bar */}
         <div
-          className="h-14 flex items-center justify-between px-6 flex-shrink-0"
-          style={{ background: c.sidebar, borderBottom: `1px solid ${c.border}`, position: 'relative', zIndex: 30 }}
+          className="h-16 flex items-center justify-between px-6 flex-shrink-0 sticky top-0 z-30"
+          style={{
+            background: c.sidebar,
+            borderBottom: `1px solid ${c.border}`,
+            boxShadow: isDark ? 'none' : '0 1px 4px rgba(0,0,0,0.06)',
+          }}
         >
-          <div className="lg:pl-0 pl-10 font-semibold text-sm" style={{ color: c.text }}>
-            <span className="hidden lg:inline">
-              {activeTab === 'dashboard'
-                ? `Customer: ${impersonatedUser.name}`
-                : activeTab === 'knowledgebase'
-                ? 'Knowledgebase'
-                : NAV_STRUCTURE.flatMap((i) => i.children || [i]).find((i) => i.id === activeTab)
-                    ?.label || 'Dashboard'}
-            </span>
+          <div className="pl-8 lg:pl-0 font-semibold truncate flex-1 min-w-0" style={{ color: c.text }}>
+            {activeTab === 'dashboard' ? (
+              <span className="hidden lg:inline">
+                Viewing Customer: <span style={{ color: c.brand }}>{impersonatedUser?.name}</span>
+              </span>
+            ) : (
+              <span className="hidden lg:inline">
+                {activeTab === 'appointments' ? 'Appointments' : (NAV_STRUCTURE.flatMap((i) => i.children || [i]).find((i) => i.id === activeTab)?.label || 'Dashboard')}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Desktop Search & Knowledgebase Container */}
+          <div className="hidden md:flex items-center gap-3 mx-4 flex-shrink-0">
+            <div className="w-full max-w-xs xl:max-w-sm">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs border transition-all text-left cursor-pointer hover:opacity-85"
+                style={{
+                  background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                  borderColor: c.border,
+                  color: c.subText,
+                }}
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Search products, domains, hosting...</span>
+              </button>
+            </div>
+
+            {/* Knowledgebase Button */}
+            <button
+              onClick={() => switchTab(activeTab === 'knowledgebase' ? 'dashboard' : 'knowledgebase')}
+              className="w-10 h-10 rounded-xl transition-all flex items-center justify-center cursor-pointer flex-shrink-0"
+              title={activeTab === 'knowledgebase' ? 'Back to Dashboard' : 'Knowledgebase'}
+              style={{
+                background: activeTab === 'knowledgebase'
+                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
+                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                color: activeTab === 'knowledgebase' ? '#fff' : c.subText,
+                border: activeTab === 'knowledgebase'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : `1px solid ${c.border}`,
+                boxShadow: activeTab === 'knowledgebase'
+                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
+                  : 'none',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                if (activeTab === 'knowledgebase') {
+                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                  e.currentTarget.style.filter = 'brightness(1.05)';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.color = c.brand;
+                  e.currentTarget.style.borderColor = c.brand;
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                if (activeTab === 'knowledgebase') {
+                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = c.subText;
+                  e.currentTarget.style.borderColor = c.border;
+                }
+              }}
+            >
+              <BookOpen className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-3 flex-1 justify-end">
+            {/* Mobile Search Button */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="md:hidden p-2 rounded-full transition-colors"
+              style={{ color: c.subText, background: 'transparent' }}
+              title="Search"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Search className="w-4 h-4" />
+            </button>
+
+            {/* Mobile Support Ticket Button */}
+            <button
+              onClick={() => switchTab(activeTab === 'support_create' ? 'dashboard' : 'support_create')}
+              className="md:hidden p-2 rounded-full transition-colors relative"
+              style={{ 
+                color: activeTab === 'support_create' ? c.brand : c.subText, 
+                background: 'transparent' 
+              }}
+              title="Open Support Ticket"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <MessageSquare className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Mobile Appointments Button */}
+            <button
+              onClick={() => switchTab(activeTab === 'appointments' ? 'dashboard' : 'appointments')}
+              className="md:hidden p-2 rounded-full transition-colors relative"
+              style={{ 
+                color: activeTab === 'appointments' ? c.brand : c.subText, 
+                background: 'transparent' 
+              }}
+              title="Appointments"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <Calendar className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Mobile Knowledgebase Button */}
+            <button
+              onClick={() => switchTab(activeTab === 'knowledgebase' ? 'dashboard' : 'knowledgebase')}
+              className="md:hidden p-2 rounded-full transition-colors relative"
+              style={{ 
+                color: activeTab === 'knowledgebase' ? c.brand : c.subText, 
+                background: 'transparent' 
+              }}
+              title="Knowledgebase"
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <BookOpen className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Desktop Open Support Ticket button */}
+            <button
+              onClick={() => switchTab(activeTab === 'support_create' ? 'dashboard' : 'support_create')}
+              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0"
+              title={activeTab === 'support_create' ? 'Back to Dashboard' : 'Open Support Ticket'}
+              style={{
+                background: activeTab === 'support_create'
+                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
+                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                color: activeTab === 'support_create' ? '#fff' : c.subText,
+                border: activeTab === 'support_create'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : `1px solid ${c.border}`,
+                boxShadow: activeTab === 'support_create'
+                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
+                  : 'none',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                if (activeTab === 'support_create') {
+                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                  e.currentTarget.style.filter = 'brightness(1.05)';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.color = c.brand;
+                  e.currentTarget.style.borderColor = c.brand;
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                if (activeTab === 'support_create') {
+                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = c.subText;
+                  e.currentTarget.style.borderColor = c.border;
+                }
+              }}
+            >
+              <MessageSquare className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+            </button>
+
+            {/* Desktop Appointment Button */}
+            <button
+              onClick={() => switchTab(activeTab === 'appointments' ? 'dashboard' : 'appointments')}
+              className="hidden md:flex w-10 h-10 rounded-xl transition-all items-center justify-center cursor-pointer flex-shrink-0"
+              title={activeTab === 'appointments' ? 'Back to Dashboard' : 'Appointments'}
+              style={{
+                background: activeTab === 'appointments'
+                  ? `linear-gradient(135deg, ${c.brand || '#E87B35'} 0%, #D8631F 100%)`
+                  : isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                color: activeTab === 'appointments' ? '#fff' : c.subText,
+                border: activeTab === 'appointments'
+                  ? '1px solid rgba(255, 255, 255, 0.1)'
+                  : `1px solid ${c.border}`,
+                boxShadow: activeTab === 'appointments'
+                  ? `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`
+                  : 'none',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)';
+                if (activeTab === 'appointments') {
+                  e.currentTarget.style.boxShadow = `0 6px 20px rgba(232, 123, 53, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35)`;
+                  e.currentTarget.style.filter = 'brightness(1.05)';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+                  e.currentTarget.style.color = c.brand;
+                  e.currentTarget.style.borderColor = c.brand;
+                }
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                if (activeTab === 'appointments') {
+                  e.currentTarget.style.boxShadow = `0 4px 14px rgba(232, 123, 53, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)`;
+                  e.currentTarget.style.filter = 'none';
+                } else {
+                  e.currentTarget.style.backgroundColor = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+                  e.currentTarget.style.color = c.subText;
+                  e.currentTarget.style.borderColor = c.border;
+                }
+              }}
+            >
+              <Calendar className="w-5 h-5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]" />
+            </button>
+
             {/* Status button */}
             <div
               style={{ position: 'relative', display: 'inline-block' }}
@@ -1179,21 +1508,35 @@ function ImpersonationDashboard() {
               )}
             </div>
 
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleDark}
+              className="p-2 rounded-full transition-colors"
+              style={{ color: c.subText, background: 'transparent' }}
+              title={isDark ? 'Switch to Light' : 'Switch to Dark'}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = c.hover}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
             {customerProfile?.id && (
               <NotificationBell
                 userId={customerProfile.id}
                 onViewAll={() => switchTab('notifications')}
                 onNavigate={switchTab}
-                isDark={true}
+                isDark={isDark}
                 c={c}
               />
             )}
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0"
+            <button
+              onClick={() => switchTab('profile')}
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors flex-shrink-0"
               style={{ background: c.brandLight, color: c.brand }}
+              title="Account Details"
             >
-              {(impersonatedUser.name || '?')[0].toUpperCase()}
-            </div>
+              {impersonatedUser?.name ? impersonatedUser.name.charAt(0).toUpperCase() : 'U'}
+            </button>
           </div>
         </div>
 
@@ -1211,6 +1554,187 @@ function ImpersonationDashboard() {
         </div>
       </main>
       </div>
+
+      {/* Global Search Dialog Modal */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-start justify-center pt-[10vh] px-4"
+              onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: -20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: -20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                className="w-full max-w-xl rounded-2xl overflow-hidden flex flex-col shadow-2xl border"
+                style={{ background: c.card, borderColor: c.border }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Search Input Area */}
+                <div className="flex items-center gap-3 px-4 py-3.5 border-b" style={{ borderColor: c.border }}>
+                  <Search className="w-5 h-5" style={{ color: c.brand }} />
+                  <input
+                    autoFocus
+                    type="text"
+                    placeholder="Search products, domains, hosting, tickets, invoices..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-sm font-medium"
+                    style={{ color: c.text }}
+                  />
+                  <button 
+                    onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}
+                    className="p-1 rounded-md hover:bg-red-500/10 text-red-500 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Search Results Area */}
+                <div className="max-h-[60vh] overflow-y-auto p-4 flex flex-col gap-4">
+                  {!searchQuery ? (
+                    <div className="text-center py-8 text-xs" style={{ color: c.subText }}>
+                      <Search className="w-8 h-8 mx-auto mb-2 opacity-25 animate-pulse" style={{ color: c.brand }} />
+                      Type to search across Nextiom Portal...
+                    </div>
+                  ) : !hasResults ? (
+                    <div className="text-center py-8 text-xs" style={{ color: c.subText }}>
+                      No results found for <span className="font-semibold" style={{ color: c.text }}>"{searchQuery}"</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Products */}
+                      {searchResults.products.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <Package className="w-3 h-3" /> Products ({searchResults.products.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.products.map(l => (
+                              <button
+                                key={l.id}
+                                onClick={() => { switchTab('products'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>{l.products?.name || l.name}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{l.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Domains */}
+                      {searchResults.domains.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <Globe className="w-3 h-3" /> Domains ({searchResults.domains.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.domains.map(d => (
+                              <button
+                                key={d.id}
+                                onClick={() => { switchTab('domains_my'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>{d.domain_name}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{d.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Hosting */}
+                      {searchResults.hosting.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <Server className="w-3 h-3" /> Hosting Packages ({searchResults.hosting.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.hosting.map(h => (
+                              <button
+                                key={h.id}
+                                onClick={() => { switchTab('hosting_my'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>{h.package_type?.split('|')[0]}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{h.domain_name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tickets */}
+                      {searchResults.tickets.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <MessageSquare className="w-3 h-3" /> Support Tickets ({searchResults.tickets.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.tickets.map(t => (
+                              <button
+                                key={t.id}
+                                onClick={() => { switchTab('support_tickets'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold truncate max-w-[70%]" style={{ color: c.text }}>{t.subject}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>#{t.ticket_number || t.id?.slice(0, 8)} - {t.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Invoices */}
+                      {searchResults.invoices.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: c.subText }}>
+                            <CreditCard className="w-3 h-3" /> Invoices ({searchResults.invoices.length})
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {searchResults.invoices.map(i => (
+                              <button
+                                key={i.id || i.invoice_number}
+                                onClick={() => { switchTab('invoices'); setIsSearchOpen(false); setSearchQuery(''); }}
+                                className="w-full text-left px-3 py-2 rounded-xl transition-all flex items-center justify-between text-xs cursor-pointer"
+                                style={{ background: 'transparent' }}
+                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = c.hover; }}
+                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                              >
+                                <span className="font-semibold" style={{ color: c.text }}>#{i.invoice_number || 'INV'}</span>
+                                <span style={{ color: c.subText, fontSize: 10 }}>{i.currency} {i.total} - {i.status}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
