@@ -874,8 +874,380 @@ function CreateAppointmentModal({ onClose, onSubmit, settings, c, isDark }) {
   );
 }
 
+// ── Edit Appointment Modal ─────────────────────────────────────────────────────
+function EditAppointmentModal({ onClose, onSubmit, apt, settings, c, isDark }) {
+  const [type, setType] = useState(apt.appointment_type || 'office_visit');
+  const [date, setDate] = useState(apt.requested_date || '');
+  const [time, setTime] = useState(apt.requested_time || '');
+  const [hour, setHour] = useState(() => {
+    if (!apt.requested_time) return '08';
+    const hrs = parseInt(apt.requested_time.split(':')[0], 10);
+    const hrs12 = hrs % 12 || 12;
+    return String(hrs12).padStart(2, '0');
+  });
+  const [minute, setMinute] = useState(() => {
+    if (!apt.requested_time) return '30';
+    return apt.requested_time.split(':')[1] || '30';
+  });
+  const [period, setPeriod] = useState(() => {
+    if (!apt.requested_time) return 'am';
+    const hrs = parseInt(apt.requested_time.split(':')[0], 10);
+    return hrs >= 12 ? 'pm' : 'am';
+  });
+  const [notes, setNotes] = useState(apt.notes || '');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let hr = parseInt(hour, 10) || 12;
+    if (period === 'pm' && hr < 12) hr += 12;
+    if (period === 'am' && hr === 12) hr = 0;
+    const hrStr = String(hr).padStart(2, '0');
+    const minStr = String(parseInt(minute, 10) || 0).padStart(2, '0');
+    setTime(`${hrStr}:${minStr}`);
+  }, [hour, minute, period]);
+
+  const handleSave = async () => {
+    if (!date || !time) return;
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        appointmentType: type,
+        requestedDate: date,
+        requestedTime: time.length === 5 ? `${time}:00` : time,
+        notes,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const customerName = apt.customers?.name || (apt.is_fake ? 'Blocked/Placeholder' : 'Customer');
+  const customerEmail = apt.customers?.email || '';
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+      zIndex: 250, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}
+    onClick={e => e.target === e.currentTarget && onClose()}>
+      <motion.div
+        initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+        style={{
+          background: c.card, border: `1px solid ${c.border}`, borderRadius: 20,
+          width: '100%', maxWidth: 500, maxHeight: '90vh', overflow: 'auto',
+          boxShadow: isDark ? '0 25px 60px rgba(0,0,0,0.5)' : '0 25px 60px rgba(0,0,0,0.15)',
+        }}
+      >
+        <div style={{ padding: '20px 24px', borderBottom: `1px solid ${c.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: c.text, margin: 0 }}>Edit Appointment</h3>
+            <p style={{ fontSize: 12, color: c.subText, margin: '2px 0 0' }}>Modify details for {customerName}</p>
+          </div>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: c.subText, cursor: 'pointer', padding: 4 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Customer info */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Customer</label>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', borderRadius: 10, border: `1px solid ${c.border}`,
+              background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--brand-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700 }}>
+                {customerName.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{customerName}</div>
+                {customerEmail && <div style={{ fontSize: 11, color: c.subText }}>{customerEmail}</div>}
+              </div>
+            </div>
+          </div>
+
+          {/* Type picker */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Appointment Type</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {TYPE_OPTIONS.map(opt => {
+                const Ic = opt.icon;
+                const isSelected = type === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setType(opt.value)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                      borderRadius: 10, border: isSelected ? `2px solid var(--brand-color)` : `1px solid ${c.border}`,
+                      background: isSelected ? 'var(--brand-color-light)' : 'transparent',
+                      cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
+                    }}
+                  >
+                    <Ic size={16} color={isSelected ? 'var(--brand-color)' : c.subText} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, color: c.subText }}>{opt.desc}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date selection */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Date</label>
+            <input
+              type="date"
+              value={date}
+              min={getLocalDateString()}
+              onChange={e => setDate(e.target.value)}
+              style={{
+                width: '100%', padding: '9px 12px', borderRadius: 9,
+                border: `1px solid ${c.border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                color: c.text, fontSize: 13, boxSizing: 'border-box', outline: 'none'
+              }}
+            />
+          </div>
+
+          {/* Time Slot Selection */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Time</label>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Hour Input Block */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHour(prev => {
+                      let val = parseInt(prev, 10) || 12;
+                      val = val + 1;
+                      if (val > 12) val = 1;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  +
+                </button>
+                <input
+                  type="text"
+                  value={hour}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val === '') { setHour(''); return; }
+                    let num = parseInt(val, 10);
+                    if (num > 12) num = 12;
+                    if (num === 0) num = 1;
+                    setHour(String(num).padStart(2, '0'));
+                  }}
+                  onBlur={() => { if (!hour) setHour('08'); }}
+                  style={{
+                    width: 50, height: 40, borderRadius: 10,
+                    border: `1px solid ${c.border}`,
+                    background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                    color: c.text, fontSize: 16, fontWeight: 700,
+                    textAlign: 'center', outline: 'none'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHour(prev => {
+                      let val = parseInt(prev, 10) || 12;
+                      val = val - 1;
+                      if (val < 1) val = 12;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  -
+                </button>
+              </div>
+
+              {/* Colon separator */}
+              <div style={{ fontSize: 20, fontWeight: 700, color: c.text, alignSelf: 'center', margin: '0 4px' }}>:</div>
+
+              {/* Minute Input Block */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinute(prev => {
+                      let val = parseInt(prev, 10) || 0;
+                      val = (Math.floor(val / 5) * 5) + 5;
+                      if (val >= 60) val = 0;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  +
+                </button>
+                <input
+                  type="text"
+                  value={minute}
+                  onChange={(e) => {
+                    let val = e.target.value.replace(/\D/g, '');
+                    if (val === '') { setMinute(''); return; }
+                    let num = parseInt(val, 10);
+                    if (num >= 60) num = 59;
+                    setMinute(String(num).padStart(2, '0'));
+                  }}
+                  onBlur={() => { if (!minute) setMinute('30'); }}
+                  style={{
+                    width: 50, height: 40, borderRadius: 10,
+                    border: `1px solid ${c.border}`,
+                    background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                    color: c.text, fontSize: 16, fontWeight: 700,
+                    textAlign: 'center', outline: 'none'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinute(prev => {
+                      let val = parseInt(prev, 10) || 0;
+                      val = (Math.ceil(val / 5) * 5) - 5;
+                      if (val < 0) val = 55;
+                      return String(val).padStart(2, '0');
+                    });
+                  }}
+                  style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#fff',
+                    border: `1px solid ${c.border}`,
+                    color: 'var(--brand-color)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 'bold', fontSize: 16,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  }}
+                >
+                  -
+                </button>
+              </div>
+
+              {/* AM / PM Selector */}
+              <div style={{ display: 'flex', gap: 8, marginLeft: 20 }}>
+                <button
+                  type="button"
+                  onClick={() => setPeriod('am')}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 14,
+                    border: period === 'am' ? '1px solid var(--brand-color)' : `1px solid ${c.border}`,
+                    background: period === 'am' ? 'var(--brand-color-light)' : (isDark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                    color: period === 'am' ? 'var(--brand-color)' : c.text,
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  am
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPeriod('pm')}
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: 14,
+                    border: period === 'pm' ? '1px solid var(--brand-color)' : `1px solid ${c.border}`,
+                    background: period === 'pm' ? 'var(--brand-color-light)' : (isDark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                    color: period === 'pm' ? 'var(--brand-color)' : c.text,
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  pm
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 700, color: c.text, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Notes (optional)</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="e.g. Direct follow up appointment regarding renewal quote"
+              rows={3}
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 10,
+                border: `1px solid ${c.border}`,
+                background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+                color: c.text, fontSize: 13, resize: 'vertical', fontFamily: 'inherit',
+                outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+            <button type="button" onClick={onClose} style={{
+              flex: 1, padding: '10px', borderRadius: 10,
+              border: `1px solid ${c.border}`, background: 'transparent',
+              color: c.text, fontWeight: 600, fontSize: 13, cursor: 'pointer',
+            }}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!date || !time || submitting}
+              style={{
+                flex: 1, padding: '10px', borderRadius: 10,
+                background: !date || !time ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)') : 'var(--brand-color)',
+                border: 'none',
+                color: !date || !time ? c.subText : '#fff',
+                fontWeight: 600, fontSize: 13,
+                cursor: (!date || !time || submitting) ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              {submitting ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Appointment Detail Card (admin view) ──────────────────────────────────────
-function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, onDeleteClick, settings, c, isDark, isHighlighted, onClearHighlight }) {
+function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, onDeleteClick, onEdit, settings, c, isDark, isHighlighted, onClearHighlight }) {
   const sc = getStatusColor(apt.status);
   const TypeIcon = TYPE_ICONS[apt.appointment_type] || Calendar;
   const { date: effDate, time: effTime } = getEffectiveDateTime(apt);
@@ -1071,8 +1443,25 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
         )}
 
         {apt.status === 'accepted' && (
-          <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 12, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <CheckCircle size={13} /> Appointment confirmed
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ padding: '8px 12px', borderRadius: 10, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', fontSize: 12, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle size={13} /> Appointment confirmed
+            </div>
+            <button
+              type="button"
+              onClick={() => onEdit(apt)}
+              style={{
+                padding: '6px 12px', borderRadius: 8,
+                background: 'rgba(232,123,53,0.1)', border: '1px solid rgba(232,123,53,0.3)',
+                color: 'var(--brand-color)', fontWeight: 600, fontSize: 12, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4,
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(232,123,53,0.18)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(232,123,53,0.1)'}
+            >
+              <Edit2 size={12} /> Edit Details
+            </button>
           </div>
         )}
       </div>
@@ -1151,6 +1540,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
   const [deleteAptId, setDeleteAptId] = useState(null);
   const [rejectData, setRejectData] = useState(null); // { id, customerId }
   const [showCreate, setShowCreate] = useState(false);
+  const [editApt, setEditApt] = useState(null);
 
   const { toast } = useToast();
 
@@ -1332,6 +1722,66 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
       await loadData();
     } catch (e) {
       toast({ title: 'Error creating appointment', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleEditAppointment = async ({ appointmentType, requestedDate, requestedTime, notes }) => {
+    if (!editApt) return;
+    try {
+      await updateAppointmentAdmin(editApt.id, {
+        appointment_type: appointmentType,
+        requested_date: requestedDate,
+        requested_time: requestedTime,
+        confirmed_date: requestedDate,
+        confirmed_time: requestedTime,
+        notes,
+      });
+
+      // Send SMS and Notification if not a placeholder
+      if (!editApt.is_fake) {
+        const customerId = editApt.customer_id;
+        const customerName = editApt.customers?.name || 'Customer';
+        const customerPhone = editApt.customers?.phone;
+
+        await sendAppointmentNotification({
+          customerId,
+          type: `appointment_updated:${editApt.id}`,
+          title: 'Appointment Updated',
+          message: `Your ${getAppointmentTypeLabel(appointmentType)} appointment has been updated to ${new Date(requestedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${new Date(`2000-01-01T${requestedTime}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}.`,
+        });
+
+        if (customerPhone) {
+          try {
+            const dateFormatted = new Date(requestedDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const timeFormatted = new Date(`2000-01-01T${requestedTime}`).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            const typeLabel = getAppointmentTypeLabel(appointmentType);
+            
+            let smsMessage = `Dear ${customerName}, your ${typeLabel} appointment has been updated to ${dateFormatted} at ${timeFormatted}.`;
+            if (notes && notes.trim()) {
+              smsMessage += ` Note: ${notes.trim()}`;
+            }
+            smsMessage += ` - Team Nextiom`;
+
+            await sendSms({
+              phone: customerPhone,
+              message: smsMessage,
+              type: 'appointment_updated',
+              customerId,
+            });
+          } catch (smsErr) {
+            console.error('Failed to send appointment update SMS:', smsErr);
+          }
+        }
+      }
+
+      toast({ 
+        title: '✓ Appointment Updated', 
+        description: 'Successfully updated appointment details.' 
+      });
+      setEditApt(null);
+      await loadData();
+    } catch (e) {
+      toast({ title: 'Error updating appointment', description: e.message, variant: 'destructive' });
     }
   };
 
@@ -1548,6 +1998,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
                     onRejectClick={(id, customerId) => setRejectData({ id, customerId })}
                     onCounterPropose={setCounterApt}
                     onDeleteClick={setDeleteAptId}
+                    onEdit={setEditApt}
                     settings={settings}
                     c={c} isDark={isDark}
                     isHighlighted={apt.id === highlightedAptId}
@@ -1585,6 +2036,7 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
                   onRejectClick={(id, customerId) => setRejectData({ id, customerId })}
                   onCounterPropose={setCounterApt}
                   onDeleteClick={setDeleteAptId}
+                  onEdit={setEditApt}
                   settings={settings}
                   c={c} isDark={isDark}
                   isHighlighted={apt.id === highlightedAptId}
@@ -1726,6 +2178,20 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
           <CreateAppointmentModal
             onClose={() => setShowCreate(false)}
             onSubmit={handleCreateAppointment}
+            settings={settings}
+            c={c}
+            isDark={isDark}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit Appointment Modal */}
+      <AnimatePresence>
+        {editApt && (
+          <EditAppointmentModal
+            onClose={() => setEditApt(null)}
+            onSubmit={handleEditAppointment}
+            apt={editApt}
             settings={settings}
             c={c}
             isDark={isDark}
