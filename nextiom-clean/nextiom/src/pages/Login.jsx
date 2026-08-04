@@ -37,6 +37,8 @@ function Login({ onLoginSuccess }) {
   const location = useLocation();
 
   const longPressTimer = useRef(null);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef(null);
 
   const handleLogoPointerDown = (e) => {
     if (longPressTimer.current) {
@@ -56,6 +58,42 @@ function Login({ onLoginSuccess }) {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+    }
+  };
+
+  const handleMultiTap = (e) => {
+    // Ignore interactive form elements (inputs, buttons, links, etc.)
+    if (e && e.target) {
+      const targetEl = e.target;
+      const tagName = targetEl.tagName?.toUpperCase();
+      if (
+        tagName === 'INPUT' ||
+        tagName === 'BUTTON' ||
+        tagName === 'A' ||
+        tagName === 'TEXTAREA' ||
+        targetEl.closest('button, a, input, textarea, label, [role="button"]')
+      ) {
+        return;
+      }
+    }
+
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
+    }
+
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      setShowAdminLogin(true);
+      if (navigator.vibrate) {
+        try {
+          navigator.vibrate([60, 40, 60]);
+        } catch (err) {}
+      }
+    } else {
+      tapTimerRef.current = setTimeout(() => {
+        tapCountRef.current = 0;
+      }, 2000);
     }
   };
 
@@ -276,10 +314,13 @@ function Login({ onLoginSuccess }) {
         <link rel="preload" href={DEFAULT_LOGO} as="image" />
       </Helmet>
 
-      <div className={cn(
-        "min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans transition-colors duration-500 ease-in-out",
-        showAdminLogin ? "bg-slate-100" : "bg-white"
-      )}>
+      <div 
+        onPointerDown={handleMultiTap}
+        className={cn(
+          "min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans transition-colors duration-500 ease-in-out select-none",
+          showAdminLogin ? "bg-slate-100" : "bg-white"
+        )}
+      >
         <AnimatePresence mode="wait">
           {showAdminLogin ? (
             <motion.div

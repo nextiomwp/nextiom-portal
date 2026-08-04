@@ -237,6 +237,8 @@ function RegisterPage() {
   };
 
   const longPressTimer = useRef(null);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef(null);
 
   const startLongPress = () => {
     if (longPressTimer.current) {
@@ -256,6 +258,41 @@ function RegisterPage() {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
+    }
+  };
+
+  const handleMultiTap = (e) => {
+    if (e && e.target) {
+      const targetEl = e.target;
+      const tagName = targetEl.tagName?.toUpperCase();
+      if (
+        tagName === 'INPUT' ||
+        tagName === 'BUTTON' ||
+        tagName === 'A' ||
+        tagName === 'TEXTAREA' ||
+        targetEl.closest('button, a, input, textarea, label, [role="button"]')
+      ) {
+        return;
+      }
+    }
+
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) {
+      clearTimeout(tapTimerRef.current);
+    }
+
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      navigate('/', { state: { showAdminLogin: true } });
+      if (navigator.vibrate) {
+        try {
+          navigator.vibrate([60, 40, 60]);
+        } catch (err) {}
+      }
+    } else {
+      tapTimerRef.current = setTimeout(() => {
+        tapCountRef.current = 0;
+      }, 2000);
     }
   };
 
@@ -481,7 +518,7 @@ function RegisterPage() {
         <title>Register - Nextiom</title>
         <meta name="description" content="Create your Nextiom account" />
       </Helmet>
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
+      <div onPointerDown={handleMultiTap} className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans select-none">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-[480px]">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 space-y-8">
             <div className="text-center space-y-2">
