@@ -1557,6 +1557,22 @@ function AdminAppointmentCard({ apt, onAccept, onRejectClick, onCounterPropose, 
             </div>
           </div>
         )}
+
+        {apt.status === 'cancelled' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ padding: '8px 12px', borderRadius: 10, background: isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 12, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <XCircle size={13} /> Appointment Canceled
+            </div>
+          </div>
+        )}
+
+        {apt.status === 'completed' && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ padding: '8px 12px', borderRadius: 10, background: isDark ? 'rgba(239,68,68,0.07)' : 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', fontSize: 12, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle size={13} /> Appointment Closed
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1588,7 +1604,7 @@ function StatsRow({ appointments, c, isDark }) {
     { label: 'Pending Review', value: pending, color: '#f59e0b', bg: isDark ? 'rgba(245,158,11,0.1)' : '#fef3c7', icon: AlertCircle },
     { label: "Today's Confirmed", value: todayApts, color: 'var(--brand-color)', bg: isDark ? 'rgba(232,123,53,0.1)' : '#fff5ee', icon: Clock },
     { label: 'This Week', value: thisWeek, color: '#6366f1', bg: isDark ? 'rgba(99,102,241,0.1)' : '#e0e7ff', icon: Calendar },
-    { label: 'Completed', value: completed, color: '#22c55e', bg: isDark ? 'rgba(34,197,94,0.1)' : '#dcfce7', icon: CheckCircle },
+    { label: 'Closed', value: completed, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2', icon: CheckCircle },
     { label: 'Manual', value: fakes, color: '#ef4444', bg: isDark ? 'rgba(239,68,68,0.12)' : '#fee2e2', icon: CalendarDays },
   ];
 
@@ -1956,8 +1972,8 @@ export default function AdminAppointmentsPage({ c, isDark, isMobile }) {
     { id: 'accepted', label: 'Confirmed' },
     // { id: 'counter_proposed', label: 'Counter Proposed' },
     { id: 'rejected', label: 'Rejected' },
-    { id: 'cancelled', label: 'Cancelled' },
-    { id: 'completed', label: 'Completed' },
+    { id: 'cancelled', label: 'Canceled' },
+    { id: 'completed', label: 'Closed' },
   ];
 
   if (loading) {
